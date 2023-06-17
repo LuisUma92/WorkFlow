@@ -15,9 +15,9 @@ license = {file = "LICENSE"}
 classifiers= [
     "Development Status :: 2 - Pre-Alpha",
 ]
-# dependencies = [
-#     "rofi",
-# ]
+dependencies = [
+    "bibtexparser" 
+]
 
 [project.scripts]
 nori = "workflow.nori:cli"
