@@ -1,0 +1,12 @@
+LICENSE
+README.md
+pyproject.toml
+src/workflow/__init__.py
+src/workflow/bib2yaml.py
+src/workflow/cleta.py
+src/workflow/nori.py
+src/workflow.egg-info/PKG-INFO
+src/workflow.egg-info/SOURCES.txt
+src/workflow.egg-info/dependency_links.txt
+src/workflow.egg-info/entry_points.txt
+src/workflow.egg-info/top_level.txt

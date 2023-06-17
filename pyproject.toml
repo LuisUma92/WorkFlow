@@ -1,0 +1,28 @@
+[build-system]
+requires = [
+    "setuptools"
+]
+
+[project]
+name = "workflow"
+authors = [
+    {name = "Luis Fernando Umaña Castro",email = "luis.umanacastro@ucr.ac.cr"}
+]
+version = "1.0.0001"
+readme = {file = "README.md", content-type = "text/markdown"}
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+classifiers= [
+    "Development Status :: 2 - Pre-Alpha",
+]
+# dependencies = [
+#     "rofi",
+# ]
+
+[project.scripts]
+nori = "workflow.nori:cli"
+cleta = "workflow.cleta:cli"
+bib2yaml = "workflow.bib2yaml:cli"
+
+[tool.setuptools.packages.find]
+where = ["src"]

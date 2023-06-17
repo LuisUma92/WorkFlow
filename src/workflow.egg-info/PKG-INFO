@@ -1,0 +1,124 @@
+Metadata-Version: 2.1
+Name: workflow
+Version: 1.0.1
+Author-email: Luis Fernando Umaña Castro <luis.umanacastro@ucr.ac.cr>
+License: MIT License
+        
+        Copyright (c) 2023 LuisUma92
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Classifier: Development Status :: 2 - Pre-Alpha
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+# Work Flow
+
+This package contains a set of scripts that I use form writing my tesis
+
+
+## NoRI -Note Reference Insertion
+
+Script that search for study summary files, fallowing an specific structure
+on [YAML](https://yaml.org/) file format, and look for notes on the files.
+It returns a string output to [Neovim](https://neovim.io/), the note structure
+on the summary file indicates whether is paraphrase o verbatim, so that inset
+a $\LaTeX$ quotation reference respectively.
+
+### Directory expected structure
+
+```
+ROOT
+├── master.tex
+├── lec
+│   ├── lec_00.tex
+│   ├── ...
+│   └── lec_NN.tex
+├── res
+│   ├── sumary_00.tex
+│   ├── ...
+│   └── sumary_MM.tex
+├── figures
+│   ├── fig-00.pdf
+│   ├── fig-00.pdf_tex
+│   ├── fig-00.svg
+│   └── ...
+└── UltiSnips
+    └── tex.snippets
+```
+
+### Summary expected structure
+
+```yaml
+%YAML 1.2
+---
+Authors:
+  - []
+  - []
+
+Title: |
+  The title
+
+Bib: | # citation-key defined on .bib file
+  citation-key 
+
+Keywords:
+  Article:
+    - word 1
+    - word 2
+  Own:
+  Nucleus:
+
+Objective: |
+  The objective
+
+Definitions:
+  Name:
+    id: 
+    def: |
+      the definition
+    ideas: # list of personal conclusions or connections
+      - |
+        first idea or conclusion
+    use: |
+      examples or descriptions
+    cite: # references made by authors on the source
+      '[n],[n+2-n+4]'
+
+Key-Ideas:
+
+Conclusions:
+
+References: # Source references 
+  n: the n reference
+  n+2: other...
+...
+```
+
+### Dependencies
+
+* [Inkscape figure manager](https://github.com/gillescastel/latex-snippets)
+* [`rofi`](https://github.com/davatorium/rofi) for a selection dialog
+
+## CleTA - Clean Tex Auxiliary files
+
+This scrip remove common auxiliary files used by $\LaTeX$
+
+
