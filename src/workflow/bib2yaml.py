@@ -1,6 +1,8 @@
 import click
 import os
+import bibtexparser
 from pathlib import Path
+from .summary import Summary
 
 workPath = Path(os.getcwd())
 
@@ -14,28 +16,27 @@ def cli(bib):
     if not myBibFile.is_file():
         print(f"Can't find file: {myBibFile}")
         return 0
-    entries = clean_bib(myBibFile.read_text()).split("@")
+    library = bibtexparser.parse_string(myBibFile.read_text())
 
-    for entry in entries[1:]:
-        print(read_bib(entry))
+    for entry in library.entries:
+        summaryName = entry.key +  "-"
+        for field in entry.fields:
+            if field.key == "title":
+                summaryName += field.value
+        summaryFile = Summary(name = summaryName, path = str(workPath / "res"))
+        summaryFile.bib = entry.key
+        for field in entry.fields:
+            if field.key == "title":
+                summaryFile.title = field.value
+            if field.key == "author":
+                authors = field.value.split(" and ")
+                for author in authors:
+                    if len(author.split(", ")) > 1:
+                        summaryFile.author.append(author.split(", "))
+                    else:
+                        summaryFile.author.append([author," "])
 
-def read_bib(bibEntry):
-    if len(bibEntry.split("{")) < 2:
-        print("Invalid entry")
-        return None
-    tags = {}
-    start_position = bibEntry.find("{")
-    stop_position = bibEntry.rfind("}")
-    if "\t" in bibEntry:
-        tag_list = bibEntry[start_position+1:stop_position].split(",\t")
-    else:
-        tag_list = bibEntry[start_position+1:stop_position].split(",  ")
-    for tag in tag_list[1:]:
-        key = tag.split("=")
-        tags[key[0]] = key[1]
-    citation_key = tag_list[0]
-    entry_type = bibEntry[:start_position]
-    return tags, citation_key, entry_type
+        summaryFile.save()
 
 def clean_bib(bibText):
     lines = [line for line in bibText.split("\n") if line != '']
