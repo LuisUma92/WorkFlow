@@ -3,7 +3,7 @@
 This package contains a set of scripts that I use form writing my tesis
 
 
-## NoRI -Note Reference Insertion
+## NoRI - Note Reference Insertion
 
 Script that search for study summary files, fallowing an specific structure
 on [YAML](https://yaml.org/) file format, and look for notes on the files.
@@ -16,6 +16,10 @@ a $\LaTeX$ quotation reference respectively.
 ```
 ROOT
 ├── master.tex
+├── master.bib
+├── lib
+│   ├── bibkey-title.pdf
+│   └── ...
 ├── lec
 │   ├── lec_00.tex
 │   ├── ...
@@ -33,7 +37,35 @@ ROOT
     └── tex.snippets
 ```
 
-### Summary expected structure
+### lib2bib
+
+This script compares all files on lib directory with entries
+on master.bib file. If a document on lib directory don't 
+have a bib entries it proceed to create one.
+
+### PRISMA 2020 - Register Structure
+
+We use [PRIMA 2020](http://www.prisma-statement.org) for a
+systematic review of the scientific article. This protocol
+establishes the items to record for each Article Register.
+This script interacts with a Data Base where Registers are
+recorded. 
+
+#### AddRegister()
+
+This command interacts via CLI and ask to input item by item,
+then send the information to de DB.
+
+#### To do list
+
+- An interaction to the data base for Summary Notes creation.
+- Bib automatic update.
+
+### Summary Notes structure
+
+The summary consist of easy access files that provides the 
+notes, connections, ideas and other kinds of information
+useful when writing essays.
 
 ```yaml
 %YAML 1.2
@@ -89,5 +121,7 @@ References: # Source references
 ## CleTA - Clean Tex Auxiliary files
 
 This scrip remove common auxiliary files used by $\LaTeX$
+
+
 
 
