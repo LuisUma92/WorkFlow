@@ -1,5 +1,7 @@
-# import mysql.connector as mariadb
-import mariadb
+from re import split
+import mysql.connector as sql
+# import mariadb as sql
+from cryptography.fernet import Fernet
 import click
 
 itemList = {
@@ -107,24 +109,23 @@ def clean_list():
         itemList[item] = ""
 
 @cli.command()
-@click.argument(
-    'passwd',
-    type=str
-)
-@click.argument(
-    'this_host',
+@click.option(
+    '--this_host',
     default='192.168.68.18',
     type=str
 )
-@click.argument(
-    'this_database',
+@click.option(
+    '--this_database',
     default='prisma7be',
     type=str
 )
-def create_table(passwd,this_host,this_database):
-    print(passwd,this_host,this_database)
+@click.argument('log_file')
+@click.argument('key_file')
+def create_table(log_file,key_file,this_host,this_database):
+    usr , passwd = read_log_info(log_file,key_file)
+
     try:
-        dbcnx = mariadb.connect(user='remote',
+        dbcnx = sql.connect(user=usr,
                             password=passwd,
                             host=this_host,
                             port=3306,
@@ -132,15 +133,43 @@ def create_table(passwd,this_host,this_database):
         if dbcnx.is_connected():
             db_Info = dbcnx.get_server_info()
             print(f"Connected to MariaDB version {db_Info}")
-            cmd = ""
-            cursor = dbcnx.cursor()
-    except mariadb.Error as e:
+            # cmd = "CREATE TABLE entries(id INT, name TEXT);"
+            # # for item in itemList.keys():
+            #     cmd += f"'{item}' TEXT,"
+            # cmd = cmd[:-1]+");"
+            # cursor = dbcnx.cursor()
+            # cursor.execute(cmd)
+            # dbcnx.commit()
+    except sql.Error as e:
         print("Error while connecting to MariaDB", e)
     else:
         # if dbcnx.is_connected():
-        cursor.close()
+        # cursor.close()
         dbcnx.close()
         print("MariaDB connection is close")
+
+def read_log_info(log_file,key_file):
+    with open(key_file,'rb') as f:
+        key = f.read()
+    fernet = Fernet(key)
+    with open(log_file,'rb') as f:
+        content = fernet.decrypt(f.read()).decode('ascii')
+    data = content.split(',')
+    return data[0],data[1]
+
+
+@cli.command()
+@click.argument('usr')
+@click.argument('pwd')
+@click.argument('key_file')
+def create_log_data(usr,pwd,key_file):
+    with open(key_file,'rb') as f:
+        key = f.read()
+    fernet = Fernet(key)
+    content = usr +','+pwd
+    with open('log.data','wb') as f:
+        f.write(fernet.encrypt(content.encode('ascii')))
+
 
 if __name__ == '__main__':
     cli()
