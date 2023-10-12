@@ -104,6 +104,26 @@ def add_complete_register():
         i += 1
     print(itemList)
 
+@cli.command()
+def add_register(this_item_list,this_item_description=[]):
+    i = 0
+    desc = ""
+    output = {}
+    for item in this_item_list:
+        if len(this_item_description) > i:
+            desc = this_item_description[i]
+        confirmed = False
+        while(not confirmed):
+            print("="*60+f"\n>>\t{item}\n")
+            temp = input(f"\t\tDescripción: \n{desc}\n\n Ingrese información\n")
+            test = input("Continuar con el siguiente registro y/n\n")
+            if test == "y":
+                output[item] = temp
+                confirmed = True
+        i += 1
+    print(itemList)
+    return output
+
 def clean_list():
     for item in itemList.keys():
         itemList[item] = ""
@@ -124,6 +144,9 @@ def clean_list():
 def create_table(log_file,key_file,this_host,this_database):
     usr , passwd = read_log_info(log_file,key_file)
 
+# Function that save some sql-input on
+#   specific table
+def update(msn):
     try:
         dbcnx = sql.connect(user=usr,
                             password=passwd,
@@ -137,9 +160,9 @@ def create_table(log_file,key_file,this_host,this_database):
             # # for item in itemList.keys():
             #     cmd += f"'{item}' TEXT,"
             # cmd = cmd[:-1]+");"
-            # cursor = dbcnx.cursor()
-            # cursor.execute(cmd)
-            # dbcnx.commit()
+            cursor = dbcnx.cursor()
+            cursor.execute(msn)
+            dbcnx.commit()
     except sql.Error as e:
         print("Error while connecting to MariaDB", e)
     else:
@@ -169,6 +192,14 @@ def create_log_data(usr,pwd,key_file):
     content = usr +','+pwd
     with open('log.data','wb') as f:
         f.write(fernet.encrypt(content.encode('ascii')))
+
+
+# Function to be call each time a new reference is made.
+#   It create a new entry en bib_entries table
+def add_reference():
+    msn = "INSERT INTO bib_entries"
+    msn += input()
+    update(msn)
 
 
 if __name__ == '__main__':
