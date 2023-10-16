@@ -1,4 +1,5 @@
 # from re import split
+from inkscapefigures.main import re
 import mysql.connector as sql
 # import mariadb as sql
 from cryptography.fernet import Fernet
@@ -31,7 +32,8 @@ structure = {
         "reference":"bib_entrie.bib",
     },
     "abstract":{
-        "id":"bib_entries.id",
+        # "abs_id":"INT UNSIGNED AUTO_INCREMENT",
+        # "id":"bib_entries.id",
         "objectives":"\tVARCHAR(21844) CHARACTER SET utf8,\nProvide an explicit statement of the main objective(s) or question(s) the review addresses.",
         "rationale":"\tVARCHAR(21844) CHARACTER SET utf8\nDescribe the rationale for the review in the context of existing knowledge.",
         "database_name":"\tCHAR(20)\nSpecify the information sources (e.g. databases, registers) used to identify studies.",
@@ -105,8 +107,6 @@ def add_register(this_items):
                 confirmed = True
     return output
 
-@cli.command()
-@click.argument('title')
 def add_author(title):
     '''This Function create register for all authors of an article. It makes the bib_author entry as well.'''
     entrie_id = 0
@@ -115,7 +115,9 @@ def add_author(title):
         if __verbose >= 2: print(f"\t\tThis entry have id: {temp}")
         entrie_id = temp[0][0]
     else:
+        print('Error cant find specific article id')
         print(temp)
+        return 0
     author_id = 0
     all_entered = False
     first_author = True
@@ -141,6 +143,30 @@ def add_author(title):
         first_author = False
         if test != 'y':
             all_entered = True
+    return 1
+
+def add_abstract(title):
+    entrie_id = 0
+    temp = comunicate_db(f"SELECT id FROM bib_entries WHERE title = '{title}';",query=True)
+    if len(temp) > 0:
+        if __verbose >= 2: print(f"\t\tThis entry have id: {temp}")
+        entrie_id = temp[0][0]
+    else:
+        print('Error cant find specific article id')
+        print(temp)
+        return 0
+    info = add_register(structure["abstract"])
+    columns,values = order_information(info, 'id,', f" '{entrie_id}',")
+    msn = f'INSERT INTO abstract ({columns[:-1]}) VALUES ({values[:-1]});'
+    comunicate_db(msn)
+    return 1
+
+
+def order_information(info, columns = '', values = ''):
+        for column, data in info.items():
+             columns += f' {column},'
+             values += f" '{data}',"
+        return columns, values
 
 def set_connection():
     '''This function initialize the variables needed for mysql.connector connection'''
@@ -191,17 +217,20 @@ def comunicate_db(msn,query=False):
 def add_reference():
     ''' Function to be call each time a new reference is made.
    It create a new entry en bib_entries table'''
-    msn = "INSERT INTO bib_entries ("
-    info = add_register(structure["bib_entries"])
-    if 'error' in info: return 0
-    columns = ''
-    values = ''
-    for column, data in info.items():
-         columns += f' {column},'
-         values += f" '{data}',"
-    msn += f'{columns[:-1]}) VALUES ({values[:-1]});'
-    comunicate_db(msn)
-    add_author(info['title'])
+    no_more = False
+    while not no_more:
+        msn = "INSERT INTO bib_entries ("
+        info = add_register(structure["bib_entries"])
+        if 'error' in info: return 0
+        columns, values = order_information(info)
+        msn += f'{columns[:-1]}) VALUES ({values[:-1]});'
+        comunicate_db(msn)
+        add_author(info['title'])
+        test = input('Did you want to add abstract (y/n)')
+        if test == 'y':
+            add_abstract(info['title'])
+        test = input('Add a new reference (y/n)') or 'y'
+        if test != 'y': no_more = True
     return 1
 
 @cli.command()
