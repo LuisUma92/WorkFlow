@@ -49,12 +49,12 @@ We use [PRIMA 2020](http://www.prisma-statement.org) for a
 systematic review of the scientific article. This protocol
 establishes the items to record for each Article Register.
 This script interacts with a Data Base where Registers are
-recorded. 
+recorded.
 
-#### AddRegister()
+#### Documentation
 
-This command interacts via CLI and ask to input item by item,
-then send the information to de DB.
+This library interacts via CLI and ask to input item by item,
+then send the information to the DataBase. More info on (myPRISMA documentation)[myPRISMA.md]
 
 #### To do list
 
