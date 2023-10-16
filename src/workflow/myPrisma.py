@@ -15,12 +15,17 @@ structure = {
         "issue_volume":"INT",
         "issue_number":"INT",
         "year":"YEAR",
-        "pages":"CHAR(10)"
+        "pages":"CHAR(10)",
+        "database_name":"\tCHAR(20)\nSpecify the information sources (e.g. databases, registers) used to identify studies.",
+        "accessed":"\tDATE\nSpecify the information used to identify the date when last searched.",
+        "doi_url":"\tVARCHAR(21844) CHARACTER SET utf8\nProvide especific DOI or as second option URL to access.",
+        "keyword":"\tCHAR(40)\nProvide papers's assigned kewords"
     },
     "author":{
         # "id_author":"INT",
         "first_name":"CHAR(20)",
         "last_name":"CHAR(20)",
+        "affiliation":"CHAR(100)"
     },
     "bib_author":{
         "id_author":"author.id_author",
@@ -36,15 +41,11 @@ structure = {
         # "id":"bib_entries.id",
         "objectives":"\tVARCHAR(21844) CHARACTER SET utf8,\nProvide an explicit statement of the main objective(s) or question(s) the review addresses.",
         "rationale":"\tVARCHAR(21844) CHARACTER SET utf8\nDescribe the rationale for the review in the context of existing knowledge.",
-        "database_name":"\tCHAR(20)\nSpecify the information sources (e.g. databases, registers) used to identify studies.",
-        "accessed":"\tDATE\nSpecify the information used to identify the date when last searched.",
-        "doi_url":"\tVARCHAR(21844) CHARACTER SET utf8\nProvide especific DOI or as second option URL to access.",
-        "keyword":"\tCHAR(40)\nProvide papers's assigned kewords",
         "eligibility_criteria":"\tVARCHAR(21844) CHARACTER SET utf8\nSpecify the inclusion and exclusion criteria for the review.",
-        "retrived":"\tBOOLEAN\nFlag 1 if paper was retrived",
-        "included":"\tBOOLEAN\nFlag 1 if paper was included",
         "methods_synthesis":"\tVARCHAR(21844) CHARACTER SET utf8\nSpecify the methods used.",
         "results_synthesis":"\tVARCHAR(21844) CHARACTER SET utf8\nPresent results for main outcomes, preferably indicating the number of included studies and participants for each. If meta-analysis was done, report the summary estimate and confidence/credible interval. If comparing groups, indicate the direction of the effect (i.e. which group is favoured).",
+        "retrived":"\tBOOLEAN\nFlag 1 if paper was retrived",
+        "included":"\tBOOLEAN\nFlag 1 if paper was included",
     },
 }
 '''Structure of data base'''
@@ -184,7 +185,7 @@ def comunicate_db(msn,query=False):
     '''Function that connect and execute the command'''
     output = ''
     try:
-        print(__usr,__passwd,__this_host,__this_database)
+        print(__usr,__this_host,__this_database)
         dbcnx = sql.connect(user=__usr,
                             password=__passwd,
                             host=__this_host,
