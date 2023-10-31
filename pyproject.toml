@@ -24,6 +24,7 @@ nori = "workflow.nori:cli"
 cleta = "workflow.cleta:cli"
 bib2yaml = "workflow.bib2yaml:cli"
 pyprisma = "workflow.pyprisma:cli"
+mergebib = "workflow.mergebib:cli"
 
 [tool.setuptools.packages.find]
 where = ["src"]
