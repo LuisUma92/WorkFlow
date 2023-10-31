@@ -1,14 +1,19 @@
 # from re import split
+from re import split
+from threading import current_thread
 from inkscapefigures.main import re
 import mysql.connector as sql
 # import mariadb as sql
 from cryptography.fernet import Fernet
 import click
 import getpass
+import bibtexparser
+from datetime import datetime
 
 structure = {
-    "bib_entries":{
+    "bib_entries" : {
         # "id": "INT",
+        "entrie_type":"VARCHAR(100)",
         "bibkey":"CHAR(10)",
         "title":"VARCHAR(250)",
         "journaltitle":"VARCHAR(100),",
@@ -18,25 +23,36 @@ structure = {
         "pages":"CHAR(10)",
         "database_name":"\tCHAR(20)\nSpecify the information sources (e.g. databases, registers) used to identify studies.",
         "accessed":"\tDATE\nSpecify the information used to identify the date when last searched.",
-        "doi_url":"\tVARCHAR(21844) CHARACTER SET utf8\nProvide especific DOI or as second option URL to access.",
+        "url":"\tVARCHAR(21844) CHARACTER SET utf8\nProvide especific URL to access.",
+        "doi":"\tVARCHAR(21844) CHARACTER SET utf8\nProvide especific DOI to access.",
         "keyword":"\tCHAR(40)\nProvide papers's assigned kewords"
     },
-    "author":{
+    "author" : {
         # "id_author":"INT",
         "first_name":"CHAR(20)",
         "last_name":"CHAR(20)",
         "affiliation":"CHAR(100)"
     },
-    "bib_author":{
+    "bib_author" : {
         "id_author":"author.id_author",
         "id":"bib_entries.id",
         "first_author":"BOOLEAN",
     },
-    "bib_references":{
+    "bib_references" : {
         "article":"bib_entrie.bib",
         "reference":"bib_entrie.bib",
     },
-    "abstract":{
+    "keyword" : {
+        # "key_id":"INT",
+        "keyword_list":"VARCHAR(500) CHARACTER SET utf8\nSearch keywords used"
+    },
+    "reviewed" : {
+        "key_id":"INT UNSIGNED\nREFERENCES keyword (key_id)",
+        "article_id":"INT UNSIGNED\nREFERENCES bib_entries (id)",
+        "retrived":"\tBOOLEAN\nFlag 1 if paper was retrived",
+        "included":"\tBOOLEAN\nFlag 1 if paper was included",
+    },
+    "abstract" : {
         # "abs_id":"INT UNSIGNED AUTO_INCREMENT",
         # "id":"bib_entries.id",
         "objectives":"\tVARCHAR(21844) CHARACTER SET utf8,\nProvide an explicit statement of the main objective(s) or question(s) the review addresses.",
@@ -44,8 +60,6 @@ structure = {
         "eligibility_criteria":"\tVARCHAR(21844) CHARACTER SET utf8\nSpecify the inclusion and exclusion criteria for the review.",
         "methods_synthesis":"\tVARCHAR(21844) CHARACTER SET utf8\nSpecify the methods used.",
         "results_synthesis":"\tVARCHAR(21844) CHARACTER SET utf8\nPresent results for main outcomes, preferably indicating the number of included studies and participants for each. If meta-analysis was done, report the summary estimate and confidence/credible interval. If comparing groups, indicate the direction of the effect (i.e. which group is favoured).",
-        "retrived":"\tBOOLEAN\nFlag 1 if paper was retrived",
-        "included":"\tBOOLEAN\nFlag 1 if paper was included",
     },
 }
 '''Structure of data base'''
@@ -83,7 +97,33 @@ def cli(verbose):
 #         i += 1
 #     print(itemList)
 
-def add_register(this_items):
+def get_id(identity,table,columns=[],values=[]):
+    '''Test the existence of any entry with same {value} at {table}.{column} as provided. If it exists it returns {'error':-1}'''
+    if len(columns) != len(values):
+        print(f"ERROR:\n\nThere is a mismatch between columns and values\n\tColumns:{columns}\n\tValues:{values}")
+        return -1
+    msn= f"SELECT {identity} FROM {table} WHERE "
+    for i in range(len(columns)):
+        if i > 0: msn += "and"
+        column = columns[i]
+        value = values[i]
+        msn += "{column} = '{value}'"
+    msn += ";"
+    test = comunicate_db(msn,query=True)
+    if len(test) > 0:
+        print(f"\n\n{table}.{columns}='{values}' already exists\nWith {identity}: {test[0][0]}")
+        try:
+            output = int(test[0][0])
+        except ValueError:
+            print(f"\nIsn't a integer")
+            return 0
+        else:
+            return output
+    else:
+        print(f"ERROR:\n\nThere is no entry at {table}.{columns},\nWith value '{values}' ")
+        return -1
+
+def manually_add_register(this_items):
     desc = ""
     output = {}
     for item in this_items.keys():
@@ -96,10 +136,9 @@ def add_register(this_items):
 
             # TEST IF bib already exists
             if item == 'title':
-                '''Test the existence of any bib_entry with same title as provided. If it exists it returns {'error':0}'''
-                test = comunicate_db(f"SELECT id FROM bib_entries WHERE title = '{temp}';",query=True)
-                if len(test) > 0:
-                    print(f'\n\nThis entry already exists with id: {temp[0][0]}')
+                test = get_id("id","bib_entries",["title"],[temp])
+                if test >= 0:
+                    print(f'\n\nThis entry already exists with id: {test}')
                     return {'error':0}
 
             test = input("Continuar con el siguiente registro y/n\n") or 'y'
@@ -108,31 +147,37 @@ def add_register(this_items):
                 confirmed = True
     return output
 
-def add_author(title):
+def add_author(title,author_list=[]):
     '''This Function create register for all authors of an article. It makes the bib_author entry as well.'''
-    entrie_id = 0
-    temp = comunicate_db(f"SELECT id FROM bib_entries WHERE title = '{title}';",query=True)
-    if len(temp) > 0:
-        if __verbose >= 2: print(f"\t\tThis entry have id: {temp}")
-        entrie_id = temp[0][0]
+    entrie_id = get_id("id","bib_entries",["title"],[title])
+    if entrie_id > 0:
+        if __verbose >= 2: print(f"\t\tThis entry have id: {entrie_id}")
     else:
-        print('Error cant find specific article id')
-        print(temp)
+        print('Error cant find specific article id', entrie_id)
+        print(title)
         return 0
     author_id = 0
     all_entered = False
     first_author = True
+    i = 0
+    manually = True
+    test = 'n'
+    if len(author_list) > 0:
+        manually = False
     while not all_entered:
-        if first_author:
-            print('\n\tEnter information of lead author')
+        if manually:
+            if first_author:
+                print('\n\tEnter information of lead author')
+            else:
+                print('\n\tEnter information of next author')
+            this_author = manually_add_register(structure["author"])
         else:
-            print('\n\tEnter information of next author')
-        this_author = add_register(structure["author"])
+            this_author = author_list[i]
+            i += 1
         identified = False
         while not identified:
-            temp = comunicate_db(f"SELECT id_author FROM author WHERE first_name='{this_author['first_name']}' AND last_name='{this_author['last_name']}';",query=True)
-            if len(temp) == 1:
-                author_id = temp[0][0]
+            author_id = get_id("id_author","author",["first_name","last_name"],[this_author["first_name"],this_author["last_name"]])
+            if author_id > 0:
                 identified = True
             else:
                 comunicate_db(f"INSERT INTO author (first_name,last_name) VALUES ('{this_author['first_name']}','{this_author['last_name']}');")
@@ -140,7 +185,10 @@ def add_author(title):
             comunicate_db(f"INSERT INTO bib_author (id_author,id,first_author) VALUES ({author_id},{entrie_id},1)")
         else:
             comunicate_db(f"INSERT INTO bib_author (id_author,id) VALUES ({author_id},{entrie_id})")
-        test = input('Insert more authors (y/n)') or 'y'
+        if manually:
+            test = input('Insert more authors (y/n)') or 'y'
+        else:
+            if i == len(author_list) - 1: test = 'y'
         first_author = False
         if test != 'y':
             all_entered = True
@@ -162,6 +210,67 @@ def add_abstract(title):
     comunicate_db(msn)
     return 1
 
+@cli.command()
+@click.option(
+    "--filename"
+)
+def import_bib(filebame):
+    with open(filebame) as file:
+        library = bibtexparser.load(file)
+    for entry in library.entries:
+        current_entry = {}
+        author_list = []
+        if "ENTRYTYPE" in entry:
+            current_entry["entrie_type"] = entry["ENTRYTYPE"]
+        if "ID" in entry:
+            current_entry["bibkey"] = entry["ID"]
+        if "title" in entry:
+            current_entry["title"] = entry["title"]
+        if "journal" in entry:
+            current_entry["journaltitle"] = entry["journal"]
+        if "volume" in entry:
+            current_entry["issue_volume"] = entry["volume"]
+        if "number" in entry:
+            current_entry["issue_number"] = entry["number"]
+        if "year" in entry:
+            current_entry["year"] = entry["year"]
+        if "pages" in entry:
+            current_entry["pages"] = entry["pages"]
+        current_entry["database_name"] = fileName.split("_")[0]
+        current_entry["accessed"] = datetime.today().strftime("%Y-$m-%d")
+        if "url" in entry:
+            current_entry["url"] = entry["url"]
+        else:
+            current_entry["url"] = "https://duckduckgo.com/?q="+entry["title"].replace(" ","+")
+        if "doi" in entry:
+            current_entry["doi"] = entry["doi"]
+        if "author" in entry:
+            author_list = order_authors(entry["author"])
+        print(current_entry,author_list)
+        input("-----------")
+        add_reference(current_entry,author_list)
+
+def order_authors(author_string):
+    author_list = []
+    temp_list = author_string.split(" and ")
+    for author in temp_list:
+        if "{" in author:
+            author = author.replace("{","")
+            author = author.replace("}","")
+        if ", " in author:
+            info = author.split[", "]
+            author_list.append({"first_name":info[1],"last_name":info[0]})
+        else:
+            if "." in author:
+                end_first_name = author.find('.')
+                start_last_name = author.find(' ')
+                author_list.append(
+                    {
+                        "first_name":author[:end_first_name+1],
+                        "last_name":author[start_last_name+1:]
+                    }
+                )
+    return author_list
 
 def order_information(info, columns = '', values = ''):
         for column, data in info.items():
@@ -208,29 +317,35 @@ def comunicate_db(msn,query=False):
     except sql.Error as e:
         print("Error while connecting to MariaDB", e)
     else:
-        # if dbcnx.is_connected():
-        # cursor.close()
-        dbcnx.close()
-        print("MariaDB connection is close")
+        if dbcnx.is_connected():
+            cursor.close()
+            dbcnx.close()
+            print("MariaDB connection is close")
     return output
 
-@cli.command()
-def add_reference():
-    ''' Function to be call each time a new reference is made.
-   It create a new entry en bib_entries table'''
+# @cli.command()
+def add_reference(info={},author_list = []):
+    ''' Function to be call each time a new reference is made. It create a new entry en bib_entries table'''
     no_more = False
+    manually = False
+    test = ''
     while not no_more:
         msn = "INSERT INTO bib_entries ("
-        info = add_register(structure["bib_entries"])
+        if len(info) == 0:
+            info = manually_add_register(structure["bib_entries"])
+            manually = True
         if 'error' in info: return 0
         columns, values = order_information(info)
         msn += f'{columns[:-1]}) VALUES ({values[:-1]});'
         comunicate_db(msn)
-        add_author(info['title'])
-        test = input('Did you want to add abstract (y/n)')
-        if test == 'y':
-            add_abstract(info['title'])
-        test = input('Add a new reference (y/n)') or 'y'
+        add_author(info['title'],author_list)
+        if manually:
+            test = input('Did you want to add abstract (y/n)')
+            if test == 'y':
+                add_abstract(info['title'])
+            test = input('Add a new reference (y/n)') or 'y'
+        else:
+            test = 'y'
         if test != 'y': no_more = True
     return 1
 
