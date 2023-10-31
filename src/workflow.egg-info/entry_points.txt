@@ -1,5 +1,6 @@
 [console_scripts]
 bib2yaml = workflow.bib2yaml:cli
 cleta = workflow.cleta:cli
+mergebib = workflow.mergebib:cli
 nori = workflow.nori:cli
 pyprisma = workflow.pyprisma:cli

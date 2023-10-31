@@ -14,7 +14,7 @@ structure = {
     "bib_entries" : {
         # "id": "INT",
         "entrie_type":"VARCHAR(100)",
-        "bibkey":"CHAR(10)",
+        "bibkey":"CHAR(100)",
         "title":"VARCHAR(250)",
         "journaltitle":"VARCHAR(100),",
         "issue_volume":"INT",
@@ -104,10 +104,10 @@ def get_id(identity,table,columns=[],values=[]):
         return -1
     msn= f"SELECT {identity} FROM {table} WHERE "
     for i in range(len(columns)):
-        if i > 0: msn += "and"
+        if i > 0: msn += " AND "
         column = columns[i]
         value = values[i]
-        msn += "{column} = '{value}'"
+        msn += f"{column} = '{value}'"
     msn += ";"
     test = comunicate_db(msn,query=True)
     if len(test) > 0:
@@ -161,7 +161,7 @@ def add_author(title,author_list=[]):
     first_author = True
     i = 0
     manually = True
-    test = 'n'
+    test = 'y'
     if len(author_list) > 0:
         manually = False
     while not all_entered:
@@ -188,7 +188,10 @@ def add_author(title,author_list=[]):
         if manually:
             test = input('Insert more authors (y/n)') or 'y'
         else:
-            if i == len(author_list) - 1: test = 'y'
+            if __verbose > 3: print("\nTesting if all entered")
+            if i == len(author_list) - 1:
+                test = 'n'
+                if __verbose >3: print("All entered",i,len(author_list)-1)
         first_author = False
         if test != 'y':
             all_entered = True
@@ -217,7 +220,7 @@ def add_keywords(keywords):
     WHERE NOT EXISTS (
         SELECT 1 
         FROM keyword 
-        WHERE keyword_list = {keywords});"""
+        WHERE keyword_list = '{keywords}');"""
     comunicate_db(msn)
 
 def init_review_table(title,keywords):
@@ -268,8 +271,8 @@ def import_bib(filename):
         if __verbose > 2: print(current_entry,author_list)
         if __verbose > 3: input("-----------")
         add_reference(current_entry,author_list)
-        add_keywords(filename.split("_")[1])
-        init_review_table(current_entry["title"],filename.split("_")[1])
+        add_keywords(filename.split("_")[1][:-4])
+        init_review_table(current_entry["title"],filename.split("_")[1][:-4])
 
 def order_authors(author_string):
     author_list = []
@@ -281,19 +284,18 @@ def order_authors(author_string):
         if "{" in author:
             author = author.replace("{","")
             author = author.replace("}","")
+        if "'" in author:
+            author = author.replace("'","")
         if ", " in author:
             info = author.split(", ")
             author_list.append({"first_name":info[1],"last_name":info[0]})
         else:
             if "." in author:
                 end_first_name = author.rfind('.')
-                author_list.append(
-                    {
-                        "first_name":author[:end_first_name+1],
-                        "last_name":author[end_first_name+2:]
-                    }
-                )
-
+                author_list.append({
+                                    "first_name":author[:end_first_name+1],
+                                    "last_name":author[end_first_name+2:]
+                                    })
             else:
                 info = author.split(" ",1)
                 author_list.append({"first_name":info[0],"last_name":info[1]})
@@ -316,12 +318,29 @@ def set_connection():
     test = input(f'Current database: {__this_database}, \n\tDo you want to change it (y/n)')
     if test == 'y':
         __this_database = input('Database: ')
+    try:
+        print(f">>{__usr}@{__this_host}:{__this_database}")
+        dbcnx = sql.connect(user=__usr,
+                            password=__passwd,
+                            host=__this_host,
+                            # port=3306,
+                            database=__this_database)
+        if dbcnx.is_connected():
+            db_Info = dbcnx.get_server_info()
+            print(f"Connected to MariaDB version {db_Info}")
+    except sql.Error as e:
+        print("Error while connecting to MariaDB", e)
+        input("-"*60)
+    finally:
+        if dbcnx.is_connected():
+            dbcnx.close()
+            print("MariaDB connection is close")
 
 def comunicate_db(msn,query=False):
     '''Function that connect and execute the command'''
     output = ''
     try:
-        print(__usr,__this_host,__this_database)
+        print(f">>{__usr}@{__this_host}:{__this_database}")
         dbcnx = sql.connect(user=__usr,
                             password=__passwd,
                             host=__this_host,
@@ -343,7 +362,8 @@ def comunicate_db(msn,query=False):
                 dbcnx.commit()
     except sql.Error as e:
         print("Error while connecting to MariaDB", e)
-    else:
+        input("-"*60)
+    finally:
         if dbcnx.is_connected():
             cursor.close()
             dbcnx.close()
@@ -363,17 +383,22 @@ def add_reference(info={},author_list = []):
             manually = True
         if 'error' in info: return 0
         columns, values = order_information(info)
-        msn += f'{columns[:-1]}) VALUES ({values[:-1]});'
-        comunicate_db(msn)
-        add_author(info['title'],author_list)
-        if manually:
-            test = input('Did you want to add abstract (y/n)')
-            if test == 'y':
-                add_abstract(info['title'])
-            test = input('Add a new reference (y/n)') or 'y'
+        exists = get_id("id","bib_entries",["title"],[info["title"]])
+        if exists < 0:
+            msn += f'{columns[:-1]}) VALUES ({values[:-1]});'
+            comunicate_db(msn)
+            add_author(info['title'],author_list)
+            if manually:
+                test = input('Did you want to add abstract (y/n)')
+                if test == 'y':
+                    add_abstract(info['title'])
+                test = input('Add a new reference (y/n)') or 'y'
+            else:
+                test = 'y'
+            if test != 'y': no_more = True
         else:
-            test = 'y'
-        if test != 'y': no_more = True
+            no_more = True
+    click.pause()
     return 1
 
 @cli.command()
