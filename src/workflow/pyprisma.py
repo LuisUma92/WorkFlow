@@ -53,7 +53,6 @@ structure = {
         "included":"\tBOOLEAN\nFlag 1 if paper was included",
     },
     "abstract" : {
-        # "abs_id":"INT UNSIGNED AUTO_INCREMENT",
         # "id":"bib_entries.id",
         "objectives":"\tVARCHAR(21844) CHARACTER SET utf8,\nProvide an explicit statement of the main objective(s) or question(s) the review addresses.",
         "rationale":"\tVARCHAR(21844) CHARACTER SET utf8\nDescribe the rationale for the review in the context of existing knowledge.",
@@ -61,6 +60,7 @@ structure = {
         "methods_synthesis":"\tVARCHAR(21844) CHARACTER SET utf8\nSpecify the methods used.",
         "results_synthesis":"\tVARCHAR(21844) CHARACTER SET utf8\nPresent results for main outcomes, preferably indicating the number of included studies and participants for each. If meta-analysis was done, report the summary estimate and confidence/credible interval. If comparing groups, indicate the direction of the effect (i.e. which group is favoured).",
     },
+        # "abs_id":"INT UNSIGNED AUTO_INCREMENT",
 }
 '''Structure of data base'''
 #:
@@ -210,12 +210,29 @@ def add_abstract(title):
     comunicate_db(msn)
     return 1
 
+def add_keywords(keywords):
+    msn = f"""INSERT INTO keyword (keyword_list)
+    SELECT '{keywords}' 
+    FROM dual 
+    WHERE NOT EXISTS (
+        SELECT 1 
+        FROM keyword 
+        WHERE keyword_list = {keywords});"""
+    comunicate_db(msn)
+
+def init_review_table(title,keywords):
+    article_id = get_id("id","bib_entries",["title"],[title])
+    keyword_id = get_id("key_id","keyword",["keyword_list"],[keywords])
+    msn = f"""INSERT INTO reviewed (key_id,article_id)
+    VALUES ({keyword_id},{article_id}) ;
+    """
+    comunicate_db(msn)
+
 @cli.command()
-@click.option(
-    "--filename"
-)
-def import_bib(filebame):
-    with open(filebame) as file:
+@click.option("--filename")
+def import_bib(filename):
+    '''Parse and add all entries on .bib file.\nFile Name: database_keywords.bib'''
+    with open(filename) as file:
         library = bibtexparser.load(file)
     for entry in library.entries:
         current_entry = {}
@@ -236,8 +253,8 @@ def import_bib(filebame):
             current_entry["year"] = entry["year"]
         if "pages" in entry:
             current_entry["pages"] = entry["pages"]
-        current_entry["database_name"] = fileName.split("_")[0]
-        current_entry["accessed"] = datetime.today().strftime("%Y-$m-%d")
+        current_entry["database_name"] = filename.split("_")[0]
+        current_entry["accessed"] = datetime.today().strftime("%Y-%m-%d")
         if "url" in entry:
             current_entry["url"] = entry["url"]
         else:
@@ -246,30 +263,40 @@ def import_bib(filebame):
             current_entry["doi"] = entry["doi"]
         if "author" in entry:
             author_list = order_authors(entry["author"])
-        print(current_entry,author_list)
-        input("-----------")
+
+
+        if __verbose > 2: print(current_entry,author_list)
+        if __verbose > 3: input("-----------")
         add_reference(current_entry,author_list)
+        add_keywords(filename.split("_")[1])
+        init_review_table(current_entry["title"],filename.split("_")[1])
 
 def order_authors(author_string):
     author_list = []
     temp_list = author_string.split(" and ")
+    if __verbose > 2: print(temp_list)
     for author in temp_list:
+        if __verbose > 2:
+            print(author,type(author))
         if "{" in author:
             author = author.replace("{","")
             author = author.replace("}","")
         if ", " in author:
-            info = author.split[", "]
+            info = author.split(", ")
             author_list.append({"first_name":info[1],"last_name":info[0]})
         else:
             if "." in author:
-                end_first_name = author.find('.')
-                start_last_name = author.find(' ')
+                end_first_name = author.rfind('.')
                 author_list.append(
                     {
                         "first_name":author[:end_first_name+1],
-                        "last_name":author[start_last_name+1:]
+                        "last_name":author[end_first_name+2:]
                     }
                 )
+
+            else:
+                info = author.split(" ",1)
+                author_list.append({"first_name":info[0],"last_name":info[1]})
     return author_list
 
 def order_information(info, columns = '', values = ''):

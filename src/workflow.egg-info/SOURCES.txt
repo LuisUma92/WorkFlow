@@ -4,7 +4,9 @@ pyproject.toml
 src/workflow/__init__.py
 src/workflow/bib2yaml.py
 src/workflow/cleta.py
+src/workflow/lib2bib.py
 src/workflow/nori.py
+src/workflow/pyprisma.py
 src/workflow/summary.py
 src/workflow.egg-info/PKG-INFO
 src/workflow.egg-info/SOURCES.txt

@@ -2,3 +2,4 @@
 bib2yaml = workflow.bib2yaml:cli
 cleta = workflow.cleta:cli
 nori = workflow.nori:cli
+pyprisma = workflow.pyprisma:cli
