@@ -1,4 +1,5 @@
 # from re import split
+from pickle import TRUE
 from re import split
 from threading import current_thread
 from inkscapefigures.main import re
@@ -98,7 +99,8 @@ def cli(verbose):
 #     print(itemList)
 
 def get_id(identity,table,columns=[],values=[]):
-    '''Test the existence of any entry with same {value} at {table}.{column} as provided. If it exists it returns {'error':-1}'''
+    '''Test the existence of any entry with same {value} at {table}.{column} as provided. If it exists it returns -1'''
+    if __verbose > 1: print("-"*60+f"\n>> Getting id {identity} FROM {table}")
     if len(columns) != len(values):
         print(f"ERROR:\n\nThere is a mismatch between columns and values\n\tColumns:{columns}\n\tValues:{values}")
         return -1
@@ -116,14 +118,15 @@ def get_id(identity,table,columns=[],values=[]):
             output = int(test[0][0])
         except ValueError:
             print(f"\nIsn't a integer")
-            return 0
+            return -2
         else:
             return output
     else:
         print(f"ERROR:\n\nThere is no entry at {table}.{columns},\nWith value '{values}' ")
-        return -1
+        return 0
 
 def manually_add_register(this_items):
+    if __verbose > 1: print("-"*60+f"\n>> Manually adding register")
     desc = ""
     output = {}
     for item in this_items.keys():
@@ -149,6 +152,8 @@ def manually_add_register(this_items):
 
 def add_author(title,author_list=[]):
     '''This Function create register for all authors of an article. It makes the bib_author entry as well.'''
+    if __verbose > 1: print("-"*60+f"\n>> Adding authors for {title}")
+    '''Get the entry ID on bib_entries'''
     entrie_id = get_id("id","bib_entries",["title"],[title])
     if entrie_id > 0:
         if __verbose >= 2: print(f"\t\tThis entry have id: {entrie_id}")
@@ -157,13 +162,20 @@ def add_author(title,author_list=[]):
         print(title)
         return 0
     author_id = 0
-    all_entered = False
-    first_author = True
-    i = 0
+    '''If there is no first_author declared it set fist author entry as first_author'''
+    first_author = False
+    test = get_id("id_author","bib_author",["id","first_author"],[entrie_id,1])
+    if test == 0:
+        first_author = True
+    '''If author_list have length grater than 0 it is an automatic process'''
     manually = True
-    test = 'y'
     if len(author_list) > 0:
         manually = False
+    '''If automatic process it define a counter i'''
+    i = 0
+    '''Test for add more author'''
+    test = 'y'
+    all_entered = False
     while not all_entered:
         if manually:
             if first_author:
@@ -173,6 +185,7 @@ def add_author(title,author_list=[]):
             this_author = manually_add_register(structure["author"])
         else:
             this_author = author_list[i]
+            print(this_author, author_list)
             i += 1
         identified = False
         while not identified:
@@ -189,41 +202,45 @@ def add_author(title,author_list=[]):
             test = input('Insert more authors (y/n)') or 'y'
         else:
             if __verbose > 3: print("\nTesting if all entered")
-            if i == len(author_list) - 1:
+            if i == len(author_list):
                 test = 'n'
                 if __verbose >3: print("All entered",i,len(author_list)-1)
         first_author = False
+        print("next", i)
         if test != 'y':
             all_entered = True
     return 1
 
 def add_abstract(title):
-    entrie_id = 0
-    temp = comunicate_db(f"SELECT id FROM bib_entries WHERE title = '{title}';",query=True)
-    if len(temp) > 0:
-        if __verbose >= 2: print(f"\t\tThis entry have id: {temp}")
-        entrie_id = temp[0][0]
+    '''For an specific title it manually add abstract items'''
+    if __verbose > 1: print("-"*60+f"\n>> Adding abstract for {title}")
+    entrie_id = get_id("id","bib_entries",["title"],[title])
+    if entrie_id > 0:
+        if __verbose >= 2: print(f"\t\tThis entry have id: {entrie_id}")
     else:
-        print('Error cant find specific article id')
-        print(temp)
+        # print('Error cant find specific article id')
+        # print(temp)
         return 0
-    info = add_register(structure["abstract"])
+    info = manually_add_register(structure["abstract"])
     columns,values = order_information(info, 'id,', f" '{entrie_id}',")
     msn = f'INSERT INTO abstract ({columns[:-1]}) VALUES ({values[:-1]});'
     comunicate_db(msn)
     return 1
 
 def add_keywords(keywords):
+    '''Insert a keyword combination if it does not exists.'''
+    if __verbose > 1: print("-"*60+f"\n>> Adding keywords: {keywords}")
     msn = f"""INSERT INTO keyword (keyword_list)
-    SELECT '{keywords}' 
-    FROM dual 
+    SELECT '{keywords}'
+    FROM dual
     WHERE NOT EXISTS (
-        SELECT 1 
-        FROM keyword 
+        SELECT 1
+        FROM keyword
         WHERE keyword_list = '{keywords}');"""
     comunicate_db(msn)
 
 def init_review_table(title,keywords):
+    '''Insert a entry on review table for a specific title with a specific keyword combination'''
     article_id = get_id("id","bib_entries",["title"],[title])
     keyword_id = get_id("key_id","keyword",["keyword_list"],[keywords])
     msn = f"""INSERT INTO reviewed (key_id,article_id)
@@ -330,7 +347,7 @@ def set_connection():
             print(f"Connected to MariaDB version {db_Info}")
     except sql.Error as e:
         print("Error while connecting to MariaDB", e)
-        input("-"*60)
+        if __verbose > 3: input("-"*60)
     finally:
         if dbcnx.is_connected():
             dbcnx.close()
@@ -340,7 +357,7 @@ def comunicate_db(msn,query=False):
     '''Function that connect and execute the command'''
     output = ''
     try:
-        print(f">>{__usr}@{__this_host}:{__this_database}")
+        print("-"*60+f"\n>>{__usr}@{__this_host}:{__this_database}")
         dbcnx = sql.connect(user=__usr,
                             password=__passwd,
                             host=__this_host,
@@ -349,25 +366,22 @@ def comunicate_db(msn,query=False):
         if dbcnx.is_connected():
             db_Info = dbcnx.get_server_info()
             print(f"Connected to MariaDB version {db_Info}")
-            # cmd = "CREATE TABLE entries(id INT, name TEXT},"
-            # # for item in itemList.keys():
-            #     cmd += f"'{item}' TEXT,"
-            # cmd = cmd[:-1]+"},"
             cursor = dbcnx.cursor()
             if __verbose >= 2: print(msn)
             cursor.execute(msn)
             if query:
                 output = cursor.fetchall()
+                if __verbose > 3: print(output)
             else:
                 dbcnx.commit()
     except sql.Error as e:
         print("Error while connecting to MariaDB", e)
-        input("-"*60)
-    finally:
-        if dbcnx.is_connected():
-            cursor.close()
-            dbcnx.close()
-            print("MariaDB connection is close")
+        if __verbose > 3: input("-"*60)
+    # finally:
+        # if dbcnx.is_connected():
+    cursor.close()
+    dbcnx.close()
+    print("MariaDB connection is close")
     return output
 
 # @cli.command()
@@ -397,8 +411,30 @@ def add_reference(info={},author_list = []):
                 test = 'y'
             if test != 'y': no_more = True
         else:
-            no_more = True
-    click.pause()
+            msn = f"""SELECT first_name,last_name FROM author
+    INNER JOIN bib_author
+    ON bib_author.id_author = author.id_author
+    AND bib_author.id = {exists};
+            """
+            current_authors_list = comunicate_db(msn,query=True)
+            if __verbose > 2: print(current_authors_list)
+            if __verbose > 3: print(author_list)
+            if len(current_authors_list) == len(author_list):
+                no_more = True
+            else:
+                add_these_authors = []
+                add_it = False
+                for author in author_list:
+                    for i in range(len(current_authors_list)):
+                        if author["first_name"] == current_authors_list[i][0] and author["last_name"] == current_authors_list[i][1]:
+                            print(f"{author} already on database")
+                            add_it = False
+                            break
+                        add_it = True
+                    if add_it: add_these_authors.append(author)
+                add_author(info['title'],add_these_authors)
+                no_more =True
+    if __verbose > 3: click.pause()
     return 1
 
 @cli.command()
