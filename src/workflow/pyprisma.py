@@ -71,36 +71,21 @@ __usr = ''
 __passwd = ''
 __this_host = 'localhost'
 __this_database = 'prisma7be'
-__verbose = 3
+__verbose = 0
 
 @click.group()
-@click.option('--verbose',default=9)
+@click.option('--verbose',default=0)
 def cli(verbose):
-    if verbose < 9:
+    if verbose > 0:
         global __verbose
         __verbose = verbose
-    set_connection()
+    if not set_connection():
+        exit()
     pass
-
-# @cli.command()
-# def add_complete_register():
-#     i = 0
-#     for item in itemList.keys():
-#         desc = itemDescription[i]
-#         confirmed = False
-#         while(not confirmed):
-#             print("="*60+f"\n>>\t{item}\n")
-#             temp = input(f"\t\tDescrición: \n{desc}\n\n Ingrese información\n")
-#             test = input("Continuar con el siguiente registro y/n\n")
-#             if test == "y":
-#                 itemList[item] = temp
-#                 confirmed = True
-#         i += 1
-#     print(itemList)
 
 def get_id(identity,table,columns=[],values=[]):
     '''Test the existence of any entry with same {value} at {table}.{column} as provided. If it exists it returns -1'''
-    if __verbose > 1: print("-"*60+f"\n>> Getting id {identity} FROM {table}")
+    if __verbose >= 1: print("-"*60+f"\n>> Getting id {identity} FROM {table}")
     if len(columns) != len(values):
         print(f"ERROR:\n\nThere is a mismatch between columns and values\n\tColumns:{columns}\n\tValues:{values}")
         return -1
@@ -126,7 +111,8 @@ def get_id(identity,table,columns=[],values=[]):
         return 0
 
 def manually_add_register(this_items):
-    if __verbose > 1: print("-"*60+f"\n>> Manually adding register")
+    '''Complete the dictionary passed as argument'''
+    if __verbose >= 1: print("-"*60+f"\n>> Manually adding register")
     desc = ""
     output = {}
     for item in this_items.keys():
@@ -152,7 +138,7 @@ def manually_add_register(this_items):
 
 def add_author(title,author_list=[]):
     '''This Function create register for all authors of an article. It makes the bib_author entry as well.'''
-    if __verbose > 1: print("-"*60+f"\n>> Adding authors for {title}")
+    if __verbose >= 1: print("-"*60+f"\n>> Adding authors for {title}")
     '''Get the entry ID on bib_entries'''
     entrie_id = get_id("id","bib_entries",["title"],[title])
     if entrie_id > 0:
@@ -201,10 +187,10 @@ def add_author(title,author_list=[]):
         if manually:
             test = input('Insert more authors (y/n)') or 'y'
         else:
-            if __verbose > 3: print("\nTesting if all entered")
+            if __verbose >= 3: print("\nTesting if all entered")
             if i == len(author_list):
                 test = 'n'
-                if __verbose >3: print("All entered",i,len(author_list)-1)
+                if __verbose >= 3: print("All entered",i,len(author_list)-1)
         first_author = False
         print("next", i)
         if test != 'y':
@@ -213,7 +199,7 @@ def add_author(title,author_list=[]):
 
 def add_abstract(title):
     '''For an specific title it manually add abstract items'''
-    if __verbose > 1: print("-"*60+f"\n>> Adding abstract for {title}")
+    if __verbose >= 1: print("-"*60+f"\n>> Adding abstract for {title}")
     entrie_id = get_id("id","bib_entries",["title"],[title])
     if entrie_id > 0:
         if __verbose >= 2: print(f"\t\tThis entry have id: {entrie_id}")
@@ -229,7 +215,7 @@ def add_abstract(title):
 
 def add_keywords(keywords):
     '''Insert a keyword combination if it does not exists.'''
-    if __verbose > 1: print("-"*60+f"\n>> Adding keywords: {keywords}")
+    if __verbose >= 1: print("-"*60+f"\n>> Adding keywords: {keywords}")
     msn = f"""INSERT INTO keyword (keyword_list)
     SELECT '{keywords}'
     FROM dual
@@ -241,10 +227,12 @@ def add_keywords(keywords):
 
 def init_review_table(title,keywords):
     '''Insert a entry on review table for a specific title with a specific keyword combination'''
+    if __verbose >= 1: print("-"*60+f"\n>> Initialize review for: {title}\n   Using keyword: {keywords}")
     article_id = get_id("id","bib_entries",["title"],[title])
     keyword_id = get_id("key_id","keyword",["keyword_list"],[keywords])
     msn = f"""INSERT INTO reviewed (key_id,article_id)
     VALUES ({keyword_id},{article_id}) ;
+    if __verbose >= 1: print("-"*60+f"\n>> Initialize review for: {title}\n   Using keyword: {keywords}")
     """
     comunicate_db(msn)
 
@@ -252,6 +240,7 @@ def init_review_table(title,keywords):
 @click.option("--filename")
 def import_bib(filename):
     '''Parse and add all entries on .bib file.\nFile Name: database_keywords.bib'''
+    if __verbose >= 1: print("-"*60+f"\n>> Import bib file:\n{filename}")
     with open(filename) as file:
         library = bibtexparser.load(file)
     for entry in library.entries:
@@ -285,19 +274,21 @@ def import_bib(filename):
             author_list = order_authors(entry["author"])
 
 
-        if __verbose > 2: print(current_entry,author_list)
-        if __verbose > 3: input("-----------")
+        if __verbose >= 2: print(current_entry,author_list)
+        if __verbose >= 3: input("-"*60+"\n"+"-"*60)
         add_reference(current_entry,author_list)
         add_keywords(filename.split("_")[1][:-4])
         init_review_table(current_entry["title"],filename.split("_")[1][:-4])
 
 def order_authors(author_string):
+    '''Create a list of dictionaries wit the structure
+    {"fist_name":name,"last_name":last_name}'''
+    if __verbose >= 1: print("-"*60+f"\n>> Creating author_list")
     author_list = []
     temp_list = author_string.split(" and ")
-    if __verbose > 2: print(temp_list)
+    if __verbose >= 4: print(temp_list)
     for author in temp_list:
-        if __verbose > 2:
-            print(author,type(author))
+        if __verbose >= 3: print(author,type(author))
         if "{" in author:
             author = author.replace("{","")
             author = author.replace("}","")
@@ -319,24 +310,26 @@ def order_authors(author_string):
     return author_list
 
 def order_information(info, columns = '', values = ''):
-        for column, data in info.items():
-             columns += f' {column},'
-             values += f" '{data}',"
-        return columns, values
+    '''Return a formatted string for the column list and associated values'''
+    if __verbose >= 3: print("-"*60+"\n>> Creating formatted strings for query")
+    for column, data in info.items():
+        columns += f' {column},'
+        values += f" '{data}',"
+    return columns, values
 
 def set_connection():
     '''This function initialize the variables needed for mysql.connector connection'''
     global __usr, __passwd, __this_host, __this_database
     __usr = input('User: ')
     __passwd = getpass.getpass()
-    test = input(f'Current host: {__this_host}, \n\tDo you want to change it (y/n)')
-    if test == 'y':
+    test = input(f'Current host: {__this_host}, \n\tDo you want to keep it (y/n)') or 'y'
+    if test != 'y':
         __this_host = input('Host: ')
-    test = input(f'Current database: {__this_database}, \n\tDo you want to change it (y/n)')
-    if test == 'y':
+    test = input(f'Current database: {__this_database}, \n\tDo you want to keep it (y/n)') or 'y'
+    if test != 'y':
         __this_database = input('Database: ')
     try:
-        print(f">>{__usr}@{__this_host}:{__this_database}")
+        print(f">> {__usr}@{__this_host}:{__this_database}")
         dbcnx = sql.connect(user=__usr,
                             password=__passwd,
                             host=__this_host,
@@ -345,60 +338,69 @@ def set_connection():
         if dbcnx.is_connected():
             db_Info = dbcnx.get_server_info()
             print(f"Connected to MariaDB version {db_Info}")
-    except sql.Error as e:
-        print("Error while connecting to MariaDB", e)
-        if __verbose > 3: input("-"*60)
-    finally:
-        if dbcnx.is_connected():
             dbcnx.close()
             print("MariaDB connection is close")
+    except sql.Error as e:
+        print("Error while connecting to MariaDB", e)
+        return 0
+    return 1
 
 def comunicate_db(msn,query=False):
     '''Function that connect and execute the command'''
     output = ''
-    try:
-        print("-"*60+f"\n>>{__usr}@{__this_host}:{__this_database}")
-        dbcnx = sql.connect(user=__usr,
-                            password=__passwd,
-                            host=__this_host,
-                            # port=3306,
-                            database=__this_database)
-        if dbcnx.is_connected():
-            db_Info = dbcnx.get_server_info()
-            print(f"Connected to MariaDB version {db_Info}")
-            cursor = dbcnx.cursor()
-            if __verbose >= 2: print(msn)
-            cursor.execute(msn)
-            if query:
-                output = cursor.fetchall()
-                if __verbose > 3: print(output)
-            else:
-                dbcnx.commit()
-    except sql.Error as e:
-        print("Error while connecting to MariaDB", e)
-        if __verbose > 3: input("-"*60)
-    # finally:
-        # if dbcnx.is_connected():
-    cursor.close()
-    dbcnx.close()
-    print("MariaDB connection is close")
+    reconnect = True
+    while reconnect:
+        try:
+            print("-"*60+f"\n>>{__usr}@{__this_host}:{__this_database}")
+            dbcnx = sql.connect(user=__usr,
+                                password=__passwd,
+          UCI                      host=__this_host,
+                                # port=3306,
+                                database=__this_database)
+            if dbcnx.is_connected():
+                db_Info = dbcnx.get_server_info()
+                print(f"Connected to MariaDB version {db_Info}")
+                cursor = dbcnx.cursor()
+                if __verbose >= 2: print(msn)
+                cursor.execute(msn)
+                if query:
+                    output = cursor.fetchall()
+                    if __verbose >= 3: print(output)
+                else:
+                    dbcnx.commit()
+                reconnect = False
+                cursor.close()
+                dbcnx.close()
+                print("MariaDB connection is close")
+        except sql.Error as e:
+            print("Error while connecting to MariaDB", e)
+            if __verbose >= 3:
+                test = input("-"*60+"Try again? (y/n)") or 'y'
+                if test == 'y':
+                    set_connection()
+                else:
+                    exit()
     return output
 
 # @cli.command()
 def add_reference(info={},author_list = []):
     ''' Function to be call each time a new reference is made. It create a new entry en bib_entries table'''
-    no_more = False
+    more = True
     manually = False
     test = ''
-    while not no_more:
+    while more:
         msn = "INSERT INTO bib_entries ("
         if len(info) == 0:
             info = manually_add_register(structure["bib_entries"])
             manually = True
+        else:
+            if __verbose >= 1: print("-"*60+"\n>> Adding a reference to bib_entries")
+            if __verbose >= 3: print(info)
         if 'error' in info: return 0
         columns, values = order_information(info)
         exists = get_id("id","bib_entries",["title"],[info["title"]])
         if exists < 0:
+            if __verbose >= 2: print(">> Creating a new register")
             msn += f'{columns[:-1]}) VALUES ({values[:-1]});'
             comunicate_db(msn)
             add_author(info['title'],author_list)
@@ -409,70 +411,35 @@ def add_reference(info={},author_list = []):
                 test = input('Add a new reference (y/n)') or 'y'
             else:
                 test = 'y'
-            if test != 'y': no_more = True
+            if test != 'y': more = False
         else:
+            if __verbose >= 2: print(">> Testing if all authors are on database")
             msn = f"""SELECT first_name,last_name FROM author
     INNER JOIN bib_author
     ON bib_author.id_author = author.id_author
     AND bib_author.id = {exists};
             """
             current_authors_list = comunicate_db(msn,query=True)
-            if __verbose > 2: print(current_authors_list)
-            if __verbose > 3: print(author_list)
+            if __verbose >= 3: print("Current author list:\n", current_authors_list)
+            if __verbose >= 3: print("Actual author list:\n", author_list)
             if len(current_authors_list) == len(author_list):
-                no_more = True
+                more = False
             else:
                 add_these_authors = []
                 add_it = False
                 for author in author_list:
                     for i in range(len(current_authors_list)):
                         if author["first_name"] == current_authors_list[i][0] and author["last_name"] == current_authors_list[i][1]:
-                            print(f"{author} already on database")
+                            print(f"\t{author} already on database")
                             add_it = False
                             break
                         add_it = True
                     if add_it: add_these_authors.append(author)
+                    add_it = False
                 add_author(info['title'],add_these_authors)
-                no_more =True
-    if __verbose > 3: click.pause()
+                more = False
+    if __verbose >= 3: click.pause()
     return 1
-
-@cli.command()
-@click.option(
-    '--this_host',
-    default='192.168.68.18',
-    type=str
-)
-@click.option(
-    '--this_database',
-    default='prisma7be',
-    type=str
-)
-@click.argument('log_file')
-@click.option('--key_file',prompt='write key file path')
-def remote(log_file,key_file,this_host,this_database):
-    usr , passwd = read_log_info(log_file,key_file)
-
-def read_log_info(log_file,key_file):
-    with open(key_file,'rb') as f:
-        key = f.read()
-    fernet = Fernet(key)
-    with open(log_file,'rb') as f:
-        content = fernet.decrypt(f.read()).decode('ascii')
-    data = content.split(',')
-    return data[0],data[1]
-
-@cli.command()
-@click.argument('usr')
-@click.argument('pwd')
-@click.argument('key_file')
-def create_log_data(usr,pwd,key_file):
-    with open(key_file,'rb') as f:
-        key = f.read()
-    fernet = Fernet(key)
-    content = usr +','+pwd
-    with open('log.data','wb') as f:
-        f.write(fernet.encrypt(content.encode('ascii')))
 
 if __name__ == '__main__':
     cli()
