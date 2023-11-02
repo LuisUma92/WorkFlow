@@ -29,6 +29,7 @@ Requires-Python: >=3.10
 Description-Content-Type: text/markdown
 License-File: LICENSE
 Requires-Dist: bibtexparser
+Requires-Dist: click
 
 # Work Flow
 
