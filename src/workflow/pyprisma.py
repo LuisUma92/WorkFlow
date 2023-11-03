@@ -63,7 +63,7 @@ structure = {
 '''Structure of data base'''
 #:
 #:
-
+"""Improve modularity"""
 __usr = ''
 __passwd = ''
 __this_host = 'localhost'
@@ -140,7 +140,7 @@ def manually_add_register(this_items,table):
             if desc == structure[table][item]:
                 temp = input(f"\t\tDescription: \n{desc}\n\n Write information:\n")
             else:
-                temp = input(f"\t\tDescription: \n{structure[table][item]}\n\n Write information (Press enter to add:)\n{desc}") or desc
+                temp = input(f"\t\tDescription: \n{structure[table][item]}\n\n Current information:\n{desc}\n Press enter to add it or write the new entry:\n") or desc
 
             # TEST IF bib already exists
             if item == 'title':
@@ -154,7 +154,7 @@ def manually_add_register(this_items,table):
                     print(f'\n\nThis entry already exists with id: {test}')
                     return get_row('author',columns=["id_author"],values=[test])
 
-            test = input("Continue with nest register? (y/n)\n") or 'y'
+            test = input("Continue with next register? (y/n)\n") or 'y'
             if test == "y":
                 output[item] = temp
                 confirmed = True
@@ -273,8 +273,8 @@ def order_authors(author_string):
         if "{" in author:
             author = author.replace("{","")
             author = author.replace("}","")
-        if "'" in author:
-            author = author.replace("'","")
+        # if "'" in author:
+        #     author = author.replace("'","\\'")
         if ", " in author:
             info = author.split(", ")
             author_list.append({"first_name":info[1],"last_name":info[0]})
@@ -294,9 +294,31 @@ def order_information(info, columns = '', values = ''):
     '''Return a formatted string for the column list and associated values'''
     if __verbose >= 3: print("-"*60+"\n>> Creating formatted strings for query")
     for column, data in info.items():
+        # if type(data) is str:
+        #     if "'" in data:
+        #         data = data.replace("'","\\'")
         columns += f' {column},'
-        values += f" '{data}',"
+        values += f' "{data}",'
     return columns, values
+
+def secure_string(data):
+    if type(data) is dict:
+        for key, value in data.items():
+            temp = secure_apostrophes(value)
+            if temp != value:
+                data[key] = temp
+    return data
+
+
+def secure_apostrophes(mystring):
+    if type(mystring) is str:
+        if "'" in mystring:
+            output = mystring.replace("'","\\'")
+        else:
+            return mystring
+    else:
+        return mystring
+    return output
 
 def set_connection():
     '''This function initialize the variables needed for mysql.connector connection'''
@@ -373,6 +395,7 @@ def comunicate_db(msn,query=False,dictionary=False):
 
 def add_reference(info={},author_list = []):
     ''' Function to be call each time a new reference is made. It create a new entry en bib_entries table'''
+    info = secure_string(info)
     more = True
     manually = False
     test = ''
@@ -449,6 +472,3 @@ def add_reference(info={},author_list = []):
                 more = False
     if __verbose >= 3: input("="*60+"\nPress any key to continue...")
     return 1
-
-# if __name__ == '__main__':
-#     cli()

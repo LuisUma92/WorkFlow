@@ -52,6 +52,11 @@ def cli(filename,verbose):
         wfp.init_review_table(current_entry["title"],filename.split("_")[1][:-4])
         if wfp.get_verbose() >= 1: print("DONE !\n"+'='*60)
 
+def read_article():
+    pass
+
+def read_incollection():
+    pass
 
 if __name__ == "__main__":
     cli()
