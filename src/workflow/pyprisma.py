@@ -8,20 +8,72 @@ import mysql.connector as sql
 import getpass
 
 structure = {
+    "isn_list":{
+        "id_isn":[
+            "isan",
+            "isbn",
+            "ismn",
+            "isrn",
+            "issn",
+            "iswc"
+        ]
+    },
     "bib_entries" : {
         # "id": "INT",
         "entry_type":"\tVARCHAR(100)",
         "bibkey":"\tCHAR(100)",
+        "institution":"\tVARCHAR(200)\n\tuniversity or similar",
+        "organization":"\tVARCHAR(200)\n\tmanual/website publisher or event sponsor",
+        "publisher":"\tVARCHAR(200)\n\tpublisher(s)",
         "title":"\tVARCHAR(250)",
+        "indextitle":"\tVARCHAR(500)\n\tif different from title",
+        "booktitle":"\tVARCHAR(500)\n\ttitle of book",
+        "maintitle":"\tVARCHAR(500)\n\ttitle of multi-volume book",
         "journaltitle":"\tVARCHAR(100),",
+        "issuetitle":"\tVARCHAR(500)\n\ttitle of journal special issue",
+        "eventtitle":"\tVARCHAR(500)\n\ttitle of conference or event",
+        "reprinttitle":"\tVARCHAR(500)\n\ttitle of a reprint of the work",
+        "series":"\tCHAR(20)\n\tpublication series",
         "issue_volume":"\tINT",
         "issue_number":"\tINT",
-        "year":"\tYEAR",
+        "part":"\tCHAR(20)\n\tnumber of physical part of logical volume",
+        "issue":"\tCHAR(20)\n\tnon-number issue of journal",
+        "volumes":"\tCHAR(20)\n\tnumber of volumes for multi-volume work",
+        "edition":"\tSMALLINT UNSIGNED\n\tas 〈integer〉 rather than ordinal",
+        "version":"\tCHAR(50)\n\trevision number for software or manual",
+        "pubstate":"\tCHAR(100)\n\tpublication state",
         "pages":"\tCHAR(21)",
-        "database_name":"\tCHAR(20)\n\tSpecify the information sources (e.g. databases, registers) used to identify studies.",
-        "accessed":"\tDATE\nSpecify the information used to identify the date when last searched.",
+        "pagetotal":"\tCHAR(20)\n\ttotal number of pages",
+        "pagination":"\tCHAR(200)\n\tpagination format of (book)title",
+        "date":"\tDATE\n\tpublication date as 〈yyyy-mm-dd〉",
+        "eventdate":"\tDATE\n\tconference or event date as 〈yyyy-mm-dd〉",
+        "urldate":"\tDATE\n\taccess date for url as 〈yyyy-mm-dd〉",
+        "location":"\tCHAR(100)\n\tor address, where published",
+        "venue":"\tCHAR(200)\n\tof event",
         "url":"\tTEXT(21844) CHARACTER SET utf8\n\tProvide especific URL to access.",
         "doi":"\tTEXT(21844) CHARACTER SET utf8\n\tProvide especific DOI to access.",
+        "eid":"\tTEXT(21844) CHARACTER SET utf8\n\telectronic identifier of @article",
+        "eprint":"\tTEXT(21844) CHARACTER SET utf8\n\tarchive-specific electronic identifier",
+        "eprinttype":"\tTEXT(21844) CHARACTER SET utf8\n\ttype of identifier, eprintclass for further details",
+        "addendum":"\tTEXT(21844) CHARACTER SET utf8\n\tmiscellaneous data printed at end of entry",
+        "note":"\tTEXT(21844) CHARACTER SET utf8\n\tmiscellaneous data printed within entry",
+        "howpublished":"\tTEXT(21844) CHARACTER SET utf8\n\tnon-standard publication details",
+        "language":"\tCHAR(200)\n\tlanguage of work",
+        "isn":"\tCHAR(40)\n\t",
+        "isn_type":"\tCHAR(4), CONSTRAINT type_of_isn FOREIGN KEY (isn_type) REFERENCES isn_list(id_isn)\n\t",
+        "abstract":"\tTEXT(21844) CHARACTER SET utf8\n\trecord of work’s abstract",
+        "annotation":"\tTEXT(21844) CHARACTER SET utf8\n\tfor annotated bibliographies",
+        "file":"\tTEXT(21844) CHARACTER SET utf8\n\tlocal link",
+        "library":"\tVARCHAR(500)\n\tlibrary name, call number or similar",
+        "label":"\tVARCHAR(500)\n\tfall-back label",
+        "shorthand":"\tVARCHAR(500)\n\tspecial designator, overrides label in citations",
+        "shorthandintro":"\tTEXT(21844) CHARACTER SET utf8\n\toverride default introduction of shorthand",
+        "execute":"\tTEXT(21844) CHARACTER SET utf8\n\tarbitrary TEX code",
+        "keywords":"\tTEXT(21844) CHARACTER SET utf8\n\tseparated list of keywords",
+        "options":"\tTEXT(21844) CHARACTER SET utf8\n\tper-entry options",
+        "ids":"\tVARCHAR(500)\n\tcitation key aliases",
+        "database_name":"\tCHAR(20)\n\tSpecify the information sources (e.g. databases, registers) used to identify studies.",
+        "accessed":"\tDATE\nSpecify the information used to identify the date when last searched.",
         "keyword":"\tCHAR(250)\n\tProvide papers's assigned kewords"
     },
     "author" : {
@@ -31,10 +83,25 @@ structure = {
         "alias":"\tBOOLEAN DEFAULT 0",
         "affiliation":"\tCHAR(100)"
     },
+    "author_type":{
+        "id_author_type":[
+            "author",
+            "bookauthor",
+            "editor",
+            "afterword",
+            "annotator",
+            "commentator",
+            "forward",
+            "introduction",
+            "translator",
+            "holder"
+        ]
+    },
     "bib_author" : {
         "id_author":"\tauthor.id_author",
         "id":"\tbib_entries.id",
         "first_author":"\tBOOLEAN",
+        "category":"\TINYINT UNSIGNED"
     },
     "bib_references" : {
         "article":"\tbib_entrie.bib",
@@ -69,12 +136,12 @@ __passwd = ''
 __this_host = 'localhost'
 __this_database = 'prisma7be'
 __verbose = 0
+
 def get_verbose():
     return __verbose
-def ser_verbose(verbose):
+def set_verbose(verbose):
     global __verbose
     __verbose = verbose
-
 
 def init(verbose):
     if verbose > 0:
