@@ -17,7 +17,6 @@ def cli(filename,verbose):
         library = bibtexparser.load(file)
     for entry in library.entries:
         current_entry = {}
-        author_list = []
         if "ENTRYTYPE" in entry:
             current_entry["entry_type"] = entry["ENTRYTYPE"]
         if "ID" in entry:
@@ -38,12 +37,20 @@ def cli(filename,verbose):
                     current_entry["url"] = entry["url"]
                 else:
                     current_entry["url"] = "https://duckduckgo.com/?q="+entry["title"].replace(" ","+")
+            elif key == "isn":
+                for isn_type in wfp.structure["isn_type"]["id_isn"]:
+                    if isn_type in entry:
+                        current_entry["isn"] = entry[isn_type]
+                        current_entry["isn_type"] = isn_type
             elif key in entry:
                 current_entry[key] = entry[key]
         current_entry["database_name"] = filename.split("_")[0]
         current_entry["accessed"] = datetime.today().strftime("%Y-%m-%d")
-        if "author" in entry:
-            author_list = wfp.order_authors(entry["author"])
+
+        author_list = {}
+        for person_roll in wfp.structure["author_list"]["id_author_type"]:
+            if person_roll in entry:
+                author_list[person_roll] = wfp.order_authors(entry[person_roll])
 
         if wfp.get_verbose() >= 2: print(current_entry,author_list)
         if wfp.get_verbose() >= 3: input("-"*60+"\n"+"-"*60)

@@ -96,12 +96,13 @@ structure = {
             "translator",
             "holder"
         ]
+        # "type_of_author":"CHAR(12)"
     },
     "bib_author" : {
         "id_author":"\tauthor.id_author",
         "id":"\tbib_entries.id",
         "first_author":"\tBOOLEAN",
-        "category":"\TINYINT UNSIGNED"
+        "category":"\tTINYINT UNSIGNED"
     },
     "bib_references" : {
         "article":"\tbib_entrie.bib",
@@ -227,7 +228,7 @@ def manually_add_register(this_items,table):
                 confirmed = True
     return output
 
-def add_author(title,author_list=[]):
+def add_author(title,roll,author_list=[]):
     '''This Function create register for all authors of an article. It makes the bib_author entry as well.'''
     if __verbose >= 1: print("-"*60+f"\n>> Adding authors for {title}")
     '''Get the entry ID on bib_entries'''
@@ -239,6 +240,8 @@ def add_author(title,author_list=[]):
         print(title)
         return 0
     author_id = 0
+    '''Getting author type id'''
+    roll_id = get_value("id_author_type","author_type",columns=["type_of_author"],values=[roll])
     '''If there is no first_author declared it set first author entry as first_author'''
     first_author = False
     test = int(get_value("id_author","bib_author",["id","first_author"],[entry_id,1]))
@@ -274,9 +277,9 @@ def add_author(title,author_list=[]):
                     this_author = manually_add_register(this_author,"author")
                     continue
         if first_author:
-            comunicate_db(f"INSERT INTO bib_author (id_author,id,first_author) VALUES ({author_id},{entry_id},1)")
+            comunicate_db(f"INSERT INTO bib_author (id_author,id,first_author,author_type,category) VALUES ({author_id},{entry_id},1,{roll_id})")
         else:
-            comunicate_db(f"INSERT INTO bib_author (id_author,id) VALUES ({author_id},{entry_id})")
+            comunicate_db(f"INSERT INTO bib_author (id_author,id,category) VALUES ({author_id},{entry_id},{roll_id})")
         if manually:
             test = input('Insert more authors (y/n)') or 'y'
         else:
@@ -351,7 +354,7 @@ def order_authors(author_string):
                 author_list.append({
                                     "first_name":author[:end_first_name+1],
                                     "last_name":author[end_first_name+2:]
-                                    })
+                })
             else:
                 info = author.split(" ",1)
                 author_list.append({"first_name":info[0],"last_name":info[1]})
@@ -375,7 +378,6 @@ def secure_string(data):
             if temp != value:
                 data[key] = temp
     return data
-
 
 def secure_apostrophes(mystring):
     if type(mystring) is str:
@@ -460,7 +462,7 @@ def comunicate_db(msn,query=False,dictionary=False):
                 exit()
     return output
 
-def add_reference(info={},author_list = []):
+def add_reference(info={},author_list = {}):
     ''' Function to be call each time a new reference is made. It create a new entry en bib_entries table'''
     info = secure_string(info)
     more = True
@@ -488,7 +490,8 @@ def add_reference(info={},author_list = []):
                 if comunicate_db(msn) == 'again':
                     info = manually_add_register(info,"bib_entries")
                     continue
-            add_author(info['title'],author_list)
+            for author_roll in author_list.keys():
+                add_author(info['title'],author_roll,author_list[author_roll])
             if manually:
                 test = input('Did you want to add abstract (y/n)')
                 if test == 'y':
@@ -501,41 +504,44 @@ def add_reference(info={},author_list = []):
             print("ERROR quitting")
             exit()
         else:
-            if __verbose >= 2: print(">> Testing if all authors are on database")
-            msn = f"""SELECT first_name,last_name FROM author
-    INNER JOIN bib_author
-    ON bib_author.id_author = author.id_author
-    AND bib_author.id = {exists};
-            """
-            current_authors_list = comunicate_db(msn,query=True)
-            if __verbose >= 3: print("Current author list:\n", current_authors_list)
-            if __verbose >= 3: print("Actual author list:\n", author_list)
-            if len(author_list) == 0:
-                if len(current_authors_list) > 0:
-                    for temp_author in current_authors_list:
-                        if temp_author[0] == 'Editorial':
-                            more = False
-                            break
-                        else:
-                            author_list.append( get_row('author',columns=["first_name","last_name"],values=[temp_author[0],temp_author[1]]) )
-                first_time = False
-                exists = 0
-                continue
-            elif len(current_authors_list) == len(author_list):
-                more = False
-            else:
-                add_these_authors = []
-                add_it = False
-                for author in author_list:
-                    for i in range(len(current_authors_list)):
-                        if author["first_name"] == current_authors_list[i][0] and author["last_name"] == current_authors_list[i][1]:
-                            print(f"\t{author} already on database")
-                            add_it = False
-                            break
-                        add_it = True
-                    if add_it: add_these_authors.append(author)
+            for roll in author_list.keys():
+                if __verbose >= 2: print(f">> Testing if all authors for {roll} are on database")
+                roll_id = get_value("id_author_type","author_type",columns=["type_of_author"],values=[roll])
+                msn = f"""SELECT first_name,last_name FROM author
+        INNER JOIN bib_author
+        ON bib_author.id_author = author.id_author
+        AND bib_author.id = {exists}
+        AND bib_author.category = {roll_id};
+                """
+                current_authors_list = comunicate_db(msn,query=True)
+                if __verbose >= 3: print("Current author list:\n", current_authors_list)
+                if __verbose >= 3: print("Actual author list:\n", author_list[roll])
+                if len(author_list[roll]) == 0:
+                    if len(current_authors_list) > 0:
+                        for temp_author in current_authors_list:
+                            if temp_author[0] == 'Editorial':
+                                more = False
+                                break
+                            else:
+                                author_list[roll].append( get_row('author',columns=["first_name","last_name"],values=[temp_author[0],temp_author[1]]) )
+                    first_time = False
+                    exists = 0
+                    continue
+                elif len(current_authors_list) == len(author_list[roll]):
+                    more = False
+                else:
+                    add_these_authors = []
                     add_it = False
-                add_author(info['title'],add_these_authors)
-                more = False
-    if __verbose >= 3: input("="*60+"\nPress any key to continue...")
+                    for author in author_list[roll]:
+                        for i in range(len(current_authors_list)):
+                            if author["first_name"] == current_authors_list[i][0] and author["last_name"] == current_authors_list[i][1]:
+                                print(f"\t{author} already on database")
+                                add_it = False
+                                break
+                            add_it = True
+                        if add_it: add_these_authors.append(author)
+                        add_it = False
+                    add_author(info['title'],roll,add_these_authors)
+                    more = False
+        if __verbose >= 3: input("="*60+"\nPress any key to continue...")
     return 1
