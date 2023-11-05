@@ -22,10 +22,88 @@ def cli(filename,verbose):
             current_entry["entry_type"] = entry["ENTRYTYPE"]
         if "ID" in entry:
             current_entry["bibkey"] = entry["ID"]
+        if "institution" in entry:
+            current_entry["institution"] = entry["institution"]
+        if "organization" in entry:
+            current_entry["organization"] = entry["institution"]
+        if "publisher" in entry:
+            current_entry["publisher"] = entry["publisher"]
         if "title" in entry:
             current_entry["title"] = entry["title"]
         if "journal" in entry:
             current_entry["journaltitle"] = entry["journal"]
+        if "journaltitle" in entry:
+            current_entry["journaltitle"] = entry[""]
+        if "indextitle" in entry:
+           current_entry["indextitle"] = entry["indextitle"]
+        if "booktitle" in entry:
+           current_entry["booktitle"] = entry["booktitle"]
+        if "maintitle" in entry:
+           current_entry["maintitle"] = entry["maintitle"]
+        if "issuetitle" in entry:
+           current_entry["issuetitle"] = entry["issuetitle"]
+        if "eventtitle" in entry:
+           current_entry["eventtitle"] = entry["eventtitle"]
+        if "reprinttitle" in entry:
+           current_entry["reprinttitle"] = entry["reprinttitle"]
+        if "series" in entry:
+           current_entry["series"] = entry["series"]
+        if "part" in entry:
+           current_entry["part"] = entry["part"]
+        if "issue" in entry:
+           current_entry["issue"] = entry["issue"]
+        if "volumes" in entry:
+           current_entry["volumes"] = entry["volumes"]
+        if "edition" in entry:
+           current_entry["edition"] = entry["edition"]
+        if "version" in entry:
+           current_entry["version"] = entry["version"]
+        if "pubstate" in entry:
+           current_entry["pubstate"] = entry["pubstate"]
+        if "pages" in entry:
+           current_entry["pages"] = entry["pages"]
+        if "pagetotal" in entry:
+           current_entry["pagetotal"] = entry["pagetotal"]
+        if "pagination" in entry:
+           current_entry["pagination"] = entry["pagination"]
+        if "date" in entry:
+           current_entry["publication_date"] = entry["date"]
+        if "eventdate" in entry:
+           current_entry["eventdate"] = entry["eventdate"]
+        if "urldate" in entry:
+           current_entry["urldate"] = entry["urldate"]
+        if "location" in entry:
+           current_entry["location"] = entry["location"]
+        if "venue" in entry:
+           current_entry["venue"] = entry["venue"]
+        if "eid" in entry:
+           current_entry["eid"] = entry["eid"]
+        if "eprint" in entry:
+           current_entry["eprint"] = entry["eprint"]
+        if "eprinttype" in entry:
+           current_entry["eprinttype"] = entry["eprinttype"]
+        if "addendum" in entry:
+           current_entry["addendum"] = entry["addendum"]
+        if "howpublished" in entry:
+           current_entry["howpublished"] = entry["howpublished"]
+        if "language" in entry:
+           current_entry["language"] = entry["language"]
+        if "" in entry:
+           current_entry["isn"] = entry[""]
+        if "" in entry:
+           current_entry["isn_type"] = entry[""]
+        if "" in entry:
+           current_entry["addendum"] = entry[""]
+        if "note" in entry:
+           current_entry["notes"] = entry["note"]
+        if "" in entry:
+           current_entry["howpublished"] = entry[""]
+        if "" in entry:
+           current_entry["language"] = entry[""]
+        if "" in entry:
+           current_entry["isn"] = entry[""]
+        if "" in entry:
+           current_entry["isn_type"] = entry[""]
         if "volume" in entry:
             current_entry["issue_volume"] = entry["volume"]
         if "number" in entry:
