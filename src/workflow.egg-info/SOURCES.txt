@@ -8,6 +8,7 @@ src/workflow/lib2bib.py
 src/workflow/mergebib.py
 src/workflow/nori.py
 src/workflow/prismaimportbib.py
+src/workflow/prismareview.py
 src/workflow/pyprisma.py
 src/workflow/summary.py
 src/workflow.egg-info/PKG-INFO

@@ -26,6 +26,7 @@ cleta = "workflow.cleta:cli"
 bib2yaml = "workflow.bib2yaml:cli"
 mergebib = "workflow.mergebib:cli"
 prisma-import-bib = "workflow.prismaimportbib:cli"
+prisma-review = "workflow.prismareview:cli"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -193,9 +193,49 @@ def get_row(table,columns=[],values=[]):
     else:
         return output
 
-def get_newtable():
-    '''Query an join table'''
-    pass
+conditions_structure = {
+    "junction":"",
+    "table":"",
+    "column":"",
+    "value":""
+}
+def get_newtable(main_table, request_columns,join_conditions=[],conditions=[]):
+    '''Query an join table
+    request_columns = {"table_name":["columns",],}
+    join_conditions = [{"join_table_name":"column","main_table_name":"column"},]
+    conditions = [conditions_structure,]
+    conditions_structure = {
+        "junction":"",
+        "table":"",
+        "column":"",
+        "value":""
+    }
+    '''
+    columns = ""
+    for table_name, column_names in request_columns.items():
+        for column in column_names:
+            columns = f" {table_name}.{column},"
+    columns = columns[:-1]
+
+    inner_joins = ''
+    if len(join_conditions) > 0:
+        for join in join_conditions:
+            start = ''
+            end = ''
+            for table_name, column in join.items():
+                if table_name == main_table:
+                    end = f" = {table_name}.{column}\n"
+                else:
+                    start = f"INNER JOIN {table_name} ON {table_name}.{column}"
+            inner_joins += start+end
+
+    conditions_list = ''
+    if len(conditions) > 0:
+        for condition in conditions:
+            conditions_list += f'{condition["junction"]} {condition["table"]}.{condition["column"]} = {condition["value"]}\n'
+    msn = f'''SELECT {columns} FROM {main_table}
+    {inner_joins}   {conditions_list}   ;'''
+    return comunicate_db(msn,query=True)
 
 def manually_add_register(this_items,table):
     '''Complete the dictionary passed as argument'''
