@@ -22,6 +22,8 @@ structure = {
         # "id": "INT",
         "entry_type":"\tVARCHAR(100)",
         "bibkey":"\tCHAR(100)",
+        "database_name":"\tCHAR(20)\n\tSpecify the information sources (e.g. databases, registers) used to identify studies.",
+        "accessed":"\tDATE\nSpecify the information used to identify the date when last searched.",
         "institution":"\tVARCHAR(200)\n\tuniversity or similar",
         "organization":"\tVARCHAR(200)\n\tmanual/website publisher or event sponsor",
         "publisher":"\tVARCHAR(200)\n\tpublisher(s)",
@@ -29,11 +31,11 @@ structure = {
         "indextitle":"\tVARCHAR(500)\n\tif different from title",
         "booktitle":"\tVARCHAR(500)\n\ttitle of book",
         "maintitle":"\tVARCHAR(500)\n\ttitle of multi-volume book",
-        "journaltitle":"\tVARCHAR(100),",
+        "journaltitle":"\tVARCHAR(200),",
         "issuetitle":"\tVARCHAR(500)\n\ttitle of journal special issue",
         "eventtitle":"\tVARCHAR(500)\n\ttitle of conference or event",
         "reprinttitle":"\tVARCHAR(500)\n\ttitle of a reprint of the work",
-        "series":"\tCHAR(20)\n\tpublication series",
+        "series":"\tVARCHAR(200)\n\tpublication series",
         "issue_volume":"\tINT",
         "issue_number":"\tINT",
         "part":"\tCHAR(20)\n\tnumber of physical part of logical volume",
@@ -56,14 +58,14 @@ structure = {
         "eprint":"\tTEXT(21844) CHARACTER SET utf8\n\tarchive-specific electronic identifier",
         "eprinttype":"\tTEXT(21844) CHARACTER SET utf8\n\ttype of identifier, eprintclass for further details",
         "addendum":"\tTEXT(21844) CHARACTER SET utf8\n\tmiscellaneous data printed at end of entry",
-        "note":"\tTEXT(21844) CHARACTER SET utf8\n\tmiscellaneous data printed within entry",
+        "notes":"\tTEXT(21844) CHARACTER SET utf8\n\tmiscellaneous data printed within entry",
         "howpublished":"\tTEXT(21844) CHARACTER SET utf8\n\tnon-standard publication details",
         "language":"\tCHAR(200)\n\tlanguage of work",
         "isn":"\tCHAR(40)\n\t",
         "isn_type":"\tCHAR(4), CONSTRAINT type_of_isn FOREIGN KEY (isn_type) REFERENCES isn_list(id_isn)\n\t",
         "abstract":"\tTEXT(21844) CHARACTER SET utf8\n\trecord of work’s abstract",
         "annotation":"\tTEXT(21844) CHARACTER SET utf8\n\tfor annotated bibliographies",
-        "file":"\tTEXT(21844) CHARACTER SET utf8\n\tlocal link",
+        "file_path":"\tTEXT(21844) CHARACTER SET utf8\n\tlocal link",
         "library":"\tVARCHAR(500)\n\tlibrary name, call number or similar",
         "label":"\tVARCHAR(500)\n\tfall-back label",
         "shorthand":"\tVARCHAR(500)\n\tspecial designator, overrides label in citations",
@@ -72,14 +74,11 @@ structure = {
         "keywords":"\tTEXT(21844) CHARACTER SET utf8\n\tseparated list of keywords",
         "options":"\tTEXT(21844) CHARACTER SET utf8\n\tper-entry options",
         "ids":"\tVARCHAR(500)\n\tcitation key aliases",
-        "database_name":"\tCHAR(20)\n\tSpecify the information sources (e.g. databases, registers) used to identify studies.",
-        "accessed":"\tDATE\nSpecify the information used to identify the date when last searched.",
-        "keyword":"\tCHAR(250)\n\tProvide papers's assigned kewords"
     },
     "author" : {
         # "id_author":"INT",
         "first_name":"\tCHAR(20)",
-        "last_name":"\tVARCHAR(100)",
+        "last_name":"\tVARCHAR(200)",
         "alias":"\tBOOLEAN DEFAULT 0",
         "affiliation":"\tCHAR(100)"
     },
@@ -194,6 +193,10 @@ def get_row(table,columns=[],values=[]):
     else:
         return output
 
+def get_newtable():
+    '''Query an join table'''
+    pass
+
 def manually_add_register(this_items,table):
     '''Complete the dictionary passed as argument'''
     if __verbose >= 1: print("-"*60+f"\n>> Manually adding register")
@@ -277,7 +280,7 @@ def add_author(title,roll,author_list=[]):
                     this_author = manually_add_register(this_author,"author")
                     continue
         if first_author:
-            comunicate_db(f"INSERT INTO bib_author (id_author,id,first_author,author_type,category) VALUES ({author_id},{entry_id},1,{roll_id})")
+            comunicate_db(f"INSERT INTO bib_author (id_author,id,first_author,category) VALUES ({author_id},{entry_id},1,{roll_id})")
         else:
             comunicate_db(f"INSERT INTO bib_author (id_author,id,category) VALUES ({author_id},{entry_id},{roll_id})")
         if manually:
@@ -381,8 +384,8 @@ def secure_string(data):
 
 def secure_apostrophes(mystring):
     if type(mystring) is str:
-        if "'" in mystring:
-            output = mystring.replace("'","\\'")
+        if "'" in mystring and "\\\'" not in mystring:
+            output = mystring.replace("'","\\\'")
         else:
             return mystring
     else:
@@ -465,6 +468,9 @@ def comunicate_db(msn,query=False,dictionary=False):
 def add_reference(info={},author_list = {}):
     ''' Function to be call each time a new reference is made. It create a new entry en bib_entries table'''
     info = secure_string(info)
+    for roll, roll_list in author_list.items():
+        for i in range(len(roll_list)):
+            author_list[roll][i] = secure_string(roll_list[i])
     more = True
     manually = False
     test = ''

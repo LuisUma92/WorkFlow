@@ -31,6 +31,8 @@ def cli(filename,verbose):
             current_entry["issue_volume"] = entry["volume"]
         if "number" in entry:
             current_entry["issue_number"] = entry["number"]
+        if "file" in entry:
+            current_entry["file_path"] = entry["file"]
         for key in wfp.structure["bib_entries"].keys():
             if key == "url":
                 if "url" in entry:
@@ -38,7 +40,7 @@ def cli(filename,verbose):
                 else:
                     current_entry["url"] = "https://duckduckgo.com/?q="+entry["title"].replace(" ","+")
             elif key == "isn":
-                for isn_type in wfp.structure["isn_type"]["id_isn"]:
+                for isn_type in wfp.structure["isn_list"]["id_isn"]:
                     if isn_type in entry:
                         current_entry["isn"] = entry[isn_type]
                         current_entry["isn_type"] = isn_type
@@ -48,10 +50,18 @@ def cli(filename,verbose):
         current_entry["accessed"] = datetime.today().strftime("%Y-%m-%d")
 
         author_list = {}
-        for person_roll in wfp.structure["author_list"]["id_author_type"]:
+        for person_roll in wfp.structure["author_type"]["id_author_type"]:
             if person_roll in entry:
                 author_list[person_roll] = wfp.order_authors(entry[person_roll])
-
+        if len(author_list) == 0:
+            if "journaltitle" in current_entry:
+                author_list["author"] = [{"first_name":"Editorial","last_name":current_entry["journaltitle"],"affiliation":filename.split("_")[0]}]
+            elif "publisher" in current_entry:
+                author_list["author"] = [{"first_name":"Editorial","last_name":current_entry["publisher"],"affiliation":filename.split("_")[0]}]
+            elif "institution" in current_entry:
+                author_list["author"] = [{"first_name":"Editorial","last_name":current_entry["institution"],"affiliation":filename.split("_")[0]}]
+            elif "organization" in current_entry:
+                author_list["author"] = [{"first_name":"Editorial","last_name":current_entry["organization"],"affiliation":filename.split("_")[0]}]
         if wfp.get_verbose() >= 2: print(current_entry,author_list)
         if wfp.get_verbose() >= 3: input("-"*60+"\n"+"-"*60)
         wfp.add_reference(current_entry,author_list)
