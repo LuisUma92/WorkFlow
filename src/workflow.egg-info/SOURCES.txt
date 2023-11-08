@@ -1,6 +1,7 @@
 LICENSE
 README.md
 pyproject.toml
+setup.py
 src/workflow/__init__.py
 src/workflow/bib2yaml.py
 src/workflow/cleta.py
