@@ -214,9 +214,10 @@ def get_newtable(main_table, request_columns,join_conditions=[],conditions=[]):
     columns = ""
     for table_name, column_names in request_columns.items():
         for column in column_names:
-            columns = f" {table_name}.{column},"
+            columns += f" {table_name}.{column},"
     columns = columns[:-1]
 
+    print(columns)
     inner_joins = ''
     if len(join_conditions) > 0:
         for join in join_conditions:
