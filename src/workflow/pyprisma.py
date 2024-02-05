@@ -5,7 +5,9 @@
 import mysql.connector as sql
 # from mysql.connector import errorcode
 # import mariadb as sql
+# import sqlalchemy as sql
 import getpass
+import pandas as pd
 
 structure = {
     "isn_list":{
@@ -100,8 +102,8 @@ structure = {
     "bib_author" : {
         "id_author":"\tauthor.id_author",
         "id":"\tbib_entries.id",
-        "first_author":"\tBOOLEAN",
-        "category":"\tTINYINT UNSIGNED"
+        "category":"\tTINYINT UNSIGNED",
+        "first_author":"\tBOOLEAN"
     },
     "bib_references" : {
         "article":"\tbib_entrie.bib",
@@ -114,13 +116,13 @@ structure = {
     "reviewed" : {
         "key_id":"\tINT UNSIGNED\nREFERENCES keyword (key_id)",
         "article_id":"\tINT UNSIGNED\nREFERENCES bib_entries (id)",
-        "retrieved":"\t\tBOOLEAN\nFlag 0 if paper was retrieved",
-        "included":"\t\tBOOLEAN\nFlag 1 if paper was included",
+        "retrieved":"\t\tBOOLEAN\nFlag 1 if paper was retrieved",
+        "included":"\t\tBOOLEAN\nFlag 1 if paper was included, 0 if haven't been evaluated and -1 if was discarded",
+        "rationale":"\tTEXT(21844) CHARACTER SET utf8\n\tDescribe the rationale for the review in the context of existing knowledge.",
     },
     "abstract" : {
         # "id":"bib_entries.id",
         "objectives":"\tTEXT(21844) CHARACTER SET utf8,\n\tProvide an explicit statement of the main objective(s) or question(s) the review addresses.",
-        "rationale":"\tTEXT(21844) CHARACTER SET utf8\n\tDescribe the rationale for the review in the context of existing knowledge.",
         "eligibility_criteria":"\tTEXT(21844) CHARACTER SET utf8\n\tSpecify the inclusion and exclusion criteria for the review.",
         "methods_synthesis":"\tTEXT(21844) CHARACTER SET utf8\n\tSpecify the methods used.",
         "results_synthesis":"\tTEXT(21844) CHARACTER SET utf8\n\tPresent results for main outcomes, preferably indicating the number of included studies and participants for each. If meta-analysis was done, report the summary estimate and confidence/credible interval. If comparing groups, indicate the direction of the effect (i.e. which group is favoured).",
@@ -136,6 +138,9 @@ __passwd = ''
 __this_host = 'localhost'
 __this_database = 'prisma7be'
 __verbose = 0
+
+
+TEXT_MAX_BYTE_SIZE = 65534
 
 def get_verbose():
     return __verbose
@@ -198,7 +203,7 @@ conditions_structure = {
     "table":"",
     "column":"",
     "value":""
-}
+    }
 def get_newtable(main_table, request_columns,join_conditions=[],conditions=[]):
     '''Query an join table
     request_columns = {"table_name":["columns",],}
@@ -236,7 +241,7 @@ def get_newtable(main_table, request_columns,join_conditions=[],conditions=[]):
             conditions_list += f'{condition["junction"]} {condition["table"]}.{condition["column"]} = {condition["value"]}\n'
     msn = f'''SELECT {columns} FROM {main_table}
     {inner_joins}   {conditions_list}   ;'''
-    return comunicate_db(msn,query=True)
+    return comunicate_db(msn,dictionary=True)
 
 def manually_add_register(this_items,table):
     '''Complete the dictionary passed as argument'''
@@ -487,7 +492,8 @@ def comunicate_db(msn,query=False,dictionary=False):
             if query:
                 output = cursor.fetchall()
                 if dictionary:
-                    output = dict(zip(cursor.column_names,output[0]))
+                    output = pd.DataFrame(output, columns=cursor.column_names )
+                    # output = dict(zip(cursor.column_names,output[0]))
                 if __verbose >= 3: print(output)
             else:
                 dbcnx.commit()
