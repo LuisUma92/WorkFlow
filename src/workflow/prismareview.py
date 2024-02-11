@@ -92,7 +92,7 @@ def cli(verbose):
                 continue
 
             # Included article and adding abstract
-            update_mns += f"{reviewed_columns[3]} =  1"
+            update_mns += f" {reviewed_columns[3]} =  1"
             print("Use this proxy",ucrproxy)
             wfp.add_abstract(row[requested_columns[1]])
 
@@ -103,9 +103,9 @@ def cli(verbose):
                 if test == "y":
                     print("Use this proxy",ucrproxy)
                     input("Press enter to continue ...")
-                    update_mns += f"{reviewed_columns[2]} = 0 "+update_condition
+                    update_mns += f", {reviewed_columns[2]} = 0 "+update_condition
                 elif test == "n":
-                    update_mns += f"{reviewed_columns[2]} = -1 "+update_condition
+                    update_mns += f", {reviewed_columns[2]} = -1 "+update_condition
                 else:
                     print("Invalid option")
                     more = True
