@@ -76,7 +76,7 @@ def cli(verbose):
     while more:
         for idx, row in to_review.iterrows():
             update_mns = f"UPDATE reviewed SET "
-            update_condition = f"WHERE {reviewed_columns[1]} = {row[requested_columns[0]]} "
+            update_condition = f" WHERE {reviewed_columns[1]} = {row[requested_columns[0]]} "
             msn = '-'*60+f'\n\t\tYou are reviewing:\n{row[requested_columns[1]]}'
             print(msn)
             subprocess.run(["firefox",row[requested_columns[2]]])
@@ -85,7 +85,7 @@ def cli(verbose):
             test = input("Exclude this article? (n/y)") or "n"
             if test == "y":
                 rationale = get_text("the rationale for exclude this article")
-                update_mns += f"{reviewed_columns[4]} = "
+                update_mns += f" {reviewed_columns[4]} = "
                 update_mns += '\"'+rationale+'\"'
                 update_mns += f", {reviewed_columns[3]} = -1 "+update_condition
                 wfp.comunicate_db(update_mns)
@@ -103,7 +103,7 @@ def cli(verbose):
                 if test == "y":
                     print("Use this proxy",ucrproxy)
                     input("Press enter to continue ...")
-                    update_mns += f", {reviewed_columns[2]} = 0 "+update_condition
+                    update_mns += f", {reviewed_columns[2]} = 1 "+update_condition
                 elif test == "n":
                     update_mns += f", {reviewed_columns[2]} = -1 "+update_condition
                 else:
