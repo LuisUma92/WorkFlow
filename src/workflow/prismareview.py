@@ -22,7 +22,8 @@ def get_text(info = "this information"):
 
 @click.command()
 @click.option("--verbose",default=1,help="Set verbose level")
-def cli(verbose):
+@click.option("--abstract",default=False)
+def cli(verbose,abstract):
     wfp.init(verbose)
     more = True
     columnsNames = "keyword_list"
@@ -94,7 +95,8 @@ def cli(verbose):
             # Included article and adding abstract
             update_mns += f" {reviewed_columns[3]} =  1"
             print("Use this proxy",ucrproxy)
-            wfp.add_abstract(row[requested_columns[1]])
+            if abstract:
+                wfp.add_abstract(row[requested_columns[1]])
 
             # Inquire for retrieving current article
             while more:
