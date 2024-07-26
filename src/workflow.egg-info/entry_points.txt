@@ -2,6 +2,7 @@
 bib2yaml = workflow.bib2yaml:cli
 cleta = workflow.cleta:cli
 mergebib = workflow.mergebib:cli
+nofi = workflow.nofi:cli
 nori = workflow.nori:cli
 prisma-import-bib = workflow.prismaimportbib:cli
 prisma-review = workflow.prismareview:cli

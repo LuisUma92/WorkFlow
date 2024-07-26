@@ -21,8 +21,9 @@ dependencies = [
 ]
 
 [project.scripts]
-nori = "workflow.nori:cli"
 cleta = "workflow.cleta:cli"
+nofi = "workflow.nofi:cli"
+nori = "workflow.nori:cli"
 bib2yaml = "workflow.bib2yaml:cli"
 mergebib = "workflow.mergebib:cli"
 prisma-import-bib = "workflow.prismaimportbib:cli"

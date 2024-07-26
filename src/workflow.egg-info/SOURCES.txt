@@ -7,6 +7,7 @@ src/workflow/bib2yaml.py
 src/workflow/cleta.py
 src/workflow/lib2bib.py
 src/workflow/mergebib.py
+src/workflow/nofi.py
 src/workflow/nori.py
 src/workflow/prismaimportbib.py
 src/workflow/prismareview.py

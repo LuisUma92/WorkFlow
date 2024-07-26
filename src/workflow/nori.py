@@ -1,4 +1,3 @@
-from enum import auto
 import os
 from pathlib import Path
 from appdirs import user_config_dir
@@ -14,12 +13,12 @@ from ruamel.yaml import YAML
 logging.basicConfig(level='INFO')
 log = logging.getLogger('nori')
 
-#loading User config folder
+# loading User config folder
 user_dir = Path(user_config_dir("nori","LuisUmana"))
 if not user_dir.is_dir():
     user_dir.mkdir()
 
-#loading current root files
+# loading current root files
 root_file = user_dir / 'root'
 if not root_file.is_file():
     root_file.touch()
