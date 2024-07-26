@@ -34,7 +34,7 @@ def save_to_file(newfilename, subcontent, save_type="w"):
         default='main.tex'
         help='Name of the main file where to import notes'
         )
-def cli(filename,mainfile):
+def cli(filename, mainfile):
     FLAG = '%>'
     READING_FLAG = False
     subcontent = []
@@ -62,7 +62,7 @@ def cli(filename,mainfile):
                 READING_FLAG = True
 
             newfilename = line[2:-1]
-            toImport.append("".join(["  \\import{", newfilename, "}\n"]))
+            toImport.append("".join(["  \\import{./", newfilename, "}\n"]))
         else:
             subcontent.append(line)
 
