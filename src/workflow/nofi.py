@@ -3,7 +3,7 @@ from pathlib import Path
 import click
 
 
-def save_to_file(newfilename, subcontent):
+def save_to_file(newfilename, subcontent, save_type="w"):
     # Need to check if al the path to newfilename exists and if it doesn't
     # then create it
     currentDir = "."
@@ -14,7 +14,7 @@ def save_to_file(newfilename, subcontent):
 
     # Create the newfilename with the subcontent
     try:
-        with open(newfilename, 'w') as file:
+        with open(newfilename, save_type) as file:
             for line in subcontent:
                 file.write(line)
     except IOError:
@@ -27,13 +27,19 @@ def save_to_file(newfilename, subcontent):
 @click.option(
         '--filename',
         default='NewNote.tex',
-        help='Name '
+        help='Name of file with notes'
         )
-def cli(filename):
+@click.option(
+        '--mainfile',
+        default='main.tex'
+        help='Name of the main file where to import notes'
+        )
+def cli(filename,mainfile):
     FLAG = '%>'
     READING_FLAG = False
     subcontent = []
     newfilename = ''
+    toImport = []
     # opens file
     try:
         with open(filename, 'r') as file:
@@ -56,10 +62,12 @@ def cli(filename):
                 READING_FLAG = True
 
             newfilename = line[2:-1]
+            toImport.append("".join(["  \\import{", newfilename, "}\n"]))
         else:
             subcontent.append(line)
 
     save_to_file(newfilename, subcontent)
+    save_to_file(mainfile, toImport, save_type="a")
 
 
 if __name__ == '__main__':
