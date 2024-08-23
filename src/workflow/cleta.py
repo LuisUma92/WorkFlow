@@ -4,16 +4,28 @@ from appdirs import user_config_dir
 import subprocess
 import click
 
-#loading User config folder
-user_dir = Path(user_config_dir("cleta","LuisUmana"))
+# loading User config folder
+user_dir = Path(user_config_dir("cleta", "LuisUmana"))
 if not user_dir.is_dir():
     user_dir.mkdir()
 
-#loading current root files
+# loading current root files
 clean_list = user_dir / 'Clean_Extensions'
 if not clean_list.is_file():
     clean_list.touch()
-    clean_list.write_text('\n'.join(['*.aux','*.bbl','*.bcf','*.blg','*.fdb_latexmk','*.fls','*.log','*.out','*.run.xml','*.synctex.gz','*.xdv']))
+    clean_list.write_text('\n'.join([
+        '*.aux',
+        '*.bbl',
+        '*.bcf',
+        '*.blg',
+        '*.fdb_latexmk',
+        '*.fls',
+        '*.log',
+        '*.out',
+        '*.run.xml',
+        '*.synctex.gz',
+        '*.xdv'
+        ]))
 
 
 def getExt():
