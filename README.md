@@ -11,7 +11,7 @@ This script remove common auxiliary files used by $\LaTeX$
 
 This script takes a plain tex file and  creates subfies for $\LaTeX$ to input.
 
-Use the flag '%>' do define the 'path/to/file/to/make.tex' for create a new
+Use the flag '%>' to define the 'path/to/file/to/make.tex' for create a new
 $\LaTeX$ with
 the contents until next flag.
 
@@ -27,6 +27,32 @@ directory ./tex/C1
 
 Create a $\LaTeX$ file that input the plain tex file to compile as writing.
 
+## CreTE - Create Text Exercises
+
+This script create all the files for exercises for a references book. 
+It uses a [json struicture](Json Book-Exercises Structure) for each book.
+You can define 
+
+### Funtions
+
+#### init_books():
+
+Create a global configuration file
+
+#### 
+
+
+#### create_solution_file( start=1, end=1, ch=1, sec='01', book, verbose=2)
+
+Require that the 'name=book' exists on the 'books.json' file from
+'~.config/crete' directory.
+
+#### exercises_file_content(ch, idx, book)
+
+Returns a string formatted with the contents of each exercise file.
+
+
+### Json Book-Exercises Structure
 <!-- ## NoRI - Note Reference Insertion -->
 
 <!-- Script that search for study summary files, fallowing an specific structure -->

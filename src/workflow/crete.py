@@ -5,10 +5,17 @@ from appdirs import user_config_dir
 import os
 import json
 
+
+@click.group()
+def cli():
+    pass
+
+
 # loading User config folder
-user_dir = Path(user_config_dir("cleta", "LuisUmana"))
+user_dir = Path(user_config_dir("crete", "LuisUmana"))
 if not user_dir.is_dir():
     user_dir.mkdir()
+book_list = user_dir / 'books.json'
 
 books = [
     {'name': 'bauerF1', 'code': '530_B344f1', 'distro': [
@@ -779,18 +786,50 @@ books = [
     {'name': 'wilson', 'code': '530_W696f6', 'distro': []}
     ]
 
+
 # loading current root files
-clean_list = user_dir / 'books.json'
-if not clean_list.is_file():
-    clean_list.touch()
-    clean_list.write_text(json.dumps(books))
+@click.command()
+def init_books():
+    if not book_list.is_file():
+        book_list.touch()
+        book_list.write_text(json.dumps(books))
 
 
-CHPATH = ""
+@click.command()
+@click.argument(
+        '--book_info'
+        )
+def add_book(book_info):
+    with open(book_info, 'r') as file:
+        contents = json.load(file)
+    with open(book_list, 'a') as file:
+        file.write(json.dumps(contents))
+    return contents
 
 
-def set_header(erPath,book):
-    HEADER = """\\documentclass[12pt,
+def get_book(book):
+    with open(book_list, 'r') as file:
+        library = json.load(file)
+    for item in library:
+        if item['name'] == book:
+            return item
+    return {}
+
+
+def chapter_path(name, code, ch):
+    return f'er-{code}-{name}/530-{name.capitalize()}-C{ch}'
+
+
+def file_upto_section(name, chNum, secNum):
+    return f'{name}-C{chNum:02d}S{secNum}'
+
+
+def current_file(path, fout, idx):
+    thisF = path / ''.join([fout, 'P{:03d}.tex'.format(idx)])
+    return thisF
+
+
+HEADER = """\\documentclass[12pt,
   notitlepage,
   % openany,
   twoside,
@@ -803,14 +842,6 @@ def set_header(erPath,book):
 \\newcommand{\\AMfolder}{/home/luis/Documents/01-U/00-00AA-Apuntes}
 \\usepackage{\\AAfolder/sty/ColorsLight}
 \\usepackage{\\AAfolder/sty/SetSymbols}
-% En el siguiente comando se indica cuál es el archivo que tiene las referencia
-"""
-    HEADER += "\\newcommand{\\"
-    HEADER += book
-    HEADER += "}{"
-    HEADER += erPath
-    HEADER += "}"
-    HEADER += """
 \\addbibresource{\\AAfolder/bib/Biblioteca.bib}
 \\usepackage{\\AAfolder/sty/HW-header}
 \\setbool{solutions}{true}
@@ -827,19 +858,6 @@ def set_header(erPath,book):
 % \\listoftables
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 """
-    return HEADER
-
-
-
-def add_inputs(book, chNum, secNum, start, end):
-    path = Path(f'\\AMfolder/solu/er-{books[book]}-{book}/530-{book.capitalize()}-C{chNum}')
-    fout = f'{book}-C{chNum:02d}S{secNum}'
-    text = ''
-    for idx in range(start, end+1):
-        thisF = path / ''.join([fout, 'P{:03d}.tex'.format(idx)])
-        text += "\t\\input{"+f"{thisF}"+"}\n"
-    return text
-
 
 BOTTOM = """
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -865,18 +883,26 @@ BOTTOM = """
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"""
 
 
-def create_book_solutions_files():
-    main_text = ''
-    book = "resnickF4"
-    for sec in distro[book]:
-        os.system('python createTexEnun.py --start={} --end={} --ch={} --sec={} --book={}'.format(sec[2], sec[3], sec[0], sec[1], book))
-        main_text += add_inputs(book, sec[0], sec[1], sec[2], sec[3])
-    soluPath = CHPATH
-    HEADER = set_header(soluPath, book)
-    with open(f"ER-{books[book]}.tex", "w") as file:
-        file.write(HEADER)
-        file.write(main_text)
-        file.write(BOTTOM)
+def add_inputs(name, code, chNum, secNum, start, end, main_path='\\AMfolder/'):
+    CHPATH = chapter_path(name, code, chNum)
+    path = Path(main_path+CHPATH)
+    fout = file_upto_section(name, chNum, secNum)
+    text = ''
+    for idx in range(start, end+1):
+        thisF = path / ''.join([fout, 'P{:03d}.tex'.format(idx)])
+        text += "\t\\input{"+f"{thisF}"+"}\n"
+    return text
+
+
+def exercises_file_content(ch, idx, book):
+    msn = '\\ifthenelse{\\boolean{MC}}{\n\\exa['
+    msn += str(ch)+']{'+str(idx)+'} %\\cite{'+str(book)
+    msn += '}\n}{\\exa{}}\n.\n\n\\begin{enumerate}[a)]\n\\item .'
+    msn += '\n\\end{enumerate}\n\n\\ifthenelse{\\boolean{solutions}}{'
+    msn += '\n  \\paragraph{Solución:}\n  \\begin{enumerate}[a)]'
+    msn += '\n    \\item .\n  Datos:\n  \\[\\begin{array}{l}'
+    msn += '\n  \\end{array}\\] \n  \\end{enumerate} \n}{}'
+    return msn
 
 
 @click.command()
@@ -905,8 +931,11 @@ def create_book_solutions_files():
     help='Current section'
 )
 @click.option(
-    '--book',
-    default='serway',
+    '--name',
+    type=str
+)
+@click.option(
+    '--code',
     type=str
 )
 @click.option(
@@ -914,46 +943,70 @@ def create_book_solutions_files():
     default=2,
     type=int
 )
-def create_solution_file(start, end, ch, sec, book, verbose):
-    if book not in books:
-        print('Requested book is not in bib')
-        return None
-    global CHPATH
-
-    CHPATH = f'er-{books[book]}-{book}/530-{book.capitalize()}-C{ch}'
+def create_solution_file(start, end, ch, sec, name, code, verbose):
+    CHPATH = chapter_path(name, code, ch)
     path = Path(f'./{CHPATH}').absolute()
     log(f'''
 Se está trabajando en:
 {path}''', verbose)
     if not path.exists():
         os.makedirs(path)
-    fout = f'{book}-C{ch:02d}S{sec}'
+    fout = file_upto_section(name, ch, sec)
     for idx in range(start, end+1):
-        thisF = path / ''.join([fout, 'P{:03d}.tex'.format(idx)])
+        thisF = current_file(path, fout, idx)
         subprocess.run(['touch', thisF])
-        mns = '''\\ifthenelse{\\boolean{MC}}{
-  \\exa['''+str(ch)+']{'+str(idx)+'''} %\\cite{'''+str(book)+'''}
-}{\\exa{}}
-.
-
-\\begin{enumerate}[a)]
-\\item .
-\\end{enumerate}
-
-\\ifthenelse{\\boolean{solutions}}{
-  \\paragraph{Solución:}
-  \\begin{enumerate}[a)]
-    \\item .
-  Datos:
-  \\[\\begin{array}{l}
-  \\end{array}\\]
-  \\end{enumerate}
-}{}
-'''
-        lines = mns.split('\n')
+        msn = exercises_file_content(ch, idx, name)
+        lines = msn.split('\n')
         for line in lines:
             os.system('echo "'+line+'" >> '+str(thisF))
     pass
+
+
+def create_book_solutions_files(book):
+    main_text = ''
+    for sec in book['distro']:
+        create_solution_file(
+                start=sec[2],
+                end=sec[3],
+                ch=sec[0],
+                sec=sec[1],
+                name=book['name'],
+                code=book['code']
+                )
+        main_text += add_inputs(
+                book['name'],
+                book['code'],
+                sec[0],
+                sec[1],
+                sec[2],
+                sec[3]
+                )
+    soluPath = chapter_path(book['name'], book['code'], '00')
+    soluPath = soluPath
+    with open(f"ER-{books[book]}.tex", "w") as file:
+        file.write(HEADER)
+        file.write(main_text)
+        file.write(BOTTOM)
+
+
+@click.command()
+@click.option(
+        '--file',
+        default=book_list
+        )
+@click.option(
+        '--book',
+        default='none'
+        )
+def init(file, name):
+    book = get_book(name)
+    if not book:
+        print('Requested book is not in bib')
+        book = add_book(book_info=file)
+        name = book['name']
+
+    prinyt
+    create_book_solutions_files(book)
 
 
 def log(mns, verbose=2):
@@ -962,4 +1015,4 @@ def log(mns, verbose=2):
 
 
 if __name__ == '__main__':
-    create_solution_file()
+    cli()
