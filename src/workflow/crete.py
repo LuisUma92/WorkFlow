@@ -775,24 +775,24 @@ books = [
 
 
 # loading current root files
-@click.command()
+@cli.command()
 def init_books():
     if not book_list.is_file():
         book_list.touch()
-        # book_list.write_text(json.dumps(books))
+        book_list.write_text(json.dumps({'library': []}))
 
 
-@click.command()
+@cli.command()
 @click.argument(
-        '--book_info'
+        'bookinfo'
         )
-def add_book(book_info):
-    with open(book_info, 'r') as file:
+def add_book(bookinfo):
+    with open(bookinfo, 'r') as file:
         contents = json.load(file)
     with open(book_list, 'r') as file:
         old_contents = json.load(file)
-    old_contents.append(contents)
-    with open(book_list, 'a') as file:
+    old_contents["library"].append(contents)
+    with open(book_list, 'w') as file:
         json.dump(old_contents, file)
     return contents
 
@@ -800,14 +800,14 @@ def add_book(book_info):
 def get_book(book):
     with open(book_list, 'r') as file:
         library = json.load(file)
-    for item in library:
+    for item in library["library"]:
         if item['name'] == book:
             return item
     return {}
 
 
 def chapter_path(name, code, ch):
-    return f'er-{code}-{name}/530-{name.capitalize()}-C{ch}'
+    return f'er-{code}-{name}/530-{name.capitalize()}-C{ch:02d}'
 
 
 def file_upto_section(name, chNum, secNum):
@@ -895,50 +895,41 @@ def exercises_file_content(ch, idx, book):
     return msn
 
 
-@click.command()
-@click.option(
-    '--start',
-    default=1,
-    type=int,
-    help='First exercise number'
-)
-@click.option(
-    '--end',
-    default=1,
-    type=int,
-    help='Last included exercise number'
-)
-@click.option(
-    '--ch',
-    default=1,
-    type=int,
-    help='Current chapter'
-)
-@click.option(
-    '--sec',
-    default='01',
-    type=str,
-    help='Current section'
-)
-@click.option(
-    '--name',
-    type=str
-)
-@click.option(
-    '--code',
-    type=str
-)
-@click.option(
-    '--verbose',
-    default=2,
-    type=int
-)
-def create_solution_file(start, end, ch, sec, name, code, verbose):
+# @cli.command()
+# @click.argument(
+#     'start',
+#     default=1,
+#     type=int
+# )
+# @click.argument(
+#     'end',
+#     default=1,
+#     type=int
+# )
+# @click.argument(
+#     'ch',
+#     default=1,
+#     type=int
+# )
+# @click.argument(
+#     'sec',
+#     default='01',
+#     type=str
+# )
+# @click.argument(
+#     'name',
+#     type=str
+# )
+# @click.argument(
+#     'code',
+#     type=str
+# )
+def create_solution_file(start, end, ch, sec, name, code):
     CHPATH = chapter_path(name, code, ch)
     path = Path(f'./{CHPATH}').absolute()
-    log(f'''
-Se está trabajando en:
-{path}''', verbose)
+    # log(f'''
+# Se está trabajando en:
+# {path}''', verbose)
     if not path.exists():
         os.makedirs(path)
     fout = file_upto_section(name, ch, sec)
@@ -955,14 +946,13 @@ Se está trabajando en:
 def create_book_solutions_files(book):
     main_text = ''
     for sec in book['distro']:
-        create_solution_file(
-                start=sec[2],
-                end=sec[3],
-                ch=sec[0],
-                sec=sec[1],
-                name=book['name'],
-                code=book['code']
-                )
+        create_solution_file(sec[2],
+                             sec[3],
+                             sec[0],
+                             sec[1],
+                             book['name'],
+                             book['code']
+                             )
         main_text += add_inputs(
                 book['name'],
                 book['code'],
@@ -973,29 +963,27 @@ def create_book_solutions_files(book):
                 )
     soluPath = chapter_path(book['name'], book['code'], '00')
     soluPath = soluPath
-    with open(f"ER-{books[book]}.tex", "w") as file:
+    with open(f"ER-{book['code']}.tex", "w") as file:
         file.write(HEADER)
         file.write(main_text)
         file.write(BOTTOM)
 
 
-@click.command()
+@cli.command()
 @click.option(
         '--file',
         default=book_list
         )
 @click.option(
-        '--book',
+        '--name',
         default='none'
         )
 def init(file, name):
     book = get_book(name)
     if not book:
         print('Requested book is not in bib')
-        book = add_book(book_info=file)
+        book = add_book(file)
         name = book['name']
-
-    prinyt
     create_book_solutions_files(book)
 
 
