@@ -33,14 +33,16 @@ This script create all the files for exercises for a references book.
 It uses a [json struicture](Json Book-Exercises Structure) for each book.
 You can define 
 
-### Funtions
+### Functions
 
 #### init_books():
 
-Create a global configuration file
+Create a global storage file
 
-#### 
+#### add_book(book_info):
 
+Append a specified [book struicture](Json Book-Exercises Structure) to the
+global storage file
 
 #### create_solution_file( start=1, end=1, ch=1, sec='01', book, verbose=2)
 
