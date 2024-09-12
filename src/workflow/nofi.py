@@ -6,7 +6,7 @@ import click
 def save_to_file(newfilename, subcontent, save_type="w"):
     # Need to check if al the path to newfilename exists and if it doesn't
     # then create it
-    currentDir = "."
+    currentDir = ""
     for dir in newfilename.split('/')[:-1]:
         currentDir = "/".join([currentDir, dir])
         if not Path(currentDir).exists():
@@ -26,7 +26,7 @@ def save_to_file(newfilename, subcontent, save_type="w"):
 @click.command()
 @click.option(
         '--filename',
-        default='NewNote.tex',
+        default='./NewNote.tex',
         help='Name of file with notes'
         )
 @click.option(
