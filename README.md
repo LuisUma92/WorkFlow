@@ -9,11 +9,10 @@ This script remove common auxiliary files used by $\LaTeX$
 
 ## NoFi - Notes to files
 
-This script takes a plain tex file and  creates subfies for $\LaTeX$ to input.
+This script takes a plain tex file and  creates subfiles for $\LaTeX$ to input.
 
 Use the flag '%>' to define the 'path/to/file/to/make.tex' for create a new
-$\LaTeX$ with
-the contents until next flag.
+$\LaTeX$ with the contents until next flag.
 
 ### Example
 
@@ -30,7 +29,7 @@ Create a $\LaTeX$ file that input the plain tex file to compile as writing.
 ## CreTE - Create Text Exercises
 
 This script create all the files for exercises for a references book. 
-It uses a [json struicture](Json Book-Exercises Structure) for each book.
+It uses a [json structure](Json Book-Exercises Structure) for each book.
 You can define 
 
 ### Functions
@@ -41,7 +40,7 @@ Create a global storage file
 
 #### add_book(book_info):
 
-Append a specified [book struicture](Json Book-Exercises Structure) to the
+Append a specified [book structure](Json Book-Exercises Structure) to the
 global storage file
 
 #### create_solution_file( start=1, end=1, ch=1, sec='01', book, verbose=2)

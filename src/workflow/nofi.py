@@ -6,21 +6,24 @@ import click
 def save_to_file(newfilename, subcontent, save_type="w"):
     # Need to check if al the path to newfilename exists and if it doesn't
     # then create it
-    currentDir = ""
-    for dir in newfilename.split('/')[:-1]:
-        currentDir = "/".join([currentDir, dir])
-        if not Path(currentDir).exists():
-            os.mkdir(Path(currentDir))
+    currentDir = "."
+    IGNORE_FLAG = "%>END"
+    if IGNORE_FLAG not in newfilename:
+        for dir in newfilename.split('/')[:-1]:
+            currentDir = "/".join([currentDir, dir])
+            if not Path(currentDir).exists():
+                print("Creating {}".format(currentDir))
+                os.mkdir(Path(currentDir))
 
-    # Create the newfilename with the subcontent
-    try:
-        with open(newfilename, save_type) as file:
-            for line in subcontent:
-                file.write(line)
-    except IOError:
-        print("An error occurred while trying to write")
-        print(f"to the file {newfilename}.")
-        return 2
+        # Create the newfilename with the subcontent
+        try:
+            with open(newfilename, save_type) as file:
+                for line in subcontent:
+                    file.write(line)
+        except IOError:
+            print("An error occurred while trying to write")
+            print(f"to the file {newfilename}.")
+            return 2
 
 
 @click.command()
@@ -31,7 +34,7 @@ def save_to_file(newfilename, subcontent, save_type="w"):
         )
 @click.option(
         '--mainfile',
-        default='main.tex',
+        default='NotesToImput.tex',
         help='Name of the main file where to import notes'
         )
 def cli(filename, mainfile):
