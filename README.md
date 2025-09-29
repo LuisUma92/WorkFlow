@@ -6,10 +6,9 @@ This package contains a set of scripts that I use form writing my tesis
 
 This script remove common auxiliary files used by $\LaTeX$
 
-
 ## NoFi - Notes to files
 
-This script takes a plain tex file and  creates subfiles for $\LaTeX$ to input.
+This script takes a plain tex file and creates subfiles for $\LaTeX$ to input.
 
 Use the flag '%>' to define the 'path/to/file/to/make.tex' for create a new
 $\LaTeX$ with the contents until next flag.
@@ -18,7 +17,7 @@ $\LaTeX$ with the contents until next flag.
 
 '''tex
 %>tex/C1/C1S1-001-file.tex
-This lines are going to be copied to the file C1S1-001-file.tex at the 
+This lines are going to be copied to the file C1S1-001-file.tex at the
 directory ./tex/C1
 '''
 
@@ -28,17 +27,17 @@ Create a $\LaTeX$ file that input the plain tex file to compile as writing.
 
 ## CreTE - Create Text Exercises
 
-This script create all the files for exercises for a references book. 
+This script create all the files for exercises for a references book.
 It uses a [json structure](Json Book-Exercises Structure) for each book.
-You can define 
+You can define
 
 ### Functions
 
-#### init_books():
+#### init_books()
 
 Create a global storage file
 
-#### add_book(book_info):
+#### add_book(book_info)
 
 Append a specified [book structure](Json Book-Exercises Structure) to the
 global storage file
@@ -52,8 +51,8 @@ Require that the 'name=book' exists on the 'books.json' file from
 
 Returns a string formatted with the contents of each exercise file.
 
-
 ### Json Book-Exercises Structure
+
 <!-- ## NoRI - Note Reference Insertion -->
 
 <!-- Script that search for study summary files, fallowing an specific structure -->
@@ -91,7 +90,7 @@ Returns a string formatted with the contents of each exercise file.
 <!-- ### lib2bib -->
 
 <!-- This script compares all files on lib directory with entries -->
-<!-- on master.bib file. If a document on lib directory don't --> 
+<!-- on master.bib file. If a document on lib directory don't -->
 <!-- have a bib entries it proceed to create one. -->
 
 <!-- ### PRISMA 2020 - Register Structure -->
@@ -114,7 +113,7 @@ Returns a string formatted with the contents of each exercise file.
 
 <!-- ### Summary Notes structure -->
 
-<!-- The summary consist of easy access files that provides the --> 
+<!-- The summary consist of easy access files that provides the -->
 <!-- notes, connections, ideas and other kinds of information -->
 <!-- useful when writing essays. -->
 
@@ -129,7 +128,7 @@ Returns a string formatted with the contents of each exercise file.
 <!--   The title -->
 
 <!-- Bib: | # citation-key defined on .bib file -->
-<!--   citation-key --> 
+<!--   citation-key -->
 
 <!-- Keywords: -->
 <!--   Article: -->
@@ -143,7 +142,7 @@ Returns a string formatted with the contents of each exercise file.
 
 <!-- Definitions: -->
 <!--   Name: -->
-<!--     id: --> 
+<!--     id: -->
 <!--     def: | -->
 <!--       the definition -->
 <!--     ideas: # list of personal conclusions or connections -->
@@ -158,7 +157,7 @@ Returns a string formatted with the contents of each exercise file.
 
 <!-- Conclusions: -->
 
-<!-- References: # Source references --> 
+<!-- References: # Source references -->
 <!--   n: the n reference -->
 <!--   n+2: other... -->
 <!-- ... -->
