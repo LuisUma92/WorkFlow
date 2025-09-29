@@ -1,34 +1,27 @@
-[build-system]
-requires = [
-    "setuptools"
-]
-
 [project]
 name = "workflow"
-authors = [
-    {name = "Luis Fernando Umaña Castro",email = "luis.umanacastro@ucr.ac.cr"}
-]
 version = "1.0.0001"
-readme = {file = "README.md", content-type = "text/markdown"}
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
-license = {file = "LICENSE"}
-classifiers= [
-    "Development Status :: 2 - Pre-Alpha",
+license = { file = "LICENSE" }
+authors = [
+  { name = "Luis Fernando Umaña Castro", email = "luis.umanacastro@ucr.ac.cr" },
 ]
-dependencies = [
-    "bibtexparser",
-    "click",
-]
+classifiers = ["Development Status :: 2 - Pre-Alpha"]
+dependencies = ["appdirs", "bibtexparser", "click"]
 
 [project.scripts]
+bib2yaml = "workflow.bib2yaml:cli"
 cleta = "workflow.cleta:cli"
 crete = "workflow.crete:cli"
+mergebib = "workflow.mergebib:cli"
 nofi = "workflow.nofi:cli"
 nori = "workflow.nori:cli"
-bib2yaml = "workflow.bib2yaml:cli"
-mergebib = "workflow.mergebib:cli"
 prisma-import-bib = "workflow.prismaimportbib:cli"
 prisma-review = "workflow.prismareview:cli"
+
+[build-system]
+requires = ["setuptools"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
