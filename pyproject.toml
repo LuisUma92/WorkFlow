@@ -12,8 +12,8 @@ dependencies = ["appdirs", "bibtexparser", "click"]
 
 [project.scripts]
 bib2yaml = "prismar.bib2yaml:cli"
-cleta = "workflow.cleta:cli"
-crete = "workflow.crete:cli"
+cleta = "lectkit.cleta:cli"
+crete = "lectkit.crete:cli"
 mergebib = "prismar.mergebib:cli"
 nofi = "prismar.nofi:cli"
 nori = "prismar.nori:cli"

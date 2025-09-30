@@ -1,23 +1,27 @@
-# Work Flow
+# Work Flow Project
 
-This package contains a set of scripts that I use form writing my tesis
+This package contains a set of scripts that I use form writing my tesis,
+and work with latex.
 
-## CleTA - Clean Tex Auxiliary files
+## Packages
+
+### workflow
+
+This group of python scripts are simple one file action that allows to make
+interactions with files.
+
+#### CleTA - Clean Tex Auxiliary files
 
 This script remove common auxiliary files used by $\LaTeX$
 
-## ITeP - Init Tex Project
-
-This scrip creates the structure for a $\LaTeX$ proyect.
-
-## NoFi - Notes to files
+#### NoFi - Notes to files
 
 This script takes a plain tex file and creates subfiles for $\LaTeX$ to input.
 
 Use the flag '%>' to define the 'path/to/file/to/make.tex' for create a new
 $\LaTeX$ with the contents until next flag.
 
-### Example
+##### Example
 
 '''tex
 %>tex/C1/C1S1-001-file.tex
@@ -25,149 +29,171 @@ This lines are going to be copied to the file C1S1-001-file.tex at the
 directory ./tex/C1
 '''
 
-### Recomendation
+##### Recomendation
 
 Create a $\LaTeX$ file that input the plain tex file to compile as writing.
 
-## CreTE - Create Text Exercises
+#### CreTE - Create Text Exercises
 
 This script create all the files for exercises for a references book.
 It uses a [json structure](Json Book-Exercises Structure) for each book.
 You can define
 
-### Functions
+##### Functions
 
-#### init_books()
+###### init_books()
 
 Create a global storage file
 
-#### add_book(book_info)
+###### add_book(book_info)
 
 Append a specified [book structure](Json Book-Exercises Structure) to the
 global storage file
 
-#### create_solution_file( start=1, end=1, ch=1, sec='01', book, verbose=2)
+###### create_solution_file( start=1, end=1, ch=1, sec='01', book, verbose=2)
 
 Require that the 'name=book' exists on the 'books.json' file from
 '~.config/crete' directory.
 
-#### exercises_file_content(ch, idx, book)
+###### exercises_file_content(ch, idx, book)
 
 Returns a string formatted with the contents of each exercise file.
 
-### Json Book-Exercises Structure
+##### Json Book-Exercises Structure
 
-<!-- ## NoRI - Note Reference Insertion -->
+```json
+{
+  "library": [
+    {
+      "name": "FirstAutorLastname",
+      "code": "MDS_code",
+      "distro": [[ch,"sec",ini,end],]
+    },
+  ]
+}
+```
 
-<!-- Script that search for study summary files, fallowing an specific structure -->
-<!-- on [YAML](https://yaml.org/) file format, and look for notes on the files. -->
-<!-- It returns a string output to [Neovim](https://neovim.io/), the note structure -->
-<!-- on the summary file indicates whether is paraphrase o verbatim, so that inset -->
-<!-- a $\LaTeX$ quotation reference respectively. -->
+## Apps
 
-<!-- ### Directory expected structure -->
+### ITeP - Init Tex Project
 
-<!-- ``` -->
-<!-- ROOT -->
-<!-- ├── master.tex -->
-<!-- ├── master.bib -->
-<!-- ├── lib -->
-<!-- │   ├── bibkey-title.pdf -->
-<!-- │   └── ... -->
-<!-- ├── lec -->
-<!-- │   ├── lec_00.tex -->
-<!-- │   ├── ... -->
-<!-- │   └── lec_NN.tex -->
-<!-- ├── res -->
-<!-- │   ├── sumary_00.tex -->
-<!-- │   ├── ... -->
-<!-- │   └── sumary_MM.tex -->
-<!-- ├── figures -->
-<!-- │   ├── fig-00.pdf -->
-<!-- │   ├── fig-00.pdf_tex -->
-<!-- │   ├── fig-00.svg -->
-<!-- │   └── ... -->
-<!-- └── UltiSnips -->
-<!--     └── tex.snippets -->
-<!-- ``` -->
+This scrip creates the structure for a $\LaTeX$ proyect.
+The actual structure is on [structure files](/docs/ADR/structure.md).
 
-<!-- ### lib2bib -->
+### PRISMAreview
 
-<!-- This script compares all files on lib directory with entries -->
-<!-- on master.bib file. If a document on lib directory don't -->
-<!-- have a bib entries it proceed to create one. -->
+This code is on pause. Another repository is developing it
 
-<!-- ### PRISMA 2020 - Register Structure -->
+#### NoRI - Note Reference Insertion
 
-<!-- We use [PRIMA 2020](http://www.prisma-statement.org) for a -->
-<!-- systematic review of the scientific article. This protocol -->
-<!-- establishes the items to record for each Article Register. -->
-<!-- This script interacts with a Data Base where Registers are -->
-<!-- recorded. -->
+Script that search for study summary files, fallowing an specific structure
+on [YAML](https://yaml.org/) file format, and look for notes on the files.
+It returns a string output to [Neovim](https://neovim.io/), the note structure
+on the summary file indicates whether is paraphrase o verbatim, so that inset
+a $\LaTeX$ quotation reference respectively.
 
-<!-- #### Documentation -->
+##### Directory expected structure
 
-<!-- This library interacts via CLI and ask to input item by item, -->
-<!-- then send the information to the DataBase. More info on (myPRISMA documentation)[myPRISMA.md] -->
+```bash
+ROOT
+├── master.tex
+├── master.bib
+├── lib
+│   ├── bibkey-title.pdf
+│   └── ...
+├── lec
+│   ├── lec_00.tex
+│   ├── ...
+│   └── lec_NN.tex
+├── res
+│   ├── sumary_00.tex
+│   ├── ...
+│   └── sumary_MM.tex
+├── figures
+│   ├── fig-00.pdf
+│   ├── fig-00.pdf_tex
+│   ├── fig-00.svg
+│   └── ...
+└── UltiSnips
+    └── tex.snippets
+```
 
-<!-- #### To do list -->
+##### lib2bib
 
-<!-- - An interaction to the data base for Summary Notes creation. -->
-<!-- - Bib automatic update. -->
+This script compares all files on lib directory with entries
+on master.bib file. If a document on lib directory don't
+have a bib entries it proceed to create one.
 
-<!-- ### Summary Notes structure -->
+##### PRISMA 2020 - Register Structure
 
-<!-- The summary consist of easy access files that provides the -->
-<!-- notes, connections, ideas and other kinds of information -->
-<!-- useful when writing essays. -->
+We use [PRIMA 2020](http://www.prisma-statement.org) for a
+systematic review of the scientific article. This protocol
+establishes the items to record for each Article Register.
+This script interacts with a Data Base where Registers are
+recorded.
 
-<!-- ```yaml -->
-<!-- %YAML 1.2 -->
-<!-- --- -->
-<!-- Authors: -->
-<!--   - [] -->
-<!--   - [] -->
+###### Documentation
 
-<!-- Title: | -->
-<!--   The title -->
+This library interacts via CLI and ask to input item by item,
+then send the information to the DataBase. More info on [myPRISMA documentation](myPRISMA.md)
 
-<!-- Bib: | # citation-key defined on .bib file -->
-<!--   citation-key -->
+###### To do list
 
-<!-- Keywords: -->
-<!--   Article: -->
-<!--     - word 1 -->
-<!--     - word 2 -->
-<!--   Own: -->
-<!--   Nucleus: -->
+- An interaction to the data base for Summary Notes creation.
+- Bib automatic update.
 
-<!-- Objective: | -->
-<!--   The objective -->
+##### Summary Notes structure
 
-<!-- Definitions: -->
-<!--   Name: -->
-<!--     id: -->
-<!--     def: | -->
-<!--       the definition -->
-<!--     ideas: # list of personal conclusions or connections -->
-<!--       - | -->
-<!--         first idea or conclusion -->
-<!--     use: | -->
-<!--       examples or descriptions -->
-<!--     cite: # references made by authors on the source -->
-<!--       '[n],[n+2-n+4]' -->
+The summary consist of easy access files that provides the
+notes, connections, ideas and other kinds of information
+useful when writing essays.
 
-<!-- Key-Ideas: -->
+```yaml
+%YAML 1.2
+---
+Authors:
+  - []
+  - []
 
-<!-- Conclusions: -->
+Title: |
+  The title
 
-<!-- References: # Source references -->
-<!--   n: the n reference -->
-<!--   n+2: other... -->
-<!-- ... -->
-<!-- ``` -->
+Bib: | # citation-key defined on .bib file
+  citation-key
 
-<!-- ### Dependencies -->
+Keywords:
+  Article:
+    - word 1
+    - word 2
+  Own:
+  Nucleus:
 
-<!-- * [Inkscape figure manager](https://github.com/gillescastel/latex-snippets) -->
-<!-- * [`rofi`](https://github.com/davatorium/rofi) for a selection dialog -->
+Objective: |
+  The objective
+
+Definitions:
+  Name:
+    id:
+    def: |
+      the definition
+    ideas: # list of personal conclusions or connections
+      - |
+        first idea or conclusion
+    use: |
+      examples or descriptions
+    cite: # references made by authors on the source
+      "[n],[n+2-n+4]"
+
+Key-Ideas:
+
+Conclusions:
+
+References: # Source references
+  n: the n reference
+  n+2: other...
+```
+
+##### Dependencies
+
+- [Inkscape figure manager](https://github.com/gillescastel/latex-snippets)
+- [`rofi`](https://github.com/davatorium/rofi) for a selection dialog
