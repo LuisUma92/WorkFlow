@@ -7,9 +7,9 @@ Para organizar la tesis en un directorio con el siguiente orden:
 ```bash
 ABS_SRC_DIR = /home/luis/.config/mytex
 ABS_PARENT_DIR = /home/luis/Documents/01-U/00-Fisica
-LECTURE_CODE = `AA####`
+LECTURE_CODE = `AA{:04d}`
 MAIN_NAME = `Name`
-MAIN_CODE = `##AA`
+MAIN_CODE = `{:02d}AA`
 ROOT = `${MAIN_CODE}+${MAIN_NAME}`
 ABS_PROJECT_DIR = `(pwd)/${ROOT}`
 ```
@@ -22,7 +22,7 @@ ${ABS_PARENT_DIR}/${ABS_PROJECT_DIR}
 │ └─ ${LECTURE_CODE}
 │ ├─ admin
 │ ├─ eval
-│ │ └─ {T##}
+│ │ └─ {T{TN:02d}}
 │ │ └─ {bookName} -> ${ABS_PARENT_DIR}/00EE-ExamplesExercises/{bookName}/
 │ ├─ press
 │ │ ├─ config
