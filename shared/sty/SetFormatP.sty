@@ -1,0 +1,246 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==<Importación de paquetes>=========================
+
+%=====> Layout <=====================================
+
+% Establece márgenes y tamaños
+% \usepackage[
+%     letterpaper, 
+%     top=1.5cm, 
+%     bottom=1.5cm, 
+%     left=1.905cm, 
+%     right=1.905cm
+%     ]{geometry}
+\interdisplaylinepenalty=2500
+% Se puede establecer manualmente le indexado de la primera linea, si no se agrega el siguiente comando se usa el indexado default
+%\setlength{\parindent}{4em}
+% Se puede establecer el entre los párrafos, las opciones más comunes son:
+%	Sin Espaciado: Comente el siguiente comentario
+%	Espaciada sencillo: 1em
+%	Espaciada uno y medio: 1.3em
+%	Espaciada doble: 1.6 em
+\setlength{\parskip}{1.3em}
+% Se puede establecer el espacio entre las líneas del párrafo, si no se agrega el siguiente comando se usa el espaciado default
+%\renewcommand{\baselinestretch}{1.5}
+
+%====> Definición del idioma del documento <=========
+
+% % Paquete que cambia títulos y palabras claves al idioma seleccionado
+% \usepackage[spanish]{babel}
+
+%====> Fonts <=======================================
+
+\usepackage{lmodern}
+\usepackage{verbatim}
+% Paquete que establce el idioma del documento que se va a imprimir
+\usepackage{polyglossia}
+\setmainlanguage{spanish}
+% Paquete que carga automática los paquetres: fontspec (Paquete que permite abrir OpenType font), realscripts, metalogo .
+\usepackage{xltxtra}
+\setmainfont{Times New Roman}
+% \setmainfont{Arial}
+% \setmainfont{MathJax_Script}
+%\setmonofont{Lucida Console}
+
+% Comando que permite que el texto escrito aquí se transfiera de forma fiel al PDF
+%\defaultfontfeatures{Mapping=tex-text}
+%\newfontfamily\VladScrip{Vladimir Script}
+\newfontfamily\arialFont{Arial}
+\newfontfamily\timesnrFont{Times New Roman}
+
+% Puedo definir cuantos comandos como quiera
+%\newfontfamily\Chiller{Chiller}
+
+% Paquete que se asegura que las letras acentuadas se acentúen correctamente
+% !!! Compilar com XeTeX o LuaTeX !!!
+\usepackage{xunicode}
+
+%====> Uso de colores <===============================
+
+% \usepackage{color}
+\usepackage{xcolor}
+\definecolor{BlueST} {HTML}{00e359}
+\definecolor{GreenT} {HTML}{709b16}
+\definecolor{coolblack}{rgb}{0.0, 0.18, 0.39}
+\definecolor{anti-flashwhite}{rgb}{0.95, 0.95, 0.96}
+
+
+%====> Personalización de los hipervínculos <=========
+
+% más información en https://www.ctan.org/pkg/hyperref
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=anti-flashwhite
+}
+\makeatletter
+\let\@msm@th@eqref\eqref
+\renewcommand{\eqref}[1]{%
+  \begingroup
+  \leavevmode
+  \color{coolblack}%
+  \hypersetup{linkcolor=[named]{coolblack}}%
+  \@msm@th@eqref{#1}%
+  \endgroup
+}
+\makeatother
+
+
+% Paquete que permite incluir direcciones web de forma segura
+% mas información en https://www.ctan.org/pkg/url
+\usepackage{url}
+
+%====> Letras y símbolos matemáticos <================
+
+% Paquete que mejora la presentación visual de las ecuaciones, proporciona
+% entornos adicionales para manejar varias ecuaciones o varias líneas 
+% más información en https://www.ctan.org/pkg/amsmath
+\usepackage{amsmath}
+
+% Permite el uso de símbolos y formatos de letras adicionales
+% como por ejemplo \mathfrak{letras}
+\usepackage{amsfonts}
+
+% Permite el uso de símbolos y formatos de letras adicionales
+% más información en https://mirrors.ucr.ac.cr/CTAN/fonts/amsfonts/doc/amssymb.pdf
+\usepackage{amssymb}
+
+% Define el SI, pero tiene funciones adicionales
+% más información en https://www.ctan.org/pkg/siunitx
+\usepackage{siunitx}
+
+% Negrita en cualquier texto matemático, mejor que la opción  \boldsymbol de ams
+\usepackage{bm}
+
+% Permite el uso de símbolos y formatos de letras adicionales
+% como por ejemplo \mathscr{letras}
+\usepackage{mathrsfs}
+
+% Permite el uso de comandos que introducen símbolos y entornos muy comunes en las
+% ecuaciones propias de la física, simplificando su escritura
+\usepackage{physics}
+
+% Para tachar en ecuaciones
+\usepackage[
+    makeroom,
+    ]{cancel}
+\renewcommand\CancelColor{\color{red}}
+
+%====> Cajas con colores <===========================
+
+\usepackage{tcolorbox}
+\tcbuselibrary{
+	breakable,
+	external,
+	fitting,
+	hooks,
+	magazine,
+	poster,
+	raster,
+	skins,
+	theorems,
+	vignette,
+	xparse
+}
+%====> Enumeraciones <===============================
+
+% Permite personalizar las enumeraciones
+\usepackage{enumerate}
+
+%====> Tablas <======================================
+
+% Permite unir celdas de varias filas 
+% más información en https://www.ctan.org/pkg/multirow
+\usepackage{multirow}
+
+% Usted también puede definir su propios comandos
+% Este comando permite generar rápidamente una celda que une varias 
+% filas y que permite usar \\ como cambio de línea en la celda
+\newcommand{\minitab}[2][]{\begin{tabular}{#1}#2\end{tabular}}
+
+% Permite usar columnas de ancho preestablecido
+\usepackage{dcolumn}
+\newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+
+%====> Imágenes <====================================
+
+\usepackage{subcaption}
+\usepackage{graphicx}
+\usepackage{graphics}
+\usepackage{import}
+\RequirePackage{pdfmanagement-testphase}
+\usepackage{pdfpages}
+\graphicspath{{./figures/}}
+% figure support
+\newcommand{\incfig}[1]{%
+    \def\svgwidth{0.5\columnwidth}
+    \import{./figures/}{#1.pdf_tex}
+}
+
+\usepackage{tikz}
+\usetikzlibrary{patterns,angles}
+\usetikzlibrary{calc,arrows,shapes.arrows,intersections,math}
+\usetikzlibrary{decorations,decorations.markings,babel,positioning}
+%====> Formato de la pagina <========================
+
+% Permite dividir la hoja en varias columnas
+% más información en https://www.ctan.org/pkg/multicol
+\usepackage{multicol}
+
+%====> Gestor de bibliografía <======================
+
+% más información en https://www.ctan.org/pkg/biblatex
+\usepackage[
+    backend=biber, 
+    % style=apa, 
+    % citestyle=apa
+    ]{biblatex}
+
+% Paquete auxiliar para las citas
+\usepackage{csquotes}
+
+% \usepackage{import}
+% \usepackage{pdfpages}
+% \usepackage{transparent}
+% \usepackage{xcolor}
+
+% \newcommand{\incfig}[2][1]{%
+%     \def\svgwidth{#1\columnwidth}
+%     \import{./figures/}{#2.pdf_tex}
+% }
+% \newcommand{\incsvg}[2][1]{
+% 	\includesvg[
+% 				height = #1\textheight,
+% 				% width=\linewidth,
+% 				pretex=\relscale{1.5}
+% 			]{#2}
+% }
+% \pdfsuppresswarningpagegroup=1
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==<Definición de portada y encabezados>=============
+
+% \usepackage{fancyhdr}
+
+% %=====> Define header <==============================
+% \pagestyle{fancy}
+% \fancyhf{}
+% \lhead{\textit{Luis Fernando Umaña Castro}}
+% \rhead{\textit{Soluciones - Semana 8}}
+% \cfoot{\thepage}
+
+% %====> Espacio para el encabezado <==================
+% \setlength{\headheight}{15pt}
+% \addtolength{\topmargin}{-0.15pt}
+
+\newcommand{\scrp}[1]{\mbox{\scriptsize{#1}}}
+\newcommand{\vc}[1]{\vec{\bm{{#1}}}}
+\newcommand{\vm}[1]{\bm{{#1}}}
+\newcommand{\vh}[1]{\hat{\bm{{#1}}}}
+\newcommand{\ala}[1]{$^{#1}$}
+% \renewcommand{\sin}{\mbox{ sen}}
+\let\oldunit\unit
+\renewcommand{\unit}[1]{\:\oldunit{#1}}
+\newcommand{\then}{\pause =}

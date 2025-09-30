@@ -1,0 +1,126 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==<User defined macros>=======================================================
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Usted también puede definir su propios comandos
+% Este comando permite generar rápidamente una celda que une varias 
+% filas y que permite usar \\ como cambio de línea en la celda
+%==< Definición de directorios importantes >===================================
+  \newcommand{\mytex}{/home/luis/.config/mytex}
+  \newcommand{\FisicaDir}{/home/luis/Documents/01-U/00-Fisica}
+
+%==< Definición de booleanos >=================================================
+  \newboolean{test}
+  \setboolean{test}{false}
+  \newboolean{solutions}
+  \setboolean{solutions}{false}
+  \newboolean{main}
+  \setboolean{main}{false}
+
+%==< Definición de contadores para ejemplos >==================================
+  \newcounter{lastEquation}
+  \newcounter{lastChapter}
+  \newcounter{example}[section] 
+  \newcommand{\exa}[2][]{%
+    \ifblank{#2}{
+      \stepcounter{example}
+    }{
+      \setcounter{example}{#2}%
+    }
+    \ifthenelse{\isundefined{\thechapter}}{%
+      \ifblank{#1}{
+        \hspace{0.8cm}\par\arabic{section}.\arabic{example}.\hspace{0.45mm} %
+      }{
+        \setcounter{lastChapter}{\thesection}
+        \setcounter{section}{#1}
+        \hspace{0.8cm}\par\arabic{section}.\arabic{example}.\hspace{0.45mm} %
+        \setcounter{section}{\thelastChapter}
+      }
+    }{
+      \ifblank{#1}{
+        \hspace{0.8cm}\par\arabic{chapter}.\arabic{example}.\hspace{0.45mm} %
+      }{
+        \setcounter{lastChapter}{\thechapter}
+        \setcounter{chapter}{#1}
+        \hspace{0.8cm}\par\arabic{chapter}.\arabic{example}.\hspace{0.45mm} %
+        \setcounter{chapter}{\thelastChapter}
+      }
+    }
+  }
+  \newcommand{\exatitle}[1]{
+    \ifthenelse{\isundefined{\thechapter}}{%
+      \textbf{#1}
+      \addcontentsline{toc}{subsection}{\thesection.\theexample. #1}
+    }{
+      \textbf{#1}
+      \addcontentsline{toc}{subsection}{\thechapter.\theexample. #1 }
+    }
+  }%
+  \newcommand{\exacs}[1]{%
+    \ifblank{#1}{
+      \stepcounter{example}
+    }{
+      \setcounter{example}{#1}%
+    }
+    \ifthenelse{\isundefined{\thechapter}}{%
+      \hspace{0.8cm}\par\arabic{section}.\arabic{subsection}.\arabic{example}.\hspace{0.45mm} %
+    }{%
+      \hspace{0.8cm}\par\arabic{chapter}.\arabic{section}.\arabic{example}.\hspace{0.45mm} %
+    }%
+  }
+  \newcommand{\question}[2]{
+    \ifthenelse{\boolean{test}}{
+      \item
+      \addcontentsline{toc}{subsection}{Pregunta \theenumi}
+      #1
+      \ifthenelse{\boolean{solutions}}{
+        #2
+      }{}
+    }{
+    #1
+    \newline
+    #2
+    }
+  }
+  \newcommand{\qpart}[2]{
+    \item
+    #1
+    \ifthenelse{\boolean{solutions}}{
+      \paragraph{Solución:}
+      #2
+    }{}
+  }
+
+%==< Definición de comandos >==================================================
+  \newcommand\mailto[1]{\href{mailto:#1}{#1}}
+  \newcommand{\minitab}[2]{\begin{tabular}{#1}#2\end{tabular}}
+  
+  \newcommand{\executeiffilenewer}[3]{%
+    \directlua{
+      local lfs = require("lfs")
+      local svgfile = "#1"
+      local pdffile = "#2"
+      local attr_svg = lfs.attributes(svgfile)
+      local attr_pdf = lfs.attributes(pdffile)
+      if not attr_pdf or (attr_svg and attr_svg.modification > attr_pdf.modification)
+      then
+        local cmd = "#3"
+        os.execute(cmd)
+      end
+    }
+  }
+  \newcommand{\inputsvg}[3]{%
+    \executeiffilenewer{#2/#3.svg}{#2/#3.pdf}{inkscape --export-type=pdf --file=#2/#3.svg --export-pdf=#2/#3.pdf --export-latex}%
+    \def\svgwidth{#1\columnwidth}
+    \import{#2}{#3.pdf_tex}
+  }
+  
+  \newcommand{\scrp}[1]{_{\mbox{\scriptsize{#1}}}}
+  \newcommand{\nc}[2]{$^{#1}$#2}
+  \newcommand{\ncm}[2]{^{#1}\text{#2}}
+  \newcommand{\then}{=}
+  \newcommand{\ifpause}{}
+  \def\rcursub{{\mbox{$\;\resizebox{.05in}{.05in}{\includegraphics{\mytex/img/ScriptR.png}}$}}}
+  \def\brcursub{{\mbox{$\;\resizebox{.05in}{.05in}{\includegraphics{\mytex/img/BoldR.png}}$}}}
+  \def\rcurs{{\mbox{$\;\resizebox{.08in}{.08in}{\includegraphics{\mytex/img/ScriptR.png}}$}}}
+  \def\brcurs{{\mbox{$\;\resizebox{.08in}{.08in}{\includegraphics{\mytex/img/BoldR.png}}$}}}
+  \def\hrcurs{{\mbox{$\;\hat{\rcurs}$}}}

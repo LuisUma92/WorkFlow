@@ -1,0 +1,67 @@
+\documentclass{standalone}
+
+\usepackage{tikz}
+\usetikzlibrary{calc,patterns,arrows,shapes.arrows,intersections}
+\usetikzlibrary{decorations,babel}
+\usepackage{wasysym}
+\usepackage{siunitx}
+
+\newlength\thickness
+\pgfdeclarepatternformonly[\thickness]{section}
+{\pgfpointorigin}
+{\pgfpoint{0.5cm}{0.5cm}}
+{\pgfpoint{0.5cm}{0.5cm}}
+{
+\pgfsetstrokecolor{black!50}
+\pgfsetlinewidth{\thickness}
+\pgfpathmoveto{\pgfpoint{0cm}{0cm}}
+\pgfpathlineto{\pgfpoint{0.125cm}{0.125cm}}
+\pgfpathclose
+\pgfsetlinewidth{\thickness}
+\pgfpathmoveto{\pgfpoint{0.125cm}{0cm}}
+\pgfpathlineto{\pgfpoint{0cm}{0.125cm}}
+\pgfpathclose
+\pgfsetlinewidth{\thickness}
+\pgfpathmoveto{\pgfpoint{0.25cm}{0.25cm}}
+\pgfpathlineto{\pgfpoint{0.375cm}{0.375cm}}
+\pgfpathclose
+\pgfsetlinewidth{\thickness}
+\pgfpathmoveto{\pgfpoint{0.25cm}{0.375cm}}
+\pgfpathlineto{\pgfpoint{0.375cm}{0.25cm}}
+\pgfpathclose
+\pgfsetlinewidth{\thickness}
+\pgfpathmoveto{\pgfpoint{0cm}{0.25cm}}
+\pgfpathlineto{\pgfpoint{0.125cm}{0.375cm}}
+\pgfpathclose
+\pgfsetlinewidth{\thickness}
+\pgfpathmoveto{\pgfpoint{0cm}{.375cm}}
+\pgfpathlineto{\pgfpoint{.125cm}{0.25cm}}
+\pgfpathclose
+\pgfsetlinewidth{\thickness}
+\pgfpathmoveto{\pgfpoint{0.375cm}{0.125cm}}
+\pgfpathlineto{\pgfpoint{0.25cm}{0cm}}
+\pgfpathclose
+\pgfsetlinewidth{\thickness}
+\pgfpathmoveto{\pgfpoint{0.375cm}{0cm}}
+\pgfpathlineto{\pgfpoint{0.25cm}{0.125cm}}
+\pgfusepath{stroke}
+}
+
+\tikzset{
+thickness/.store in = \thickness,
+thickness           = 0.5pt
+}
+
+\begin{document}
+\begin{tikzpicture}[x         = 1cm,
+                    y         = 1cm,
+                    >         = latex,
+                    line join = round,
+                    font      = \small]
+
+%-> Origin definition
+\coordinate (o) at (0,0);
+
+
+\end{tikzpicture}
+\end{document}

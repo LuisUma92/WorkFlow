@@ -1,0 +1,80 @@
+%=====> Define header <==============================
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+%\fancyhf{}
+
+%% LE: left even
+%% RO: right odd
+%% CE, CO: center even, center odd
+%% My name for when I print my lecture notes to use for an open book exam.
+%
+\fancypagestyle{homework}{
+\fancyhead[RO,LE]{\textit{\@lecture}} % Right odd,  Left even
+\fancyhead[RE,LO]{\textit{\@author}}% Right even, Left odd
+%
+\fancyfoot[RO,LE]{\thepage }  % Right odd,  Left even
+\fancyfoot[RE,LO]{}          % Right even, Left odd
+\fancyfoot[C]{\sectionmark}     % Center
+}
+
+%====> Espacio para el encabezado <==================
+% \setlength{\headheight}{15pt}
+% \addtolength{\topmargin}{-0.15pt}
+
+%==< Definir SEP >=============================================================
+\renewcommand{\headrulewidth}{0pt}
+\fancypagestyle{pres}{
+  \pagenumbering{Roman}
+  \fancyhead{}
+  \fancyfoot[C]{\thepage}
+}
+\fancypagestyle{plainPres}{
+  \fancyhead{}
+  \fancyfoot[C]{\thepage}
+}
+\fancypagestyle{cuerpo}{
+  \pagenumbering{arabic}
+  \fancyhead[RO,LE]{\thepage}
+  \fancyfoot{}
+}
+\fancypagestyle{plainCuerpo}{
+  \fancyhead[RO,LE]{\thepage}
+  \fancyfoot{}
+}
+%==< Definir SEP >=============================================================
+\fancypagestyle{uplain}{
+  \fancyhead[LE,RO]{\thepage}
+  \fancyfoot[LE,RO]{\thepartial \classcode \thecycle}
+  \fancyfoot[RE]{\theauthor}
+  \fancyfoot[LO]{\thetitle}
+}
+\fancypagestyle{partial}{
+  \fancyhead[LO]{
+    \usebox{\ulogo}
+  }
+  \ifthenelse{\equal{\theunishort}{UCR}}{
+    \fancyhead[RO]{
+      \vbox to \ht\ulogo{
+        \vfil
+        \usebox{\schoollogo}\\
+        \textbf{\classname}
+      }
+    }
+    \setlength{\headheight}{117pt}
+    \addtolength{\topmargin}{-68pt}
+  }{
+  \ifthenelse{\equal{\theunishort}{UFide}}{
+    \setlength{\headheight}{15pt}
+    \addtolength{\topmargin}{-0.15pt}
+  }{
+  \ifthenelse{\equal{\theunishort}{UCIMED}}{
+    \setlength{\headheight}{15pt}
+    \addtolength{\topmargin}{-0.15pt}
+    \fancyhead[C]{
+      \textbf{\Large{\thepartial}}\\
+      \textbf{\classname}\\
+      \thedate \\
+      30 puntos $\leftrightarrow 100\%$ \\
+    }
+  }{}}}
+}

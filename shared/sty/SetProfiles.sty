@@ -1,0 +1,158 @@
+\author{Luis Fernando Umaña Castro}
+\newcommand{\myemail}{\mailto{luis.umanacastro@ucr.ac.cr}}
+\makeatletter
+\let\thetitle\@title
+\let\theauthor\@author
+\let\thedate\@date
+\makeatother
+
+\newcommand{\director}{Dr. Mario Cubero Campos}
+\newcommand{\SEPperson}{}
+\newcommand{\SEPprograma}{Programa de Posgrado en Física}
+\newcommand{\SEPgrado}{Maestría Académica en Física}
+
+\newglossary*{base}{Glosario General}
+\newglossary*{tech}{Glosario}
+
+%==< Definición de headers para lectures y homework >==========================
+  \makeatletter
+  \def\@lecture{}%
+  \newcommand{\lecture}[3]{
+      \setcounter{subsection}{0}
+      \ifthenelse{\isempty{#3}}{%
+          \def\@lecture{Lección #1}%
+      }{%
+          \def\@lecture{Lección #1: #3}%
+      }%
+      \setcounter{section}{#1}
+      \section*{\@lecture}
+      \addcontentsline{toc}{section}{\@lecture}
+      \marginpar
+      {\small  \textsf{\mbox{#2}} }
+  }
+  \newcommand{\homeworkfile}[2]{
+      \setcounter{subsection}{0}
+      \ifthenelse{\isempty{#2}}{%
+          \def\@lecture{Tarea #1}%
+      }{%
+          \def\@lecture{Tarea #1: #2}%
+      }%
+      % \section*{ \@lecture }
+      \section*{ \@lecture \\ \@author}
+      \setcounter{section}{#1}
+      \thispagestyle{plain}
+  }
+  \newcommand{\myfile}[2]{
+      \setcounter{subsection}{0}
+      \ifthenelse{\isempty{#2}}{%
+          \def\@shortlecture{#1}%
+          \def\@lecture{#1}%
+      }{%
+          \def\@shortlecture{#1: \\}%
+          \def\@lecture{#2}%
+      }%
+      % \section*{ \@lecture }
+      \section*{ \@shortlecture \@lecture \\ \@author}
+      % \setcounter{section}{1}
+      \thispagestyle{plain}
+  }
+  \newcommand{\setlecture}[2]{
+      \setcounter{subsection}{0}
+      \ifthenelse{\isempty{#2}}{%
+          \def\@lecture{#1}%
+      }{%
+        \def\@lecture{#2 #1}%
+      }%
+      % \section*{ \@lecture }
+      % \section*{ \@lecture \\ \@author}
+      \setcounter{section}{#1}
+      \thispagestyle{plain}
+  }
+  \makeatother
+
+%==< Definición de contexto universitario >====================================
+  \newcommand{\theuni}{}
+  \newcommand{\theunishort}{}
+  \newcommand{\theschool}{}
+  \newsavebox{\ulogo}
+  \newsavebox{\schoollogo}
+  
+  \newcommand{\efis}{
+    \renewcommand{\theuni}{Universidad de Costa Rica}
+    \renewcommand{\theunishort}{UCR}
+    \renewcommand{\theschool}{Escuela de Física}
+    \savebox{\ulogo}{
+	    \includegraphics[width=0.4\textwidth]{\mytex/img/ucr/firma-horizontal-dos-lineas-cmky.png}
+    }
+    \savebox{\schoollogo}{
+	    \includegraphics[width=0.2\textwidth]{\mytex/img/ucr/efis/efis.png}
+    }
+  }
+  \newcommand{\ucimed}{
+    \renewcommand{\theuni}{Universidad de las Ciencias Médicas}
+    \renewcommand{\theunishort}{UCIMED}
+    \renewcommand{\theschool}{Ciencias Básicas}
+    \savebox{\ulogo}{
+	    \includegraphics[width=0.5\textwidth]{\mytex/img/ucimed/ucimed.png}
+    }
+    \savebox{\schoollogo}{}
+  }
+  \newcommand{\ufide}{
+    \renewcommand{\theuni}{Universidad Fidélitas}
+    \renewcommand{\theunishort}{UFide}
+    \renewcommand{\theschool}{Escuela de Ciencias Básicas}
+    \savebox{\ulogo}{
+	    \includegraphics[width=0.5\textwidth]{\mytex/img/ufide/ufidelitas.png}
+    }
+    \savebox{\schoollogo}{}
+  }
+  
+  \newcommand{\classname}{}
+  \newcommand{\classcode}{}
+  \newcommand{\setclass}[1]{
+    \renewcommand{\classcode}{#1}
+    \ifthenelse{\equal{#1}{FS0121}}{
+      \renewcommand{\classname}{FS-0121 Fundamentos de Física}
+      \efis
+    }{
+    \ifthenelse{\equal{#1}{FS0210}}{
+      \renewcommand{\classname}{FS-0210 Física General I}
+      \efis
+    }{
+    \ifthenelse{\equal{#1}{FS0310}}{
+      \renewcommand{\classname}{FS-0310 Física General II}
+      \efis
+    }{
+    \ifthenelse{\equal{#1}{FS0410}}{
+      \renewcommand{\classname}{FS-0410 Física General III}
+      \efis
+    }{
+    \ifthenelse{\equal{#1}{FS0230}}{
+      \renewcommand{\classname}{FS-0230 Física I}
+      \efis
+    }{
+    \ifthenelse{\equal{#1}{FS0330}}{
+      \renewcommand{\classname}{FS-0330 Física II}
+      \efis
+    }{
+    \ifthenelse{\equal{#1}{FS0430}}{
+      \renewcommand{\classname}{FS-0430 Física III}
+      \efis
+    }{
+    \ifthenelse{\equal{#1}{CB9}}{
+      \renewcommand{\classname}{Física para Ciencias Médicas}
+      \ucimed
+    }{
+      \renewcommand{\classname}{#1}
+  } } } } } } } }
+  }
+
+  \newcommand{\thecycle}{0000-III}
+  \newcommand{\setcycle}[1]{
+    \renewcommand{\thecycle}{#1}
+  }
+  \newcommand{\thegroup}{Grupo 00}
+  \newcommand{\setgroup}[1]{
+    \renewcommand{\thegroup}{Grupo #1}
+  }
+

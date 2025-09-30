@@ -1,0 +1,20 @@
+\documentclass[11pt,oneside]{article}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\usepackage{enumerate}
+\usepackage{import}
+\usepackage{graphicx}
+\newcommand{\incfig}[1]{%
+    \def\svgwidth{0.5\columnwidth}
+    \import{images/}{#1.pdf_tex}
+}
+\graphicspath{{figures}}
+\newcommand{\ptsdistro}{
+  \paragraph{Distribución de puntos}
+  \renewcommand{\labelenumiv}{\theenumi\theenumiii-\arabic{enumiv})}
+}
+\newcommand{\pts}[1]{(\textit{#1 pts.})}
+\newcommand{\upt}{(\textit{1 pt.})}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+

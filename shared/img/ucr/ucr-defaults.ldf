@@ -1,0 +1,17 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ucr/univ-defaults.ldf
+%% NOVA thesis configuration file
+%%
+%% Customization for UNIVERSIDAD DE COSTA RICA
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\typeout{NT FILE ucr/univ-defaults.ldf}%
+
+% University
+\university(pt):={Universidade de Costa Rica}
+\university(es):={University of Costa Rica}
+\university(en):={Universidad de Costa Rica}
+% \university(fr):={NOVA University Lisbon}
+% \university(it):={NOVA University Lisbon}
+\university(logo):={firma-vertical-dos-lineas-cmyk}
+\university(logo,neg):={firma-vertical-dos-lineas-reverso}

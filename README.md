@@ -6,6 +6,10 @@ This package contains a set of scripts that I use form writing my tesis
 
 This script remove common auxiliary files used by $\LaTeX$
 
+## ITeP - Init Tex Project
+
+This scrip creates the structure for a $\LaTeX$ proyect.
+
 ## NoFi - Notes to files
 
 This script takes a plain tex file and creates subfiles for $\LaTeX$ to input.

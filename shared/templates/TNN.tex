@@ -1,0 +1,739 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%   El presente documento es un machote para la creación de informes de laboratorio de física, pero
+% puede modificarse para cualquier otro propósito. Está dirigido a estudiantes de la Universidad 
+% Fidélitas. 
+%   Este documento usa el formato para documentos de APA de la 7a edición, con la clase apa7.
+% Por cualquier duda o más información puede revisar la documentación en: 
+% https://www.ctan.org/pkg/apa7
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[
+    aspectratio=169, %1610, 169, 149, 54, 43 and 32
+    % 11pt            %Requires that the package extsize: [8pt,9pt,10pt,14pt,17pt(same Impress, PowerPoint),20pt] \ [smaller,bigger] Same as the [10pt,12pt] option. \ 12pt 
+    ]{beamer}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==<Importación de paquetes>=========================
+
+%=====> Layout <=====================================
+
+% Establece márgenes y tamaños
+% \usepackage[
+%     letterpaper, 
+%     top=1.5cm, 
+%     bottom=1.5cm, 
+%     left=1.905cm, 
+%     right=1.905cm
+%     ]{geometry}
+\interdisplaylinepenalty=2500
+% Se puede establecer manualmente le indexado de la primera linea, si no se agrega el siguiente comando se usa el indexado default
+%\setlength{\parindent}{4em}
+% Se puede establecer el entre los párrafos, las opciones más comunes son:
+%	Sin Espaciado: Comente el siguiente comentario
+%	Espaciada sencillo: 1em
+%	Espaciada uno y medio: 1.3em
+%	Espaciada doble: 1.6 em
+%\setlength{\parskip}{1em}
+% Se puede establecer el espacio entre las líneas del párrafo, si no se agrega el siguiente comando se usa el espaciado default
+%\renewcommand{\baselinestretch}{1.5}
+
+%====> Definición del idioma del documento <=========
+
+% % Paquete que cambia títulos y palabras claves al idioma seleccionado
+% \usepackage[spanish]{babel}
+
+%====> Fonts <=======================================
+
+\usepackage{lmodern}
+\usepackage{verbatim}
+% Paquete que establce el idioma del documento que se va a imprimir
+\usepackage{polyglossia}
+\setmainlanguage{spanish}
+% Paquete que carga automática los paquetres: fontspec (Paquete que permite abrir OpenType font), realscripts, metalogo .
+\usepackage{xltxtra}
+\setmainfont{Times New Roman}
+% \setmainfont{Arial}
+% \setmainfont{MathJax_Script}
+%\setmonofont{Lucida Console}
+
+% Comando que permite que el texto escrito aquí se transfiera de forma fiel al PDF
+%\defaultfontfeatures{Mapping=tex-text}
+%\newfontfamily\VladScrip{Vladimir Script}
+\newfontfamily\arialFont{Arial}
+\newfontfamily\timesnrFont{Times New Roman}
+
+% Puedo definir cuantos comandos como quiera
+%\newfontfamily\Chiller{Chiller}
+
+% Paquete que se asegura que las letras acentuadas se acentúen correctamente
+% !!! Compilar com XeTeX o LuaTeX !!!
+\usepackage{xunicode}
+
+%====> Uso de colores <===============================
+
+% \usepackage{color}
+\usepackage{xcolor}
+\definecolor{BlueST} {HTML}{00e359}
+\definecolor{GreenT} {HTML}{709b16}
+
+
+%====> Personalización de los hipervínculos <=========
+
+% más información en https://www.ctan.org/pkg/hyperref
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=anti-flashwhite
+}
+
+% Paquete que permite incluir direcciones web de forma segura
+% mas información en https://www.ctan.org/pkg/url
+\usepackage{url}
+
+%====> Letras y símbolos matemáticos <================
+
+% Paquete que mejora la presentación visual de las ecuaciones, proporciona
+% entornos adicionales para manejar varias ecuaciones o varias líneas 
+% más información en https://www.ctan.org/pkg/amsmath
+\usepackage{amsmath}
+
+% Permite el uso de símbolos y formatos de letras adicionales
+% como por ejemplo \mathfrak{letras}
+\usepackage{amsfonts}
+
+% Permite el uso de símbolos y formatos de letras adicionales
+% más información en https://mirrors.ucr.ac.cr/CTAN/fonts/amsfonts/doc/amssymb.pdf
+\usepackage{amssymb}
+
+% Define el SI, pero tiene funciones adicionales
+% más información en https://www.ctan.org/pkg/siunitx
+\usepackage{siunitx}
+
+% Negrita en cualquier texto matemático, mejor que la opción  \boldsymbol de ams
+\usepackage{bm}
+
+% Permite el uso de símbolos y formatos de letras adicionales
+% como por ejemplo \mathscr{letras}
+\usepackage{mathrsfs}
+
+% Permite el uso de comandos que introducen símbolos y entornos muy comunes en las
+% ecuaciones propias de la física, simplificando su escritura
+\usepackage{physics}
+
+% Para tachar en ecuaciones
+\usepackage[
+    makeroom,
+    ]{cancel}
+\renewcommand\CancelColor{\color{red}}
+
+%====> Enumeraciones <===============================
+
+% Permite personalizar las enumeraciones
+\usepackage{enumerate}
+
+%====> Tablas <======================================
+
+% Permite unir celdas de varias filas 
+% más información en https://www.ctan.org/pkg/multirow
+\usepackage{multirow}
+
+% Usted también puede definir su propios comandos
+% Este comando permite generar rápidamente una celda que une varias 
+% filas y que permite usar \\ como cambio de línea en la celda
+\newcommand{\minitab}[2][]{\begin{tabular}{#1}#2\end{tabular}}
+
+% Permite usar columnas de ancho preestablecido
+\usepackage{dcolumn}
+\newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+
+%====> Imágenes <====================================
+
+\usepackage{subcaption}
+\usepackage{graphicx}
+\usepackage{graphics}
+
+% Permite importar directamente los svg y procesar el texto con latex
+\usepackage{svg}
+\usepackage[off]{svg-extract}
+\svgsetup{clean=true,inkscapearea=page}
+\usepackage{relsize}
+
+\usepackage{tikz}
+\usetikzlibrary{patterns,angles}
+\usetikzlibrary{calc,arrows,shapes.arrows,intersections,math}
+\usetikzlibrary{decorations,decorations.markings,babel,positioning}
+%====> Formato de la pagina <========================
+
+% Permite dividir la hoja en varias columnas
+% más información en https://www.ctan.org/pkg/multicol
+\usepackage{multicol}
+
+%====> Gestor de bibliografía <======================
+
+% más información en https://www.ctan.org/pkg/biblatex
+\usepackage[
+    backend=biber, 
+    % style=apa, 
+    % citestyle=apa
+    ]{biblatex}
+
+% Paquete auxiliar para las citas
+\usepackage{csquotes}
+
+% \usepackage{import}
+% \usepackage{pdfpages}
+% \usepackage{transparent}
+% \usepackage{xcolor}
+
+% \newcommand{\incfig}[2][1]{%
+%     \def\svgwidth{#1\columnwidth}
+%     \import{./figures/}{#2.pdf_tex}
+% }
+% \newcommand{\incsvg}[2][1]{
+% 	\includesvg[
+% 				height = #1\textheight,
+% 				% width=\linewidth,
+% 				pretex=\relscale{1.5}
+% 			]{#2}
+% }
+% \pdfsuppresswarningpagegroup=1
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==<Definición de portada y encabezados>=============
+
+% \usepackage{fancyhdr}
+
+% %=====> Define header <==============================
+% \pagestyle{fancy}
+% \fancyhf{}
+% \lhead{\textit{Luis Fernando Umaña Castro}}
+% \rhead{\textit{Soluciones - Semana 8}}
+% \cfoot{\thepage}
+
+% %====> Espacio para el encabezado <==================
+% \setlength{\headheight}{15pt}
+% \addtolength{\topmargin}{-0.15pt}
+\usetheme{CambridgeUS}
+% \usetheme{Nord}
+\usecolortheme{whale}
+% \usecolortheme{Nord}
+\definecolor{coolblack}{rgb}{0.0, 0.18, 0.39}
+\definecolor{anti-flashwhite}{rgb}{0.95, 0.95, 0.96}
+
+\setbeamercolor{frametitle}{fg=coolblack}
+\setbeamercolor{title}{fg=anti-flashwhite}
+\setbeamercolor{title in head/foot}{fg=anti-flashwhite}
+\setbeamercolor{title in sidebar}{fg=anti-flashwhite}
+% \usefonttheme{UFide}
+\usefonttheme[onlymath]{serif}
+\title[Unidades y Vectores]{Semana 1 \\ Física, medición y vectores.}
+% The short title appears at the bottom of every slide, the full title is only on the title page
+
+\author{Luis Fernando Umaña Castro} 
+% Your name
+\institute[UCR] 
+% Your institution as it will appear on the bottom of every slide, may be shorthand to save space
+{
+Universidad de Costa Rica \\ % Your institution for the title page
+\medskip
+\textit{luis.umanacastro@ucr.ac.cr} \\ % Your email address\\ % Your institution for the title page
+\medskip
+Oficina 430FM \\ Consulta: J(9:00 a 12:00)  % Your email address
+}
+\date{} % Date, can be changed to a custom date
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==<Definición de comandos propios>=============
+\newcommand{\TCfolder}{/home/luis/.config/mytex}
+\newcommand{\AAfolder}{/home/luis/Documents/00-00AA-Apuntes}
+% \newcommand{\AAfolder}{/mnt/c/MyFiles/Documents/02-U/01-Fisica/00-00AA-Apuntes}
+\newcommand{\scrp}[1]{\mbox{\scriptsize{#1}}}
+\newcommand{\vc}[1]{\vec{\bm{{#1}}}}
+\newcommand{\vm}[1]{\bm{{#1}}}
+\newcommand{\vh}[1]{\hat{\bm{{#1}}}}
+\newcommand{\ala}[1]{$^{#1}$}
+% \renewcommand{\sin}{\mbox{ sen}}
+\let\oldunit\unit
+\renewcommand{\unit}[1]{\:\oldunit{#1}}
+\newcommand{\then}{\pause =}
+% % En el siguiente comando se indica cuál es el archivo que tiene las referencias
+\usepackage{\TCfolder/sty/ColorsLight}
+\usepackage{\TCfolder/sty/SetSymbols}
+\addbibresource{\TCfolder/bib/Biblioteca.bib}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==<Inicia el documento>=============================
+\begin{document} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\maketitle
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==<Frame>===========================================
+\section{Unidades}
+\begin{frame}\frametitle{Unidades}\pause
+    Sistema internacional de Unidades\pause
+    \begin{center}
+        \includegraphics[height = 0.7\textheight]{\AAfolder/img/10MC/NIST/C1S1-img-001}
+    \end{center}
+\end{frame}
+%==<Frame>===========================================
+\subsection{Análisis Dimensional}
+\begin{frame}
+    \frametitle{Análisis Dimensional} \pause
+    Podemos manipular los símbolos de las unidades con las reglas del álgebra \pause (leyes de los exponentes) \pause
+    \[\frac{\oldunit{m}}{\oldunit{s}^2} \cdot \oldunit{s} \then \oldunit{m . s^{-2} . s^{1}} \then  \oldunit{m . s^{-2+1} \then m . s^{-1} \then \frac{\oldunit{m}}{\oldunit{s}} } \] \pause
+    Es una buena práctica siempre revisar las unidades de la fórmula resultante en un despeje matemático\pause. Por ejemplo, analicemos si la siguiente fórmula tiene las unidades adecuadas de la velocidad $\unit{m/s}$
+    \[v = \sqrt{2gh}\]\pause
+    \[(\oldunit{m/s^2}\cdot\oldunit{m})^{1/2} \then (\oldunit{m^2/s^2})^{1/2} \then \oldunit{m/s} \]
+\end{frame}
+%==<Frame>===========================================
+\subsection{Conversión de unidades}
+\begin{frame}
+    \frametitle{Conversión de unidades} \pause
+    Se necesita una identidad entre unidades diferentes\pause, por ejemplo:
+    \[1\unit{in} = 2.54\unit{cm}\]\pause
+    A partir de la identidad se crea el factor de conversión\pause, por ejemplo:
+    \[18\unit{in}\times\underset{\minitab[c]{Factor de\\ conversión}}{\left(\frac{2.54\unit{cm}}{1\unit{in}}\right)} \then 45.72\unit{cm} \] \pause
+    El factor de conversión se construye de manera tal que se cancelen las unidades que se desean eliminar.
+\end{frame}
+%==<Frame>===========================================
+\begin{frame}
+    \frametitle{Ejemplo} \framesubtitle{Sistema imperial o inglés}\pause
+    Convertir 1 milla a kilómetros \pause
+    \[1 \unit{mi} \pause\times\frac{8 \unit{fur}}{1 \unit{mi}}\pause\times\frac{10 \unit{ch}}{1 \unit{fur}}\pause\times\frac{4 \unit{rod}}{1 \unit{ch}}\pause\times\frac{5.5 \unit{yd}}{1 \unit{rod}}\pause\times\frac{3 \unit{ft}}{1 \unit{yd}}\pause\times\frac{12 \unit{in}}{1 \unit{ft}}\pause\times\frac{2.54 \unit{cm}}{1 \unit{in}}\pause\times\frac{1 \unit{m}}{100 \unit{cm}}\pause\times\frac{1 \unit{km}}{1000 \unit{m}}\]\pause
+    \[1 \unit{mi} \times\frac{8 \unit{fur}}{1 \unit{mi}}\times\frac{10 \unit{ch}}{1 \unit{fur}}\times\frac{4 \unit{rod}}{1 \unit{ch}}\times\frac{5.5 \unit{yd}}{1 \unit{rod}}\times\frac{3 \unit{ft}}{1 \unit{yd}}\times\frac{12 \unit{in}}{1 \unit{ft}}\times\frac{2.54 \unit{cm}}{1 \unit{in}}\times\frac{1 \unit{m}}{10^2 \unit{cm}}\times\frac{1 \unit{km}}{10^3 \unit{m}}\]\pause
+    \[1 \unit{mi} \times\frac{8 \unit{fur}}{1 \unit{mi}}\times\frac{10 \unit{ch}}{1 \unit{fur}}\times\frac{4 \unit{rod}}{1 \unit{ch}}\times\frac{5.5 \unit{yd}}{1 \unit{rod}}\times\frac{3 \unit{ft}}{1 \unit{yd}}\times\frac{12 \unit{in}}{1 \unit{ft}}\times\frac{2.54 \unit{cm}}{1 \unit{in}}\times\frac{1 \unit{km}}{10^5 \unit{cm}}\]\pause
+    \[\frac {1 \times 8 \times 10 \times 4 \times 5.5 \times 3 \times 12 \times 2.54}{10^5} \then 1.609344 \unit{km}\]
+\end{frame}
+%==<Frame>===========================================
+\begin{frame}
+    \frametitle{Ejemplo} \framesubtitle{Unidades con exponentes}\pause
+    Convertir $1 \unit{cm^3}$ a $\unit{m^3}$ \pause
+    \[1\unit{cm^3} \pause\times \frac{1 \unit{m}}{100 \unit{cm}} \then 0.01 \unit{cm^2 m}\]\pause
+    \[1\unit{cm^3} \times \left(\frac{1 \unit{m}}{100 \unit{cm}}\right)^3 \then 1\unit{cm^3} \times \frac{1 \unit{m^3}}{100^3 \unit{cm}^3} \then 10^{-6} \unit{m^3}\]
+\end{frame}
+%==<Frame>===========================================
+\subsection{Múltiplos y Submúltiplos}
+\begin{frame}
+    \frametitle{Múltiplos y Submúltiplos}\pause
+    \begin{center}
+        \includegraphics[width = \textwidth]{\AAfolder/img/10MC/530_S492fi10-Serway/tab01001.png}
+    \end{center}
+\end{frame}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==<Frame>===========================================
+\section{Cantidades escalares y vectoriales.}
+\begin{frame}
+	\frametitle{Definiciones} \pause
+    \begin{description}
+        \item[Escalar] Cantidad con magnitud.\pause
+        \item[Vector] Cantidad con magnitud y dirección.\pause
+    \end{description}
+\end{frame}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==<Frame>===========================================
+\subsection{Vector}
+\begin{frame}
+	\frametitle{Naturaleza del vector}\pause
+    \begin{itemize}
+        \item Se representa en letras negritas $\bm{A}$ o con una flecha sobre la letra $\vec{A}$.\pause
+        \item Gráficamente se dibuja con una flecha.\pause \\
+        \begin{center}
+            \includesvg[
+				height = 0.1\textheight,
+				% width=\linewidth,
+				pretex=\relscale{1}
+			]{img/vecA}
+        \end{center}\pause
+		\item Dos vectores son paralelos si tienen la misma dirección, y son iguales si además tiene la misma magnitud.\pause \\
+    \end{itemize}
+	\begin{center}
+		\includesvg[
+			height = 0.2\textheight,
+			% width=\linewidth,
+			pretex=\relscale{1}
+		]{img/vecA-vecB}
+	\end{center}
+\end{frame}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==<Frame>===========================================
+\subsection{Vector}
+\begin{frame}
+	\frametitle{Naturaleza del vector}\pause
+	\begin{itemize}
+        \item Un vector negativo significa que tiene la misma magnitud que el vector original pero dirección opuesta.\pause
+        \begin{center}
+            \includesvg[
+				height = 0.2\textheight,
+				% width=\linewidth,
+				pretex=\relscale{1}
+			]{img/vecBasNegVecA}
+        \end{center}\pause
+        \item La magnitud de un vector se puede representar de la forma: Magnitud de $\vc{A} = A = |\vc{A}|$.\pause
+        \item La magnitud es un escalar y siempre es positiva.
+    \end{itemize}
+\end{frame}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==<Frame>===========================================
+\section{Componentes de un vector y vectores unitarios.}
+\begin{frame}
+	\frametitle{Componentes del vector}\pause
+	\begin{itemize}
+		\item Establecer un sistema rectangular de ejes de coordenadas.\pause
+        \begin{center}
+            \includesvg[
+				height = 0.2\textheight,
+				% width=\linewidth,
+				pretex=\relscale{1}
+			]{img/cartCoord}
+        \end{center}\pause
+		\item Colocar el vector con el inicio en el origen $\mathcal{O}$.\pause
+        \begin{center}
+            \includesvg[
+				height = 0.2\textheight,
+				% width=\linewidth,
+				pretex=\relscale{1}
+			]{img/cartCoordVecA}
+        \end{center}
+	\end{itemize}
+\end{frame}
+%==<Frame>===========================================
+\begin{frame}
+	\frametitle{Componentes del vector}\pause
+	\begin{itemize}
+		\item Distinguir las proyecciones del vector sobre cada eje ($\vAx$ y ${A}_y$).\pause
+        \begin{center}
+            \includesvg[
+				height = 0.2\textheight,
+				% width=\linewidth,
+				pretex=\relscale{1}
+			]{img/cartCoordVecAComp}
+        \end{center}\pause
+		\item Las componentes son las magnitudes de dichas proyecciones, son escalares.\pause
+		\item Las componentes junto con el vector forman un triangulo rectángulo.\pause
+        \begin{center}
+            \includesvg[
+				height = 0.2\textheight,
+				% width=\linewidth,
+				pretex=\relscale{1}
+			]{img/vecACompTriang}
+        \end{center}\pause
+		La magnitud del vector es la hipotenusa del triángulo, y las componentes los catetos.
+	\end{itemize}
+\end{frame}
+%==<Frame>===========================================
+\begin{frame}
+	\frametitle{Componentes del vector}\pause
+
+    \begin{columns}
+		\begin{column}{0.5\textwidth}
+    \centering%
+    \textbf{Coordenadas Cartesianas}
+%========================================================================
+    \begin{tikzpicture}[x=2cm,y=2cm,line width=1.25pt,cap=round,>=latex]
+% Definitions------------------------------------------------------------
+        \tikzmath{
+        \xVal = sqrt(3)/2;
+        \yVal = 0.5;
+        }
+        \coordinate(o) at (0,0);
+        \coordinate(p) at (30:1);
+        \coordinate(px) at (\xVal,0);
+        \coordinate(py) at (0,\yVal);
+        
+        \path (-0.2,-0.2) -- (1.2,1.2);
+% Axis-------------------------------------------------------------------
+        \draw[->, draw = PosX] (-0.1,0) -- (1,0) node[anchor = west] {$\vi$};
+        \draw[->, draw = PosY] (0,-0.1) -- (0,1) node[anchor = south] {$\vj$};
+% Polar components-------------------------------------------------------
+%Diffused----------------------------------------------------------------
+        \draw[->,draw = black!60!white] (o) -- (p) node[anchor=south west,at end] {$\vA = (\vAx,\vAy)$};
+            
+% Cartesian components---------------------------------------------------
+%Solid-------------------------------------------------------------------
+        \draw[dashed,draw = PosX] (p) -- (px) node[anchor = north] {$\vAx$};
+        \draw[dashed,draw = PosY] (p) -- (py) node[anchor = east] {$\vAy$};
+    \end{tikzpicture}
+%========================================================================
+    \end{column} \pause
+    \begin{column}{0.5\textwidth}
+    \centering
+    \textbf{Coordenadas Polares} \newline
+%========================================================================
+\begin{tikzpicture}[x=2cm,y=2cm,line width=1.25pt,cap=round,>=latex]
+% Definitions------------------------------------------------------------
+    \tikzmath{
+    \xVal = sqrt(3)/2;
+    \yVal = 0.5;
+    }
+    \coordinate(o) at (0,0);
+    \coordinate(p) at (30:1);
+    \coordinate(px) at (\xVal,0);
+    \coordinate(py) at (0,\yVal);
+    
+    \path (-0.2,-0.2) -- (1.2,1.2);
+    
+% Axis-------------------------------------------------------------------
+    \draw[->, draw = PosX] (0,0) -- (1,0) node[anchor = north west] {$\vi$};
+    
+% Polar components-------------------------------------------------------
+%Solid-------------------------------------------------------------------
+    \draw[->,draw = black] (o) -- (p) node[anchor=south west, at end] {$\vA = (\mvA,\vAt)$};
+    \draw[draw = black!75!white] (0.5,0) arc [start angle=0, end angle=30, radius=0.5] node[anchor=west, midway] {$\vAt$};;
+\end{tikzpicture}
+%========================================================================
+
+\end{column}
+\end{columns}
+\end{frame}
+%==<Frame>===========================================
+\begin{frame}
+	\frametitle{Cálculo de las componentes a partir de magnitud y dirección del vector}\pause
+	\begin{itemize}
+		\item Se usan las definiciones de las funciones trigonométricas.\pause
+		\item La dirección del vector se representa como el ángulo $\vAt$ que forma el vector con respecto a un eje.\pause
+		\newline Para asignar el seno o el coseno es importante tener bien claro cuál es el eje desde el cual se está asignando el ángulo.\pause
+		\newline \textbf{Seno} Situándose en el ángulo pregunto ¿cuál cateto está en frente al ángulo?, la magnitud de ese cateto es $\mvA\sin\vAt$.\pause
+		\newline \textbf{Coseno} Situándose en el ángulo pregunto ¿cuál cateto está a la par del ángulo?, la magnitud de ese cateto es $\mvA\cos\vAt$.\pause
+	\end{itemize}\begin{center}
+%========================================================================
+	\begin{tikzpicture}[x=2cm,y=2cm,line width=1.25pt,cap=round,>=latex]
+			% Definitions------------------------------------------------------------
+				\tikzmath{
+				\xVal = sqrt(3)/2;
+				\yVal = 0.5;
+				}
+				\coordinate(o) at (0,0);
+				\coordinate(p) at (30:1);
+				\coordinate(px) at (\xVal,0);
+				\coordinate(py) at (0,\yVal);
+				
+			% Axis-------------------------------------------------------------------
+				\draw[draw = PosX] (0,0) -- (\xVal,0) node[anchor = north, midway] {$\vAx = \mvA\cos\vAt $};
+				\draw[draw = PosY] (\xVal,0) -- (\xVal,\yVal) node[anchor = west, midway] {$\vAy = \mvA\sin\vAt$};
+				
+			% Polar components-------------------------------------------------------
+			%Solid-------------------------------------------------------------------
+				\draw[->,draw = Pos!75!red] (o) -- (p) node[anchor=south east, midway] {$\mvA$};
+				\draw[draw = Pos!60!red] (0.5,0) arc [start angle=0, end angle=30, radius=0.5] node[anchor=west, midway] {$\vAt$};;
+		\end{tikzpicture}
+		%========================================================================
+		\hspace{3cm}
+		%========================================================================
+		\begin{tikzpicture}[x=2cm,y=2cm,line width=1.25pt,cap=round,>=latex]
+			% Definitions------------------------------------------------------------
+				\tikzmath{
+				\xVal = sqrt(3)/2;
+				\yVal = 0.5;
+				}
+				\coordinate(o) at (0,0);
+				\coordinate(p) at (30:1);
+				\coordinate(px) at (\xVal,0);
+				\coordinate(py) at (0,\yVal);
+				
+			% Axis-------------------------------------------------------------------
+				\draw[draw = PosX] (0,\yVal) -- (\xVal,\yVal) node[anchor = south, midway] {$\vAx = \mvA\sin\tAB $};
+				\draw[draw = PosY] (0,0) -- (0,\yVal) node[anchor = east, midway] {$\vAy = \mvA\cos\tAB$};
+				
+			% Polar components-------------------------------------------------------
+			%Solid-------------------------------------------------------------------
+				\draw[->,draw = Pos!75!red] (o) -- (p) node[anchor=north west, midway] {$\mvA$};
+				\draw[draw = blue] (30:0.25) arc [start angle=30, end angle=90, radius=0.25] node[anchor=south west, midway] {$\tAB$};;
+		\end{tikzpicture}
+		%========================================================================
+	\end{center}
+\end{frame}
+%==<Frame>===========================================
+\begin{frame}
+	\frametitle{Cálculo de la magnitud y dirección del vector a partir de las componentes del vector}\pause
+	\begin{itemize}
+		\item \textbf{Magnitud} Se usa el teorema de Pitágoras.
+		\begin{equation}
+			\mvA = \sqrt{\vAx^2 + \vAy^2}
+			\label{eq:10MC:C1S2:Pitagoras}
+		\end{equation}\pause
+		\item \textbf{Dirección} Se utiliza la definición del tangente $\displaystyle\tan\vAt = \frac{\vAy}{\vAx}$.\pause
+		\begin{equation}
+			\vAt = \arctan(\frac{\vAy}{\vAx})
+			\label{eq:10MC:C1S2:CalcAng}
+		\end{equation}\pause
+		\newline En general es necesario tener cuidado al momento de indicar la dirección, ya que esta función tiene dos soluciones.\pause
+		% \newline Las calculadoras suelen dar el valor el ángulo que forma parte del triángulo rectángulo.\pause
+		% \newline Según se definió en \eqref{eq:10MC:C1S2:CalcAng} la calculadora daría el ángulo entre el eje que contenga a $\vAx$ y la hipotenusa.
+	\end{itemize}
+\end{frame}
+%==<Frame>===========================================
+\begin{frame}
+	\frametitle{Vectores unitarios}\pause
+	\begin{itemize}
+		\item Son vectores con magnitud igual a 1.\pause
+		\item Su finalidad es describir una dirección.\pause
+		\item Se reconocen por usar el acento circunflejo $\vh{a}$ en lugar de la flecha o simplemente la negrita.\pause
+		\item Consenso:
+		\begin{itemize}
+			\item La dirección positiva del eje x se describe por $\vh{i}$.
+			\item La dirección positiva del eje y se describe por $\vh{j}$.
+			\item La dirección positiva del eje z se describe por $\vh{k}$.
+		\end{itemize}
+	\end{itemize}
+\end{frame}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==<Frame>===========================================
+\section{Operaciones con vectores}
+\begin{frame}
+	\frametitle{Suma de vectores}\pause
+	\begin{itemize}
+		\item La suma vectorial es una operación geométrica.\pause
+	\end{itemize}
+	\begin{figure}[!ht]
+		\centering
+		\includegraphics[width=\textwidth]{\AAfolder/img/10MC/530_S439fi12-Sears/C1S2-img-001.png} 
+		\caption[caption]{Suma de vectores. \hfill {\footnotesize {Fuente:} \cite{Sears1}}}
+		\label{fg:10MC:C1S2:SumaVec}
+	\end{figure}
+	\begin{itemize}
+		\item Es conmutativa: El orden de los vectores no altera el resultado.\pause
+		\item Es asociativa: Si se tienen tres vectores se pueden sumar primero dos y luego el tercero.
+	\end{itemize}
+\end{frame}
+%==<Frame>===========================================
+\begin{frame}
+	\frametitle{Importancia de la suma vectorial}\pause
+	\begin{itemize}
+		\item Todo vector se puede representar como la suma vectorial de las dos proyecciones que genera $\vc{A} = \vc{A}_x + \vc{A}_y$.\pause
+		\item Cualquier vector se puede escribir como la suma de sus componentes, cada una multiplicando el vector unitario que marca la dirección sobre la cual se calculó la componente\pause
+		\begin{equation}
+			\vA = \vAx\vh{i} + \vAy\vh{j} + \vAz\vh{k}
+			\label{eq:10EM:VecUnit}
+		\end{equation}\pause
+		\item Esta notación facilita el álgebra vectorial.
+	\end{itemize}
+\end{frame}
+%==<Frame>===========================================
+\begin{frame}
+	\frametitle{Suma usando componentes de vectores} \pause
+	Sea \[\vA = \vAx \vh{i} + \vAy \vh{j} + \vAz \vh{k} \] \pause y \[\vB = \vBx \vh{i} + \vBy \vh{j} + \vBz \vh{k} \] \pause
+	% Se tiene que tomar todas las componentes que correspondan a una misma dirección. Se suman todas ellas, el resultado es el valor de la componente en la dirección seleccionada del vector resultante.
+	Procedemos entonces a realizar la suma
+	\[\vA + \vB = (\vAx\vi + \vAy\vj + \vAz\vk) + (\vBx\vi + \vBy\vj + \vBz\vk)\]
+	\[\vA + \vB = \vAx\vi + \vBx\vi + \vAy\vj + \vBy\vj + \vAz\vk + \vBz\vk\]
+	\[\vA + \vB = (\vAx + \vBx)\vi + (\vAy + \vBy)\vj + (\vAz + \vBz)\vk\]
+	Se puede generalizar el proceso diciendo que se suman toas las componentes que vayan en la misma dirección, sin importar la cantidad de vectores.
+	% \begin{itemize}
+	% 	\item Se tiene que tomar todas las componentes que correspondan a una misma dirección. 
+	% 	\item Se suman todas ellas, el resultado es el valor de la componente en la dirección seleccionada del vector resultante.
+	% 	\item Esto se debe repetir con cada dirección para obtener todas las componentes del vector resultante.
+	% \end{itemize}
+\end{frame}
+%==<Frame>===========================================
+\begin{frame}
+	\frametitle{Multiplicación con un escalar}
+	\par Al multiplicar un vector por un escalar, se multiplica la magnitud del vector y se mantiene la dirección.\pause Esto es completamente equivalente a multiplicar cada una de las componentes por el mismo escalar \pause
+	\[c\vA \then (c\mvA, \vAt) \then (c\vAx,c\vAy,c\vAz)\]\pause
+	\begin{center}
+		\includesvg[
+			height = 0.2\textheight,
+			% width=\linewidth,
+			pretex=\relscale{1}
+		]{img/2vecA}
+	\end{center}
+\end{frame}
+%==<Frame>===========================================
+\begin{frame}
+	\frametitle{Producto punto (escalar)}
+	\begin{itemize}\pause
+		\item Se llama producto escalar, porque el resultado de este producto entre dos vectores es un escalar\pause
+		\item Se denota con un punto $\vA\cdot\vB$.\pause
+		\item Es Conmutativo\pause
+		\item Se define el ángulo $\tAB$ como el ángulo entro los dos vectores (al colocar el inicio de ambos en un mismo punto) \pause
+		\begin{equation}
+			\vA\cdot\vB = \mvA\mvB\cos\tAB
+			\label{eq:10MV:DefProdPunto}
+		\end{equation}\pause
+		\item El \textbf{producto escalar} de dos vectores \textbf{perpendiculares} es \textbf{siempre} cero.
+	\end{itemize}
+\end{frame}
+%==<Frame>===========================================
+\begin{frame}
+	\frametitle{Producto punto (escalar)}
+	Usando componentes \pause
+	\[\mqty{\vA\cdot\vB &=&  (\vAx\vi+\vAy\vj+\vAz\vk)\cdot(\vBx\vi+\vBy\vj+\vBz\vk) }\]\pause
+	note que en el lado derecho podemos distribuir el producto término por término:\pause
+	\[\mqty{\vA\cdot\vB 
+	&=& \vAx\vBx(\vi\cdot\vi) + \vAx\vBy(\vi\cdot\vj) + \vAx\vBz(\vi\cdot\vk) \\\pause
+	&& +\vAy\vBx(\vj\cdot\vi) + \vAy\vBy(\vj\cdot\vj) + \vAy\vBz(\vj\cdot\vk) \\\pause
+	&& +\vAz\vBx(\vk\cdot\vi) + \vAz\vBy(\vk\cdot\vj) + \vAz\vBz(\vk\cdot\vk) }\]\pause
+	considere que
+	\[\vi\cdot\vi = \vj\cdot\vj =\vk\cdot\vk \then 1\cdot 1 \cos 0 \then 1\] \pause
+	\[\vi\cdot\vj = \vj\cdot\vk =\vk\cdot\vi \then 1\cdot 1 \cos 90^{\circ} \then 0\] \pause
+		\begin{equation}
+			\vc{A}\cdot\vc{B} = \vAx\vBx+\vAy\vBy+\vAz\vBz
+			\label{eq:10MC:C1S2:ProdPuntComp}
+		\end{equation}
+\end{frame}
+%==<Frame>===========================================
+\begin{frame}
+	\frametitle{Producto cruz (vectorial)}
+	\begin{itemize}
+		\item El resultado de un producto cruz es un vector. \pause
+		\item El vector resultante es perpendicular simultáneamente a ambos vectores. \pause
+		\item Se designa con una equis $\vA\times\vB= \vc{C}$. \pause
+		\item La \textbf{magnitud} del vector resultante se puede calcular de la forma
+		\begin{equation}
+		C = \mvA\mvB\sin\tAB
+		\label{eq:10MC:C1S2:DefMagProdCruz}
+		\end{equation} \pause
+		\item La dirección positiva del vector resultante se designa por la regla de la mano derecha\pause
+		\newline Usando la mano \textbf{derecha} se extienden los dedo en dirección del primer vector, luego se cierra el puño en dirección al segundo vector. La dirección que tenga el pulgar es la dirección positiva.\pause
+		\item El producto cruz \textbf{NO} es conmutativo.\pause
+		\item El \textbf{producto cruz} de dos vectores \textbf{paralelos} es \textbf{siempre} cero.
+	\end{itemize}
+\end{frame}
+%==<Frame>===========================================
+\begin{frame}
+	\frametitle{Producto cruz (vectorial)}\pause
+	Usando componentes\pause
+	\[\mqty{\vA\times\vB &=&  (\vAx\vi+\vAy\vj+\vAz\vk)\times(\vBx\vi+\vBy\vj+\vBz\vk) \\\pause
+	&=& \vAx\vBx\vi\times\vi + \vAx\vBy\vi\times\vj + \vAx\vBz\vi\times\vk \\ \pause
+	&& +\vAy\vBx\vj\times\vi + \vAy\vBy\vj\times\vj + \vAy\vBz\vj\times\vk \\\pause
+	&& +\vAz\vBx\vk\times\vi + \vAz\vBy\vk\times\vj + \vAz\vBz\vk\times\vk }\]\pause
+	considere que\pause
+	\[\vi\times\vi = \vj\times\vj =\vk\times\vk = 0\]\pause
+	\par En cuanto a direcciones diferentes siguen el siguiente orden:\pause
+	\[\mqty{\vi\times\vj = \vk \pause&\hspace{0.5cm}& \vj\times\vi = -\vk \\\pause
+			\vj\times\vk = \vi \pause&\hspace{0.5cm}& \vk\times\vj = -\vi \\\pause
+			\vk\times\vi = \vj \pause&\hspace{0.5cm}& \vi\times\vk = -\vj}\]
+\end{frame}
+%==<Frame>===========================================
+\begin{frame}
+	\frametitle{Producto cruz (vectorial)}\pause
+	Agrupando en el producto vectorial y sustituyendo los productos entre direcciones se obtiene que:\pause
+		\begin{equation}
+            \vA\times\vB = \left(\vAy\vBz - \vAz\vBy\right)\vh{i} + \left(\vAz\vBx - \vAx\vBz\right)\vh{j} + \left(\vAy\vBx - \vAx\vBy\right)\vh{k}
+            \label{eq:10MC:C1S2:ProdCruzComp}
+		\end{equation}\pause
+	\begin{itemize}
+		\item También se puede calcular por medio de la notación matricial del determinante\pause
+	\end{itemize} 
+		\begin{equation}
+            \vA\times\vB = \mqty|\vh{i}&\vh{j}&\vh{k}\\\vAx&\vAy&\vAz\\\vBx&\vBy&\vBz|
+            \label{eq:10MC:C1S2:ProdCruzDet}
+		\end{equation}
+\end{frame}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==<Bibliografía>====================================
+%   Para la bibliografía se usa el gestor de referencias bibtex. Toda la información de las referencias
+% se pone en un archivo aparte con la terminación .bib y se agrega aquí
+%
+%==<Frame>===========================================
+\begin{frame}
+    \printbibliography
+\end{frame}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==<Apéndice>========================================
+%   Se puede crear apéndices que luego se pueden referenciar con la etiqueta
+% \appendix
+% \section{Figuras \label{app:fig}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==<Fin del documento>===============================
+\end{document}

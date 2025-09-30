@@ -1,0 +1,146 @@
+% !TeX program = lualatex
+% !TeX root    = main.tex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[
+  11pt,
+  % notitlepage,
+  openany,
+  twoside,
+  %twocolumn,
+  ]{article}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  %==< Definir paquetes >======================================================
+  \usepackage{config/0_packages}
+  \usepackage{config/1_loyaut}
+  \usepackage{config/2_commands}
+  \usepackage{config/2_partial}
+  \usepackage{config/3_units}
+  %==<Definir bibliografía>====================================================
+  \usepackage{config/4_biber}
+  %==< Definir recursos visuales >=============================================
+  \graphicspath{
+    {img}
+    % {\FisicaDir/00II-ImagesFigures/10MC}
+    % {\FisicaDir/00II-ImagesFigures/20TD}
+    % {\FisicaDir/00II-ImagesFigures/40EM}
+    % {\FisicaDir/00II-ImagesFigures/530_B344f1-Bauer}
+    % {\FisicaDir/00II-ImagesFigures/530_G433f4-Giancoli}
+    % {\FisicaDir/00II-ImagesFigures/530_R434f4-resnickF4}
+    % {\FisicaDir/00II-ImagesFigures/530_R434f5-resnick}
+    % {\FisicaDir/00II-ImagesFigures/530_S439fi12-Sears}
+    % {\FisicaDir/00II-ImagesFigures/530_S439fi14-Sears}
+    % {\FisicaDir/00II-ImagesFigures/530_S492fi10-Serway}
+    % {\FisicaDir/00II-ImagesFigures/530_W696f6}
+    % {\FisicaDir/00II-ImagesFigures/icons}
+  }
+  %==< Definir información general >===========================================
+  \title{}
+  \date{}
+  \usepackage{config/5_profiles}
+  \setclass{FS0210}
+  \setcycle{2025-II}
+  \setgroup{02}
+  \setpartialnumber{1}
+  \usepackage{config/6_headers}
+  %==<Definir uso de indice y glosarios >======================================
+  \pagestyle{plain}
+  % \setbool{test}{true}
+  % \setbool{solutions}{true}
+  % \makeindex
+  % \makeglossaries
+  % \glstoctrue
+  %==<Definir glosarios y siglas>==============================================
+  % \input{tex/00-Glossaries/00-Glossary.tex}
+  % \input{tex/00-Glossaries/01-Acronyms.tex}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==<Inicia documento>==========================================================
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\thispagestyle{partial}
+\begin{center}
+  % {\Huge \thetitle} \\[2em]
+  {\large \thepartial} \hfill
+  {\large \thecycle} % \medskip \\
+\end{center}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\ifthenelse{\boolean{solutions}}{
+  \pdfbookmark{Índice General}{section}
+  \tableofcontents
+  \newpage\phantomsection
+  \addcontentsline{toc}{section}{\thegroup  - \thecycle}
+  \begin{center}
+    \large{\thegroup}
+    \hfill
+    \large{\thecycle}
+  \end{center}
+}{
+  \paragraph{Indicaciones}
+  Lea y responda cada enunciado según se le indica. 
+  Solo se atenderán dudas sobre la forma en que están redactas las preguntas, 
+  por lo cual se le pide que se abstenga de hacer preguntas por sus 
+  procedimientos.
+  Escriba todas sus soluciones en hojas aparte (puede usar hojas en blanco
+  engrapada o un cuaderno de examen).
+  Asegúrese de escribir todos los pasos que realizó para obtener los
+  resultados.
+  Utilice lapicero de tinta azul o negra, si deja el examen en lápiz no se
+  aceptarán reclamos posteriormente.
+  Cuenta con 2 horas para realizar el examen.
+  % A continuación se le ofrecen dos ejercicios por tema, debe escoger uno de los
+  % dos y resolverlo. Solo se revisará un ejercicio por tema, así que indique 
+  % claramente cual ejercicio está resolviendo. En caso de que no se indique 
+  % claramente se tomará el primer ejercicio de un tema que se resuelva como el 
+  % ejercicio a revisar. Escriba en el cuaderno de examen el número de pregunta, 
+  % todos los datos, ecuaciones y procedimientos necesarios para obtener el 
+  % resultado solicitado. No olvide que la respuesta es una frase final en la cual 
+  % se responde a la pregunta del enunciado.
+}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{enumerate}[1.]
+    \input{}
+    \ifbool{solutions}{\newpage\phantomsection}{}
+    \input{}
+    \ifbool{solutions}{\newpage\phantomsection}{}
+    \input{}
+\end{enumerate}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \ifthenelse{\boolean{solutions}}{}{
+%   \begin{figure}[h!]
+%     \centering
+%     \begin{subfigure}{0.3\textwidth}
+%       \includegraphics[width=\hsize]{}
+%       \caption*{Problema 1}
+%     \end{subfigure}
+%     \hfill
+%     \begin{subfigure}{0.3\textwidth}
+%       \includegraphics[width=\hsize]{}
+%       \caption*{Problema 2}
+%     \end{subfigure}
+%     \hfill
+%     \begin{subfigure}{0.3\textwidth}
+%       % \centering
+%       \def\svgwidth{\hsize}
+%       \import{figures/}{LenteConvergente.pdf_tex}
+%       \caption*{Problema 3}
+%     \end{subfigure}
+%   \end{figure}
+% }
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \newpage
+% \phantomsection
+% \begin{multicols}{2}
+% \input{Formulario4.tex}
+% \end{multicols}
+% \includepdf[
+%   addtotoc={
+%     1, 
+%     section,
+%     1,
+%     {Fórmulas del \thepartial - profesor (a)},
+%     formulario
+%   }
+%   ]{formulario-P\thepartialNumber.pdf}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end{document}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

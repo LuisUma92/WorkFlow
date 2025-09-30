@@ -1,0 +1,152 @@
+% !TeX program = lualatex
+% !TeX root    = main.tex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[
+  12pt,
+  notitlepage,
+  openany,
+  twoside,
+  %twocolumn,
+  ]{book}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  %==< Definir paquetes >======================================================
+  \usepackage{config/0_packages}
+  \usepackage{config/1_loyaut}
+  \usepackage{config/2_commands}
+  \usepackage{config/3_units}
+  %==<Definir bibliografía>====================================================
+  \usepackage{config/4_biber}
+  %==< Definir recursos visuales >=============================================
+  \graphicspath{
+    {img}
+    % {\FisicaDir/00II-ImagesFigures/10MC}
+    % {\FisicaDir/00II-ImagesFigures/20TD}
+    % {\FisicaDir/00II-ImagesFigures/40EM}
+    % {\FisicaDir/00II-ImagesFigures/530_B344f1-Bauer}
+    % {\FisicaDir/00II-ImagesFigures/530_G433f4-Giancoli}
+    % {\FisicaDir/00II-ImagesFigures/530_R434f4-resnickF4}
+    % {\FisicaDir/00II-ImagesFigures/530_R434f5-resnick}
+    % {\FisicaDir/00II-ImagesFigures/530_S439fi12-Sears}
+    % {\FisicaDir/00II-ImagesFigures/530_S439fi14-Sears}
+    % {\FisicaDir/00II-ImagesFigures/530_S492fi10-Serway}
+    % {\FisicaDir/00II-ImagesFigures/530_W696f6}
+    % {\FisicaDir/00II-ImagesFigures/icons}
+  }
+  %==< Definir información general >===========================================
+  % \title{}
+  % \date{}
+  \usepackage{config/5_profiles}
+  % \setclass{FS0210}
+  % \setcycle{2024-II}
+  % \setgroup{02}
+  \usepackage{config/6_headers}
+  %==<Definir uso de indice y glosarios >======================================
+  % \setbool{main}{true}
+  % \setbool{solutions}{true}
+  % \makeindex
+  % \makeglossaries
+  % \glstoctrue
+  %==<Definir glosarios y siglas>==============================================
+  % \input{tex/00-Glossaries/00-Glossary.tex}
+  % \input{tex/00-Glossaries/01-Acronyms.tex}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==<Inicia documento>==========================================================
+\begin{document} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  \frontmatter
+  \pagestyle{pres}
+  \fancypagestyle{plain}[plainPres]{}
+  \pdfbookmark[0]{Portada}{portada}
+  \maketitle
+  % \input{config/title.tex}
+  % \pdfbookmark[0]{Índice general}{idxG}
+  \addcontentsline{toc}{chapter}{Índice General}
+  \tableofcontents
+  % \newpage
+  % \addcontentsline{toc}{chapter}{Lista de tablas}
+  % \listoftables
+  % \newpage
+  % \addcontentsline{toc}{chapter}{Lista de ilustraciones y figuras}
+  % \listoffigures
+  % \printacronyms
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  \mainmatter
+  \newpage
+  \pagestyle{cuerpo}
+  \fancypagestyle{plain}[plainCuerpo]{}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter*{Introducción} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\addcontentsline{toc}{chapter}{Introducción} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \chapter{} % \label{} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% \section{} % \label{} %=======<section>=======================================
+% \input{./tex//C1S1-001.tex}
+% \input{./tex//C1S1-002.tex} 			% Ejemplos
+% \input{./solu//C1S1-003.tex} 			% Soluciones
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==<Bibliografía>==============================================================
+%   Para la bibliografía se usa el gestor de referencias bibtex.
+% Toda la información de las referencias se pone en un archivo aparte con la
+% terminación .bib y se agrega aquí
+% \printbibliography[heading=bibintoc]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==< Apéndice >================================================================
+%   Se puede crear apéndices que luego se pueden referenciar con la etiqueta
+% \appendix
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==< Problemas >===============================================================
+% \chapter{Problemas recomendados} % \label{appe:exas} %%%%%%%%%%%%%%%%%%%%%%%%%
+% \setbool{solutions}{false}
+  % \input{\FisicaDir/00EE-ExamplesExercises/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/10MC/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/20TD/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/40EM/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/50MQ/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/80MR/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/er-530_H193f10-Halliday/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/er-530_I71-Irodov/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/er-530_R434f4-resnickF4/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/er-530_R434f5-resnick/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/er-530_S439fi12-Sears/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/er-530_S439fi14-Sears/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/er-530_S492fi10-Serway/}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==< Soluciones >==============================================================
+% A continuación se adjunto el solucionario de todos los ejercicios del libro 
+% \chapter{Solucionario} % (\cite{})} % \label{appe:solu} %%%%%%%%%%%%%%%%%%%%%
+% \setbool{solutions}{true}
+  % \input{\FisicaDir/00EE-ExamplesExercises/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/10MC/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/20TD/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/40EM/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/50MQ/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/80MR/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/er-530_H193f10-Halliday/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/er-530_I71-Irodov/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/er-530_R434f4-resnickF4/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/er-530_R434f5-resnick/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/er-530_S439fi12-Sears/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/er-530_S439fi14-Sears/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/er-530_S492fi10-Serway/}
+  % \input{\FisicaDir/00EE-ExamplesExercises/00EE.tex}
+  % \input{\FisicaDir/00EE-ExamplesExercises/H193f4-solu.tex}
+  % \input{\FisicaDir/00EE-ExamplesExercises/ER-530_R434f5.tex}
+  % \input{\FisicaDir/00EE-ExamplesExercises/C10S00-530_S492fi10-Serway.tex}
+  % \input{\FisicaDir/00EE-ExamplesExercises/NewNote.tex}
+  % \input{\FisicaDir/00EE-ExamplesExercises/PE-2024-candidaturaUCR.tex}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%====<Glossary>================================================================
+% \printglossaries
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==<Index>=====================================================================
+% \printindex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==<Fin del documento>=========================================================
+\end{document}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

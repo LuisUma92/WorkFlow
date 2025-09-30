@@ -11,17 +11,17 @@ classifiers = ["Development Status :: 2 - Pre-Alpha"]
 dependencies = ["appdirs", "bibtexparser", "click"]
 
 [project.scripts]
-bib2yaml = "workflow.bib2yaml:cli"
+bib2yaml = "prismar.bib2yaml:cli"
 cleta = "workflow.cleta:cli"
 crete = "workflow.crete:cli"
-mergebib = "workflow.mergebib:cli"
-nofi = "workflow.nofi:cli"
-nori = "workflow.nori:cli"
-prisma-import-bib = "workflow.prismaimportbib:cli"
-prisma-review = "workflow.prismareview:cli"
+mergebib = "prismar.mergebib:cli"
+nofi = "prismar.nofi:cli"
+nori = "prismar.nori:cli"
+prisma-import-bib = "prismar.prismaimportbib:cli"
+prisma-review = "prismar.prismareview:cli"
 
 [build-system]
 requires = ["setuptools"]
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["packages", "apps"]

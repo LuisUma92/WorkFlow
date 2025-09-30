@@ -1,0 +1,231 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==< Importación de paquetes >=================================================
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%=====< Layout >===============================================================
+  % Establece márgenes y tamaños
+  \usepackage{geometry}
+
+%====< Definición del idioma del documento >===================================
+  % Paquete que cambia títulos y palabras claves al idioma seleccionado
+  \usepackage[spanish]{babel}
+
+%====< Fonts >=================================================================
+  % Font loader para LuaLaTeX
+  \usepackage{luaotfload}
+  % Permite abrir OpenType fonts
+  \usepackage{fontspec}
+  % Permite usa características de OpenType fonts para glyphs
+  \usepackage{realscripts}
+  % Definiendo las fuentes
+  % \defaultfontfeatures[NotoSerif NF]{
+  %   Path            = /usr/share/fonts/TTF/,
+  %   Extension      = .ttf,
+  %   UprightFont    = NotoSerifNerdFont-Light,
+  %   BoldFont       = NotoSerifNerdFont-Black,
+  %   ItalicFont     = NotoSerifNerdFont-Italic,
+  %   BoldItalicFont = NotoSerifNerdFont-BlackItalic,
+  % }
+  % \defaultfontfeatures[NotoSans NF]{
+  %   Path            = /usr/share/fonts/TTF/,
+  %   Extension       = .ttf,
+  %   UprightFont     = NotoSansNerdFont-Regular,
+  %   BoldFont        = NotoSansNerdFont-Light,
+  %   ItalicFont      = NotoSansNerdFont-Italic,
+  %   BoldItalicFont  = NotoSansNerdFont-BlackItalic,
+  % }
+  % \setmainfont{NotoSerif NF}
+  % \setsansfont{NotoSans NF}
+  % \setmonofont{NotoMonoNerdFont-Regular}[
+  %   Path            =/usr/share/fonts/TTF/
+  % ]
+  % \setmathrm{NotoSerif NF}
+  % \setmainfont{Cambria}
+  % \setmainfont{Times New Roman}
+  % \setmainfont{Arial}
+  % \setmainfont{MathJax_Script}
+  % \setmonofont{Lucida Console}
+  % \newfontfamily\VladScrip{Vladimir Script}
+  % \newfontfamily\arialFont{Arial}
+  % \newfontfamily\timesnrFont{Times New Roman}
+  % \newfontfamily\Chiller{Chiller}
+  % Paquete que permite hacer dinglist:
+  %     > Manito a la derecha 43
+  %     > Por lo tanto 254
+  %     > Tríangulo negro 228
+  \usepackage{pifont}
+
+%====< Uso de colores >========================================================
+  \usepackage{xcolor}
+  \definecolor{BlueST} {HTML}{00e359}
+  \definecolor{GreenT} {HTML}{709b16}
+  \definecolor{coolblack}{rgb}{0.0, 0.18, 0.39}
+  \definecolor{anti-flashwhite}{rgb}{0.95, 0.95, 0.96}
+  \definecolor{celesteUCR}{HTML}{00c0f3}
+  \definecolor{celeste2UCR}{HTML}{8ed8f8}
+  \definecolor{celeste3UCR}{HTML}{bad2cd}
+  \definecolor{celeste4UCR}{HTML}{80a9ba}
+  \definecolor{azulUCR}{HTML}{005da4}
+  \definecolor{amarilloUCR}{HTML}{ffe06a}
+  \definecolor{amarillo2UCR}{HTML}{ffdd00}
+  \definecolor{amarillo3UCR}{HTML}{e9c31e}
+  \definecolor{amarillo4UCR}{HTML}{fdb912}
+  \definecolor{naranja1UCR}{HTML}{e5b365}
+  \definecolor{naranja2UCR}{HTML}{f99d1c}
+  \definecolor{naranja3UCR}{HTML}{f37021}
+  \definecolor{cafe1UCR}{HTML}{b7de11}
+  \definecolor{cafe2UCR}{HTML}{7b3400}
+  \definecolor{cafe3UCR}{HTML}{670000}
+  \definecolor{verdeUCR}{HTML}{6dc067}
+  \definecolor{verde2UCR}{HTML}{b9d897}
+  \definecolor{verde3UCR}{HTML}{8dc63f}
+  \definecolor{verde4UCR}{HTML}{008641}
+
+  \definecolor{amarilloUFide}{HTML}{fcd730}
+  \definecolor{azulUFide}{HTML}{020e9f}
+  \definecolor{azulOscuroUFide}{HTML}{001f60}
+  \definecolor{rosadoUFide}{HTML}{e31c93}
+  \definecolor{moradoUFide}{HTML}{67268e}
+
+%====< Letras y símbolos matemáticos >=========================================
+  %   Paquete que mejora la presentación visual de las ecuaciones, proporciona
+  % entornos adicionales para manejar varias ecuaciones o varias líneas 
+  % más información en https://www.ctan.org/pkg/amsmath
+  \usepackage{amsmath}
+  %   Permite el uso de símbolos y formatos de letras adicionales
+  % como por ejemplo \mathfrak{letras}
+  \usepackage{amsfonts}
+  %    Permite el uso de símbolos y formatos de letras adicionales,
+  % más en https://mirrors.ucr.ac.cr/CTAN/fonts/amsfonts/doc/amssymb.pdf
+  \usepackage{amssymb}
+  % Negrita en cualquier texto matemático, mejor que la opción \boldsymbol
+  \usepackage{bm}
+  %   Permite el uso de símbolos y formatos de letras adicionales
+  % como por ejemplo \mathscr{letras}
+  \usepackage{mathrsfs}
+  % Permite usar \mathds{letra}
+  \usepackage{dsfont}
+  % Para tachar en ecuaciones
+  \usepackage[
+      makeroom,
+      ]{cancel}
+  \renewcommand\CancelColor{\color{red}}
+
+%====< Paquetes por profesión >================================================
+  % Define el SI, pero tiene funciones adicionales.
+  \usepackage{siunitx}
+  %   Permite el uso de comandos que introducen símbolos y entornos muy comunes
+  % en las ecuaciones propias de la física, simplificando su escritura
+  \usepackage{physics-patch}
+  % Permite establecer bloques de código
+  \usepackage{verbatim}
+  % Facilita uso de escritura química
+  \usepackage[
+    version=4,
+    arrows=pgf-filled,
+    % textfontname=sffamily,
+    mathfontname=mathsf
+    ]{mhchem}
+
+%====< Personalización de los hipervínculos >==================================
+  % más información en https://www.ctan.org/pkg/hyperref
+  \usepackage{hyperref}
+  \hypersetup{
+      colorlinks=true,
+      linkcolor=blue!50!black,
+      citecolor=green!50!black
+  }
+  % Paquete que permite incluir direcciones web de forma segura
+  % mas información en https://www.ctan.org/pkg/url
+  \usepackage{url}
+
+%====< Cajas con colores >=====================================================
+  \usepackage{tcolorbox}
+  \tcbuselibrary{
+  	breakable,
+  	external,
+  	fitting,
+  	hooks,
+  	magazine,
+  	poster,
+  	raster,
+  	skins,
+  	theorems,
+  	vignette,
+  	xparse
+  }
+
+%====< Enumeraciones >=========================================================
+  % Permite personalizar las enumeraciones
+  \usepackage{enumerate}
+
+%====< Tablas >================================================================
+  \usepackage{booktabs}
+  %   Permite unir celdas de varias filas 
+  % más información en https://www.ctan.org/pkg/multirow
+  \usepackage{multirow}
+  % Generate table from csv
+  \usepackage{pgfplotstable} 
+  \pgfplotstableset{col sep=comma}
+  \pgfplotsset{compat=1.18}
+  % Permite usar columnas de ancho preestablecido
+  \usepackage{dcolumn}
+  \newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+  \newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+  \newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+
+%==< Soporte para Proyectos con varios archivos >==============================
+  \usepackage{subfiles}
+  \usepackage{import}
+  \usepackage{pdfpages}
+
+%====< Imágenes >==============================================================
+  \usepackage{subcaption}
+  \usepackage{graphicx}
+  \usepackage{graphics}
+
+%====< Wraper text >=================================================
+  % \usepackage{wrapfig2}
+
+%====< Design images >=========================================================
+  \usepackage{tikz}
+  \usetikzlibrary{patterns,angles}
+  \usetikzlibrary{calc,arrows,shapes.arrows,intersections,math}
+  \usetikzlibrary{decorations,decorations.markings,babel,positioning}
+
+%====< Formato de la pagina >==================================================
+  % Permite dividir la hoja en varias columnas
+  % más información en https://www.ctan.org/pkg/multicol
+  \usepackage{multicol}
+
+%====< Gestor de bibliografía >================================================
+  % más información en https://www.ctan.org/pkg/biblatex
+  \usepackage[
+    backend=biber, 
+    % style=apa,
+    style=phys,
+    % articletitle=false,% APS
+    biblabel=brackets,% APS
+    % chaptertitle=false,% APS
+    % pageranges=false%APS
+    % citestyle=apa
+    ]{biblatex}
+
+%====< Gestor de citas >=======================================================
+  % Paquete auxiliar para las citas
+  \usepackage[
+    autostyle,
+    spanish=spanish,
+    % sapnish=mexican,
+    ]{csquotes}
+
+%====< Gestor de glosarios >===================================================
+  \usepackage{index}
+  \usepackage[acronyms]{glossaries}
+
+%====< Lógica y scripts >======================================================
+  \usepackage{luacode}
+  \usepackage{xifthen}
+
+%====< Apuntes temporales >====================================================
+  \usepackage{todonotes}
