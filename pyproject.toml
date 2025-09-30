@@ -21,7 +21,5 @@ prisma-import-bib = "prismar.prismaimportbib:cli"
 prisma-review = "prismar.prismareview:cli"
 
 [build-system]
-requires = ["setuptools"]
-
-[tool.setuptools.packages.find]
-where = ["packages", "apps"]
+requires = ["uv-build"]
+build-backend = "uv_build"
