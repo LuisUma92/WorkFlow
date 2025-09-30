@@ -29,7 +29,7 @@ This lines are going to be copied to the file C1S1-001-file.tex at the
 directory ./tex/C1
 '''
 
-##### Recomendation
+##### Recommendation
 
 Create a $\LaTeX$ file that input the plain tex file to compile as writing.
 
@@ -65,7 +65,7 @@ Returns a string formatted with the contents of each exercise file.
 {
   "library": [
     {
-      "name": "FirstAutorLastname",
+      "name": "FirstAuthorLastname",
       "code": "MDS_code",
       "distro": [[ch,"sec",ini,end],]
     },
@@ -75,16 +75,18 @@ Returns a string formatted with the contents of each exercise file.
 
 ### ITeP - Init Tex Project
 
-This scrip creates the structure for a $\LaTeX$ proyect.
+This scrip creates the structure for a $\LaTeX$ project.
 The actual structure is on [structure files](/docs/ADR/structure.md).
 
 #### To do
 
 - Entries point: CLI, `config.yaml`
-- Files per global structure that manage the main directory: `lecture.py`, `topic.py`
-- Need a load `config.yaml` and in the file it must indicate the corresponding manager.
+- Files per global structure that manage the main directory:
+  `lecture.py`, `topic.py`
+- Need a load `config.yaml` and in the file it must indicate the corresponding
+  manager.
 - Each structure files parse the corresponding `config.yaml`
-- `init_structure.py`  load up structure and creates directories and links
+- `init_structure.py` load up structure and creates directories and links
 - `relink.py`
 
 ### PRISMAreview
@@ -142,7 +144,7 @@ recorded.
 ###### Documentation
 
 This library interacts via CLI and ask to input item by item,
-then send the information to the DataBase. More info on [myPRISMA documentation](myPRISMA.md)
+then send the information to the DataBase.
 
 ###### To do list
 

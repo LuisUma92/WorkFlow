@@ -7,11 +7,11 @@ Para organizar la tesis en un directorio con el siguiente orden:
 ```bash
 ABS_SRC_DIR = /home/luis/.config/mytex
 ABS_PARENT_DIR = /home/luis/Documents/01-U/00-Fisica
-LECTURE_CODE = `AA{:04d}`
-MAIN_NAME = `Name`
-MAIN_CODE = `{:02d}AA`
-ROOT = `${MAIN_CODE}+${MAIN_NAME}`
-ABS_PROJECT_DIR = `(pwd)/${ROOT}`
+LECTURE_CODE = 'AA{:04d}'
+MAIN_NAME = 'Name'
+MAIN_CODE = '{:02d}AA'
+ROOT = '${MAIN_CODE}+${MAIN_NAME}'
+ABS_PROJECT_DIR = '(pwd)/${ROOT}'
 ```
 
 ## Main directory structure
@@ -19,46 +19,27 @@ ABS_PROJECT_DIR = `(pwd)/${ROOT}`
 ```bash
 ${ABS_PARENT_DIR}/${ABS_PROJECT_DIR}
 ├─ lect
-│ └─ ${LECTURE_CODE}
-│ ├─ admin
-│ ├─ eval
-│ │ └─ {T{TN:02d}}
-│ │ └─ {bookName} -> ${ABS_PARENT_DIR}/00EE-ExamplesExercises/{bookName}/
-│ ├─ press
-│ │ ├─ config
-│ │ │ ├─ 0_packages.sty -> ${ABS_SRC_DIR}/sty/SetFormatP.sty
-│ │ │ ├─ 1_loyaut.sty -> ${ABS_SRC_DIR}/sty/SetLoyaut.sty
-│ │ │ ├─ 2_commands.sty -> ${ABS_SRC_DIR}/sty/SetCommands.sty
-│ │ │ ├─ 3_units.sty -> ${ABS_SRC_DIR}/sty/SetUnits.sty
-│ │ │ ├─ 4_biber.sty -> ${ABS_PARENT_DIR}/{##AA-Name}/config/4_biber.sty
-│ │ │ ├─ 5_profiles.sty -> ${ABS_SRC_DIR}/sty/SetProfiles.sty
-│ │ │ ├─ 6_headers.sty -> ${ABS_SRC_DIR}/sty/SetHeaders.sty
-│ │ │ └─ title.tex -> ${ABS_SRC_DIR}/templates/title.tex
-│ │ ├─ bib/ -> ${ABS_PARENT_DIR}/{##AA-Name}/bib
-│ │ ├─ img/ -> ${ABS_PARENT_DIR}/{##AA-Name}/img
-│ │ ├─ {T##}/ -> ${ABS_PARENT_DIR}{##AA-Name}/tex/{C##S##}/
-│ │ └─ {T##}.tex
-│ └─ config.yaml
+│  └─ ${LECTURE_CODE}
 ├─ tex
-│ ├─ notes
-│ ├─ resumes
-│ ├─ {C##S##}
-│ │ └─ {topic01}.tex
-│ └─ {C##S##}.tex
+│  ├─ notes
+│  ├─ resumes
+│  ├─ {C{ch:02d}S{sec:02d}}
+│  │  └─ {content-name}.tex
+│  └─ {C{ch:02d}S{sec:02d}}.tex
 ├─ bib
-│ └─ {topic01} -> ${ABS_PARENT_DIR}/00BB-Library/{topic01}/
+│  └─ {topic01} -> ${ABS_PARENT_DIR}/00BB-Library/{topic01}/
 ├─ img
-│ ├─ own
-│ └─ {bookName} -> ${ABS_PARENT_DIR}/00II-ImagesFigures/{bookName}/
+│  ├─ own
+│  └─ {bookName} -> ${ABS_PARENT_DIR}/00II-ImagesFigures/{bookName}/
 ├─ config
-│ ├─ 0_packages.sty -> ${ABS_SRC_DIR}/sty/SetFormat.sty
-│ ├─ 1_loyaut.sty -> ${ABS_SRC_DIR}/sty/SetLoyaut.sty
-│ ├─ 2_commands.sty -> ${ABS_SRC_DIR}/sty/SetCommands.sty
-│ ├─ 3_units.sty -> ${ABS_SRC_DIR}/sty/SetUnits.sty
-│ ├─ 4_biber.sty
-│ ├─ 5_profiles.sty -> ${ABS_SRC_DIR}/sty/SetProfiles.sty
-│ ├─ 6_headers.sty -> ${ABS_SRC_DIR}/sty/SetHeaders.sty
-│ └─ title.tex -> ${ABS_SRC_DIR}/templates/title.tex
+│  ├─ 0_packages.sty -> ${ABS_SRC_DIR}/sty/SetFormat.sty
+│  ├─ 1_loyaut.sty -> ${ABS_SRC_DIR}/sty/SetLoyaut.sty
+│  ├─ 2_commands.sty -> ${ABS_SRC_DIR}/sty/SetCommands.sty
+│  ├─ 3_units.sty -> ${ABS_SRC_DIR}/sty/SetUnits.sty
+│  ├─ 4_biber.sty
+│  ├─ 5_profiles.sty -> ${ABS_SRC_DIR}/sty/SetProfiles.sty
+│  ├─ 6_headers.sty -> ${ABS_SRC_DIR}/sty/SetHeaders.sty
+│  └─ title.tex -> ${ABS_SRC_DIR}/templates/title.tex
 ├─ pro
 ├─ {##AA}.tex
 └─ README.md
@@ -72,30 +53,41 @@ un solo directorio. Cada curso tiene un directorio con el siguiente esquema
 ```bash
 ${ABS_PARENT_DIR}/00AA-Lectures
 └─ ${LECTURE_CODE}
-├─ admin
-├─ eval
-│ └─ {T##}
-│ └─ {bookName} -> ${ABS_PARENT_DIR}/00EE-ExamplesExercises/{bookName}/
-├─ press
-│ ├─ config
-│ │ ├─ 0_packages.sty -> ${ABS_SRC_DIR}/sty/SetFormatP.sty
-│ │ ├─ 1_loyaut.sty -> ${ABS_SRC_DIR}/sty/SetLoyaut.sty
-│ │ ├─ 2_commands.sty -> ${ABS_SRC_DIR}/sty/SetCommands.sty
-│ │ ├─ 3_units.sty -> ${ABS_SRC_DIR}/sty/SetUnits.sty
-│ │ ├─ 4_biber.sty
-│ │ ├─ 5_profiles.sty -> ${ABS_SRC_DIR}/sty/SetProfiles.sty
-│ │ ├─ 6_headers.sty -> ${ABS_SRC_DIR}/sty/SetHeaders.sty
-│ │ └─ title.tex -> ${ABS_SRC_DIR}/templates/title.tex
-│ ├─ bib
-│ │ ├─ ${ROOT1}/ -> ${ABS_PARENT_DIR}/{ROOT1}/bib
-│ │ └─ ${ROOT2}/ -> ${ABS_PARENT_DIR}/{ROOT2}/bib
-│ ├─ img
-│ │ ├─ ${ROOT1}/ -> ${ABS_PARENT_DIR}/{ROOT1}/img
-│ │ └─ ${ROOT2}/ -> ${ABS_PARENT_DIR}/{ROOT2}/img
-│ ├─ {T##}
-│ │ ├─ ${ROOT1}-{C##S##} -> {ABS_PROJECT_DIR1}/tex/{C##S##}/
-│ └─ {T##}.tex
-└─ config.yaml
+   ├─ admin
+   ├─ eval
+   │  ├─ config
+   │  │  ├─ 0_packages.sty -> ${ABS_SRC_DIR}/sty/SetFormatP.sty
+   │  │  ├─ 1_loyaut.sty -> ${ABS_SRC_DIR}/sty/SetLoyaut.sty
+   │  │  ├─ 2_commands.sty -> ${ABS_SRC_DIR}/sty/SetCommands.sty
+   │  │  ├─ 2_partial.sty -> ${ABS_SRC_DIR}/sty/PartialCommands.sty
+   │  │  ├─ 3_units.sty -> ${ABS_SRC_DIR}/sty/SetUnits.sty
+   │  │  ├─ 4_biber-{ROOT1}.sty -> ${ABS_PARENT_DIR}/{ROOT1}/config/4_biber.sty
+   │  │  ├─ 4_biber-{ROOT2}.sty -> ${ABS_PARENT_DIR}/{ROOT2}/config/4_biber.sty
+   │  │  ├─ 5_profiles.sty -> ${ABS_SRC_DIR}/sty/SetProfiles.sty
+   │  │  ├─ 6_headers.sty -> ${ABS_SRC_DIR}/sty/SetHeaders.sty
+   │  └─ {T##}
+   │     └─ {bookName} -> ${ABS_PARENT_DIR}/00EE-ExamplesExercises/{bookName}/
+   ├─ press
+   │  ├─ config
+   │  │  ├─ 0_packages.sty -> ${ABS_SRC_DIR}/sty/SetFormatP.sty
+   │  │  ├─ 1_loyaut.sty -> ${ABS_SRC_DIR}/sty/SetLoyaut.sty
+   │  │  ├─ 2_commands.sty -> ${ABS_SRC_DIR}/sty/SetCommands.sty
+   │  │  ├─ 3_units.sty -> ${ABS_SRC_DIR}/sty/SetUnits.sty
+   │  │  ├─ 4_biber-{ROOT1}.sty -> ${ABS_PARENT_DIR}/{ROOT1}/config/4_biber.sty
+   │  │  ├─ 4_biber-{ROOT2}.sty -> ${ABS_PARENT_DIR}/{ROOT2}/config/4_biber.sty
+   │  │  ├─ 5_profiles.sty -> ${ABS_SRC_DIR}/sty/SetProfiles.sty
+   │  │  ├─ 6_headers.sty -> ${ABS_SRC_DIR}/sty/SetHeaders.sty
+   │  │  └─ title.tex -> ${ABS_SRC_DIR}/templates/title.tex
+   │  ├─ bib
+   │  │  ├─ ${ROOT1}/ -> ${ABS_PARENT_DIR}/{ROOT1}/bib
+   │  │  └─ ${ROOT2}/ -> ${ABS_PARENT_DIR}/{ROOT2}/bib
+   │  ├─ img
+   │  │  ├─ ${ROOT1}/ -> ${ABS_PARENT_DIR}/{ROOT1}/img
+   │  │  └─ ${ROOT2}/ -> ${ABS_PARENT_DIR}/{ROOT2}/img
+   │  ├─ {T##}
+   │  │  ├─ ${ROOT1}-{C{ch:02d}S{sec:02d}} -> {ABS_PROJECT_DIR1}/tex/{C{ch:02d}S{sec:02d}}/
+   │  └─ {T##}.tex
+   └─ config.yaml
 ```
 
 ## Common files structure
