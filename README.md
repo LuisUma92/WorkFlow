@@ -5,7 +5,7 @@ and work with latex.
 
 ## Packages
 
-### workflow
+### lectkit
 
 This group of python scripts are simple one file action that allows to make
 interactions with files.
