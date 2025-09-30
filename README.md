@@ -73,12 +73,19 @@ Returns a string formatted with the contents of each exercise file.
 }
 ```
 
-## Apps
-
 ### ITeP - Init Tex Project
 
 This scrip creates the structure for a $\LaTeX$ proyect.
 The actual structure is on [structure files](/docs/ADR/structure.md).
+
+#### To do
+
+- Entries point: CLI, `config.yaml`
+- Files per global structure that manage the main directory: `lecture.py`, `topic.py`
+- Need a load `config.yaml` and in the file it must indicate the corresponding manager.
+- Each structure files parse the corresponding `config.yaml`
+- `init_structure.py`  load up structure and creates directories and links
+- `relink.py`
 
 ### PRISMAreview
 
