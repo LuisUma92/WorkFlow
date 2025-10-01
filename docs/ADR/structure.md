@@ -98,6 +98,8 @@ ${ABS_PARENT_DIR}/00BB-Library
 │   ├──  Spectroscopy
 │   ├──  toSort
 │   └──  XRF
+├──  ${topic01}
+│   └──  ${sub-topic01}
 └─ ${documents_to_sort}
 ```
 
