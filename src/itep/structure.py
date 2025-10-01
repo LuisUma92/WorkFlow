@@ -1,36 +1,40 @@
+from dataclasses import dataclass, field
+
 """
 This is a general structure that every project file should implement this
 to its specific needs
 """
 
 
-class project_structure:
-    code = ""
-    name = ""
-    topics = []
-    books = []
+@dataclass
+class ProjectStructure:
+    code: str = ""
+    name: str = ""
+    topics: list[str] = field(default_factory=list)
+    books: list[str] = field(default_factory=list)
+    descriptions: dict[str, str] = field(default_factory=dict)
 
-    def get_description(self, var_name):
-        if var_name == "code":
-            msn = "Alfanumeric code"
-        elif var_name == "name":
-            msn = "Name of the project"
-        elif var_name == "topics":
-            msn = "List of strings, each one name a topic of the project"
-        elif var_name == "books":
-            msn = "List of book codes related to the project"
-        else:
-            msn = f"ERROR: {var_name} is not a variable of this object: {self}"
-        return msn
+    def get_description(self, var_name: str) -> str:
+        msn = f"ERROR: {var_name} not in structure"
+        return self.descriptions.get(var_name, msn)
 
-    def get_code(self):
-        return self.code
 
-    def set_code(self, code):
-        self.code = code
-
-    def get_name(self):
-        return self.name
-
-    def set_name(self, name):
-        self.name = name
+def make_structure(struct_type="general") -> ProjectStructure:
+    base_desc = {
+        "code": "Alfanumeric code",
+        "name": "Name of the project",
+        "topics": "List of topics",
+        "books": "List of books",
+    }
+    overrides = {
+        "general": {
+            "topics": "General theme areas shared across courses",
+            "books": "Reference books used broadly",
+        },
+        "course": {
+            "topics": "Course topics (mapped to T## files)",
+            "books": "Course-specific textbooks",
+        },
+    }
+    desc = {**base_desc, **overrides.get(struct_type, {})}
+    return ProjectStructure(descriptions=desc)

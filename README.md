@@ -65,7 +65,7 @@ Returns a string formatted with the contents of each exercise file.
 {
   "library": [
     {
-      "name": "FirstAuthorLastname",
+       "name": "FirstAuthorLastname",
       "code": "MDS_code",
       "distro": [[ch,"sec",ini,end],]
     },
@@ -76,7 +76,7 @@ Returns a string formatted with the contents of each exercise file.
 ### ITeP - Init Tex Project
 
 This scrip creates the structure for a $\LaTeX$ project.
-The actual structure is on [structure files](/docs/ADR/structure.md).
+The actual structure is on [structure files](./docs/ADR/structure.md).
 
 #### To do
 
@@ -100,32 +100,6 @@ on [YAML](https://yaml.org/) file format, and look for notes on the files.
 It returns a string output to [Neovim](https://neovim.io/), the note structure
 on the summary file indicates whether is paraphrase o verbatim, so that inset
 a $\LaTeX$ quotation reference respectively.
-
-##### Directory expected structure
-
-```bash
-ROOT
-├── master.tex
-├── master.bib
-├── lib
-│   ├── bibkey-title.pdf
-│   └── ...
-├── lec
-│   ├── lec_00.tex
-│   ├── ...
-│   └── lec_NN.tex
-├── res
-│   ├── sumary_00.tex
-│   ├── ...
-│   └── sumary_MM.tex
-├── figures
-│   ├── fig-00.pdf
-│   ├── fig-00.pdf_tex
-│   ├── fig-00.svg
-│   └── ...
-└── UltiSnips
-    └── tex.snippets
-```
 
 ##### lib2bib
 
