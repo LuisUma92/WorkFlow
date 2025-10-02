@@ -8,7 +8,7 @@ authors = [
   { name = "Luis Fernando Umaña Castro", email = "luis.umanacastro@ucr.ac.cr" },
 ]
 classifiers = ["Development Status :: 2 - Pre-Alpha"]
-dependencies = ["appdirs", "bibtexparser", "click"]
+dependencies = ["appdirs", "bibtexparser", "click", "yaml"]
 
 [project.scripts]
 bib2yaml = "prismar.bib2yaml:cli"

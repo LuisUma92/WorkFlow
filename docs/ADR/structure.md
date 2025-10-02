@@ -273,7 +273,7 @@ ${ABS_PARENT_DIR}/00EE-ExamplesExercises
 ### Figures
 
 ```bash
-${ABS_PARENT_DIR}/00BB-ImagesFigures
+${ABS_PARENT_DIR}/00II-ImagesFigures
 ├──  10MC
 │   ├──  NIST
 │   └──  own
