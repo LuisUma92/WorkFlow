@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
-import yaml  # type: ignore
+import yaml
 
 
 def load_yaml(path: Union[str, Path]) -> Dict[str, Any]:
@@ -12,46 +12,6 @@ def load_yaml(path: Union[str, Path]) -> Dict[str, Any]:
     if not isinstance(data, dict):
         raise ValueError("El YAML raíz debe ser un mapeo (dict).")
     return data
-
-
-"""
-This is a general structure that every project file should implement this
-to its specific needs
-"""
-
-
-@dataclass
-class ProjectStructureOLD:
-    code: str = ""
-    name: str = ""
-    topics: list[str] = field(default_factory=list)
-    books: list[str] = field(default_factory=list)
-    descriptions: dict[str, str] = field(default_factory=dict)
-
-    def get_description(self, var_name: str) -> str:
-        msn = f"ERROR: {var_name} not in structure"
-        return self.descriptions.get(var_name, msn)
-
-
-def make_structureOLD(struct_type="general") -> ProjectStructureOLD:
-    base_desc = {
-        "code": "Alfanumeric code",
-        "name": "Name of the project",
-        "topics": "List of topics",
-        "books": "List of books",
-    }
-    overrides = {
-        "general": {
-            "topics": "General theme areas shared across courses",
-            "books": "Reference books used broadly",
-        },
-        "course": {
-            "topics": "Course topics (mapped to T## files)",
-            "books": "Course-specific textbooks",
-        },
-    }
-    desc = {**base_desc, **overrides.get(struct_type, {})}
-    return ProjectStructureOLD(descriptions=desc)
 
 
 # ==================== Normalización de placeholders ====================
@@ -83,22 +43,104 @@ def _safe_format(template: str, context: Mapping[str, Any]) -> str:
 BASE_DESCRIPTIONS: Dict[str, str] = {
     "code": "Alfanumeric code",
     "name": "Name of the project",
-    "topics": "Topics mapping (T## → metadata) o lista según configuración",
+    "root": "{code}-{name}",
+    "data": "Dictionary with metadata",
+    "main_topic_root": "List of topics"
     "books": "List of book codes related to the project (si aplica)",
+    "topics": "Topics mapping (T## → metadata) o lista según configuración",
 }
 
 OVERRIDES: Dict[str, Dict[str, str]] = {
     "general": {
-        "topics": "General theme areas (compartidos entre cursos)",
+        "main_topic_list": "List of directories names on 00BB-Library"
+        "topics": "General theme areas",
         "books": "Reference books usados de forma transversal",
     },
     "course": {
-        "topics": "Course topics (sílabos; T## con metadatos como chapters/weeks)",
-        "books": "Course-specific textbooks/references (si aplica)",
+        "main_topic_list": "List of directories names on abs_parent_dir"
+        "topics": "Course topics (sílabos; with metadata: chapters/weeks)",
+        "books": "Course-specific textbooks/references",
     },
 }
 
 # ==================== Dataclass base ====================
+
+
+@dataclass
+class TexConfig:
+    packages: Dict = {
+        "type": "sty",
+        "src": "SetFormat",
+        "termination": "sty",
+        "number": 0,
+    }
+    loyaut: Dict = {
+        "type": "sty",
+        "src": "SetLoyaut",
+        "termination": "sty",
+        "number": 1,
+    }
+    commands: Dict = {
+        "type": "sty",
+        "src": "SetCommands",
+        "termination": "sty",
+        "number": 2,
+    }
+    partial: Dict = {
+        "type": "sty",
+        "src": "PartialCommands",
+        "termination": "sty",
+        "number": 2,
+    }
+    units: Dict = {
+        "type": "sty",
+        "src": "SetUnits",
+        "termination": "sty",
+        "number": 3,
+    }
+    profiles: Dict = {
+        "type": "sty",
+        "src": "SetProfiles",
+        "termination": "sty",
+        "number": 5,
+    }
+    headers: Dict = {
+        "type": "sty",
+        "src": "SetHeaders",
+        "termination": "sty",
+        "number": 6,
+    }
+    title: Dict = {
+        "type": "template",
+        "src": "title",
+        "termination": "tex",
+        "number": None,
+    }
+
+
+@dataclass
+class MetaData:
+    # absolute routes
+    abs_project_dir: Optional[str] = None
+    abs_parent_dir: Optional[str] = None
+    abs_src_dir: Optional[str] = None
+    # 00II-ImagesFigures
+    figures_base_dir: Optional[str] = None
+    # 00EE-ExamplesExercises
+    exercises_base_dir: Optional[str] = None
+    # Metadata and patterns
+    descriptions: Dict[str, str] = field(default_factory=dict)
+    created_at: Optional[str] = None
+    version: Optional[str] = None
+    # Patrones genéricos (opcional, por si decidís listarlos en YAML)
+    patterns: List[str] = field(default_factory=list)
+    named_patterns: Dict[str, str] = field(default_factory=dict)
+
+
+"""
+This is a general structure that every project file should implement this
+to its specific needs
+"""
 
 
 @dataclass
@@ -109,41 +151,13 @@ class ProjectStructure:
     code: str = ""  # p.ej. 'C01' o main code
     name: str = ""  # nombre humano
     root: str = ""
+    data: MetaData = MetaData()
+    # Específicos de Main topic
+    main_topic_root: List[str] = field(default_factory=list)
+    books: Any = field(default_factory=dict)
     # Para Main topic: topics puede ser dict T## → {...}
     # Para Lecture: topics T## → {name, chapters, weeks}
     topics: Any = field(default_factory=dict)
-    books: Any = field(default_factory=dict)
-
-    # Específicos de Main topic
-    main_topic_root: Optional[str] = None
-    config_files: Dict[str, str] = field(
-        default_factory=dict
-    )  # mapeo nombre→archivo (config/)
-    # Específicos de Lecture
-    lecture_code: Optional[str] = None
-    admin: Dict[str, Any] = field(default_factory=dict)
-    press_config_files: Dict[str, str] = field(default_factory=dict)
-    eval_config_files: Dict[str, str] = field(default_factory=dict)
-
-    # Rutas “fuente de verdad”
-    abs_project_dir: Optional[str] = None
-    abs_parent_dir: Optional[str] = None
-    abs_src_dir: Optional[str] = None
-    # permite 00II-ImagesFigures
-    figures_base_dir: Optional[str] = None
-    # permite base configurable para 00EE-ExamplesExercises
-    exercises_base_dir: Optional[str] = None
-
-    # Metadatos y patrones
-    descriptions: Dict[str, str] = field(default_factory=dict)
-    created_at: Optional[str] = None
-    version: Optional[str] = None
-    # Patrones genéricos (opcional, por si decidís listarlos en YAML)
-    patterns: List[str] = field(default_factory=list)
-    named_patterns: Dict[str, str] = field(default_factory=dict)
-
-    # Cache de nombres desde Library (topic01/sub-topic01)
-    _library: Dict[str, Any] = field(default_factory=dict, repr=False)
 
     # ---- API amigable ----
     def get_description(self, var_name: str) -> str:
@@ -172,12 +186,9 @@ class ProjectStructure:
             "TN": TN,
             "par": par,
             "sec": _norm_sec(sec),
-            "topic01": topic01 or self._library.get("topic01", ""),
-            "sub_topic01": sub_topic01 or self._library.get("sub-topic01", ""),
             "content_name": content_name or "",
             "BOOK_REFERENCE": BOOK_REFERENCE or "",
             "ROOT": self.main_topic_root or "",
-            "LECTURE_CODE": self.lecture_code or "",
         }
         if extra:
             ctx.update(extra)
@@ -213,7 +224,6 @@ class ProjectStructure:
                     "content_name": kwargs.get("content_name", ""),
                     "BOOK_REFERENCE": kwargs.get("BOOK_REFERENCE", ""),
                     "ROOT": self.main_topic_root or "",
-                    "LECTURE_CODE": self.lecture_code or "",
                     **kwargs.get("extra", {}),
                 },
             )
@@ -259,7 +269,8 @@ def load_main_topic_yaml(path: Union[str, Path]) -> ProjectStructure:
     ps.topics = y.get("topics", {}) or {}
     if not isinstance(ps.topics, dict):
         # Por si viniera como lista en alguna variante
-        ps.topics = {f"T{i + 1:02d}": {"name": t} for i, t in enumerate(ps.topics)}
+        ps.topics = {f"T{i + 1:02d}": {"name": t}
+                     for i, t in enumerate(ps.topics)}
 
     # Config files (diccionario nombre→archivo)
     cfg = y.get("config_files", {}) or {}
@@ -274,7 +285,8 @@ def load_main_topic_yaml(path: Union[str, Path]) -> ProjectStructure:
     if "patterns" in y and isinstance(y["patterns"], list):
         ps.patterns = [str(p) for p in y["patterns"]]
     if "named_patterns" in y and isinstance(y["named_patterns"], dict):
-        ps.named_patterns = {str(k): str(v) for k, v in y["named_patterns"].items()}
+        ps.named_patterns = {str(k): str(v)
+                             for k, v in y["named_patterns"].items()}
 
     # Library
     lib = y.get("Library") or y.get("library") or {}
@@ -341,7 +353,8 @@ def load_lecture_yaml(path: Union[str, Path]) -> ProjectStructure:
     if "patterns" in y and isinstance(y["patterns"], list):
         ps.patterns = [str(p) for p in y["patterns"]]
     if "named_patterns" in y and isinstance(y["named_patterns"], dict):
-        ps.named_patterns = {str(k): str(v) for k, v in y["named_patterns"].items()}
+        ps.named_patterns = {str(k): str(v)
+                             for k, v in y["named_patterns"].items()}
 
     # Library (por si querés topic01/sub-topic01 en curso también)
     lib = y.get("Library") or y.get("library") or {}

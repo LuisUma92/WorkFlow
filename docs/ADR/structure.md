@@ -303,10 +303,10 @@ ${ABS_PARENT_DIR}/${ROOT}
 │     └─ '{par:03d}-{content_name}.tex'
 ├─ bib
 │  ├─ {sub-topic01} -> ${ABS_PARENT_DIR}/00BB-Library/${topic01}/${sub-topic01}
-│  └─ {topic01} -> ${ABS_PARENT_DIR}/00BB-Library/${topic01}/
+│  └─ {topic01} -> ${ABS_PARENT_DIR}/00BB-Library/${topic01}
 ├─ img
-│  ├─ own
-│  └─ '{BOOK_REFERENCE}' -> ${ABS_PARENT_DIR}/00II-ImagesFigures/${BOOK_REFERENCE}/
+│  ├─ own -> ${ABS_PARENT_DIR}/00II-ImagesFigures/${CODE}
+│  └─ '{BOOK_REFERENCE}' -> ${ABS_PARENT_DIR}/00II-ImagesFigures/${BOOK_REFERENCE}
 ├─ config
 │  ├─ 0_packages.sty -> ${ABS_SRC_DIR}/sty/SetFormat.sty
 │  ├─ 1_loyaut.sty -> ${ABS_SRC_DIR}/sty/SetLoyaut.sty
@@ -320,38 +320,6 @@ ${ABS_PARENT_DIR}/${ROOT}
 ├─ config.yaml
 ├─ '{MAIN_CODE}.tex'
 └─ README.md
-```
-
-```config.yaml
-main_topic_root: "{ROOT}"
-abs_project_dir: "/home/luis/Documents/01-U/00-Fisica/{ROOT}"
-abs_parent_dir: "/home/luis/Documents/01-U/00-Fisica"
-abs_src_dir: "/home/luis/.config/mytex"
-created_at: "{timedate}"
-version: "1.0"
-topics:
-  T01:
-    name: "topic01"
-    book_list:
-      B01:
-        code: "MDS_code"
-        name: "FirstAuthorLastname"
-        edition: "Edition"
-  T02:
-    name: "topic01/sub-topic01"
-    book_list:
-      B02:
-        code: "MDS_code"
-        name: "FirstAuthorLastname"
-        edition: "Edition"
-config_files:
-  0_packages.sty: SetFormat.sty
-  1_loyaut.sty: SetLoyaut.sty
-  2_commands.sty: SetCommands.sty
-  3_units.sty: SetUnits.sty
-  5_profiles.sty: SetProfiles.sty
-  6_headers.sty: SetHeaders.sty
-  title.tex: title.tex
 ```
 
 ## Lectures structure
@@ -403,145 +371,6 @@ ${ABS_PARENT_DIR}/00AA-Lectures
    │  │  ├─ '{ROOT1}-C{ch:02d}S{sec}' -> ${ABS_PROJECT_DIR1}/tex/C${ch:02d}S${sec}/
    │  └─ 'T{TN:02d}'.tex
    └─ config.yaml
-```
-
-```config.yaml
-lecture_code: "{U_SHORT}-{LECTURE_CODE}"
-abs_project_dir: "/home/luis/Documents/01-U/00-Fisica/00AA-Lectures/{lecture_code}"
-abs_parent_dir: "/home/luis/Documents/01-U/00-Fisica"
-abs_src_dir: "/home/luis/.config/mytex"
-created_at: "{timedate}"
-version: "1.0"
-admin:
-total_week_count: 16
-  lectures_per_week: 2
-  year: 2025
-  cicle: 2
-  first_monday: 11/08/2025
-  week_day:
-    - monday
-    - thursday
-reference_book:
-  code: "MDS_code"
-  name: "FirstAuthorLastname"
-  edition: "Edition"
-main_topic_root:
-  - ROOT
-  - 10MC-ClassicalMechanics
-  - 40EM-Electromagnetism
-topics:
-  T01:
-    name: Cinemática
-    chapters:
-      - C02
-      - C03
-    weeks:
-      - W01L01
-      - W01L02
-      - W02L01
-      - W02L02
-      - W03L01
-  T02:
-    name: Dinámica
-    chapters:
-      - C04
-    weeks:
-      - W03L02
-      - W04L01
-      - W04L02
-  T03:
-    name: Energía
-    chapters:
-      - C05
-    weeks:
-      - W05L01
-      - W05L02
-  T04:
-    name: FluidosSólidos
-    chapters:
-      - C09
-    weeks:
-      - W06L01
-      - W06L02
-  T05
-    name: Termodinámica
-    chapters:
-      - C10
-      - C11
-      - C12
-    weeks:
-      - W07L01
-      - W07L02
-      - W08L01
-      - W08L02
-      - W09L01
-      - W09L02
-  T06:
-    name: Ondas
-    chapters:
-      - C13
-    weeks:
-  T07
-    name: Electricidad
-    chapters:
-      - C14
-    weeks:
-T08:
-    name: Óptica
-    chapters:
-      - C15
-    weeks:
-      - W10L01
-      - W10L02
-      - W11L01
-      - W11L02
-      - W12L01
-      - W12L02
-      - W13L01
-      - W13L02
-      - W14L01
-      - W14L02
-      - W15L01
-      - W15L02
-      - W16L01
-      - W16L02
-eval:
-  config_files:
-    0_packages.sty: SetFormat.sty
-    1_loyaut.sty: SetLoyaut.sty
-    2_commands.sty: SetCommands.sty
-    2_partial.sty: PartialCommands.sty
-    3_units.sty: SetUnits.sty
-    5_profiles.sty: SetProfiles.sty
-    6_headers.sty: SetHeaders.sty
-  instruments:
-    partial:
-      amount: 3
-      duedate:
-        - W05L02
-        - W09L02
-        - W14L01
-    quiz:
-      amount: 0
-      duedate:
-    homework:
-      amount: 3
-      duedate:
-        - W04L02
-        - W08L02
-        - W13L01
-    project:
-      amount: 1
-      duedate:
-        - W15L01
-press:
-  config_files:
-    0_packages.sty: SetFormatP.sty
-    1_loyaut.sty: SetLoyaut.sty
-    2_commands.sty: SetCommands.sty
-    3_units.sty: SetUnits.sty
-    5_profiles.sty: SetProfiles.sty
-    6_headers.sty: SetHeaders.sty
 ```
 
 ## Shared files
