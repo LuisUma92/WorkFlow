@@ -1,11 +1,56 @@
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
 import structure
-from dataclasses import dataclass, field, asdict, fields
-from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
+from typing import Any, Dict, List, Self
+
+
+class institution(Enum):
+    UCR = "UCR"
+    FIDE = "UFide"
+    UCIMED = "UCIMED"
+
+
+@dataclass
+class LectureTopic:
+    name: str = ""
+    chapters: List[str] = field(default_factory=list)
+    weeks: List[str] = field(default_factory=list)
 
 
 class Lecture(structure.ProjectStructure):
     # Específicos de Lecture
-    admin: Dict[str, Any] = field(default_factory=dict)
-    press_config_files: Dict[str, str] = field(default_factory=dict)
-    eval_config_files: Dict[str, str] = field(default_f actory=dict)
+    admin: Dict[str, Any] = {
+        "institution": institution,
+        "total_week_count": int,
+        "lectures_per_week": int,
+        "year": int,
+        "cycle": int,
+        "first_monday": datetime,
+        "week_day": List[str],
+    }
+    press: Dict[str, Any] = {
+        "config_files": structure.TexConfig,
+    }
+    eval: Dict[str, Any] = {
+        "config_files": structure.TexConfig,
+        "instruments": {
+            "partial": {
+                "amount": int,
+                "duedate": List[str],
+            },
+            "quiz": {
+                "amount": int,
+                "duedate": List[str],
+            },
+            "homework": {
+                "amount": int,
+                "duedate": List[str],
+            },
+            "project": {
+                "amount": int,
+                "duedate": List[str],
+            },
+        },
+    }
+    Self.topics: Dict[str, LectureTopic] = field(default_factory=dict)
