@@ -12,12 +12,6 @@ class institution(Enum):
 
 
 @dataclass
-class LectureTopic:
-    name: str = ""
-    chapters: List[str] = field(default_factory=list)
-    weeks: List[str] = field(default_factory=list)
-
-
 class Lecture(structure.ProjectStructure):
     # Específicos de Lecture
     admin: Dict[str, Any] = {
@@ -53,4 +47,4 @@ class Lecture(structure.ProjectStructure):
             },
         },
     }
-    topics: Dict[str, LectureTopic] = field(default_factory=dict)
+    topics: Dict[str, structure.Topic] = field(default_factory=dict)

@@ -1,4 +1,4 @@
-from itep.structure import MetaData, ConfigType
+from itep.structure import MetaData, ConfigType, Topic
 from itep.utils import load_yaml
 import click
 from pathlib import Path
@@ -11,7 +11,12 @@ DEF_ABS_SRC_DIR = "/home/luis/.config/mytex"
 # -------------------- Utilidades --------------------
 
 
+def ensure_dir(path: Path):
+    path.mkdir(parents=True, exist_ok=True)
+
+
 def safe_symlink(target: Path, link_path: Path):
+    ensure_dir(link_path.parent)
     if link_path.is_symlink() or link_path.exists():
         if link_path.is_symlink():
             try:
@@ -38,13 +43,26 @@ def create_config_links(
 ):
     if config_type != ConfigType.BASE:
         target_dir = target_dir / config_type.value
-    for rel, src_file in links_relations:
+    for rel, src_file in links_relations.items():
         link = target_dir / "config" / rel
+        target = abs_src_dir / "sty" / src_file
+        safe_symlink(target, link)
+
+
+def creta_topics_links(
+    target_dir: Path,
+    abs_src_dir: Path,
+    links_relations: dict,
+):
+    for rel, src_file in links_relations.items():
+        link = target_dir / rel
         target = abs_src_dir / src_file
         safe_symlink(target, link)
 
 
 # -------------------- CLI --------------------
+
+
 @click.group(help="Herramienta para recrear enlaces desde config.yaml.")
 def cli():
     pass
@@ -53,17 +71,9 @@ def cli():
 @cli.command("relink", help="Recrea symlinks usando config.yaml")
 @click.argument("project_dir", required=False)
 @click.option(
-    "--parent",
-    "abs_parent_dir",
-    default=DEF_ABS_PARENT_DIR,
-    show_default=True,
+    "--parent", "abs_parent_dir", default=DEF_ABS_PARENT_DIR, show_default=True
 )
-@click.option(
-    "--src",
-    "abs_src_dir",
-    default=DEF_ABS_SRC_DIR,
-    show_default=True,
-)
+@click.option("--src", "abs_src_dir", default=DEF_ABS_SRC_DIR, show_default=True)
 def relink_cmd(project_dir, abs_parent_dir, abs_src_dir):
     target_dir = Path(project_dir).resolve() if project_dir else Path.cwd()
     cfg = load_yaml(target_dir / "config.yaml")
@@ -71,17 +81,44 @@ def relink_cmd(project_dir, abs_parent_dir, abs_src_dir):
         raise click.ClickException("No se pudo leer config.yaml")
     data = MetaData(cfg.get("data"))
     abs_project = Path(data.get("abs_project_dir", abs_parent_dir)).resolve()
+    abs_parent = Path(data.get("abs_prarent_dir", abs_parent_dir)).resolve()
     abs_src = Path(data.get("abs_src_dir", abs_src_dir)).resolve()
+
+    topic_list = []
+    books_links_relations = {}
+    for topic_key, topic_value in cfg["topics"].items():
+        for chapter in topic_value["chapters"]:
+            if chapter[:3] in cfg["books"]:
+                book_info = cfg["books"][chapter[:3]]
+                chapter_src = "{}_{}_{}/{}".format(
+                    book_info["code"],
+                    book_info["name"],
+                    book_info["edition"],
+                    chapter[3:],
+                )
+                chapter_link = "{}-{}/{}-{}-{}".format(
+                    topic_key[1:],
+                    topic_value["name"],
+                    book_info["code"][:3],
+                    book_info["name"].lower(),
+                    chapter[3:],
+                )
+                books_links_relations[chapter_link] = chapter_src
+        topic_list.append(Topic(topic_value))
 
     for config_type in ConfigType:
         if config_type.value in cfg.keys():
             relations = cfg[config_type.value]["config_files"]
-            create_config_links(
-                abs_project,
-                abs_src,
-                relations,
-                config_type,
+            create_config_links(abs_project, abs_src, relations, config_type)
+        if config_type == ConfigType.EVAL:
+            eval_topics_path = abs_project / "eval"
+            eval_src_path = abs_parent / "00EE-ExamplesExercises"
+            creta_topics_links(
+                eval_topics_path,
+                eval_src_path,
+                books_links_relations,
             )
+
     click.echo("Symlinks recreados según config.yaml.")
 
 

@@ -195,6 +195,76 @@ class MetaData:
 
 
 @dataclass
+class Topic:
+    name: str = ""
+    chapters: List[str] = field(default_factory=list)
+    weeks: Optional[List[str]] = None
+
+    def __init__(self, data: Optional[Dict[str, Any]] = None, **kwargs):
+        """
+        Inicializa desde dict o kwargs.
+        - 'chapters' siempre se almacena como lista.
+        - 'weeks' puede ser None (se preserva), o lista; si viene como str -> [str].
+        - Campos desconocidos se ignoran.
+        """
+        # Inicializar con defaults de la dataclass (incluye default_factory)
+        for f in fields(self):
+            setattr(
+                self,
+                f.name,
+                f.default_factory()
+                if callable(getattr(f, "default_factory", None))
+                else f.default,
+            )
+
+        # Combinar data y kwargs
+        if data:
+            kwargs.update(data)
+
+        for key, value in kwargs.items():
+            if not hasattr(self, key):
+                continue
+
+            if key == "chapters":
+                if value is None:
+                    value = []
+                elif isinstance(value, str):
+                    value = [value]
+                elif not isinstance(value, list):
+                    raise TypeError(
+                        f"'chapters' debe ser lista[str] o str, no {type(value)}"
+                    )
+
+            elif key == "weeks":
+                # Permitir None explícito
+                if value is None:
+                    # se mantiene None
+                    pass
+                elif isinstance(value, str):
+                    value = [value]
+                elif not isinstance(value, list):
+                    raise TypeError(
+                        f"'weeks' debe ser Optional[list[str]] o str, no {type(value)}"
+                    )
+
+            setattr(self, key, value)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Devuelve diccionario serializable (weeks puede ser None o lista)."""
+        return {
+            "name": self.name,
+            "chapters": list(self.chapters),
+            "weeks": (None if self.weeks is None else list(self.weeks)),
+        }
+
+    def __repr__(self) -> str:
+        n_weeks = "None" if self.weeks is None else len(self.weeks)
+        return (
+            f"Topic(name={self.name!r}, chapters={len(self.chapters)}, weeks={n_weeks})"
+        )
+
+
+@dataclass
 class ProjectStructure:
     """
     This is a general structure that every project file should implement this
