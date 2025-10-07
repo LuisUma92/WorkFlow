@@ -1,8 +1,8 @@
 # src/itep/utils.py
 from pathlib import Path
-from typing import Any, Dict, Mapping, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 import yaml
-from structure import ProjectStructure
+from itep.structure import ProjectStructure, make_structure
 
 
 def load_yaml(path: Union[str, Path]) -> Dict[str, Any]:
@@ -13,31 +13,6 @@ def load_yaml(path: Union[str, Path]) -> Dict[str, Any]:
     return data
 
 
-# ==================== Normalización de placeholders ====================
-def _norm_sec(sec: Union[str, int]) -> str:
-    """sec: int 1..99 → '01'..'99'; especiales 'A0'/'D0' se respetan."""
-    if isinstance(sec, int):
-        if sec < 0 or sec > 99:
-            raise ValueError("sec fuera de rango (esperado 1..99)")
-        return f"{sec:02d}"
-    s = str(sec).upper()
-    if s in {"A0", "D0"}:
-        return s
-    if s.isdigit():
-        return f"{int(s):02d}"
-    return s[:2]
-
-
-def _safe_format(template: str, context: Mapping[str, Any]) -> str:
-    """Render 'template' con placeholders tipo f-string usando format_map."""
-
-    class _Dict(dict):
-        def __missing__(self, key):
-            return "{" + key + "}"
-
-    return template.format_map(_Dict(**context))
-
-
 # ==================== Cargadores desde YAML (2 esquemas) ====================
 
 
@@ -45,26 +20,27 @@ def load_main_topic_yaml(path: Union[str, Path]) -> ProjectStructure:
     """
     Carga el config.yaml del **Main topic** (estructura y claves según ADR).
     Espera, entre otras claves:
-      - main_topic_root, abs_project_dir, abs_parent_dir, abs_src_dir, version, created_at
+      - main_topic_root, abs_project_dir, abs_parent_dir, abs_src_dir, version,
+        created_at
       - topics (mapa T## → {name, book_list?})
       - config_files (mapa nombre→archivo bajo config/)
       - Library (para topic01/sub-topic01)
-      - (opcionales) figures_base_dir, exercises_base_dir, patterns, named_patterns
+      - (opcionales) figures_base_dir, exercises_base_dir, patterns,
+        named_patterns
     """
     y = load_yaml(path)
     ps = make_structure("general", y.get("descriptions"))
 
-    ps.main_topic_root = y.get("main_topic_root") or y.get("ROOT")
-    ps.abs_project_dir = y.get("abs_project_dir")
-    ps.abs_parent_dir = y.get("abs_parent_dir")
-    ps.abs_src_dir = y.get("abs_src_dir")
-    ps.created_at = y.get("created_at")
-    ps.version = y.get("version")
+    ps.data.main_topic_root = y.get("ROOT")
+    ps.data.abs_project_dir = y.get("abs_project_dir")
+    ps.data.abs_parent_dir = y.get("abs_parent_dir")
+    ps.data.abs_src_dir = y.get("abs_src_dir")
+    ps.data.created_at = y.get("created_at")
+    ps.data.version = y.get("version")
 
     # Mapa de topics T##:
     ps.topics = y.get("topics", {}) or {}
     if not isinstance(ps.topics, dict):
-        # Por si viniera como lista en alguna variante
         ps.topics = {f"T{i + 1:02d}": {"name": t} for i, t in enumerate(ps.topics)}
 
     # Config files (diccionario nombre→archivo)

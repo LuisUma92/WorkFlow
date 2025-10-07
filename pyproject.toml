@@ -14,6 +14,7 @@ dependencies = ["appdirs", "bibtexparser", "click", "pyyaml"]
 bib2yaml = "prismar.bib2yaml:cli"
 cleta = "lectkit.cleta:cli"
 crete = "lectkit.crete:cli"
+itep = "itep.links:cli"
 mergebib = "prismar.mergebib:cli"
 nofi = "prismar.nofi:cli"
 nori = "prismar.nori:cli"

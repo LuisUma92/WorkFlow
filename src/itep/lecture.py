@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-import structure
-from typing import Any, Dict, List, Self
+from itep import structure
+from typing import Any, Dict, List
 
 
 class institution(Enum):
@@ -53,4 +53,4 @@ class Lecture(structure.ProjectStructure):
             },
         },
     }
-    Self.topics: Dict[str, LectureTopic] = field(default_factory=dict)
+    topics: Dict[str, LectureTopic] = field(default_factory=dict)
