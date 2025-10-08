@@ -24,3 +24,6 @@ prisma-review = "prismar.prismareview:cli"
 [build-system]
 requires = ["uv-build"]
 build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+pythonpath = "."
