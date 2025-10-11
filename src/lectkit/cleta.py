@@ -55,10 +55,11 @@ def add(ext):
 @cli.command()
 @click.argument(
     "path",
-    default=Path(os.getcwd()).absolute(),
+    default=Path(os.getcwd()).expanduser(),
     type=click.Path(exists=False, file_okay=False, dir_okay=True),
 )
 def clean(path):
+    path = Path(path).expanduser()
     toClean = getExt()
     for term in toClean:
         # print(Path(path,term))
