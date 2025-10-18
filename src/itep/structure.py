@@ -1,15 +1,41 @@
 # src/itep/structures.py
 from __future__ import annotations
-from dataclasses import dataclass, field, asdict, fields
+from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
-from typing import Any, Dict, List, Mapping, Optional, Union
+from enum import StrEnum
+from typing import Any, Dict, List, Optional
+from pathlib import Path
+
+from itep.utils import code_format
 
 
-class ConfigType(Enum):
+class ProjectType(StrEnum):
+    LECT = "lecture"
+    GENE = "general"
+
+
+class ConfigType(StrEnum):
     BASE = "base"
     EVAL = "eval"
     PRESS = "press"
+
+
+class Institution(StrEnum):
+    UCR = "UCR"
+    FIDE = "UFide"
+    UCIMED = "UCIMED"
+
+
+class GeneralDirectory(StrEnum):
+    LEC = "00AA-Lectures"
+    IMG = "00II-ImagesFigures"
+    BIB = "00BB-Library"
+    EXE = "00EE-ExamplesExercises"
+
+
+# --- Constantes por defecto ---
+DEF_ABS_PARENT_DIR = Path("/home/luis/Documents/01-U/00-Fisica")
+DEF_ABS_SRC_DIR = Path("/home/luis/.config/mytex")
 
 
 # ==================== Patrón híbrido: base + overrides ====================
@@ -36,232 +62,177 @@ OVERRIDES: Dict[str, Dict[str, str]] = {
     },
 }
 
-# ==================== Normalización de placeholders ====================
-
-
-def _norm_sec(sec: Union[str, int]) -> str:
-    """sec: int 1..99 → '01'..'99'; especiales 'A0'/'D0' se respetan."""
-    if isinstance(sec, int):
-        if sec < 0 or sec > 99:
-            raise ValueError("sec fuera de rango (esperado 1..99)")
-        return f"{sec:02d}"
-    s = str(sec).upper()
-    if s in {"A0", "D0"}:
-        return s
-    if s.isdigit():
-        return f"{int(s):02d}"
-    return s[:2]
-
-
-def _safe_format(template: str, context: Mapping[str, Any]) -> str:
-    """Render 'template' con placeholders tipo f-string usando format_map."""
-
-    class _Dict(dict):
-        def __missing__(self, key):
-            return "{" + key + "}"
-
-    return template.format_map(_Dict(**context))
-
-
 # ==================== Dataclass base ====================
 
 
+@dataclass
+class ConfigData:
+    name: str
+    type: str
+    src: Any[str, List]
+    termination: str
+    number: int
+
+    def get_relation(sefl):
+        target_file = ".".joint([src, termination])
+        link_file = f"{number}-{name}.{termination}"
+        return {link_file: target_file}
+
+
+@dataclass
 class TexConfig:
-    packages: Dict = {
-        "type": "sty",
-        "src": "SetFormat",
-        "termination": "sty",
-        "number": 0,
-    }
-    loyaut: Dict = {
-        "type": "sty",
-        "src": "SetLoyaut",
-        "termination": "sty",
-        "number": 1,
-    }
-    commands: Dict = {
-        "type": "sty",
-        "src": "SetCommands",
-        "termination": "sty",
-        "number": 2,
-    }
-    partial: Dict = {
-        "type": "sty",
-        "src": "PartialCommands",
-        "termination": "sty",
-        "number": 2,
-    }
-    units: Dict = {
-        "type": "sty",
-        "src": "SetUnits",
-        "termination": "sty",
-        "number": 3,
-    }
-    profiles: Dict = {
-        "type": "sty",
-        "src": "SetProfiles",
-        "termination": "sty",
-        "number": 5,
-    }
-    headers: Dict = {
-        "type": "sty",
-        "src": "SetHeaders",
-        "termination": "sty",
-        "number": 6,
-    }
-    title: Dict = {
-        "type": "template",
-        "src": "title",
-        "termination": "tex",
-        "number": None,
-    }
+    defaults_config: List[ConfigData] = field(
+        default_factory=lambda: [
+            ConfigData(
+                "packages",
+                "sty",
+                "SetFormat",
+                "sty",
+                0,
+            ),
+            ConfigData(
+                "loyaut",
+                "sty",
+                "SetLoyaut",
+                "sty",
+                1,
+            ),
+            ConfigData(
+                "commands",
+                "sty",
+                "SetCommands",
+                "sty",
+                2,
+            ),
+            ConfigData(
+                "partial",
+                "sty",
+                "PartialCommands",
+                "sty",
+                2,
+            ),
+            ConfigData(
+                "units",
+                "sty",
+                "SetUnits",
+                "sty",
+                3,
+            ),
+            ConfigData(
+                "symbols",
+                "sty",
+                "SetSymbols",
+                "sty",
+                3,
+            ),
+            ConfigData(
+                "profiles",
+                "sty",
+                "SetProfiles",
+                "sty",
+                5,
+            ),
+            ConfigData(
+                "headers",
+                "sty",
+                "SetHeaders",
+                "sty",
+                6,
+            ),
+            ConfigData(
+                "title",
+                "template",
+                "title",
+                "tex",
+                None,
+            ),
+            ConfigData(
+                "instructions",
+                "template",
+                ["UCR-PPI", "UCIMED-PPI", "UFideCase"],
+                "tex",
+                None,
+            ),
+        ]
+    )
 
 
 @dataclass
 class MetaData:
     # absolute routes
-    abs_project_dir: Optional[str] = None
-    abs_parent_dir: Optional[str] = None
-    abs_src_dir: Optional[str] = None
+    abs_parent_dir: str = DEF_ABS_PARENT_DIR
+    abs_src_dir: str = DEF_ABS_SRC_DIR
     # 00II-ImagesFigures
     figures_base_dir: List[str] = field(default_factory=list)
     # 00EE-ExamplesExercises
     exercises_base_dir: List[str] = field(default_factory=list)
     # Metadata and patterns
     descriptions: Dict[str, str] = field(default_factory=dict)
-    created_at: Optional[datetime] = None
-    version: Optional[str] = None
+    created_at: datetime = field(default_factory=datetime.now())
+    last_modification: datetime = field(default_factory=datetime.now())
+    version: str = "1.0.0"
     # Generic patterns (optional)
-    patterns: List[str] = field(default_factory=list)
     named_patterns: Dict[str, str] = field(default_factory=dict)
 
-    # -------------------- Custom constructor --------------------
-    def __init__(self, data: Optional[Dict[str, Any]] = None):
-        """
-        Allows you to initialize the object with a dictionary.
-        Assigns only recognized keys; ignores others.
-        Converts 'created_at' to a datetime if it comes as a string.
-        """
-        # Inicializa valores por defecto
-        for f in fields(self):
-            setattr(
-                self,
-                f.name,
-                f.default_factory() if callable(f.default_factory) else f.default,
-            )
 
-        if not data:
-            return
+@dataclass
+class Admin:
+    institution: Institution
+    total_week_count: int
+    lectures_per_week: int
+    year: int
+    cycle: int
+    first_monday: datetime
+    week_day: List[int]
 
-        for key, value in data.items():
-            if not hasattr(self, key):
-                continue  # ignores unknown fields
 
-            # Conversión automática para created_at
-            if key == "created_at" and isinstance(value, str):
-                try:
-                    value = datetime.fromisoformat(value)
-                except Exception:
-                    # Si falla el parseo, lo deja como string
-                    pass
+@dataclass
+class Book:
+    code: str
+    name: str
+    edition: int
 
-            # Si el campo debe ser lista y recibimos un string, convertimos
-            if key in {"figures_base_dir", "exercises_base_dir"} and isinstance(
-                value, str
-            ):
-                value = [value]
+    def get_dir_name(self):
+        return f"{self.code}_{self.name.capitalize()}_{self.edition}"
 
-            setattr(self, key, value)
 
-    # -------------------- Métodos utilitarios --------------------
-    def to_dict(self) -> Dict[str, Any]:
-        """Devuelve un diccionario serializable (convierte datetime a ISO)."""
-        result = {}
-        for f in fields(self):
-            val = getattr(self, f.name)
-            if isinstance(val, datetime):
-                val = val.isoformat()
-            result[f.name] = val
-        return result
+@dataclass
+class WeekDay:
+    weed_number: int
+    lecture_day: int
+    admin: Admin
+    code: str = field(init=False)
+    date: datetime = field(init=False)
 
-    def __repr__(self) -> str:
-        return f"MetaData(version={self.version}, created_at={self.created_at}, abs_project_dir={self.abs_project_dir})"
-
-    def get(self, key, default):
-        if not hasattr(self, key):
-            return default
-        else:
-            return getattr(self, key)
+    def __post__init__(self):
+        self.date = datetime.fromisocalendar(
+            self.admin.year,
+            self.admmin.first_monday.isocalendar()[1] + self.weed_number,
+            self.admin.week_day[self.lecture_day - 1],
+        )
+        self.code = code_format("W", self.weed_number)
+        self.code += code_format("L", self.lecture_day)
 
 
 @dataclass
 class Topic:
-    name: str = ""
-    chapters: List[str] = field(default_factory=list)
-    weeks: Optional[List[str]] = None
+    name: str
+    chapters: List[str]
+    weeks: List[WeekDay] | None = None
 
-    def __init__(self, data: Optional[Dict[str, Any]] = None, **kwargs):
-        """
-        Inicializa desde dict o kwargs.
-        - 'chapters' siempre se almacena como lista.
-        - 'weeks' puede ser None (se preserva), o lista; si viene como str -> [str].
-        - Campos desconocidos se ignoran.
-        """
-        # Inicializar con defaults de la dataclass (incluye default_factory)
-        for f in fields(self):
-            setattr(
-                self,
-                f.name,
-                f.default_factory()
-                if callable(getattr(f, "default_factory", None))
-                else f.default,
-            )
 
-        # Combinar data y kwargs
-        if data:
-            kwargs.update(data)
+@dataclass
+class Evaluation:
+    amount: int
+    duedate: List[WeekDay]
 
-        for key, value in kwargs.items():
-            if not hasattr(self, key):
-                continue
 
-            if key == "chapters":
-                if value is None:
-                    value = []
-                elif isinstance(value, str):
-                    value = [value]
-                elif not isinstance(value, list):
-                    raise TypeError(
-                        f"'chapters' debe ser lista[str] o str, no {type(value)}"
-                    )
-
-            elif key == "weeks":
-                # Permitir None explícito
-                if value is None:
-                    # se mantiene None
-                    pass
-                elif isinstance(value, str):
-                    value = [value]
-                elif not isinstance(value, list):
-                    raise TypeError(
-                        f"'weeks' debe ser Optional[list[str]] o str, no {type(value)}"
-                    )
-
-            setattr(self, key, value)
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Devuelve diccionario serializable (weeks puede ser None o lista)."""
-        return {
-            "name": self.name,
-            "chapters": list(self.chapters),
-            "weeks": (None if self.weeks is None else list(self.weeks)),
-        }
-
-    def __repr__(self) -> str:
-        n_weeks = "None" if self.weeks is None else len(self.weeks)
-        return (
-            f"Topic(name={self.name!r}, chapters={len(self.chapters)}, weeks={n_weeks})"
-        )
+@dataclass
+class EvalInstruments:
+    partial: Evaluation | None = None
+    quiz: Evaluation | None = None
+    homework: Evaluation | None = None
+    project: Evaluation | None = None
 
 
 @dataclass
@@ -271,82 +242,28 @@ class ProjectStructure:
     to its specific needs
     """
 
-    # Tipo (para overrides de descripción)
-    type: str = "general"  # "general" | "course"
-    # Campos comunes
-    code: str = ""  # p.ej. 'C01' o main code
-    name: str = ""  # nombre humano
-    root: str = ""
+    code: str
+    name: str
+    proyect_type: ProyectType
+    root: str = field(init=False)
     data: MetaData = field(default_factory=MetaData)
-    # Específicos de Main topic
+    admin: Admin | None = None
     main_topic_root: List[str] = field(default_factory=list)
-    books: Any = field(default_factory=dict)
-    # Para Main topic: topics puede ser dict T## → {...}
-    # Para Lecture: topics T## → {name, chapters, weeks}
-    topics: Any = field(default_factory=dict)
+    books: Dict[str, Book] = field(default_factory=dict)
+    topics: Dict[str, Topic] = field(default_factory=dict)
+
+    def __post__init__(self):
+        if proyect_type == ProyectType.GENE:
+            self.root = f"{self.code}-{self.name}"
+        elif proyect_type == ProyectType.LECT:
+            self.root = f"{self.admin.institution}-{self.code}"
+        else:
+            raise ValueError(f"proyect_type {proyect_type} not defined")
 
     # ---- API amigable ----
     def get_description(self, var_name: str) -> str:
         return self.data.descriptions.get(
             var_name, f"ERROR: {var_name} is not in {self.__class__.__name__}"
-        )
-
-    def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
-
-    # Render múltiple a partir de patterns[]
-    def render_all(
-        self,
-        ch: int,
-        TN: int,
-        par: int,
-        sec: Union[int, str],
-        content_name: Optional[str] = None,
-        BOOK_REFERENCE: Optional[str] = None,
-        extra: Optional[Mapping[str, Any]] = None,
-    ) -> List[str]:
-        ctx: Dict[str, Any] = {
-            "ch": ch,
-            "TN": TN,
-            "par": par,
-            "sec": _norm_sec(sec),
-            "content_name": content_name or "",
-            "BOOK_REFERENCE": BOOK_REFERENCE or "",
-            "ROOT": self.main_topic_root or "",
-        }
-        if extra:
-            ctx.update(extra)
-        return [_safe_format(p, ctx) for p in self.data.patterns]
-
-    # Render de un patrón “nombrado”
-    def render_named(
-        self,
-        name: str,
-        ch: int,
-        TN: int,
-        par: int,
-        sec: Union[int, str],
-        **kwargs: Any,
-    ) -> str:
-        if name not in self.data.named_patterns:
-            raise KeyError(f"No existe el patrón '{name}'")
-        pattern = self.data.named_patterns[name]
-        return (
-            self.render_all(ch, TN, par, sec, **kwargs)[0]
-            if pattern in self.data.patterns
-            else _safe_format(
-                pattern,
-                {
-                    "ch": ch,
-                    "TN": TN,
-                    "par": par,
-                    "sec": _norm_sec(sec),
-                    "content_name": kwargs.get("content_name", ""),
-                    "BOOK_REFERENCE": kwargs.get("BOOK_REFERENCE", ""),
-                    "ROOT": self.main_topic_root or "",
-                    **kwargs.get("extra", {}),
-                },
-            )
         )
 
 
