@@ -1,28 +1,39 @@
-from itep import structure as stc
-from itep.utils import code_format, ensure_dir
+from itep import structure as strc
+from itep.utils import code_format, ensure_dir, select_enum_type, gather_input
 from itep.links import create_config_links, create_topics_links
 
 from pathlib import Path
 import click
 
+# -------------------- Utilidades --------------------
 
-def select_project_type() -> stc.ProjectType:
-    selected: stc.ProjectType | None = None
-    max_opt = len(stc.ProjectType)
-    while not selected:
-        print("Choose you project type:")
-        for idx, proj in enumerate(stc.ProjectType):
-            print(f"\t{idx}: {proj}")
-        try:
-            choice = int(input("Enter the number for your project type: "))
-        except ValueError:
-            print("You must write just the option number.\nTry again.")
-            continue
-        if choice < max_opt:
-            selected = list(stc.ProjectType)[choice]
-        else:
-            print(f"You must choose be between 0 and {max_opt - 1}.\nTry again.")
-    return selected
+
+def gather_code(name: str, patterns: dict) -> str:
+    code = ""
+    for pattern, condition in patterns.items():
+        code += gather_input(
+            f"Enter {pattern} for {name}:\n\t<< ",
+            conditions,
+        )
+    return code
+
+
+def gather_name(code: str) -> str:
+    name = ""
+    while not name:
+        name = input(f"Enter the name for {code}:\n\t<< ")
+        print(f"You write:\n\t>> {name}")
+        ans = input("Is this correct? (Y/n): ").lower() or "y"
+        if ans != "y":
+            ans = input("Do you want to try again? (Y/n)").lower() or "y"
+            if ans == "y":
+                name = ""
+            else:
+                quit()
+    return name
+
+
+# -------------------- CLI --------------------
 
 
 @click.command("init-tex")
@@ -35,21 +46,18 @@ def select_project_type() -> stc.ProjectType:
 def cli(parent_dir):
     """Create a tex project"""
     parent_dir = Path(parent_dir).expanduser() if parent_dir else Path.cwd()
+    ensure_dir(parent_dir, "parent directory")
+    project_type = select_enum_type(strc.ProjectType)
 
-    parent_dir
-    project_type = select_project_type()
+    code = gather_code(project_type["name"],project_type["patterns"])
+    name = gather_name(code)
 
-    if project_type == stc.ProjectType.GENE:
-        if parent_dir != stc.DEF_ABS_PARENT_DIR:
-            print("Your current project directory in not default")
-        else:
-            print("ok")
-    elif project_type == stc.ProjectType.LECT:
-        if parent_dir != stc.DEF_ABS_PARENT_DIR / stc.GeneralDirectory.LEC:
-            print("Your current project directory in not default")
-        else:
-            print("ok")
-        pass
+    meta_data = MetaData(abs_parent_dir=parent_dir)
 
+    admin = None
+    if project_type == ProjectType.LECT:
+        admin = Admin.gather_info()
+
+    
 if __name__ == "__main__":
     cli()
