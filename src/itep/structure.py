@@ -12,6 +12,39 @@ from itep.utils import code_format, gather_input, select_enum_type
 DEF_ABS_PARENT_DIR = Path("/home/luis/Documents/01-U/00-Fisica")
 DEF_ABS_SRC_DIR = Path("/home/luis/.config/mytex")
 
+DEF_ADMIN_PATTERNS = {
+    "total_week_count": {
+        "type": int,
+        "msn": "Enter the total number of weeks:\n\t<< ",
+        "pattern": "^[0-9]+",
+    },
+    "lectures_per_week": {
+        "type": int,
+        "msn": "Enter the total amount of lectures per week\n\t<< ",
+        "pattern": "^[0-5]{1}",
+    },
+    "year": {
+        "type": int,
+        "msn": "Enter the year of the lecture\n\t<< ",
+        "pattern": "^[0-9]{4}",
+    },
+    "cycle": {
+        "type": int,
+        "msn": "Enter current cycle for the lecture\n\t<< ",
+        "pattern": "^[1-3]{1}",
+    },
+    "first_monday": {
+        "type": date.fromisoformat,
+        "msn": "Enter the first monday for the lecture cycle\n\t<< ",
+        "pattern": "^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])",
+    },
+    "week_day": {
+        "type": int,
+        "msn": "Enter the lecture day {day}:\n\t<< ",
+        "pattern": "^[1-5]{1}",
+    },
+}
+
 
 class ConfigType(StrEnum):
     BASE = "base"
@@ -33,23 +66,25 @@ class GeneralDirectory(StrEnum):
 
 
 class ProjectType(Enum):
-    LECT = {
-        "name": "lecture",
-        "parent": DEF_ABS_PARENT_DIR / GeneralDirectory.LEC,
-        "root": "{code}-{name}",
-        "patterns": {
-            "numbering": "^[0-9]{4}",
-            "initials": "^[A-Z]{2}",
-        },
-    }
     GENE = {
         "name": "general",
         "parent": DEF_ABS_PARENT_DIR,
-        "root": "{institution}-{code}",
+        "root": "{code}-{name}",
         "patterns": {
             "numbering": "^[0-9]{2}",
             "initials": "^[A-Z]{2}",
         },
+        "main_topics": DEF_ABS_PARENT_DIR / GeneralDirectory.BIB,
+    }
+    LECT = {
+        "name": "lecture",
+        "parent": DEF_ABS_PARENT_DIR / GeneralDirectory.LEC,
+        "root": "{institution}-{code}",
+        "patterns": {
+            "numbering": "^[0-9]{4}",
+            "initials": "^[A-Z]{2}",
+        },
+        "main_topics": DEF_ABS_PARENT_DIR,
     }
 
 
@@ -171,78 +206,98 @@ class Admin:
 
     def set_institution(self) -> None:
         self.institution = select_enum_type(
+            "institution name",
             Institution,
         )
 
     def set_total_week_count(self) -> None:
         self.total_week_count = int(
             gather_input(
-                "Enter the total number of weeks:\n\t<< ",
-                "^[0-9]+",
+                DEF_ADMIN_PATTERNS["total_week_count"]["msn"],
+                DEF_ADMIN_PATTERNS["total_week_count"]["pattern"],
             )
         )
 
     def set_lectures_per_week(self) -> None:
         self.lectures_per_week = int(
             gather_input(
-                "Enter the total amount of lectures per week\n\t<< ",
-                "^[0-5]{1}",
+                DEF_ADMIN_PATTERNS["lectures_per_week"]["msn"],
+                DEF_ADMIN_PATTERNS["lectures_per_week"]["pattern"],
             )
         )
 
     def set_year(self) -> None:
         self.year = int(
             gather_input(
-                "Enter the year of the lecture\n\t<< ",
-                "^[0-9]{4}",
+                DEF_ADMIN_PATTERNS["year"]["msn"],
+                DEF_ADMIN_PATTERNS["year"]["pattern"],
             )
         )
 
     def set_cycle(self) -> None:
         self.cycle = int(
             gather_input(
-                "Enter current cycle for the lecture\n\t<< ",
-                "^[1-3]{1}",
+                DEF_ADMIN_PATTERNS["cycle"]["msn"],
+                DEF_ADMIN_PATTERNS["cycle"]["pattern"],
             )
         )
 
     def set_first_monday(self) -> None:
         self.first_monday = date.fromisoformat(
             gather_input(
-                "Enter the first monday for the lecture cycle\n\t<< ",
-                "^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])",
+                DEF_ADMIN_PATTERNS["first_monday"]["msn"],
+                DEF_ADMIN_PATTERNS["first_monday"]["pattern"],
             )
         )
 
     def set_week_day(self, lectures_per_week) -> None:
         self.week_day = []
-        for day in range(lectures_per_week):
+        for d in range(lectures_per_week):
             self.week_day.append(
                 int(
                     gather_input(
-                        f"Enter the lecture day {day + 1}:\n\t<< ",
-                        "^[1-5]{1}",
+                        DEF_ADMIN_PATTERNS["week_day"]["msn"].format(day=d),
+                        DEF_ADMIN_PATTERNS["week_day"]["pattern"],
                     )
                 )
             )
 
     @classmethod
-    def gather_info(cls: Admin) ->Admin:
-        cls.set_institution(cls)
-        cls.set_total_week_count(cls)
-        cls.set_lectures_per_week(cls)
-        cls.set_year(cls)
-        cls.set_cycle(cls)
-        cls.set_first_monday(cls)
-        cls.set_week_day(cls, cls.lectures_per_week)
+    def gather_info(cls) -> Admin:
+        institution = select_enum_type(
+            "institution name",
+            Institution,
+        )
+        var_dic = {}
+        for var, content in DEF_ADMIN_PATTERNS.items():
+            if var != "week_day":
+                var_dic[var] = content["type"](
+                    gather_input(
+                        content["msn"],
+                        content["pattern"],
+                    )
+                )
+            else:
+                days_list = []
+                for day in range(var_dic["lectures_per_week"]):
+                    days_list.append(
+                        content["type"](
+                            gather_input(
+                                content["msn"].format(day=day),
+                                content["pattern"],
+                            )
+                        )
+                    )
+                    var_dic[var] = days_list
+
         return cls(
-            cls.institution,
-            cls.total_week_count,
-            cls.lectures_per_week,
-            cls.year,
-            cls.cycle,
-            cls.first_monday,
-            cls.week_day,
+            institution,
+            var_dic["total_week_count"],
+            var_dic["lectures_per_week"],
+            var_dic["year"],
+            var_dic["cycle"],
+            var_dic["first_monday"],
+            var_dic["week_day"],
         )
 
 
@@ -255,6 +310,17 @@ class Book:
     def get_dir_name(self):
         return f"{self.code}_{self.name.capitalize()}_{self.edition}"
 
+    @classmethod
+    def from_directory(cls, path: Path) -> Book:
+        book_list = StrEnum(
+            "book",
+            [b.name for b in path.iterdir() if b.is_file()],
+        )
+        print(book_list)
+        selected_book = select_enum_type("book", book_list)
+        book_name = selected_book.value.split("_")
+        return cls(book_name[0], book_name[1], book_name[2])
+
 
 @dataclass
 class WeekDay:
@@ -264,7 +330,7 @@ class WeekDay:
     code: str = field(init=False)
     date: datetime = field(init=False)
 
-    def __post__init__(self):
+    def __post_init__(self):
         self.date = datetime.fromisocalendar(
             self.admin.year,
             self.admin.first_monday.isocalendar()[1] + self.week_number,
@@ -279,6 +345,10 @@ class Topic:
     name: str
     chapters: List[str]
     weeks: List[WeekDay] | None = None
+
+    @classmethod
+    def from_directory(cls, path: Path) -> Topic:
+        return cls("", [], None)
 
 
 @dataclass
@@ -312,16 +382,12 @@ class ProjectStructure:
     books: Dict[str, Book] = field(default_factory=dict)
     topics: Dict[str, Topic] = field(default_factory=dict)
 
-    def __post__init__(self):
-        if self.project_type == ProjectType.GENE:
-            self.root = f"{self.code}-{self.name}"
-        elif self.project_type == ProjectType.LECT:
-            self.root = f"{self.admin.institution}-{self.code}"
-        else:
-            raise ValueError(f"project_type {self.project_type} not defined")
-
-    # ---- API amigable ----
-    def get_description(self, var_name: str) -> str:
-        return self.data.descriptions.get(
-            var_name, f"ERROR: {var_name} is not in {self.__class__.__name__}"
+    def __post_init__(self):
+        institution = None
+        if self.admin:
+            institution = self.admin.institution.value
+        self.root = self.project_type.value["root"].format(
+            name=self.name,
+            code=self.code,
+            institution=institution,
         )

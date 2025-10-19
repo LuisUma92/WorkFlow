@@ -1,9 +1,50 @@
 # src/itep/utils.py
 from pathlib import Path
-from typing import Any, Dict, Union
-from enum import EnumType
+from typing import Any, Dict, Protocol, Self, Union, List
+from enum import Enum, StrEnum
 import yaml
 import re
+
+
+class DefinedByFiles(Protocol):
+    @classmethod
+    def from_directory(cls, path: Path) -> Self:
+        return cls()
+
+
+def add_to_reference_dict(
+    object: DefinedByFiles,
+    path: Path,
+    mark: str,
+    max: int = 2,
+    object_dict: Dict[str, DefinedByFiles] = {},
+) -> Dict[str, DefinedByFiles]:
+    enough = False
+    while not enough:
+        idx = len(object_dict)+1
+        ref = code_format(mark, idx, max)
+        object_dict[ref] = object.from_directory(path)
+        print(f"Current list:\n\t>> {object_dict}")
+        ans = input("Want to add more? (y/N): ").lower() or "n"
+        if ans == "n":
+            enough = True
+    return object_dict
+
+
+def set_directory_list(path: Path) -> List[str]:
+    dir_list = [d.name for d in path.iterdir() if d.is_dir()]
+    print(dir_list)
+    enough = False
+    selected_list = []
+    while not enough:
+        selection = select_enum_type("", dir_list)
+        if selection not in selected_list:
+            selected_list.append(selection)
+        print(f"Current selected directories:\n\t>> {selected_list}")
+        ans = input("Do you want to add more? (y/N): ").lower() or "n"
+        if ans == "n":
+            enough = True
+    return selected_list
 
 
 def load_yaml(path: Union[str, Path]) -> Dict[str, Any]:
@@ -34,15 +75,15 @@ def gather_input(
                 quit()
 
 
-def select_enum_type(enum_base: EnumType) -> EnumType:
-    selected: EnumType | None = None
+def select_enum_type(name: str, enum_base: Enum) -> Enum:
+    selected: Enum | None = None
     max_opt = len(enum_base)
     while not selected:
-        print("Choose you project type:")
+        print(f"Choose you {name}:")
         for idx, enum_item in enumerate(enum_base):
             print(f"\t{idx}: {enum_item}")
         try:
-            choice = int(input("Enter the number for your project type: "))
+            choice = int(input(f"Enter the number for your {name}: "))
         except ValueError:
             print("You must write just the option number.\nTry again.")
             continue
