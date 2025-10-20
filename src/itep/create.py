@@ -1,5 +1,6 @@
+from typing import Dict
 from itep import structure as strc
-from itep.utils import ensure_dir, select_enum_type, gather_input
+from itep.utils import code_format, ensure_dir, select_enum_type, gather_input
 from itep.utils import set_directory_list, add_to_reference_dict
 # from itep.links import create_config_links, create_topics_links
 
@@ -32,6 +33,63 @@ def gather_name(code: str) -> str:
             else:
                 quit()
     return name
+
+
+def define_new_topics(path: Path, topic: str, idx: int = 1) -> Dict[str, strc.Topic]:
+    new_topics = {}
+    enough = False
+    while not enough:
+        msn = f"Do you want to create a new topic on {topic} (y/N): "
+        ans = input(msn).lower() or "n"
+        if ans == "y":
+            ref = code_format("T", idx, max=3)
+            new_topics[ref] = strc.Topic.create_directory(path / topic)
+            idx += 1
+        elif ans == "n":
+            enough = True
+        else:
+            print("Yoy must write 'n' or 'y'.\nTry again")
+    return new_topics
+
+
+def relate_topic_books(
+    books: Dict[str, strc.Book],
+    topics: Dict[str, strc.Topic],
+) -> None:
+    for book_id, book in books.items():
+        for topic_id, topic in topics.items():
+            msn = f"From the book: {book.get_dir_name}\n"
+            msn += "Enter chapters numbers asosiated to topic"
+            msn += f" {topic_id}-{topic.name}\n"
+            msn += "Separate each chapter with 'comma' (,) character.\n"
+            msn += "Or enter 'pass' (p) to pass to next topic.\n\t<< "
+            ch_str = gather_input(msn, "^[0-9,]+|pass|p")
+            if ch_str == "p" or ch_str == "pass":
+                continue
+            else:
+                ch_list = ch_str.split(",")
+                for ch in ch_list:
+                    topic.add_book_chapter(int(book_id[1:]), int(ch))
+
+
+def set_week_distribution(
+    topics: Dict[str, strc.Topic],
+    admin: strc.Admin,
+) -> None:
+    lectures_to_asigne = []
+    for week in range(1,admin.total_week_count+1):
+        for lecture in range(1,admin.lectures_per_week+1)
+            lecture_code = code_format("W",week)
+            lecture_code += code_format("L",lecture)
+            lectures_to_asigne.append(lecture_code)
+    for topic_id, topic in topics.items():
+        lectures_per_topic = int(
+            gather_input(
+                f"Write the number of lectures for topic {topic.name}",
+                "^[1-9]{1}",
+            )
+        )
+    pass
 
 
 # -------------------- CLI --------------------
@@ -73,6 +131,7 @@ def cli(parent_dir):
                 strc.Book,
                 parent_dir / project_type.value["main_topics"] / topic,
                 "B",
+                object_dict={},
             )
         )
     topics_dict = {}
@@ -82,9 +141,22 @@ def cli(parent_dir):
                 strc.Topic,
                 parent_dir / project_type.value["main_topics"] / topic,
                 "T",
+                max=3,
                 object_dict={},
             )
         )
+        topics_dict.update(
+            define_new_topics(
+                parent_dir / project_type.value["main_topics"],
+                topic,
+                idx=len(topics_dict),
+            )
+        )
+
+    relate_topic_books(book_dict, topics_dict)
+
+    if project_type == strc.ProjectType.LECT:
+        set_week_distribution(topics_dict, admin)
 
     cfg = strc.ProjectStructure(
         code,

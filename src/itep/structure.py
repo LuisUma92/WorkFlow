@@ -6,7 +6,7 @@ from enum import StrEnum, Enum
 from typing import Any, Dict, List
 from pathlib import Path
 
-from itep.utils import code_format, gather_input, select_enum_type
+from itep.utils import code_format, ensure_dir, gather_input, select_enum_type
 
 # --- Constantes por defecto ---
 DEF_ABS_PARENT_DIR = Path("/home/luis/Documents/01-U/00-Fisica")
@@ -75,6 +75,21 @@ class ProjectType(Enum):
             "initials": "^[A-Z]{2}",
         },
         "main_topics": DEF_ABS_PARENT_DIR / GeneralDirectory.BIB,
+        "tree": [
+            "{abs_project_dir}/bib",
+            # "{abs_project_dir}/bib/{T.N:03d}-{T.name}"->BIB for T in topics
+            "{abs_project_dir}/config",
+            "{abs_project_dir}/img",
+            "{abs_project_dir}/img/{root}",
+            # "{abs_project_dir}/img/{B.code}"->IMG for B in books
+            "{abs_project_dir}/projects",
+            "{abs_project_dir}/tex",
+            "{abs_project_dir}/tex/000-0-Glossaries",
+            "{abs_project_dir}/tex/000-1-Summaries",
+            "{abs_project_dir}/tex/000-2-Notes",
+            # "{abs_project_dir}/tex/{T.N:03d}-{T.name}" for T in topics
+            # "{abs_project_dir}/tex/{T.code}/{B.code}"->EXE for B in books
+        ],
     }
     LECT = {
         "name": "lecture",
@@ -85,6 +100,24 @@ class ProjectType(Enum):
             "initials": "^[A-Z]{2}",
         },
         "main_topics": DEF_ABS_PARENT_DIR,
+        "tree": [
+            "{abs_project_dir}/admin",
+            "{abs_project_dir}/eval",
+            "{abs_project_dir}/eval/config",
+            "{abs_project_dir}/eval/img",
+            # "{abs_project_dir}/eval/img/{B.code}"->IMG for B in books
+            "{abs_project_dir}/eval/tex",
+            # "{abs_project_dir}/eval/tex/{T.N:03d}-{T.name}"->mainT for T in topics
+            "{abs_project_dir}/lect",
+            "{abs_project_dir}/lect/bib",
+            # "{abs_project_dir}/bib/{T.N:03d}-{T.name}"->mainT for T in topics
+            "{abs_project_dir}/lect/config",
+            "{abs_project_dir}/lect/img",
+            # "{abs_project_dir}/lect/img/{B.code}"->IMG for B in books
+            "{abs_project_dir}/lect/svg",
+            "{abs_project_dir}/lect/tex",
+            # "{abs_project_dir}/lect/tex/{T.N:03d}-{T.name}"->mainT for T in topics
+        ],
     }
 
 
@@ -316,7 +349,6 @@ class Book:
             "book",
             [b.name for b in path.iterdir() if b.is_file()],
         )
-        print(book_list)
         selected_book = select_enum_type("book", book_list)
         book_name = selected_book.value.split("_")
         return cls(book_name[0], book_name[1], book_name[2])
@@ -343,12 +375,35 @@ class WeekDay:
 @dataclass
 class Topic:
     name: str
-    chapters: List[str]
-    weeks: List[WeekDay] | None = None
+    root: str
+    chapters: List[str] = field(init=False)
+    weeks: List[WeekDay] | None = field(init=False)
 
     @classmethod
     def from_directory(cls, path: Path) -> Topic:
-        return cls("", [], None)
+        topics_list = StrEnum(
+            "topics",
+            [t.name for t in path.iterdir() if t.is_dir()],
+        )
+        selected_topic = select_enum_type("topic", topics_list)
+        return cls(selected_topic.value, path.name)
+
+    @classmethod
+    def create_directory(cls, path: Path) -> Topic:
+        name = gather_input(
+            f"Enter your new {path.name} topic\n\t<< ",
+            "^[A-Z][A-Za-z0-9_-]+",
+        )
+        ensure_dir(path / name, forced=True)
+        return cls(name, path.name)
+
+    def add_book_chapter(self, book_id: int, chapter_id: int) -> None:
+        chapter_code = code_format("B", book_id, max=3)
+        chapter_code += code_format("C", chapter_id)
+        if not self.chapters:
+            self.chapters = [chapter_code]
+        else:
+            self.chapters.append(chapter_code)
 
 
 @dataclass

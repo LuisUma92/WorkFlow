@@ -1,58 +1,28 @@
 # src/itep/utils.py
 from pathlib import Path
 from typing import Any, Dict, Protocol, Self, Union, List
-from enum import Enum, StrEnum
+from enum import Enum
 import yaml
 import re
 
 
-class DefinedByFiles(Protocol):
-    @classmethod
-    def from_directory(cls, path: Path) -> Self:
-        return cls()
-
-
-def add_to_reference_dict(
-    object: DefinedByFiles,
+def ensure_dir(
     path: Path,
-    mark: str,
-    max: int = 2,
-    object_dict: Dict[str, DefinedByFiles] = {},
-) -> Dict[str, DefinedByFiles]:
-    enough = False
-    while not enough:
-        idx = len(object_dict)+1
-        ref = code_format(mark, idx, max)
-        object_dict[ref] = object.from_directory(path)
-        print(f"Current list:\n\t>> {object_dict}")
-        ans = input("Want to add more? (y/N): ").lower() or "n"
-        if ans == "n":
-            enough = True
-    return object_dict
-
-
-def set_directory_list(path: Path) -> List[str]:
-    dir_list = [d.name for d in path.iterdir() if d.is_dir()]
-    print(dir_list)
-    enough = False
-    selected_list = []
-    while not enough:
-        selection = select_enum_type("", dir_list)
-        if selection not in selected_list:
-            selected_list.append(selection)
-        print(f"Current selected directories:\n\t>> {selected_list}")
-        ans = input("Do you want to add more? (y/N): ").lower() or "n"
-        if ans == "n":
-            enough = True
-    return selected_list
-
-
-def load_yaml(path: Union[str, Path]) -> Dict[str, Any]:
-    with open(path, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f) or {}
-    if not isinstance(data, dict):
-        raise ValueError("The YAML file must be mapped yo a dict.")
-    return data
+    name: str = "directory",
+    forced: bool = False,
+) -> None:
+    if not path.exists() and not forced:
+        print(f"Your {name} path:\n\t{path}\ndon't exists.")
+        ans = input("Do you want to create it? (Y,n): ").lower() or "y"
+        if ans == "y":
+            path.mkdir(parents=True, exist_ok=True)
+        else:
+            print("We can't procced with out this directory.")
+            ans = input("Do you want to abort (Y,n) ") or "y"
+            if ans == "y":
+                quit()
+    elif not path.exists() and forced:
+        path.mkdir(parents=True, exist_ok=True)
 
 
 def gather_input(
@@ -114,14 +84,50 @@ def code_format(
         raise ValueError(f"{sec}({len(sec)}) fuera del rango esperado: {max}")
 
 
-def ensure_dir(path: Path, name: str = "path") -> None:
-    if not path.exists():
-        print(f"Your {name} path:\n\t{path}\ndon't exists.")
-        ans = input("Do you want to create it? (Y,n): ").lower() or "y"
-        if ans == "y":
-            path.mkdir(parents=True, exist_ok=True)
-        else:
-            print("We can't procced with out this directory.")
-            ans = input("Do you want to abort (Y,n) ") or "y"
-            if ans == "y":
-                quit()
+class DefinedByFiles(Protocol):
+    @classmethod
+    def from_directory(cls, path: Path) -> Self:
+        return cls()
+
+
+def add_to_reference_dict(
+    object: DefinedByFiles,
+    path: Path,
+    mark: str,
+    max: int = 2,
+    object_dict: Dict[str, DefinedByFiles] = {},
+) -> Dict[str, DefinedByFiles]:
+    enough = False
+    while not enough:
+        idx = len(object_dict) + 1
+        ref = code_format(mark, idx, max)
+        object_dict[ref] = object.from_directory(path)
+        print(f"Current list:\n\t>> {object_dict}")
+        ans = input("Want to add more? (y/N): ").lower() or "n"
+        if ans == "n":
+            enough = True
+    return object_dict
+
+
+def set_directory_list(path: Path) -> List[str]:
+    dir_list = [d.name for d in path.iterdir() if d.is_dir()]
+    print(dir_list)
+    enough = False
+    selected_list = []
+    while not enough:
+        selection = select_enum_type("", dir_list)
+        if selection not in selected_list:
+            selected_list.append(selection)
+        print(f"Current selected directories:\n\t>> {selected_list}")
+        ans = input("Do you want to add more? (y/N): ").lower() or "n"
+        if ans == "n":
+            enough = True
+    return selected_list
+
+
+def load_yaml(path: Union[str, Path]) -> Dict[str, Any]:
+    with open(path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+    if not isinstance(data, dict):
+        raise ValueError("The YAML file must be mapped yo a dict.")
+    return data
