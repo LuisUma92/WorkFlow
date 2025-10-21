@@ -77,19 +77,25 @@ def set_week_distribution(
     admin: strc.Admin,
 ) -> None:
     lectures_to_asigne = []
-    for week in range(1,admin.total_week_count+1):
-        for lecture in range(1,admin.lectures_per_week+1)
-            lecture_code = code_format("W",week)
-            lecture_code += code_format("L",lecture)
+    idx = 0
+    for week in range(1, admin.total_week_count + 1):
+        for lecture in range(1, admin.lectures_per_week + 1):
+            lecture_code = code_format("W", week)
+            lecture_code += code_format("L", lecture)
             lectures_to_asigne.append(lecture_code)
-    for topic_id, topic in topics.items():
+    for _, topic in topics.items():
         lectures_per_topic = int(
             gather_input(
-                f"Write the number of lectures for topic {topic.name}",
+                f"Write the number of lectures for topic {topic.name}\n\t<< ",
                 "^[1-9]{1}",
             )
         )
-    pass
+        this_weeks = []
+        for lec in lectures_to_asigne[idx : idx + lectures_per_topic]:
+            this_weeks.append(lec)
+
+        idx += lectures_per_topic
+        topic.weeks = this_weeks
 
 
 # -------------------- CLI --------------------
@@ -169,6 +175,9 @@ def cli(parent_dir):
         topics=topics_dict,
     )
     print(cfg)
+    cfg.init_directories()
+    cfg.init_links()
+    csf.save()
 
 
 if __name__ == "__main__":
