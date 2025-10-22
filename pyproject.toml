@@ -11,6 +11,7 @@ classifiers = ["Development Status :: 2 - Pre-Alpha"]
 dependencies = ["appdirs", "bibtexparser", "click", "pyyaml"]
 
 [project.scripts]
+workflow = "main:cli"
 bib2yaml = "prismar.bib2yaml:cli"
 cleta = "lectkit.cleta:cli"
 crete = "lectkit.crete:cli"

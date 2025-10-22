@@ -35,7 +35,11 @@ def gather_name(code: str) -> str:
     return name
 
 
-def define_new_topics(path: Path, topic: str, idx: int = 1) -> Dict[str, strc.Topic]:
+def define_new_topics(
+    path: Path,
+    topic: str,
+    idx: int = 1,
+) -> Dict[str, strc.Topic]:
     new_topics = {}
     enough = False
     while not enough:
@@ -78,15 +82,25 @@ def set_week_distribution(
 ) -> None:
     lectures_to_asigne = []
     idx = 0
+    hour, tmz = strc.WeekDay.enter_hours("the lecture")
     for week in range(1, admin.total_week_count + 1):
-        for lecture in range(1, admin.lectures_per_week + 1):
-            lecture_code = code_format("W", week)
-            lecture_code += code_format("L", lecture)
-            lectures_to_asigne.append(lecture_code)
+        for lecture in admin.week_day:
+            lecture_date = strc.WeekDay(
+                week,
+                lecture,
+                admin.first_monday,
+                hour,
+                tmz,
+            )
+            lectures_to_asigne.append(lecture_date)
     for _, topic in topics.items():
+        msn = f"Write the number of lectures for topic {topic.name}.\n"
+        msn += f"Remaining {admin.total_week_count - idx} "
+        msn += f"of {admin.total_week_count} weeks.\n"
+        msn += ("\t<< ",)
         lectures_per_topic = int(
             gather_input(
-                f"Write the number of lectures for topic {topic.name}\n\t<< ",
+                msn,
                 "^[1-9]{1}",
             )
         )
@@ -101,14 +115,14 @@ def set_week_distribution(
 # -------------------- CLI --------------------
 
 
-@click.command("init-tex")
-@click.option(
-    "--parent_dir",
-    "-p",
-    type=str,
-    required=False,
-)
-def cli(parent_dir):
+# @click.command("init-tex")
+# @click.option(
+#     "--parent_dir",
+#     "-p",
+#     type=str,
+#     required=False,
+# )
+def create_cfg(parent_dir: str = ""):
     """Create a tex project"""
     parent_dir = Path(parent_dir).expanduser() if parent_dir else Path.cwd()
     ensure_dir(parent_dir, "parent directory")
@@ -127,6 +141,7 @@ def cli(parent_dir):
         admin = strc.Admin.gather_info()
 
     main_topics = set_directory_list(
+        "main topic(s)",
         parent_dir / project_type.value["main_topics"],
     )
 
@@ -174,10 +189,9 @@ def cli(parent_dir):
         books=book_dict,
         topics=topics_dict,
     )
-    print(cfg)
     cfg.init_directories()
     cfg.init_links()
-    csf.save()
+    cfg.save()
 
 
 if __name__ == "__main__":
