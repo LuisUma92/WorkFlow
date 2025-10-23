@@ -1,6 +1,6 @@
 # src/itep/structures.py
 from __future__ import annotations
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from datetime import datetime, date, timezone, timedelta
 from enum import StrEnum, Enum
 from typing import Dict, List, Tuple
@@ -80,6 +80,15 @@ class GeneralDirectory(StrEnum):
 
 
 class ProjectType(Enum):
+    DEFA = {
+        "name": "",
+        "parent": Path,
+        "root": "",
+        "patterns": {},
+        "main_topics": Path,
+        "tree": [],
+        "links": {},
+    }
     GENE = {
         "name": "general",
         "parent": DEF_ABS_PARENT_DIR,
@@ -192,6 +201,9 @@ class WeekDay:
         self.code += code_format("L", self.lecture_day)
         self.code += f"D{self.day_date.isoformat()}"
 
+    def __iter__(self):
+        yield from ((f.name, getattr(self, f.name)) for f in fields(self))
+
     @classmethod
     def fromisoformat(
         cls,
@@ -222,6 +234,9 @@ class ConfigData:
     src: str
     termination: str
     number: int | None
+
+    def __iter__(self):
+        yield from ((f.name, getattr(self, f.name)) for f in fields(self))
 
     def get_relation(self):
         target_file = f"{self.directory}/{self.src}.{self.termination}"
@@ -265,11 +280,17 @@ class MetaData:
     last_modification: datetime = field(default_factory=datetime.now)
     version: str = "1.0.0"
 
+    def __iter__(self):
+        yield from ((f.name, getattr(self, f.name)) for f in fields(self))
+
 
 @dataclass
 class Evaluation:
     amount: int
     duedate: List[WeekDay]
+
+    def __iter__(self):
+        yield from ((f.name, getattr(self, f.name)) for f in fields(self))
 
     @classmethod
     def gather_info(cls, name: str, first: date) -> Evaluation:
@@ -304,6 +325,9 @@ class EvalInstruments:
     homework: Evaluation | None = None
     project: Evaluation | None = None
 
+    def __iter__(self):
+        yield from ((f.name, getattr(self, f.name)) for f in fields(self))
+
     @classmethod
     def gather_info(cls, first: date) -> EvalInstruments:
         parms = []
@@ -329,11 +353,16 @@ class Admin:
     week_day: List[int]
     evaluation: EvalInstruments
 
+    def __iter__(self):
+        yield from ((f.name, getattr(self, f.name)) for f in fields(self))
+
     def set_institution(self) -> None:
-        self.institution = select_enum_type(
+        ans = select_enum_type(
             "institution name",
             Institution,
         )
+        if ans:
+            self.institution = ans
 
     def set_total_week_count(self) -> None:
         self.total_week_count = int(
@@ -447,6 +476,9 @@ class Book:
     name: str
     edition: int
 
+    def __iter__(self):
+        yield from ((f.name, getattr(self, f.name)) for f in fields(self))
+
     def get_dir_name(self):
         return f"{self.code}_{self.name.capitalize()}_{self.edition}"
 
@@ -484,6 +516,9 @@ class Topic:
         ensure_dir(path / name, forced=True)
         return cls(name, path.name)
 
+    def __iter__(self):
+        yield from ((f.name, getattr(self, f.name)) for f in fields(self))
+
     def add_book_chapter(self, book_id: int, chapter_id: int) -> None:
         chapter_code = code_format("B", book_id, max=3)
         chapter_code += code_format("C", chapter_id)
@@ -502,24 +537,37 @@ class ProjectStructure:
 
     code: str = field(default_factory=str)
     name: str = field(default_factory=str)
-    project_type: ProjectType | None = field(default_factory=lambda: None)
+    project_type: ProjectType = field(default_factory=lambda: ProjectType.DEFA)
     root: str = field(init=False)
     data: MetaData = field(default_factory=MetaData)
-    admin: Admin | None = None
+    admin: Admin = field(init=False)
     main_topic_root: List[str] = field(default_factory=list)
     books: Dict[str, Book] = field(default_factory=dict)
     topics: Dict[str, Topic] = field(default_factory=dict)
     configs: Dict[str, List[ConfigData]] = field(default_factory=dict)
 
-    def init_root(self):
+    def __post_init__(self):
         institution = None
-        if self.admin:
+        if hasattr(self, "admin"):
             institution = self.admin.institution.value
         self.root = self.project_type.value["root"].format(
             name=self.name,
             code=self.code,
             institution=institution,
         )
+
+    def __iter__(self):
+        yield "code", self.code
+        yield "name", self.name
+        yield "project_type", self.project_type.name
+        yield "root", self.root
+        yield "data", dict(self.data)
+        if hasattr(self, "admin"):
+            yield "admin", dict(self.admin)
+        yield "main_topic_root", self.main_topic_root
+        yield "books", self.books
+        yield "topics", self.topics
+        yield "configs", self.configs
 
     def init_directories(self) -> None:
         for directory in self.project_type.value["tree"]:
@@ -547,9 +595,7 @@ class ProjectStructure:
             pass
 
     def save(self) -> None:
-        this = self.__dict__
-        print(this)
         write_yaml(
             self.data.abs_parent_dir / self.root / "config.yaml",
-            this,
+            dict(self),
         )
