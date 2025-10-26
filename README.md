@@ -19,7 +19,7 @@ This script remove common auxiliary files used by $\LaTeX$
 This script takes a plain tex file and creates subfiles for $\LaTeX$ to input.
 
 Use the flag '%>' to define the 'path/to/file/to/make.tex' for create a new
-$\LaTeX$ with the contents until next flag.
+$\LaTeX$ with the contents until the flag '%>END'.
 
 ##### Example
 
@@ -27,6 +27,8 @@ $\LaTeX$ with the contents until next flag.
 %>tex/C1/C1S1-001-file.tex
 This lines are going to be copied to the file C1S1-001-file.tex at the
 directory ./tex/C1
+%>END
+This line will be ignored
 '''
 
 ##### Recommendation

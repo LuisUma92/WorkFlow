@@ -51,7 +51,6 @@ def save_to_file(
 )
 def cli(filename, mainfile, currentdir):
     currentdir = Path(currentdir).expanduser() if currentdir else Path().cwd()
-    print(currentdir)
     FLAG = "%>"
     READING_FLAG = False
     subcontent = []
@@ -59,7 +58,7 @@ def cli(filename, mainfile, currentdir):
     toImport = []
     # opens file
     try:
-        with open(filename, "r") as file:
+        with open(currentdir / filename, "r") as file:
             content = [line for line in file]
         print(f"From {filename} where readded {len(content)} lines")
     except FileNotFoundError:
