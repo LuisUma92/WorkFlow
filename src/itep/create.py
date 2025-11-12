@@ -1,6 +1,8 @@
 from typing import Dict
 from itep import structure as strc
-from itep.utils import code_format, ensure_dir, select_enum_type, gather_input
+from itep.utils import code_format, ensure_dir
+from appfunc.options import select_enum_type
+from appfunc.iofunc import gather_input
 from itep.utils import set_directory_list, add_to_reference_dict
 # from itep.links import create_config_links, create_topics_links
 

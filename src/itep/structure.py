@@ -2,188 +2,114 @@
 from __future__ import annotations
 from dataclasses import dataclass, field, fields
 from datetime import datetime, date, timezone, timedelta
-from enum import StrEnum, Enum
-from typing import Dict, List, Tuple
+from enum import StrEnum, EnumType
+from typing import Dict, List
 from pathlib import Path
 
-from itep.utils import code_format, ensure_dir, gather_input, select_enum_type
-from itep.utils import create_links, write_yaml
+
+from itep.utils import code_format, ensure_dir
+from itep.defaults import DEF_ABS_PARENT_DIR, DEF_ABS_SRC_DIR
+from appfunc.options import select_enum_type
+from appfunc.iofunc import spec, ask, gather_dataclass
 
 # --- Constantes por defecto ---
-DEF_ABS_PARENT_DIR = Path("/home/luis/Documents/01-U/00-Fisica")
-DEF_ABS_SRC_DIR = Path("/home/luis/.config/mytex")
-
-DEF_ADMIN_PATTERNS = {
-    "total_week_count": {
-        "type": int,
-        "msn": "Enter the total number of weeks:\n\t<< ",
-        "pattern": "^[0-9]+",
-    },
-    "lectures_per_week": {
-        "type": int,
-        "msn": "Enter the total amount of lectures per week\n\t<< ",
-        "pattern": "^[0-5]{1}",
-    },
-    "year": {
-        "type": int,
-        "msn": "Enter the year of the lecture\n\t<< ",
-        "pattern": "^[0-9]{4}",
-    },
-    "cycle": {
-        "type": int,
-        "msn": "Enter current cycle for the lecture\n\t<< ",
-        "pattern": "^[1-3]{1}",
-    },
-    "first_monday": {
-        "type": date.fromisoformat,
-        "msn": "Enter the first monday for the lecture cycle\n\t<< ",
-        "pattern": "^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])",
-    },
-    "week_day": {
-        "type": int,
-        "msn": "Enter the lecture day {day}:\n\t<< ",
-        "pattern": "^[1-5]{1}",
-    },
-}
-
-DEF_TEX_CONFIG = {
-    "0-packages.sty": "{src_dir}/sty/SetFormat.sty",
-    "1-loyaut.sty": "{src_dir}/sty/SetLoyaut.sty",
-    "2-commands.sty": "{src_dir}/sty/SetCommands.sty",
-    "2-partial.sty": "{src_dir}/sty/PartialCommands.sty",
-    "3-units.sty": "{src_dir}/sty/SetUnits.sty",
-    "3-symbols.sty": "{src_dir}/sty/SetSymbols.sty",
-    "5-profiles.sty": "{src_dir}/sty/SetProfiles.sty",
-    "6-headers.sty": "{src_dir}/sty/SetHeaders.sty",
-    "title.tex": "{src_dir}/template/title.tex",
-    "instructions.tex": "{src_dir}/template/{institution}-PPI.tex",
-}
 
 
-class ConfigType(StrEnum):
+class FriendlyEnumMeta(EnumType):
+    def __call__(cls: EnumType, value, *args, **kwargs):
+        try:
+            return super().__call__(value, *args, **kwargs)
+        except ValueError as e:
+            valid = ", ".join([m.value for m in cls])
+            raise ValueError(
+                f"'{value}' no es un valor válido para {cls.__name__}. "
+                f"Valores permitidos: {valid}"
+            ) from e
+
+
+class ConfigType(StrEnum, metaclass=FriendlyEnumMeta):
     BASE = "base"
     EVAL = "eval"
     PRESS = "press"
 
 
-class Institution(StrEnum):
+class Institution(StrEnum, metaclass=FriendlyEnumMeta):
     UCR = "UCR"
     FIDE = "UFide"
     UCIMED = "UCIMED"
 
 
-class GeneralDirectory(StrEnum):
+class GeneralDirectory(StrEnum, metaclass=FriendlyEnumMeta):
     LEC = "00AA-Lectures"
     IMG = "00II-ImagesFigures"
     BIB = "00BB-Library"
     EXE = "00EE-ExamplesExercises"
 
 
-class ProjectType(Enum):
-    DEFA = {
-        "name": "",
-        "parent": Path,
-        "root": "",
-        "patterns": {},
-        "main_topics": Path,
-        "tree": [],
-        "links": {},
-    }
-    GENE = {
-        "name": "general",
-        "parent": DEF_ABS_PARENT_DIR,
-        "root": "{code}-{name}",
-        "patterns": {
-            "numbering": "^[0-9]{2}",
-            "initials": "^[A-Z]{2}",
-        },
-        "main_topics": DEF_ABS_PARENT_DIR / GeneralDirectory.BIB,
-        "tree": [
-            "bib",
-            "config",
-            "img",
-            "projects",
-            "tex",
-            "tex/000-0-Glossaries",
-            "tex/000-1-Summaries",
-            "tex/000-2-Notes",
-            "tex/{t_idx:03}-{t_name}",  #  for T in topics
-        ],
-        "links": {
-            "config": DEF_TEX_CONFIG,
-            "bib/": {
-                "{main_t}": "{parent_dir}/{bib}/{main_t}",
-                "{t_idx:03d}-{t_name}": "{parent_dir}/{bib}/{main_t}/{t_name}",
-            },  # BIB for T in topics
-            "img/": {
-                "{b_dir}": "{parent_dir}/{img}/{b_dir}",
-                "{root}": "{parent_dir}/{img}/{root}",
-            },  # IMG for B in books
-            "tex/{t_idx}-{t_name}": {
-                "{b_dir}-{ch:02d}": "{parent_dir}/{exe}/{b_dir}/C{ch:02d}",
-            },  # EXE for B in books
-        },
-    }
-    LECT = {
-        "name": "lecture",
-        "parent": DEF_ABS_PARENT_DIR / GeneralDirectory.LEC,
-        "root": "{institution}-{code}",
-        "patterns": {
-            "numbering": "^[0-9]{4}",
-            "initials": "^[A-Z]{2}",
-        },
-        "main_topics": DEF_ABS_PARENT_DIR,
-        "tree": [
-            "admin",
-            "eval",
-            "eval/config",
-            "eval/img",
-            "eval/tex",
-            "eval/tex/{t_idx:03d}-{t_name}",  # ->mainT for T in topics
-            "lect",
-            "lect/bib",
-            "lect/config",
-            "lect/img",
-            "lect/svg",
-            "lect/tex",
-            "lect/tex/{t_idx_03d}-{t_name}",  # ->mainT for T in topics
-        ],
-        "links": {
-            "eval/config": DEF_TEX_CONFIG,
-            "eval/img/": {
-                "{b_dir}": "{def_parent_dir}/{img}/{b_dir}",
-                "{main_t}": "{def_parent_dir}/{img}/{main_t}",
-            },  # IMG for B in books
-            "eval/tex/{t_idx:03d}-{t_name}": {
-                "{b_dir}-{ch:02d}": "{def_parent_dir}/{exe}/{b_dir}/{ch:02d}",
-            },  # EXE for B in books
-            "lect/config": DEF_TEX_CONFIG,
-            "lect/bib/": {
-                "{main_bib}": "{def_parent_dir}/{bib}/{main_bib}",
-                "{t_idx:03d}-{t_name}": "{def_parent_dir}/{bib}/{main_bib}/{t_name}",
-            },  # BIB for T in topics
-            "lect/img/": {
-                "{b_dir}": "{def_parent_dir}/{img}/{b_dir}",
-                "{main_t}": "{def_parent_dir}/{img}/{main_t}",
-            },  # IMG for B in books
-            "lect/tex/{t_idx:03d}-{t_name}": {
-                "{b_dir}-{ch:02d}": "{def_parent_dir}/{exe}/{b_dir}/{ch:02d}",
-                "notes": "{def_parent_dir}/{main_t}/tex/{t_idx:03d}-{t_name}",
-            },  # EXE for B in books
-        },
-    }
-
-
 # ==================== Dataclass base ====================
 
 
 @dataclass
+class ProjectModel:
+    name: str = field(default_factory=str)
+    parent: Path = field(default_factory=Path)
+    root: str = field(default_factory=str)
+    patterns: Dict[str, str] = field(default_factory=dict)
+    main_topics: Path = field(default_factory=Path)
+    tree: List[str] = field(default_factory=list)
+    links: Dict[str, Dict[str, str]] = field(default_factory=dict)
+
+    def __iter__(self):
+        yield from ((f.name, getattr(self, f.name)) for f in fields(self))
+
+
+@dataclass
 class WeekDay:
-    week_number: int
-    lecture_day: int
-    first_monday: date
-    init_time: int
-    tmz: int
+    week_number: int = field(
+        metadata={
+            "input": spec(
+                "Enter week number",
+                r"[0-9]{1,2}",
+                int,
+            )
+        }
+    )
+    lecture_day: int = field(
+        metadata={
+            "input": spec(
+                "Enter weed day assosiated (Mon=1,...,Sat=6)",
+                r"[1-6]",
+                int,
+            )
+        }
+    )
+    first_monday: date = field(
+        metadata={
+            "input": spec(
+                "Enter first monday for the lecture cycle as ISO (YYYY-MM-DD)",
+                r"([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])",
+                date.fromisoformat,
+            )
+        }
+    )
+    init_time: int = field(
+        metadata={
+            "input": spec(
+                "Enter the scheldule initial hour (0-23)",
+                r"([01]?\d|2[0-3])",
+                int,
+            )
+        }
+    )
+    tmz: int = field(
+        metadata={
+            "input": spec(
+                "Enter time zone in range [-24,+24]",
+                r"[+-]?([0-9]|[1][0-9]|2[0-4])",
+                int,
+            )
+        }
+    )
     code: str = field(init=False)
     day_date: datetime = field(init=False)
 
@@ -192,8 +118,7 @@ class WeekDay:
             self.first_monday.isocalendar()[0],
             self.first_monday.isocalendar()[1] + self.week_number,
             self.lecture_day,
-        )
-        self.day_date = self.day_date.replace(
+        ).replace(
             hour=self.init_time,
             tzinfo=timezone(timedelta(hours=self.tmz)),
         )
@@ -203,6 +128,12 @@ class WeekDay:
 
     def __iter__(self):
         yield from ((f.name, getattr(self, f.name)) for f in fields(self))
+
+    def __str__(self):
+        return self.code
+
+    def project_repr(self):
+        return self.code
 
     @classmethod
     def fromisoformat(
@@ -216,15 +147,6 @@ class WeekDay:
         week_number = assigned.isocalendar().week - first.isocalendar().week
         lecture_day = assigned.isoweekday()
         return cls(week_number, lecture_day, first, init_time, tmz)
-
-    @classmethod
-    def enter_hours(cls, name: str) -> Tuple:
-        msn = f"Enter the scheldule time for {name}\n"
-        msn += "hour,timezone (ej: 13,-6)\n"
-        msn += "\t<< "
-        hours = gather_input(msn, "^([0-9]|[12][0-9]),([+-])([0-9]|[12][0-9])")
-        hour, tmz = hours.split(",")
-        return int(hour), int(tmz)
 
 
 @dataclass
@@ -286,188 +208,120 @@ class MetaData:
 
 @dataclass
 class Evaluation:
-    amount: int
-    duedate: List[WeekDay]
+    name: str = field(
+        metadata={
+            "input": spec(
+                "Enter evaluation name",
+                r".+",
+                str,
+            )
+        }
+    )
+    amount: int = field(
+        default=1,
+        metadata={
+            "input": spec(
+                "Enter the amount of evaluations",
+                r"[0-9]{1,2}",
+                int,
+            )
+        },
+    )
+    duedate: List[WeekDay] = field(init=False, default_factory=list)
+
+    def __post_init__(self):
+        for i in range(self.amount):
+            print(f"\n>> duedate[{i}]:")
+            self.duedate.append(gather_dataclass(WeekDay))
 
     def __iter__(self):
         yield from ((f.name, getattr(self, f.name)) for f in fields(self))
-
-    @classmethod
-    def gather_info(cls, name: str, first: date) -> Evaluation:
-        amount = int(
-            gather_input(
-                f"Enter the amount of {name}\n\t<< ",
-                "^[0-9]{1,2}",
-            )
-        )
-        duedate = []
-        for app in range(1, amount + 1):
-            temp_date = gather_input(
-                f"Enter the date for the {name} number {app}\n\t<< ",
-                "^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])",
-            )
-            init_time, tmz = WeekDay.enter_hours(f"{name} number {app}")
-            duedate.append(
-                WeekDay.fromisoformat(
-                    temp_date,
-                    init_time,
-                    tmz,
-                    first,
-                )
-            )
-        return cls(amount, duedate)
-
-
-@dataclass
-class EvalInstruments:
-    partial: Evaluation | None = None
-    quiz: Evaluation | None = None
-    homework: Evaluation | None = None
-    project: Evaluation | None = None
-
-    def __iter__(self):
-        yield from ((f.name, getattr(self, f.name)) for f in fields(self))
-
-    @classmethod
-    def gather_info(cls, first: date) -> EvalInstruments:
-        parms = []
-        attr_list = ["partial", "quiz", "homework", "project"]
-        for atrr in attr_list:
-            parms.append(Evaluation.gather_info(atrr, first))
-        return cls(
-            parms[0],
-            parms[1],
-            parms[2],
-            parms[3],
-        )
 
 
 @dataclass
 class Admin:
-    institution: Enum
-    total_week_count: int
-    lectures_per_week: int
-    year: int
-    cycle: int
-    first_monday: date
-    week_day: List[int]
-    evaluation: EvalInstruments
+    institution: Institution = field(
+        metadata={
+            "input": spec(
+                "Enter your insntitution name",
+                r".+",
+                Institution,
+            )
+        }
+    )
+    total_week_count: int = field(
+        metadata={
+            "input": spec(
+                "Enter the total number of weeks",
+                r"[0-9]+",
+                int,
+            )
+        }
+    )
+    lectures_per_week: int = field(
+        metadata={
+            "input": spec(
+                "Enter the total amount of lectures per week",
+                r"[0-5]",
+                int,
+            )
+        }
+    )
+    year: int = field(
+        metadata={
+            "input": spec(
+                "Enter the year of the lecture",
+                r"2([0-9]{3})",
+                int,
+            )
+        }
+    )
+    cycle: int = field(
+        metadata={
+            "input": spec(
+                "Enter current cycle for the lecture",
+                r"[1-3]",
+                int,
+            )
+        }
+    )
+    first_monday: date = field(
+        metadata={
+            "input": spec(
+                "Enter first monday for the lecture cycle as ISO (YYYY-MM-DD)",
+                r"([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])",
+                date.fromisoformat,
+            )
+        }
+    )
+    week_day: List[int] = field(
+        init=False,
+        default_factory=list,
+    )
+    evaluation: List[Evaluation] = field(
+        init=False,
+        default_factory=list,
+    )
+
+    def __post_init__(self):
+        for i in range(self.lectures_per_week):
+            print(f"\n>> lecture day [{i}]:")
+            self.week_day.append(
+                ask(
+                    spec(
+                        "Enter weed day assosiated (Mon=1,...,Sat=6)",
+                        r"[1-6]",
+                        int,
+                    )
+                )
+            )
+        evals = ["partial", "homework", "project", "quiz"]
+        for eval in evals:
+            if (input(f"Want to add {eval} (Y/n): ").lower() or "y") == "y":
+                self.evaluation.append(gather_dataclass(Evaluation))
 
     def __iter__(self):
         yield from ((f.name, getattr(self, f.name)) for f in fields(self))
-
-    def set_institution(self) -> None:
-        ans = select_enum_type(
-            "institution name",
-            Institution,
-        )
-        if ans:
-            self.institution = ans
-
-    def set_total_week_count(self) -> None:
-        self.total_week_count = int(
-            gather_input(
-                DEF_ADMIN_PATTERNS["total_week_count"]["msn"],
-                DEF_ADMIN_PATTERNS["total_week_count"]["pattern"],
-            )
-        )
-
-    def set_lectures_per_week(self) -> None:
-        self.lectures_per_week = int(
-            gather_input(
-                DEF_ADMIN_PATTERNS["lectures_per_week"]["msn"],
-                DEF_ADMIN_PATTERNS["lectures_per_week"]["pattern"],
-            )
-        )
-
-    def set_year(self) -> None:
-        self.year = int(
-            gather_input(
-                DEF_ADMIN_PATTERNS["year"]["msn"],
-                DEF_ADMIN_PATTERNS["year"]["pattern"],
-            )
-        )
-
-    def set_cycle(self) -> None:
-        self.cycle = int(
-            gather_input(
-                DEF_ADMIN_PATTERNS["cycle"]["msn"],
-                DEF_ADMIN_PATTERNS["cycle"]["pattern"],
-            )
-        )
-
-    def set_first_monday(self) -> None:
-        assigned = gather_input(
-            DEF_ADMIN_PATTERNS["first_monday"]["msn"],
-            DEF_ADMIN_PATTERNS["first_monday"]["pattern"],
-        )
-        isoC = [int(d) for d in assigned.split("-")]
-        self.first_monday = date.fromisocalendar(
-            isoC[0],
-            isoC[1],
-            1,
-        )
-
-    def set_week_day(self, lectures_per_week) -> None:
-        self.week_day = []
-        for d in range(lectures_per_week):
-            self.week_day.append(
-                int(
-                    gather_input(
-                        DEF_ADMIN_PATTERNS["week_day"]["msn"].format(day=d),
-                        DEF_ADMIN_PATTERNS["week_day"]["pattern"],
-                    )
-                )
-            )
-
-    @classmethod
-    def gather_info(cls) -> Admin:
-        institution = select_enum_type(
-            "institution name",
-            Institution,
-        )
-        var_dic = {}
-        for var, content in DEF_ADMIN_PATTERNS.items():
-            if var != "week_day" or var != "first_monday":
-                var_dic[var] = content["type"](
-                    gather_input(
-                        content["msn"],
-                        content["pattern"],
-                    )
-                )
-            elif var == "first_monday":
-                temp = content["type"](
-                    gather_input(
-                        content["msn"],
-                        content["pattern"],
-                    )
-                )
-                var_dic[var] = date.fromisocalendar(
-                    temp.year, temp.isocalendar().week, 1
-                )
-            else:
-                days_list = []
-                for day in range(var_dic["lectures_per_week"]):
-                    days_list.append(
-                        content["type"](
-                            gather_input(
-                                content["msn"].format(day=day),
-                                content["pattern"],
-                            )
-                        )
-                    )
-                    var_dic[var] = days_list
-        eval = EvalInstruments(var_dic["first_monday"])
-        return cls(
-            institution,
-            var_dic["total_week_count"],
-            var_dic["lectures_per_week"],
-            var_dic["year"],
-            var_dic["cycle"],
-            var_dic["first_monday"],
-            var_dic["week_day"],
-            eval,
-        )
 
 
 @dataclass
@@ -487,32 +341,45 @@ class Book:
         book_list = [b.name for b in path.iterdir() if b.is_file()]
         selected_book = select_enum_type("book", book_list)
         if not selected_book:
-            return None
+            raise StopIteration
         book_name = selected_book.split("_")
         return cls(book_name[0], book_name[1], int(book_name[2]))
 
 
 @dataclass
 class Topic:
-    name: str
-    root: str
-    chapters: List[str] | None = field(default_factory=lambda: None)
-    weeks: List[WeekDay] | None = field(default_factory=lambda: None)
+    name: str = field(
+        metadata={
+            "input": spec(
+                "Enter topic name",
+                r"\S(.|\s){1,}\S",
+                str,
+            )
+        }
+    )
+    root: str = field(
+        metadata={
+            "input": spec(
+                "Enter root directory",
+                r".+",
+                str,
+            )
+        }
+    )
+    chapters: List[str] | None = field(default=None)
+    weeks: List[WeekDay] | None = field(default=None)
 
     @classmethod
     def from_directory(cls, path: Path) -> Topic:
         topics_list = [t.name for t in path.iterdir() if t.is_dir()]
-        selected_topic = select_enum_type("topic", topics_list)
+        selected_topic = str(select_enum_type("topic", topics_list))
         if not selected_topic:
-            return None
+            raise StopIteration
         return cls(selected_topic, path.name)
 
     @classmethod
     def create_directory(cls, path: Path) -> Topic:
-        name = gather_input(
-            f"Enter your new {path.name} topic\n\t<< ",
-            "^[A-Z][A-Za-z0-9_-]+",
-        )
+        name = (ask(f.metadata["input"]) for f in fields(cls) if f.name == "name")
         ensure_dir(path / name, forced=True)
         return cls(name, path.name)
 
@@ -537,10 +404,10 @@ class ProjectStructure:
 
     code: str = field(default_factory=str)
     name: str = field(default_factory=str)
-    project_type: ProjectType = field(default_factory=lambda: ProjectType.DEFA)
+    project_type: ProjectModel = field(default_factory=ProjectModel)
     root: str = field(init=False)
     data: MetaData = field(default_factory=MetaData)
-    admin: Admin = field(init=False)
+    admin: Admin | None = field(default=None)
     main_topic_root: List[str] = field(default_factory=list)
     books: Dict[str, Book] = field(default_factory=dict)
     topics: Dict[str, Topic] = field(default_factory=dict)
@@ -548,29 +415,19 @@ class ProjectStructure:
 
     def __post_init__(self):
         institution = None
-        if hasattr(self, "admin"):
+        if self.admin:
             institution = self.admin.institution.value
-        self.root = self.project_type.value["root"].format(
+        self.root = self.project_type.root.format(
             name=self.name,
             code=self.code,
             institution=institution,
         )
 
     def __iter__(self):
-        yield "code", self.code
-        yield "name", self.name
-        yield "project_type", self.project_type.name
-        yield "root", self.root
-        yield "data", dict(self.data)
-        if hasattr(self, "admin"):
-            yield "admin", dict(self.admin)
-        yield "main_topic_root", self.main_topic_root
-        yield "books", self.books
-        yield "topics", self.topics
-        yield "configs", self.configs
+        yield from ((f.name, getattr(self, f.name)) for f in fields(self))
 
     def init_directories(self) -> None:
-        for directory in self.project_type.value["tree"]:
+        for directory in self.project_type.tree:
             if "{" in directory:
                 for idx, topic in self.topics.items():
                     ensure_dir(
@@ -585,17 +442,3 @@ class ProjectStructure:
                     self.data.abs_parent_dir / self.root / directory,
                     forced=True,
                 )
-
-    def init_links(self) -> None:
-        for link_dir, relations in self.project_type.value["links"].items():
-            create_links(
-                self.data.abs_parent_dir / self.root / link_dir,
-                relations,
-            )
-            pass
-
-    def save(self) -> None:
-        write_yaml(
-            self.data.abs_parent_dir / self.root / "config.yaml",
-            dict(self),
-        )

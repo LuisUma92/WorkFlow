@@ -11,14 +11,6 @@ import click
 from inspect import getmembers, isfunction
 
 
-options = {
-    "init": {
-        "fnc": create_cfg,
-        "args": {"parent_dir": None},
-    },
-}
-
-
 def help():
     for foo, _ in getmembers(manager, isfunction):
         print(

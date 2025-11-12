@@ -3,11 +3,16 @@ This manager manages de CUDA operations for the strc.ProjectStructure
 """
 
 import itep.structure as strc
-from itep.utils import gather_input, select_enum_type, ensure_dir
+from itep.utils import ensure_dir
+from appfunc.iofunc import gather_input
+from appfunc.options import select_enum_type
+from itep.ioconfig import load_config
 
 from pathlib import Path
 from typing import Optional, List, Tuple
 from datetime import date
+
+cgf: strc.ProjectStructure
 
 
 def set_project_type(ps: strc.ProjectStructure) -> strc.ProjectStructure:
@@ -33,3 +38,17 @@ def restart_metadata(ps: strc.ProjectStructure) -> strc.ProjectStructure:
     data = strc.MetaData(abs_parent_dir=parent_dir)
     ps.data = data
     return ps
+
+
+def create_cfg():
+    pass
+
+
+def update_cfg(file: str):
+    cgf = load_config(file)
+    pass
+
+
+def main():
+    global cgf
+    pass

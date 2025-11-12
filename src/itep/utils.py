@@ -1,9 +1,10 @@
 # src/itep/utils.py
-from enum import EnumType
 from pathlib import Path
-from typing import Any, Dict, Protocol, Self, Union, List
+from typing import Any, Dict, Protocol, Self, Union, List, Tuple
 import yaml
-import re
+
+from appfunc.iofunc import gather_input
+from appfunc.options import select_enum_type
 
 
 def ensure_dir(
@@ -23,28 +24,6 @@ def ensure_dir(
                 quit()
     elif not path.exists() and forced:
         path.mkdir(parents=True, exist_ok=True)
-
-
-def select_enum_type(name: str, enum_base):
-    selected = None
-    max_opt = len(enum_base)
-    while not selected:
-        print(f"Choose you {name}:")
-        for idx, enum_item in enumerate(enum_base):
-            print(f"\t{idx}: {enum_item}")
-        try:
-            print("Enter -1 to avoid selecting a topic.\n")
-            choice = int(input(f"Enter the number for your {name}: "))
-        except ValueError:
-            print("You must write just the option number.\nTry again.")
-            continue
-        if choice < 0:
-            return None
-        elif choice < max_opt:
-            selected = list(enum_base)[choice]
-        else:
-            print(f"You must choose between [0, {max_opt - 1}].\nTry again.")
-    return selected
 
 
 def code_format(
@@ -113,7 +92,7 @@ def load_yaml(path: Union[str, Path]) -> Dict[str, Any]:
     with open(path, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
     if not isinstance(data, dict):
-        raise ValueError("The YAML file must be mapped yo a dict.")
+        raise ValueError("The YAML file must be mapped to a dict.")
     return data
 
 
@@ -122,53 +101,10 @@ def write_yaml(path: Path, data: Dict) -> None:
         yaml.dump(data, f, default_flow_style=False, sort_keys=False)
 
 
-def safe_symlink(target: Path, link_path: Path):
-    ensure_dir(link_path.parent)
-    if link_path.is_symlink() or link_path.exists():
-        if link_path.is_symlink():
-            try:
-                current = link_path.readlink()
-            except OSError:
-                current = None
-            if current == target:
-                return False
-            try:
-                link_path.unlink()
-            except OSError:
-                pass
-        else:
-            return False
-    link_path.symlink_to(target)
-    return True
-
-
-def create_config_links(
-    target_dir: Path,
-    abs_src_dir: Path,
-    links_relations: dict,
-    config_type: EnumType,
-    src_type: str = "sty",
-):
-    if config_type != EnumType:
-        target_dir = target_dir / config_type.value
-    for rel, src_file in links_relations.items():
-        link = target_dir / "config" / rel
-        target = abs_src_dir / src_type / src_file
-        safe_symlink(target, link)
-
-
-def create_topics_links(
-    target_dir: Path,
-    abs_src_dir: Path,
-    links_relations: dict,
-):
-    for rel, src_file in links_relations.items():
-        link = target_dir / rel
-        target = abs_src_dir / src_file
-        safe_symlink(target, link)
-
-
-def create_links(link_dir: Path, relations: dict[str, Path]):
-    for link_file, target in relations.items():
-        link = link_dir / link_file
-        safe_symlink(target, link)
+def enter_hours(name: str) -> Tuple:
+    msn = f"Enter the scheldule time for {name}\n"
+    msn += "hour,timezone (ej: 13,-6)\n"
+    msn += "\t<< "
+    hours = gather_input(msn, "^([0-9]|[12][0-9]),([+-])([0-9]|[12][0-9])")
+    hour, tmz = hours.split(",")
+    return int(hour), int(tmz)
