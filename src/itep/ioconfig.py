@@ -1,49 +1,57 @@
-from dataclasses import is_dataclass
+"""
+Minimal config.yaml I/O.
+
+config.yaml is now just a pointer to the DB record:
+
+    project_type: lecture   # or "general"
+    project_id: 42
+"""
+
 from pathlib import Path
-from typing import Any, Dict
-from itep.structure import ProjectStructure
+from typing import Union
+
 from itep.utils import load_yaml, write_yaml
-from datetime import date, datetime
+from itep.database import (
+    LectureInstance,
+    GeneralProject,
+    get_session,
+)
 
 
-def load_config(file: str):
-    cfg_dict = load_yaml(file)
-    return ProjectStructure(**cfg_dict)
+def save_config(
+    project_type: str,
+    project_id: int,
+    path: Union[str, Path],
+) -> None:
+    """Write a minimal config.yaml that points to a DB record."""
+    data = {
+        "project_type": project_type,
+        "project_id": project_id,
+    }
+    write_yaml(Path(path), data)
 
 
-def _to_dict(key: str, data: Any) -> Dict[str, str]:
-    thisD = {}
-    if isinstance(data, (int, str, Path)):
-        thisD[key] = str(data)
-    elif isinstance(data, (date, datetime)):
-        thisD[key] = data.isoformat()
-    elif isinstance(data, list):
-        temp = []
-        for ndata in data:
-            if is_dataclass(ndata) or isinstance(ndata, dict):
-                temp2 = []
-                for nnkey, nndata in dict(ndata).items():
-                    temp2.append(
-                        (f"\t{k}: {v}\n\t" for k, v in _to_dict(nnkey, nndata).items())
-                    )
-                temp.append("\n\t- ".join(temp2))
-            else:
-                temp.append(str(ndata))
-        thisD[key] = "\n\t- ".join(temp)
-    elif is_dataclass(data):
-        temp = {}
-        if hasattr(data, "structure_repr"):
-            temp = data.structure_repr()
-        else:
-            for nkey, ndata in dict(data).items():
-                temp.update(_to_dict(nkey, ndata))
-        thisD[key] = temp
-    return thisD
+def load_config(file: Union[str, Path]):
+    """Read config.yaml, resolve the project from the DB, return it."""
+    cfg = load_yaml(file)
+    project_type = cfg["project_type"]
+    project_id = cfg["project_id"]
+
+    session = get_session()
+    if project_type == "lecture":
+        project = session.get(LectureInstance, project_id)
+    elif project_type == "general":
+        project = session.get(GeneralProject, project_id)
+    else:
+        raise ValueError(f"Unknown project_type: {project_type}")
+
+    if project is None:
+        raise ValueError(
+            f"No {project_type} project with id={project_id} found in DB."
+        )
+    return project
 
 
-def save_config(cfg: ProjectStructure, path: Path):
-    data = {}
-    for atrr, info in dict(cfg).items():
-        data.update(_to_dict(atrr, info))
-    write_yaml(path, data)
-    pass
+def read_pointer(file: Union[str, Path]) -> dict:
+    """Read just the raw config.yaml dict (project_type + project_id)."""
+    return load_yaml(file)

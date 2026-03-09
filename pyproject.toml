@@ -8,7 +8,7 @@ authors = [
   { name = "Luis Fernando Umaña Castro", email = "luis.umanacastro@ucr.ac.cr" },
 ]
 classifiers = ["Development Status :: 2 - Pre-Alpha"]
-dependencies = ["appdirs", "bibtexparser", "click", "pyyaml"]
+dependencies = ["appdirs", "bibtexparser", "click", "pyyaml", "sqlalchemy"]
 
 [project.scripts]
 workflow = "main:cli"

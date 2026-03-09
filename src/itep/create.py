@@ -1,199 +1,313 @@
-from typing import Dict
-from itep import structure as strc
-from itep.utils import code_format, ensure_dir
-from appfunc.options import select_enum_type
-from appfunc.iofunc import gather_input
-from itep.utils import set_directory_list, add_to_reference_dict
-# from itep.links import create_config_links, create_topics_links
+"""
+inittex — Create a new ITeP project (lecture or general).
+
+Workflow:
+  1. Select project_type (general / lecture)
+  2. Select or create entities in DB
+  3. Create filesystem directories
+  4. Create symlinks
+  5. Write minimal config.yaml
+"""
 
 from pathlib import Path
+
 import click
 
-# -------------------- Utilidades --------------------
+from itep.database import (
+    Course,
+    GeneralProject,
+    GeneralProjectBook,
+    GeneralProjectTopic,
+    LectureInstance,
+    MainTopic,
+    Book,
+    Topic,
+    Institution as InstitutionModel,
+    get_session,
+    init_db,
+    seed_reference_data,
+)
+from itep.defaults import DEF_ABS_PARENT_DIR, DEF_ABS_SRC_DIR
+from itep.ioconfig import save_config
+from itep.utils import ensure_dir
+from appfunc.iofunc import gather_input
+from appfunc.options import select_enum_type
+
+from datetime import date
 
 
-def gather_code(name: str, patterns: dict) -> str:
-    code = ""
-    for pattern, condition in patterns.items():
-        code += gather_input(
-            f"Enter {pattern} for {name}:\n\t<< ",
-            condition,
-        )
-    return code
+# ── Helpers ─────────────────────────────────────────────────────────────
 
 
-def gather_name(code: str) -> str:
-    name = ""
-    while not name:
-        name = input(f"Enter the name for {code}:\n\t<< ")
-        print(f"You write:\n\t>> {name}")
-        ans = input("Is this correct? (Y/n): ").lower() or "y"
-        if ans != "y":
-            ans = input("Do you want to try again? (Y/n)").lower() or "y"
-            if ans == "y":
-                name = ""
-            else:
-                quit()
-    return name
+def _select_from_db(session, model, label: str, display_attr: str = "name"):
+    """Present DB rows as a numbered menu and return the chosen row."""
+    rows = session.query(model).all()
+    if not rows:
+        click.echo(f"No {label} records found in database.")
+        return None
+    options = [getattr(r, display_attr) for r in rows]
+    choice = select_enum_type(label, options)
+    idx = options.index(choice)
+    return rows[idx]
 
 
-def define_new_topics(
-    path: Path,
-    topic: str,
-    idx: int = 1,
-) -> Dict[str, strc.Topic]:
-    new_topics = {}
+def _select_multiple_from_db(session, model, label: str, display_attr: str = "name"):
+    """Let user pick several rows from a model."""
+    selected = []
+    rows = session.query(model).all()
+    if not rows:
+        click.echo(f"No {label} records found in database.")
+        return selected
+    options = [getattr(r, display_attr) for r in rows]
     enough = False
     while not enough:
-        msn = f"Do you want to create a new topic on {topic} (y/N): "
-        ans = input(msn).lower() or "n"
-        if ans == "y":
-            ref = code_format("T", idx, max=3)
-            new_topics[ref] = strc.Topic.create_directory(path / topic)
-            idx += 1
-        elif ans == "n":
+        choice = select_enum_type(label, options)
+        idx = options.index(choice)
+        row = rows[idx]
+        if row not in selected:
+            selected.append(row)
+        names = [getattr(s, display_attr) for s in selected]
+        click.echo(f"Selected: {names}")
+        ans = input("Add more? (y/N): ").lower() or "n"
+        if ans != "y":
             enough = True
+    return selected
+
+
+def _create_dirs_from_tree(
+    base_dir: Path,
+    tree: list[str],
+    topics: list = None,
+):
+    """Create directory tree, expanding topic placeholders."""
+    for directory in tree:
+        if "{t_idx" in directory and topics:
+            for idx, topic in enumerate(topics, start=1):
+                dir_name = directory.format(t_idx=idx, t_name=topic.name)
+                ensure_dir(base_dir / dir_name, forced=True)
         else:
-            print("Yoy must write 'n' or 'y'.\nTry again")
-    return new_topics
+            ensure_dir(base_dir / directory, forced=True)
 
 
-def relate_topic_books(
-    books: Dict[str, strc.Book],
-    topics: Dict[str, strc.Topic],
-) -> None:
-    for book_id, book in books.items():
-        for topic_id, topic in topics.items():
-            msn = f"From the book: {book.get_dir_name}\n"
-            msn += "Enter chapters numbers asosiated to topic"
-            msn += f" {topic_id}-{topic.name}\n"
-            msn += "Separate each chapter with 'comma' (,) character.\n"
-            msn += "Or enter 'pass' (p) to pass to next topic.\n\t<< "
-            ch_str = gather_input(msn, "^[0-9,]+|pass|p")
-            if ch_str == "p" or ch_str == "pass":
-                continue
-            else:
-                ch_list = ch_str.split(",")
-                for ch in ch_list:
-                    topic.add_book_chapter(int(book_id[1:]), int(ch))
+# ── Create: lecture project ────────────────────────────────────────────
 
 
-def set_week_distribution(
-    topics: Dict[str, strc.Topic],
-    admin: strc.Admin,
-) -> None:
-    lectures_to_asigne = []
-    idx = 0
-    hour, tmz = strc.WeekDay.enter_hours("the lecture")
-    for week in range(1, admin.total_week_count + 1):
-        for lecture in admin.week_day:
-            lecture_date = strc.WeekDay(
-                week,
-                lecture,
-                admin.first_monday,
-                hour,
-                tmz,
-            )
-            lectures_to_asigne.append(lecture_date)
-    for _, topic in topics.items():
-        msn = f"Write the number of lectures for topic {topic.name}.\n"
-        msn += f"Remaining {admin.total_week_count - idx} "
-        msn += f"of {admin.total_week_count} weeks.\n"
-        msn += ("\t<< ",)
-        lectures_per_topic = int(
-            gather_input(
-                msn,
-                "^[1-9]{1}",
-            )
-        )
-        this_weeks = []
-        for lec in lectures_to_asigne[idx : idx + lectures_per_topic]:
-            this_weeks.append(lec)
-
-        idx += lectures_per_topic
-        topic.weeks = this_weeks
-
-
-# -------------------- CLI --------------------
-
-
-# @click.command("init-tex")
-# @click.option(
-#     "--parent_dir",
-#     "-p",
-#     type=str,
-#     required=False,
-# )
-def create_cfg(parent_dir: str = ""):
-    """Create a tex project"""
-    parent_dir = Path(parent_dir).expanduser() if parent_dir else Path.cwd()
-    ensure_dir(parent_dir, "parent directory")
-    project_type = select_enum_type("project type", strc.ProjectType)
-
-    code = gather_code(
-        project_type.value["name"],
-        project_type.value["patterns"],
+def create_lecture(session, parent_dir: Path, src_dir: Path):
+    """Create a lecture_instance backed by an existing or new Course."""
+    # 1. Select institution
+    institution = _select_from_db(
+        session, InstitutionModel, "institution", "short_name"
     )
-    name = gather_name(code)
+    if not institution:
+        raise click.ClickException("Cannot proceed without an institution.")
 
-    meta_data = strc.MetaData(abs_parent_dir=parent_dir)
+    # 2. Select or create course
+    courses = (
+        session.query(Course)
+        .filter_by(institution_id=institution.id)
+        .all()
+    )
+    if courses:
+        course_options = [f"{c.code} - {c.name}" for c in courses]
+        course_options.append("** Create new course **")
+        choice = select_enum_type("course", course_options)
+        if choice == "** Create new course **":
+            course = _create_new_course(session, institution)
+        else:
+            idx = course_options.index(choice)
+            course = courses[idx]
+    else:
+        click.echo("No courses for this institution. Creating a new one.")
+        course = _create_new_course(session, institution)
 
-    admin = None
-    if project_type == strc.ProjectType.LECT:
-        admin = strc.Admin.gather_info()
+    # 3. Instance data
+    year = int(gather_input("Enter year:", r"2[0-9]{3}"))
+    cycle = int(gather_input("Enter cycle (1-3):", r"[1-3]"))
+    first_monday_str = gather_input(
+        "Enter first monday (YYYY-MM-DD):",
+        r"[0-9]{4}-[0-9]{2}-[0-9]{2}",
+    )
+    first_monday = date.fromisoformat(first_monday_str)
 
-    main_topics = set_directory_list(
-        "main topic(s)",
-        parent_dir / project_type.value["main_topics"],
+    instance = LectureInstance(
+        course_id=course.id,
+        year=year,
+        cycle=cycle,
+        first_monday=first_monday,
+        abs_parent_dir=str(parent_dir),
+        abs_src_dir=str(src_dir),
+    )
+    session.add(instance)
+    session.commit()
+
+    # 4. Create directories
+    from itep.models import LectureProject
+    root_dir = parent_dir / instance.root_dir
+    topics = [
+        cc.content.topic
+        for cc in course.course_contents
+    ]
+    _create_dirs_from_tree(root_dir, LectureProject.tree, topics)
+
+    # 5. Write config.yaml
+    save_config("lecture", instance.id, root_dir / "config.yaml")
+    click.echo(f"Lecture project created: {root_dir}")
+    return instance
+
+
+def _create_new_course(session, institution):
+    """Interactively create a new Course record."""
+    code = gather_input("Enter course code (e.g. FS0121):", r"[A-Z]{2}[0-9]{4}")
+    name = input("Enter course name: ").strip()
+    lpw = int(gather_input("Lectures per week:", r"[1-5]"))
+    hpl = int(gather_input("Hours per lecture:", r"[1-4]"))
+
+    course = Course(
+        institution_id=institution.id,
+        code=code,
+        name=name,
+        lectures_per_week=lpw,
+        hours_per_lecture=hpl,
+    )
+    session.add(course)
+    session.commit()
+    click.echo(f"Course {code} created.")
+    return course
+
+
+# ── Create: general project ───────────────────────────────────────────
+
+
+def create_general(session, parent_dir: Path, src_dir: Path):
+    """Create a general_project backed by a main_topic."""
+    # 1. Select main_topic
+    main_topic = _select_from_db(session, MainTopic, "main topic")
+    if not main_topic:
+        raise click.ClickException("Cannot proceed without a main topic.")
+
+    # Check uniqueness (1:1)
+    existing = (
+        session.query(GeneralProject)
+        .filter_by(main_topic_id=main_topic.id)
+        .first()
+    )
+    if existing:
+        raise click.ClickException(
+            f"A general project already exists for {main_topic.name} "
+            f"(id={existing.id})."
+        )
+
+    # 2. Select topics
+    topics = _select_multiple_from_db(session, Topic, "topic")
+
+    # 3. Select books
+    books = _select_multiple_from_db(session, Book, "book")
+
+    # 4. Create project
+    project = GeneralProject(
+        main_topic_id=main_topic.id,
+        abs_parent_dir=str(parent_dir),
+        abs_src_dir=str(src_dir),
+    )
+    session.add(project)
+    session.flush()  # get project.id
+
+    for topic in topics:
+        session.add(GeneralProjectTopic(
+            general_project_id=project.id,
+            topic_id=topic.id,
+        ))
+    for book in books:
+        session.add(GeneralProjectBook(
+            general_project_id=project.id,
+            book_id=book.id,
+        ))
+    session.commit()
+
+    # 5. Create directories
+    from itep.models import GeneralProject as GPModel
+    root_dir = parent_dir / project.root_dir
+    _create_dirs_from_tree(root_dir, GPModel.tree, topics)
+
+    # 6. Write config.yaml
+    save_config("general", project.id, root_dir / "config.yaml")
+    click.echo(f"General project created: {root_dir}")
+    return project
+
+
+# ── Clone cycle (lecture only) ─────────────────────────────────────────
+
+
+def clone_cycle(session, source_id: int, parent_dir: Path = None, src_dir: Path = None):
+    """Clone a lecture_instance to a new year/cycle, inheriting the course."""
+    source = session.get(LectureInstance, source_id)
+    if source is None:
+        raise click.ClickException(f"Lecture instance {source_id} not found.")
+
+    year = int(gather_input("Enter year:", r"2[0-9]{3}"))
+    cycle = int(gather_input("Enter cycle (1-3):", r"[1-3]"))
+    first_monday_str = gather_input(
+        "Enter first monday (YYYY-MM-DD):",
+        r"[0-9]{4}-[0-9]{2}-[0-9]{2}",
     )
 
-    book_dict = {}
-    for topic in main_topics:
-        book_dict.update(
-            add_to_reference_dict(
-                strc.Book,
-                parent_dir / project_type.value["main_topics"] / topic,
-                "B",
-                object_dict={},
-            )
-        )
-    topics_dict = {}
-    for topic in main_topics:
-        topics_dict.update(
-            add_to_reference_dict(
-                strc.Topic,
-                parent_dir / project_type.value["main_topics"] / topic,
-                "T",
-                max=3,
-                object_dict={},
-            )
-        )
-        topics_dict.update(
-            define_new_topics(
-                parent_dir / project_type.value["main_topics"],
-                topic,
-                idx=len(topics_dict),
-            )
-        )
-
-    relate_topic_books(book_dict, topics_dict)
-
-    if project_type == strc.ProjectType.LECT:
-        set_week_distribution(topics_dict, admin)
-
-    cfg = strc.ProjectStructure(
-        code,
-        name,
-        project_type,
-        data=meta_data,
-        admin=admin,
-        main_topic_root=main_topics,
-        books=book_dict,
-        topics=topics_dict,
+    new_instance = LectureInstance(
+        course_id=source.course_id,
+        year=year,
+        cycle=cycle,
+        first_monday=date.fromisoformat(first_monday_str),
+        abs_parent_dir=parent_dir or source.abs_parent_dir,
+        abs_src_dir=src_dir or source.abs_src_dir,
     )
-    cfg.init_directories()
-    cfg.init_links()
-    cfg.save()
+    session.add(new_instance)
+    session.commit()
+
+    from itep.models import LectureProject
+    root_dir = Path(new_instance.abs_parent_dir) / new_instance.root_dir
+    topics = [cc.content.topic for cc in source.course.course_contents]
+    _create_dirs_from_tree(root_dir, LectureProject.tree, topics)
+
+    save_config("lecture", new_instance.id, root_dir / "config.yaml")
+    click.echo(f"Cloned lecture project: {root_dir}")
+    return new_instance
+
+
+# ── CLI ─────────────────────────────────────────────────────────────────
+
+
+@click.command("init-tex")
+@click.option(
+    "--parent_dir", "-p", type=click.Path(), default=None,
+    help="Parent directory for the project."
+)
+@click.option(
+    "--src_dir", "-s", type=click.Path(), default=None,
+    help="Source directory for LaTeX templates."
+)
+@click.option(
+    "--clone", "clone_id", type=int, default=None,
+    help="Clone an existing lecture instance by ID."
+)
+def cli(parent_dir, src_dir, clone_id):
+    """Create or clone an ITeP project."""
+    parent = Path(parent_dir).expanduser() if parent_dir else DEF_ABS_PARENT_DIR
+    src = Path(src_dir).expanduser() if src_dir else DEF_ABS_SRC_DIR
+
+    engine = init_db()
+    session = get_session(engine)
+    seed_reference_data(session)
+
+    if clone_id:
+        clone_cycle(session, clone_id, parent, src)
+        return
+
+    project_types = ["lecture", "general"]
+    choice = select_enum_type("project type", project_types)
+
+    if choice == "lecture":
+        create_lecture(session, parent, src)
+    else:
+        create_general(session, parent, src)
 
 
 if __name__ == "__main__":

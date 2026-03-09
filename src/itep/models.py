@@ -26,7 +26,7 @@ class GeneralProject(ProjectModel):
         "tex/000-0-Glossaries",
         "tex/000-1-Summaries",
         "tex/000-2-Notes",
-        "tex/{t_idx:03}-{t_name}",  #  for T in topics
+        "tex/{t_idx:03}-{t_name}",  # for T in topics
     ]
     links = {
         "config": DEF_TEX_CONFIG,

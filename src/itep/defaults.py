@@ -1,7 +1,9 @@
 from pathlib import Path
+from appdirs import user_data_dir
 
 DEF_ABS_PARENT_DIR = Path("/home/luis/Documents/01-U/00-Fisica")
 DEF_ABS_SRC_DIR = Path("/home/luis/.config/mytex")
+DB_PATH = Path(user_data_dir("itep")) / "itep.db"
 DEF_TEX_CONFIG = {
     "0-packages.sty": "{src_dir}/sty/SetFormat.sty",
     "1-loyaut.sty": "{src_dir}/sty/SetLoyaut.sty",

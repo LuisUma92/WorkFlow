@@ -5,14 +5,15 @@ Para organizar la tesis en un directorio con el siguiente orden:
 ## Variables
 
 ```bash
-ABS_SRC_DIR = /home/luis/.config/mytex
-ABS_PARENT_DIR = /home/luis/Documents/01-U/00-Fisica
-LECTURE_CODE = 'AA{:04d}'
-MAIN_NAME = 'Name'
-MAIN_CODE = '{:02d}AA'
-ROOT = '${MAIN_CODE}+${MAIN_NAME}'
-ABS_PROJECT_DIR = '(pwd)/${ROOT}'
-BOOK_REFERENCE = '{MDS_code}_{FirstAuthorLastname}_E{Edition:02d}'
+ABS_SRC_DIR=/home/luis/.config/mytex
+ABS_PARENT_DIR=/home/luis/Documents/01-U/00-Fisica
+ABS_DOCUMENTS_DIR=/home/luis/Documents
+LECTURE_CODE='AA{:04d}'
+MAIN_NAME='Name'
+MAIN_CODE='{:02d}AA'
+ROOT='${MAIN_CODE}+${MAIN_NAME}'
+ABS_PROJECT_DIR='(pwd)/${ROOT}'
+BOOK_REFERENCE='{MDS_code}_{FirstAuthorLastname}_E{Edition:02d}'
 ```
 
 ## Base directories structure
@@ -35,7 +36,7 @@ ${ABS_PARENT_DIR}/00AA-Lectures
 ### Library
 
 ```bash
-${ABS_PARENT_DIR}/00BB-Library
+${ABS_DOCUMENTS_DIR}/02-Library
 ├──  515-39-Chaos
 ├──  523-10-Universe
 ├──  530-00-Physics
@@ -294,16 +295,13 @@ ${ABS_PARENT_DIR}/00II-ImagesFigures
 
 ```bash
 ${ABS_PARENT_DIR}/${ROOT}
-├─ lect
-│  └─ ${LECTURE_CODE}
 ├─ tex
 │  ├─ notes
 │  ├─ resumes
 │  └─ 'C{ch:02d}S{sec}'
 │     └─ '{par:03d}-{content_name}.tex'
 ├─ bib
-│  ├─ {sub-topic01} -> ${ABS_PARENT_DIR}/00BB-Library/${topic01}/${sub-topic01}
-│  └─ {topic01} -> ${ABS_PARENT_DIR}/00BB-Library/${topic01}
+│  └─ FROM_ZOTERO.bib
 ├─ img
 │  ├─ own -> ${ABS_PARENT_DIR}/00II-ImagesFigures/${CODE}
 │  └─ '{BOOK_REFERENCE}' -> ${ABS_PARENT_DIR}/00II-ImagesFigures/${BOOK_REFERENCE}
@@ -347,7 +345,7 @@ ${ABS_PARENT_DIR}/00AA-Lectures
    │  │  ├─ '{BOOK_REFERENCE}' -> ${ABS_SRC_DIR}/00II-ImagesFigures/${BOOK_REFERENCE}
    │  │  └─ own
    │  └─ 'T{TN:02d}'
-   │     └─ '{BOOK_REFERENCE}-C{ch:02d' -> ${ABS_PARENT_DIR}/00EE-ExamplesExercises/er-${BOOK_REFERENCE}/${BOOK_REFERENCE}-C${ch:02ed}
+   │     └─ '{BOOK_REFERENCE}-C{ch:02d}' -> ${ABS_PARENT_DIR}/00EE-ExamplesExercises/er-${BOOK_REFERENCE}/${BOOK_REFERENCE}-C${ch:02ed}
    ├─ press
    │  ├─ config
    │  │  ├─ 0_packages.sty -> ${ABS_SRC_DIR}/sty/SetFormatP.sty

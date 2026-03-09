@@ -99,10 +99,16 @@ def test_cli_invocation_without_args_shows_usage_or_succeeds():
         # Perfecto: el comando tiene comportamiento por defecto
         assert True
     else:
-        # Para Click, falta de argumentos requeridos suele ser exit_code == 2
+        # exit_code 1 = ClickException (e.g. no config.yaml), 2 = missing args
         assert res.exit_code in (1, 2), f"exit_code inesperado: {res.exit_code}"
-        assert "Usage:" in (res.stdout or "") or "Uso:" in (res.stdout or ""), (
-            "Al fallar sin args, se esperaba que la salida incluyera 'Usage:' de Click.\n"
+        output = (res.stdout or "") + (res.output or "")
+        assert (
+            "Usage:" in output
+            or "Uso:" in output
+            or "Error:" in output
+            or "config.yaml" in output
+        ), (
+            "Al fallar sin args, se esperaba un mensaje de error o Usage.\n"
             f"stdout:\n{res.stdout}\n"
             f"stderr:\n{res.stderr}"
         )
