@@ -20,14 +20,14 @@ Python >= 3.10
 
 ## Comandos disponibles
 
-| Comando    | Modulo              | Descripcion                              |
-|------------|---------------------|------------------------------------------|
-| `workflow` | `main:cli`          | Menu interactivo principal               |
-| `inittex`  | `itep.create:cli`   | Crear o clonar un proyecto LaTeX         |
-| `relink`   | `itep.links:cli`    | Recrear symlinks desde la base de datos  |
-| `cleta`    | `lectkit.cleta:cli` | Limpiar archivos auxiliares de TeX       |
-| `crete`    | `lectkit.crete:cli` | Crear archivos de ejercicios desde refs  |
-| `nofi`     | `lectkit.nofi:cli`  | Dividir notas en archivos LaTeX          |
+| Comando    | Modulo              | Descripcion                             |
+| ---------- | ------------------- | --------------------------------------- |
+| `workflow` | `main:cli`          | Menu interactivo principal              |
+| `inittex`  | `itep.create:cli`   | Crear o clonar un proyecto LaTeX        |
+| `relink`   | `itep.links:cli`    | Recrear symlinks desde la base de datos |
+| `cleta`    | `lectkit.cleta:cli` | Limpiar archivos auxiliares de TeX      |
+| `crete`    | `lectkit.crete:cli` | Crear archivos de ejercicios desde refs |
+| `nofi`     | `lectkit.nofi:cli`  | Dividir notas en archivos LaTeX         |
 
 ## ITeP - Init TeX Project
 
@@ -44,7 +44,7 @@ La informacion de proyectos se almacena en una base de datos SQLite ubicada en:
 El archivo `config.yaml` dentro de cada proyecto se reduce a un puntero minimo:
 
 ```yaml
-project_type: lecture   # o "general"
+project_type: lecture # o "general"
 project_id: 42
 ```
 
@@ -55,22 +55,26 @@ Todo lo demas (institucion, curso, temas, libros, evaluaciones) se consulta desd
 El esquema se organiza en cuatro capas:
 
 **Capa 1 — Datos de referencia** (precargados, rara vez cambian):
+
 - `institution` — Universidades (UCR, UFide, UCIMED) con semanas por ciclo, nombre del ciclo, URL de Moodle.
 - `main_topic` — Temas principales de fisica con codigo y clasificacion Dewey.
 
 **Capa 2 — Entidades maestras** (reutilizables):
+
 - `author`, `book`, `book_author` — Libros con autores y roles.
 - `topic` — Subtemas dentro de un main_topic.
 - `content` — Capitulos/secciones con paginas y ejercicios.
 - `book_content` — Asocia libros con contenidos.
 
 **Capa 3 — Templates de curso** (reutilizables entre ciclos):
+
 - `course` — Curso con institucion, codigo, nombre, frecuencia de clases.
 - `course_content` — Contenidos asignados a semanas del curso.
 - `evaluation_template`, `item`, `evaluation_item` — Templates de evaluacion con items de Bloom.
 - `course_evaluation` — Evaluaciones programadas con porcentaje y semana.
 
 **Capa 4 — Instancias de proyecto** (reemplazan config.yaml):
+
 - `lecture_instance` — Instancia de un curso en un ciclo/anno concreto.
 - `general_project` — Proyecto general asociado 1:1 con un main_topic.
 - `general_project_book`, `general_project_topic` — Asociaciones.
