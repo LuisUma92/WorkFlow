@@ -57,6 +57,24 @@ class GeneralDirectory(StrEnum, metaclass=FriendlyEnumMeta):
     EXE = "00EE-ExamplesExercises"
 
 
+class TaxonomyLevel(StrEnum, metaclass=FriendlyEnumMeta):
+    RECORDAR = "Recordar"
+    COMPRENDER = "Comprender"
+    ANALISIS = "Análisis"
+    USAR_APLICAR = "Usar-Aplicar"
+    USAR_EVALUAR = "Usar-Evaluar"
+    USAR_CREAR = "Usar-Crear"
+    METACOGNITIVO = "Metacognitivo"
+    SISTEMA_INTERNO = "Sistema interno"
+
+
+class TaxonomyDomain(StrEnum, metaclass=FriendlyEnumMeta):
+    INFORMACION = "Información"
+    PROCEDIMIENTO_MENTAL = "Procedimiento Mental"
+    PROCEDIMIENTO_PSICOMOTOR = "Procedimiento Psicomotor"
+    METACOGNITIVO = "Metacognitivo"
+
+
 # ── ConfigData ──────────────────────────────────────────────────────────
 
 

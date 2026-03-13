@@ -34,6 +34,7 @@ from sqlalchemy.orm import (
 )
 
 from itep.defaults import DB_PATH
+from itep.structure import TaxonomyLevel, TaxonomyDomain
 
 
 # ── Base ────────────────────────────────────────────────────────────────
@@ -251,12 +252,26 @@ class EvaluationTemplate(Base):
 
 class Item(Base):
     __tablename__ = "item"
+    __table_args__ = (
+        CheckConstraint(
+            "taxonomy_level IN ({})".format(
+                ", ".join(f"'{v.value}'" for v in TaxonomyLevel)
+            ),
+            name="ck_taxonomy_level",
+        ),
+        CheckConstraint(
+            "taxonomy_domain IN ({})".format(
+                ", ".join(f"'{v.value}'" for v in TaxonomyDomain)
+            ),
+            name="ck_taxonomy_domain",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120))
     template_file: Mapped[str] = mapped_column(String(300), default="")
-    taxonomy_level: Mapped[str] = mapped_column(String(30), default="")
-    taxonomy_domain: Mapped[str] = mapped_column(String(40), default="")
+    taxonomy_level: Mapped[str] = mapped_column(String(30))
+    taxonomy_domain: Mapped[str] = mapped_column(String(40))
 
     evaluation_links: Mapped[list["EvaluationItem"]] = relationship(
         back_populates="item"

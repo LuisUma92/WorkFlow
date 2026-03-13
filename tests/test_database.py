@@ -29,6 +29,7 @@ from itep.database import (
     seed_reference_data,
     _enable_fk_pragma,
 )
+from itep.structure import TaxonomyLevel, TaxonomyDomain
 
 
 @pytest.fixture
@@ -288,8 +289,9 @@ class TestEvaluationItems:
             institution_id=inst.id, name="Parcial",
         )
         item = Item(
-            name="Problema", taxonomy_level="Comprender",
-            taxonomy_domain="Procedimiento Mental",
+            name="Problema",
+            taxonomy_level=TaxonomyLevel.COMPRENDER.value,
+            taxonomy_domain=TaxonomyDomain.PROCEDIMIENTO_MENTAL.value,
         )
         session.add_all([et, item])
         session.commit()
@@ -303,6 +305,25 @@ class TestEvaluationItems:
 
         assert len(et.evaluation_items) == 1
         assert et.evaluation_items[0].item.name == "Problema"
+
+    def test_item_rejects_invalid_taxonomy_level(self, session):
+        item = Item(
+            name="Bad", taxonomy_level="INVALIDO",
+            taxonomy_domain=TaxonomyDomain.INFORMACION.value,
+        )
+        session.add(item)
+        with pytest.raises(Exception):
+            session.commit()
+
+    def test_item_rejects_invalid_taxonomy_domain(self, session):
+        item = Item(
+            name="Bad",
+            taxonomy_level=TaxonomyLevel.RECORDAR.value,
+            taxonomy_domain="INVALIDO",
+        )
+        session.add(item)
+        with pytest.raises(Exception):
+            session.commit()
 
 
 # ── Layer 4: Project instances ────────────────────────────────────────

@@ -170,6 +170,26 @@ class TestDeleteOperations:
         assert manager.delete_by_id(seeded, MainTopic, 9999) is False
 
 
+class TestItemCRUD:
+    def test_create_item_with_enum(self, seeded):
+        from itep.structure import TaxonomyLevel, TaxonomyDomain
+        item = manager.create_item(
+            seeded, "Problema",
+            taxonomy_level=TaxonomyLevel.COMPRENDER,
+            taxonomy_domain=TaxonomyDomain.PROCEDIMIENTO_MENTAL,
+        )
+        assert item.taxonomy_level == "Comprender"
+        assert item.taxonomy_domain == "Procedimiento Mental"
+
+    def test_create_item_with_string(self, seeded):
+        item = manager.create_item(
+            seeded, "Ejercicio",
+            taxonomy_level="Recordar",
+            taxonomy_domain="Información",
+        )
+        assert item.id is not None
+
+
 class TestUpdateTimestamp:
     def test_update_project_timestamp(self, seeded):
         mt = manager.get_main_topic_by_code(seeded, "10MC")

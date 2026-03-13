@@ -322,10 +322,16 @@ def add_evaluation_item(
 def create_item(
     session: Session,
     name: str,
+    taxonomy_level: "TaxonomyLevel | str",
+    taxonomy_domain: "TaxonomyDomain | str",
     template_file: str = "",
-    taxonomy_level: str = "",
-    taxonomy_domain: str = "",
 ) -> Item:
+    from itep.structure import TaxonomyLevel, TaxonomyDomain
+    # Accept enum or raw string, store the .value
+    if isinstance(taxonomy_level, TaxonomyLevel):
+        taxonomy_level = taxonomy_level.value
+    if isinstance(taxonomy_domain, TaxonomyDomain):
+        taxonomy_domain = taxonomy_domain.value
     item = Item(
         name=name,
         template_file=template_file,
