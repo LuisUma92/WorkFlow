@@ -1,3 +1,21 @@
+---
+adr: 0000
+title: "Physics project structure"
+status: Accepted
+date: 2025-08-22
+authors:
+  - Luis Fernando Umaña Castro
+reviewers: []
+tags:
+  - LaTeX
+  - Note taking
+  - Zettelkasten system
+decision_scope: component
+supersedes: null
+superseded_by: null
+related_adrs: []
+---
+
 # Physics project structure
 
 Para organizar la tesis en un directorio con el siguiente orden:
