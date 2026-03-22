@@ -125,3 +125,165 @@
   \newcommand{\then}{=}
   \newcommand{\ifpause}{}
 
+%==< CentredPage command >=====================================================
+% Full-page centred layout command with l3keys configuration.
+% Requires: expl3, xparse, xcolor (loaded by SetFormat.sty)
+%
+% Usage:
+%   \CentredPage[key=val]{primary text}[secondary text]
+%   \CentredPage*[key=val]{primary text}[secondary text]  % keeps page style
+%
+% Setup global defaults:
+%   \CentredPageSetup{key=val, ...}
+%==============================================================================
+
+\ExplSyntaxOn
+
+%------------------------------------------------------------------------------
+% Global defaults (modified by \CentredPageSetup)
+%------------------------------------------------------------------------------
+\tl_new:N  \g__centredpage_primary_color_tl
+\tl_new:N  \g__centredpage_secondary_color_tl
+\tl_new:N  \g__centredpage_primary_font_tl
+\tl_new:N  \g__centredpage_secondary_font_tl
+\tl_new:N  \g__centredpage_align_tl
+\dim_new:N \g__centredpage_block_sep_dim
+\dim_new:N \g__centredpage_content_width_dim
+\dim_new:N \g__centredpage_v_offset_dim
+\fp_new:N  \g__centredpage_line_spread_fp
+
+% Set initial global defaults
+\tl_gset:Nn  \g__centredpage_primary_color_tl   { black }
+\tl_gset:Nn  \g__centredpage_secondary_color_tl { gray }
+\tl_gset:Nn  \g__centredpage_primary_font_tl    { \bfseries\Large }
+\tl_gset:Nn  \g__centredpage_secondary_font_tl  { \normalfont\large }
+\tl_gset:Nn  \g__centredpage_align_tl           { \centering }
+\dim_gset:Nn \g__centredpage_block_sep_dim       { 1em }
+\dim_gset:Nn \g__centredpage_content_width_dim   { \paperwidth }
+\dim_gset:Nn \g__centredpage_v_offset_dim        { 0pt }
+\fp_gset:Nn  \g__centredpage_line_spread_fp      { 1.0 }
+
+%------------------------------------------------------------------------------
+% Per-call locals (reset from globals before each invocation)
+%------------------------------------------------------------------------------
+\tl_new:N  \l__centredpage_primary_color_tl
+\tl_new:N  \l__centredpage_secondary_color_tl
+\tl_new:N  \l__centredpage_primary_font_tl
+\tl_new:N  \l__centredpage_secondary_font_tl
+\tl_new:N  \l__centredpage_align_tl
+\dim_new:N \l__centredpage_block_sep_dim
+\dim_new:N \l__centredpage_content_width_dim
+\dim_new:N \l__centredpage_v_offset_dim
+\fp_new:N  \l__centredpage_line_spread_fp
+
+%------------------------------------------------------------------------------
+% Internal: copy globals → locals
+%------------------------------------------------------------------------------
+\cs_new_protected:Nn \__centredpage_reset_locals:
+  {
+    \tl_set_eq:NN  \l__centredpage_primary_color_tl   \g__centredpage_primary_color_tl
+    \tl_set_eq:NN  \l__centredpage_secondary_color_tl \g__centredpage_secondary_color_tl
+    \tl_set_eq:NN  \l__centredpage_primary_font_tl    \g__centredpage_primary_font_tl
+    \tl_set_eq:NN  \l__centredpage_secondary_font_tl  \g__centredpage_secondary_font_tl
+    \tl_set_eq:NN  \l__centredpage_align_tl           \g__centredpage_align_tl
+    \dim_set_eq:NN \l__centredpage_block_sep_dim       \g__centredpage_block_sep_dim
+    \dim_set_eq:NN \l__centredpage_content_width_dim   \g__centredpage_content_width_dim
+    \dim_set_eq:NN \l__centredpage_v_offset_dim        \g__centredpage_v_offset_dim
+    \fp_set_eq:NN  \l__centredpage_line_spread_fp      \g__centredpage_line_spread_fp
+  }
+
+%------------------------------------------------------------------------------
+% l3keys definition — module: centredpage
+% Keys target local variables (per-call); Setup targets globals.
+%------------------------------------------------------------------------------
+\keys_define:nn { centredpage }
+  {
+    primary-color   .tl_set:N  = \l__centredpage_primary_color_tl,
+    secondary-color .tl_set:N  = \l__centredpage_secondary_color_tl,
+    primary-font    .tl_set:N  = \l__centredpage_primary_font_tl,
+    secondary-font  .tl_set:N  = \l__centredpage_secondary_font_tl,
+    line-spread     .fp_set:N  = \l__centredpage_line_spread_fp,
+    block-sep       .dim_set:N = \l__centredpage_block_sep_dim,
+    content-width   .dim_set:N = \l__centredpage_content_width_dim,
+    v-offset        .dim_set:N = \l__centredpage_v_offset_dim,
+    align           .choice:,
+    align / centering    .code:n = \tl_set:Nn \l__centredpage_align_tl { \centering },
+    align / raggedright  .code:n = \tl_set:Nn \l__centredpage_align_tl { \raggedright },
+    align / raggedleft   .code:n = \tl_set:Nn \l__centredpage_align_tl { \raggedleft },
+  }
+
+\keys_define:nn { centredpage-setup }
+  {
+    primary-color   .tl_gset:N  = \g__centredpage_primary_color_tl,
+    secondary-color .tl_gset:N  = \g__centredpage_secondary_color_tl,
+    primary-font    .tl_gset:N  = \g__centredpage_primary_font_tl,
+    secondary-font  .tl_gset:N  = \g__centredpage_secondary_font_tl,
+    line-spread     .fp_gset:N  = \g__centredpage_line_spread_fp,
+    block-sep       .dim_gset:N = \g__centredpage_block_sep_dim,
+    content-width   .dim_gset:N = \g__centredpage_content_width_dim,
+    v-offset        .dim_gset:N = \g__centredpage_v_offset_dim,
+    align           .choice:,
+    align / centering    .code:n = \tl_gset:Nn \g__centredpage_align_tl { \centering },
+    align / raggedright  .code:n = \tl_gset:Nn \g__centredpage_align_tl { \raggedright },
+    align / raggedleft   .code:n = \tl_gset:Nn \g__centredpage_align_tl { \raggedleft },
+  }
+
+%------------------------------------------------------------------------------
+% \CentredPageSetup — set global defaults
+%------------------------------------------------------------------------------
+\NewDocumentCommand \CentredPageSetup { m }
+  {
+    \keys_set:nn { centredpage-setup } { #1 }
+  }
+
+%------------------------------------------------------------------------------
+% \CentredPage — main command
+%   #1 (s)   — star: keep current page style
+%   #2 (O{}) — per-call key=value overrides (reset after invocation)
+%   #3 (m)   — primary content (mandatory)
+%   #4 (o)   — secondary content (optional)
+%------------------------------------------------------------------------------
+\NewDocumentCommand \CentredPage { s O{} m o }
+  {
+    % Reset locals from global defaults, then apply per-call overrides
+    \__centredpage_reset_locals:
+    \keys_set:nn { centredpage } { #2 }
+
+    \par
+    \clearpage
+
+    % Suppress page style unless star variant
+    \IfBooleanF {#1} { \thispagestyle{empty} }
+
+    \begingroup
+
+      % Apply line spread
+      \linespread { \fp_use:N \l__centredpage_line_spread_fp }
+      \selectfont
+
+      % Vertical centering via \vfill in normal vertical mode
+      \l__centredpage_align_tl
+      \vspace*{\fill}
+
+      % Primary block
+      \textcolor{ \l__centredpage_primary_color_tl }
+        { \l__centredpage_primary_font_tl #3 }\par
+
+      % Secondary block — only when #4 is provided
+      \IfValueT {#4}
+        {
+          \vspace{ \l__centredpage_block_sep_dim }
+          \textcolor{ \l__centredpage_secondary_color_tl }
+            { \l__centredpage_secondary_font_tl #4 }\par
+        }
+
+      \vspace*{\fill}
+      \vspace*{ \l__centredpage_v_offset_dim }
+
+    \endgroup
+
+    \clearpage
+  }
+
+\ExplSyntaxOff
+%==============================================================================
