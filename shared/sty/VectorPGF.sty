@@ -1,0 +1,53 @@
+% --- Estilos TikZ para HD ---
+\tikzset{
+  line cap=round,
+  line join=round,
+  every node/.style={
+    fill = white,
+    font=\fontsize{16}{19}\selectfont
+  },
+  Vector/.style={
+    -{Stealth[length=16pt,width=8pt]},
+    line width=1.1pt
+  },
+  VectorAngle/.style={
+    -{Latex[length=4pt,width=6pt]},
+    line width=0.8pt
+  },
+  Axis/.style={
+    ->,
+    black,
+    line width=0.9pt
+  },
+  Grids/.style={
+    step=0.5cm,
+    very thin,
+    gray!30
+  },
+  Proyections/.style={
+    dashed,
+    line width=1.1pt
+  }
+}
+
+\newcommand{\printvalue}[2]{
+\pgfmathprintnumber[fixed,precision=#1]{#2}
+}
+
+\pgfmathsetmacro{\axisextra}{0.2}
+
+\pgfmathsetmacro{\rtheta}{0.8}
+\pgfmathsetmacro{\ralpha}{0.6}
+\pgfmathsetmacro{\rbeta}{0.4}
+
+% Vector A:
+\pgfmathsetmacro{\Ax}{2}
+\pgfmathsetmacro{\Ay}{1}
+\pgfmathsetmacro{\Am}{sqrt(\Ax^2+\Ay^2)}
+\pgfmathsetmacro{\At}{atan(\Ay/\Ax)}
+
+% Vector B:
+\pgfmathsetmacro{\Bx}{}
+\pgfmathsetmacro{\By}{}
+\pgfmathsetmacro{\Bm}{3}
+\pgfmathsetmacro{\Bt}{60}

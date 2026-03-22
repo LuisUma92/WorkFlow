@@ -1,24 +1,21 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \newcounter{partialNumber}
+\newcounter{totalPoints}
+\newcounter{sectionPoints}
+\newcounter{points}
 \newcommand{\thepartial}{}
 \newcommand{\setpartialnumber}[1]{
   \setcounter{partialNumber}{#1}
-  \ifthenelse{#1 = 1}{
-    \renewcommand{\thepartial}{Primer Parcial}
+  \setcounter{totalPoints}{0}
+  \setcounter{sectionPoints}{0}
+  \setcounter{points}{0}
+  \regtotcounter{totalPoints}
+  \regtotcounter{sectionPoints}
+  \ifthenelse{#1 = 0}{
+    \renewcommand{\thepartial}{\thetitle}
   }{
-    \ifthenelse{#1 = 2}{
-    \renewcommand{\thepartial}{Segundo Parcial}
-  }{
-    \ifthenelse{#1 = 3}{
-    \renewcommand{\thepartial}{Tercer Parcial}
-    }{
-    \ifthenelse{#1 = 4}{
-    \renewcommand{\thepartial}{Cuarto Parcial}
-    }{
-    \renewcommand{\thepartial}{Examen Final}
-    }
+    \renewcommand{\thepartial}{\thetitle\:\Roman{partialNumber}}
   }
-}}
 }
 \newcommand{\testdefinition}[3]{
   \setgroup{#1}
@@ -30,8 +27,82 @@
   \paragraph{Distribución de puntos}
   \renewcommand{\labelenumiv}{\theenumi\theenumiii-\arabic{enumiv})}
 }
-\newcommand{\pts}[1]{(\textit{#1 pts.})}
-\newcommand{\upt}{(\textit{1 pt.})}
+\newcommand{\pts}[2][]{
+  (\textit{#2 pts.})
+  \ifthenelse{\equal{#1}{add}}{
+    \addtocounter{points}{#2}
+  }{}
+}
+\newcommand{\upt}[1][]{
+  (\textit{1 pt.})
+  \ifthenelse{\equal{#1}{add}}{
+    \addtocounter{points}{1}
+  }{}
+}
 \newcommand{\uptcu}{(\textit{1 pt c/u.})}
 \newcommand{\ptscu}[1]{(\textit{#1 pts c/u.})}
+\newcommand{\consolidatePoints}[1]{
+  \setcounter{sectionPoints}{\value{points}}
+  \addtocounter{totalPoints}{\value{points}}
+  \setcounter{points}{0}
+  \protected@write\@auxout{}{%
+    \string\newlabel{#1}{{\arabic{sectionPoints}}{\thepage}}%
+  }%
+}
 
+
+\newcommand{\topics}{}
+\newcommand{\settopics}[1]{
+  \renewcommand{\topics}{#1}
+}
+\newcommand{\rightoption}{
+  \ifthenelse{\boolean{solutions}}{{\color{blue}\ding{51}}}{}
+}
+
+\newcommand{\inputline}{\line(1,0){150}}
+\newcommand{\completeline}[1]{
+  \ifthenelse{\boolean{solutions}}{\textbf{\color{blue}#1}\;}{\inputline\;}
+}
+
+\newcommand{\partialenumi}{
+  \ifthenelse{\equal{\theunishort}{UFide}}{
+    \renewcommand{\labelenumi}{\textbf{Desempeño \arabic{enumi}.}}
+  }{
+    \renewcommand{\labelenumi}{\arabic{enumi}.}
+  }
+}
+\newcommand{\setthisindent}{
+  \ifthenelse{\equal{\theunishort}{UFide}}{
+    \setlength{\itemindent}{+1in}
+  }{
+  }
+}
+
+\newcommand{\AANlines}{
+
+\begin{minipage}{0.3\textwidth}
+	\begin{center}
+		\line(1,0){139}
+
+		\textbf{Primer apellido}
+	\end{center}
+\end{minipage}
+\hfill
+\begin{minipage}{0.3\textwidth}
+	\begin{center}
+		\line(1,0){139}
+
+		\textbf{Segundo apellido}
+	\end{center}
+\end{minipage}
+\hfill
+\begin{minipage}{0.3\textwidth}
+	\begin{center}
+		\line(1,0){139}
+
+		\textbf{Nombre completo}
+	\end{center}
+\end{minipage}
+\vspace*{0.5cm}
+
+}

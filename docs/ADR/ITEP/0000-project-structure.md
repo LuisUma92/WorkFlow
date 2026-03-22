@@ -1,8 +1,8 @@
 ---
 adr: 0000
-title: "Physics project structure"
+title: "Project structure"
 status: Accepted
-date: 2025-08-22
+date: 2025-09-29
 authors:
   - Luis Fernando Umaña Castro
 reviewers: []
@@ -13,12 +13,18 @@ tags:
 decision_scope: component
 supersedes: null
 superseded_by: null
-related_adrs: []
+related_adrs:
+  - "ITEP/0004"
+  - "ITEP/0005"
 ---
 
-# Physics project structure
+## Context
 
-Para organizar la tesis en un directorio con el siguiente orden:
+To organice my tesis working directory, I structured the files order.
+This practice led me to think about a strategy to make this structure
+reproducible and consistent,
+so that it can be extended to all my research and study files.
+This file present the outcome of this strategy.
 
 ## Variables
 
@@ -124,8 +130,8 @@ ${ABS_DOCUMENTS_DIR}/02-Library
 
 ### Solved exercises
 
-This directories are created with [CreTE][../../src/lectkit/crete.py].
-It uses the structure for each book described on [Json Book-Exercises Structure](../..//README.md)
+This directories are created with [CreTE](../../src/lectkit/crete.py).
+It uses the structure for each book described on [Json Book-Exercises Structure](../../README.md)
 
 ```bash
 ${ABS_PARENT_DIR}/00EE-ExamplesExercises
@@ -423,87 +429,74 @@ ${ABS_PARENT_DIR}/00AA-Lectures
     └── TNNE000.tex
 ```
 
-## Misc
+## Naming conventions
 
-En el directorio a crear las siguientes expresiones son variables del tipo
-string cuyos caracteres son como se indican:
+All numeric indices are zero-padded integers.
+Prefixes `C`, `S`, `T`, `E`, `I`, `D` and the word `Semana` are literal.
 
-```bash
-{##AA-Name}
-{T##}
-{C##S##}
-```
+### Project root
 
-De manera que cada `#` representa un número las letras `AA` deben ser
-sustituidas
-Las palabra `Name` debe ser sustituido.
-Las letras `T`, `C` y `S` deben mantenerse.
+- **Main topic directory**: `{MAIN_CODE}+{MAIN_NAME}`
+  - `{MAIN_CODE}` = `{nn:02d}{AA}` (2-digit number + 2-letter topic code).
+  - `{MAIN_NAME}` = descriptive name of the main topic.
+  - Example: `10MC+Mecanica_Clasica`.
+- **Main TeX file**: `{MAIN_CODE}.tex` — e.g. `10MC.tex`.
 
-Además la variable `{##AA}` debe ser lo que se indica en los primeros 4
-caracteres de la variable `{##AA-Name}`
+### Weekly topics (lecture projects)
 
-Necesito un scrip en bash que solicite el número de 2 dígitos que acompaña
-el `{##AA-Name}` y el `{##AA}`, que pida las dos letras que se deben cambiar
-por `AA`, que pida el nombre del directorio principal que se debe colocar en
-lugar de `Name`.
-Que solicite la cantidad de temas a crear.
-La cantidad de temas a crear es un número entero.
+- **Weekly presentation**: `Semana{wk:02d}-{title}.tex`
+  - `{wk:02d}` = week number (01, 02, ...).
+  - `{title}` = general description of the week's content.
+- **Content distribution**: `Semana{wk:02d}-DC.md`
+  - Same `{wk:02d}` as above; describes the content plan for that week.
 
-Se debe crear cada carpeta, comenzando por `{##AA-Name}` pero empleando
-los valores ingresados por el usuario.
-Las carpetas y archivos asociados a la variable `{C##S##}`, `{bookName}` y
-`{topic01}` deben ignorarse,
-estas carpetas y archivos las creará otro script.
+### Section directories
 
-También se debe ignorar la craeación de los directorios `{T##}`
+- **Folder format**: `C{ch:02d}S{sec:02d}-{title}`
+  - `{ch:02d}` = chapter number (01, 02, ...).
+  - `{sec:02d}` = section number (01, 02, ...).
+  - `{title}` = section title.
 
-Se debe una copia del archivo `${ABS_SRC_DIR}/templates/TNN.tex`
-con el nombre `T##.tex` para cada número desde el `01` hasta el número
-indicado.
-Note que todos los números son enteros y se escriben con dos dígitos,
-rellenando con cero a la izquierda para números entre el 1 y el 9.
+### Individual TeX files
 
-Luego debe crear un soft link para cara archivo que está seguido por los
-caracteres `->`, donde lo primero es el nombre del archivo y
-lo que sigue de esos caracteres es path absoluto al archivo que se debe
-referenciar.
+- **Base file**: `{ConceptName}.tex`
+  - `{ConceptName}` = meaningful name of the concept, procedure, or content.
+    Typically contains definitions.
+- **Examples**: `{ConceptName}-E{ex:03d}.tex`
+  - `{ex:03d}` = example number (001, 002, ...). Resets per concept.
+- **Figures**: `{ConceptName}-I{fig:03d}.tex`
+  - `{fig:03d}` = figure number (001, 002, ...). Resets per concept.
+- **Demonstrations**: `{ConceptName}-D{dem:03d}.tex`
+  - `{dem:03d}` = demonstration number (001, 002, ...). Resets per concept.
 
-Debe crear una copia de `${ABS_SRC_DIR}/templates/00AA.tex` con el nombre
-correcto `##AA.tex` empleado los valores ingresados por el usuario.
+### Book references
 
-Debe crear el archivo `4_biber.sty`
-Debe escribir dentro del archivo `4_biber.sty` el siguiente texto
+- **Book directory**: `{MDS_code}_{FirstAuthorLastname}_E{Edition:02d}`
+  - Stored in the `BOOK_REFERENCE` variable.
+  - Example: `530_R434f5-resnick`.
+- **Book chapter symlink** (exercises): `{BOOK_REFERENCE}-C{ch:02d}`
 
-```tex
-\addbibresources{bib/}
-```
+### Lecture code
 
-Debe crear el archivo `README.md`
+- **Lecture directory**: `{Institution}-{CourseCode}`
+  - Example: `UCR-FS0121`, `UCIMED-CB0009`.
 
-Y debe escribir en el archivo, usando el formato adecuado de markdown
-el valor ingresado para `Name` como un header 1.
+---
 
-Debe escribir con formato header 2 las siguientes secciones:
+## References
 
-- `Tabla de Contenidos`
-- `Distribución de temas en el curso`
-- `Bibliografía`
-- `Pendientes`
+- [ITEP/0004 - Dos tipos de proyecto](ITEP/0004-two-project-types.md)
+- [ITEP/0005 - Configuración LaTeX basada en symlinks](ITEP/0005-symlink-based-config.md)
 
-En la sección de `Tabla de contenidos` se debe emplear algún mecanismo de
-markdown para autogenerar un índice.
-Se puede usar la versión de markdown que emplea github.com
+---
 
-En la sección de `Distribución de temas en el curso` se debe escribir una
-lista no enumerada donde cada item corresponda con el nombre de todos los
-archivos creados con el formato `T##.tex` pero sin incluir los caracteres
-`.tex`
+## Change Log
 
-En la sección de `Pendientes` debe iniciar una todo list con el formato
-adecuado para que presente como lista de pendientes indicando los siguientes
-items
-
-- Agregar libros y códigos a `README.md`.
-- Crear carpetas con el link adecuado por cada libro tanto en `img/`
-  como en `eval/TNN/`.
-- Crear carpetas de las secciones correspondientes al curso.
+| Date       | Change                                           |
+| ---------- | ------------------------------------------------ |
+| 2025-09-29 | Initial ADR (project merge Workflow + myTex)     |
+| 2025-09-30 | Actualizar estructura y agregar ITeP init        |
+| 2025-10-01 | Definición de topic01 y primer intento de diseño |
+| 2025-10-05 | Reestructuración para compilar                   |
+| 2026-03-08 | Refactor general (Claude)                        |
+| 2026-03-20 | ADRs de itep y CentredPage agregados             |

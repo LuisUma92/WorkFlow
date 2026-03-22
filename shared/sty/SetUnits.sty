@@ -1,6 +1,36 @@
+\sisetup{
+  detect-all,
+  mode = math,
+  per-mode = power,
+  inter-unit-product = \,,
+}
+
+    % \let\oldunit\unit
+    % \renewcommand\unit{\:\oldunit}
+  % \RenewDocumentCommand{\unit}{m}
+  %   {\,\ensuremath{\left[ \si{#1} \right]}}
+  %
+  % \RenewDocumentCommand{\SI}{m m}
+  %   {#1\,\ensuremath{\left[ \si{#2} \right]}}
+
 \DeclareSIUnit\barn{b}
 \DeclareSIUnit\fbarn{fb}
 \DeclareSIUnit\luminosity{\per\square\cm\per\s}
 \DeclareSIUnit\lumi{\luminosity}
 \DeclareSIUnit\inteLumi{\per\fbarn}
+
+
+
 \DeclareSIUnit\degreeFahrenheit{^{\circ}F}
+\DeclareSIUnit\degF{^{\circ}F}
+\DeclareSIUnit\degreeCelsuis{^{\circ}C}
+\DeclareSIUnit\degC{^{\circ}C}
+
+\DeclareSIUnit\ace{m/s^2}
+\DeclareSIUnit\vel{m/s}
+\DeclareSIUnit\denV{kg/m^3}
+\DeclareSIUnit\denA{kg/m^2}
+\DeclareSIUnit\denL{kg/m}
+
+\DeclareSIUnit\angvel{rad/s}
+\DeclareSIUnit\angace{rad/s^2}

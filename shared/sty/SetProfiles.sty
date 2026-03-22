@@ -6,6 +6,7 @@
 \let\thedate\@date
 \makeatother
 
+\newcommand{\ParentProject}{  ``New scintillator polymer materials for application at the LHCb-CERN experiment.''}
 \newcommand{\director}{Dr. Mario Cubero Campos}
 \newcommand{\SEPperson}{}
 \newcommand{\SEPprograma}{Programa de Posgrado en Física}
@@ -13,6 +14,14 @@
 
 \newglossary*{base}{Glosario General}
 \newglossary*{tech}{Glosario}
+
+%==< Asignación de colores >==========================
+  \hypersetup{
+      colorlinks=true,
+      linkcolor=Uazul,
+      citecolor=Uazul,
+      urlcolor=Uazul,
+  }
 
 %==< Definición de headers para lectures y homework >==========================
   \makeatletter
@@ -77,6 +86,14 @@
   \newsavebox{\ulogo}
   \newsavebox{\schoollogo}
   
+  \newcommand{\ucr}{
+    \renewcommand{\theuni}{Universidad de Costa Rica}
+    \renewcommand{\theunishort}{UCR}
+    \savebox{\ulogo}{
+	    \includegraphics[width=0.4\textwidth]{\mytex/img/ucr/firma-horizontal-dos-lineas-cmky.png}
+    }
+    \savebox{\schoollogo}{}
+  }
   \newcommand{\efis}{
     \renewcommand{\theuni}{Universidad de Costa Rica}
     \renewcommand{\theunishort}{UCR}
@@ -93,16 +110,16 @@
     \renewcommand{\theunishort}{UCIMED}
     \renewcommand{\theschool}{Ciencias Básicas}
     \savebox{\ulogo}{
-	    \includegraphics[width=0.5\textwidth]{\mytex/img/ucimed/ucimed.png}
+	    \includegraphics[width=0.2\textwidth]{\mytex/img/ucimed/ucimed.png}
     }
     \savebox{\schoollogo}{}
   }
   \newcommand{\ufide}{
     \renewcommand{\theuni}{Universidad Fidélitas}
     \renewcommand{\theunishort}{UFide}
-    \renewcommand{\theschool}{Escuela de Ciencias Básicas}
+    \renewcommand{\theschool}{Ciencias Básicas}
     \savebox{\ulogo}{
-	    \includegraphics[width=0.5\textwidth]{\mytex/img/ufide/ufidelitas.png}
+	    \includegraphics[width=0.3\textwidth]{\mytex/img/ufide/ufidelitas.png}
     }
     \savebox{\schoollogo}{}
   }
@@ -112,39 +129,43 @@
   \newcommand{\setclass}[1]{
     \renewcommand{\classcode}{#1}
     \ifthenelse{\equal{#1}{FS0121}}{
-      \renewcommand{\classname}{FS-0121 Fundamentos de Física}
+      \renewcommand{\classname}{Fundamentos de Física}
       \efis
     }{
     \ifthenelse{\equal{#1}{FS0210}}{
-      \renewcommand{\classname}{FS-0210 Física General I}
+      \renewcommand{\classname}{Física General I}
       \efis
     }{
     \ifthenelse{\equal{#1}{FS0310}}{
-      \renewcommand{\classname}{FS-0310 Física General II}
+      \renewcommand{\classname}{Física General II}
       \efis
     }{
     \ifthenelse{\equal{#1}{FS0410}}{
-      \renewcommand{\classname}{FS-0410 Física General III}
+      \renewcommand{\classname}{Física General III}
       \efis
     }{
     \ifthenelse{\equal{#1}{FS0230}}{
-      \renewcommand{\classname}{FS-0230 Física I}
+      \renewcommand{\classname}{Física I}
       \efis
     }{
     \ifthenelse{\equal{#1}{FS0330}}{
-      \renewcommand{\classname}{FS-0330 Física II}
+      \renewcommand{\classname}{Física II}
       \efis
     }{
     \ifthenelse{\equal{#1}{FS0430}}{
-      \renewcommand{\classname}{FS-0430 Física III}
+      \renewcommand{\classname}{Física III}
       \efis
     }{
-    \ifthenelse{\equal{#1}{CB9}}{
+    \ifthenelse{\equal{#1}{CB-09}}{
       \renewcommand{\classname}{Física para Ciencias Médicas}
       \ucimed
     }{
+    \ifthenelse{\equal{#1}{CBI-06}}{
+      \renewcommand{\classname}{Física I}
+      \ucimed
+    }{
       \renewcommand{\classname}{#1}
-  } } } } } } } }
+    } } } } } } } } }
   }
 
   \newcommand{\thecycle}{0000-III}
@@ -156,3 +177,34 @@
     \renewcommand{\thegroup}{Grupo #1}
   }
 
+    \makeatletter
+    \def\@maketitle{%
+          \begin{minipage}{0.49\textwidth}
+            \begin{center}
+      \usebox{\ulogo}\\[0.5em]
+            \end{center}
+      \end{minipage}
+      \begin{minipage}{0.49\textwidth}
+        \begin{center}
+      \vskip 1.5em
+           \textbf{\Large{\theschool}}\\%[0.25em]
+         \textbf{\Large{\@title}} \\%[0.5em]% \, \Roman{partialNumber} - \thedate}\\[0.5em]
+      {\classname} - \thegroup\\%[0.25em]
+      Valor: \total{totalPoints}\,puntos \\
+        \end{center}
+      \end{minipage}
+      \par
+      \vskip 0.25em
+      \begin{minipage}{0.49\textwidth}
+      \textbf{Prof. \@author}\\[0.5em]
+      \textbf{Nombre:}
+      \end{minipage}
+      \begin{minipage}{0.49\textwidth}
+        \hspace{0.5cm}
+        \textbf{Caso \Roman{partialNumber}}\hspace{0.5cm}\textbf{\large \thecycle}\\[0.5em] % \medskip \\
+        \textbf{Cédula:}
+      \end{minipage}
+      \par
+      \vskip 1.5em
+    }
+    \makeatother

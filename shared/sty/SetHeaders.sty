@@ -43,16 +43,37 @@
 }
 %==< Definir SEP >=============================================================
 \fancypagestyle{uplain}{
-  \fancyhead[LE,RO]{\thepage}
-  \fancyfoot[LE,RO]{\thepartial \classcode \thecycle}
-  \fancyfoot[RE]{\theauthor}
-  \fancyfoot[LO]{\thetitle}
+  \fancyfoot{}
+  \ifthenelse{\equal{\theunishort}{UCIMED}}{
+    \fancyhead[R]{Página \thepage/\pageref*{LastPage}}
+    \fancyhead[L]{}
+    \fancyfoot[L]{\textsc{\thepartial}\:-\:\classcode\:-\:\thecycle}
+  }{
+  \ifthenelse{\equal{\theunishort}{UCR}}{
+    \fancyhead[LE,RO]{\thepage}
+    \fancyhead[RE,LO]{\textsc{\thepartial}}
+    \fancyfoot[LE,RO]{\textsc{\classcode\:-\:\thecycle}}
+    \fancyfoot[RE,LO]{\theauthor}
+  }{
+  \ifthenelse{\equal{\theunishort}{UFide}}{
+    \fancyhead[LO]{}
+    \fancyhead[RO]{}
+    \fancyfoot[C]{\thepage}
+  }{
+    \fancyhead[LE,RO]{\thepage}
+    \fancyfoot[LE,RO]{\thepartial\:-\:\classcode\:-\:\thecycle}
+    \fancyfoot[RE]{\theauthor}
+    \fancyfoot[LO]{\thetitle}
+  } } }
 }
 \fancypagestyle{partial}{
+  \fancyfoot{}
   \fancyhead[LO]{
     \usebox{\ulogo}
   }
   \ifthenelse{\equal{\theunishort}{UCR}}{
+    \setlength{\headheight}{117pt}
+    \addtolength{\topmargin}{-68pt}
     \fancyhead[RO]{
       \vbox to \ht\ulogo{
         \vfil
@@ -60,21 +81,26 @@
         \textbf{\classname}
       }
     }
-    \setlength{\headheight}{117pt}
-    \addtolength{\topmargin}{-68pt}
+    \fancyfoot[c]{\thepage}
   }{
   \ifthenelse{\equal{\theunishort}{UFide}}{
-    \setlength{\headheight}{15pt}
-    \addtolength{\topmargin}{-0.15pt}
+    % \setlength{\headheight}{193pt}
+    % \addtolength{\textheight}{-193pt}
+    \fancyhead[LO]{}
+    \fancyhead[RO]{}
+    \fancyfoot[C]{\thepage}
   }{
   \ifthenelse{\equal{\theunishort}{UCIMED}}{
-    \setlength{\headheight}{15pt}
-    \addtolength{\topmargin}{-0.15pt}
+    \setlength{\headheight}{120pt}
     \fancyhead[C]{
       \textbf{\Large{\thepartial}}\\
-      \textbf{\classname}\\
+      \textbf{\classname}\\[0.5em]
+      \textbf{Prof. \theauthor}\\[0.5em]
       \thedate \\
-      30 puntos $\leftrightarrow 100\%$ \\
+      \total{totalPoints}\,puntos $\leftrightarrow 100\%$ \\
+    }
+    \fancyhead[RO]{
+      \vbox to \ht\ulogo{Página \thepage/\pageref*{LastPage}}
     }
   }{}}}
 }

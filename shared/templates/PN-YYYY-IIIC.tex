@@ -3,10 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \documentclass[
   11pt,
-  % notitlepage,
-  openany,
   twoside,
-  %twocolumn,
   ]{article}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   %==< Definir paquetes >======================================================
@@ -16,7 +13,7 @@
   \usepackage{config/2_partial}
   \usepackage{config/3_units}
   %==<Definir bibliografía>====================================================
-  \usepackage{config/4_biber}
+  % \usepackage{config/4_biber}
   %==< Definir recursos visuales >=============================================
   \graphicspath{
     {img}
@@ -41,10 +38,11 @@
   \setcycle{2025-II}
   \setgroup{02}
   \setpartialnumber{1}
+  % \settopics{}
   \usepackage{config/6_headers}
   %==<Definir uso de indice y glosarios >======================================
   \pagestyle{plain}
-  % \setbool{test}{true}
+  \setbool{test}{true}
   % \setbool{solutions}{true}
   % \makeindex
   % \makeglossaries
@@ -58,11 +56,6 @@
 \begin{document} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \thispagestyle{partial}
-\begin{center}
-  % {\Huge \thetitle} \\[2em]
-  {\large \thepartial} \hfill
-  {\large \thecycle} % \medskip \\
-\end{center}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \ifthenelse{\boolean{solutions}}{
   \pdfbookmark{Índice General}{section}
@@ -75,35 +68,63 @@
     \large{\thecycle}
   \end{center}
 }{
-  \paragraph{Indicaciones}
-  Lea y responda cada enunciado según se le indica. 
-  Solo se atenderán dudas sobre la forma en que están redactas las preguntas, 
-  por lo cual se le pide que se abstenga de hacer preguntas por sus 
-  procedimientos.
-  Escriba todas sus soluciones en hojas aparte (puede usar hojas en blanco
-  engrapada o un cuaderno de examen).
-  Asegúrese de escribir todos los pasos que realizó para obtener los
-  resultados.
-  Utilice lapicero de tinta azul o negra, si deja el examen en lápiz no se
-  aceptarán reclamos posteriormente.
-  Cuenta con 2 horas para realizar el examen.
-  % A continuación se le ofrecen dos ejercicios por tema, debe escoger uno de los
-  % dos y resolverlo. Solo se revisará un ejercicio por tema, así que indique 
-  % claramente cual ejercicio está resolviendo. En caso de que no se indique 
-  % claramente se tomará el primer ejercicio de un tema que se resuelva como el 
-  % ejercicio a revisar. Escriba en el cuaderno de examen el número de pregunta, 
-  % todos los datos, ecuaciones y procedimientos necesarios para obtener el 
-  % resultado solicitado. No olvide que la respuesta es una frase final en la cual 
-  % se responde a la pregunta del enunciado.
+  \input{config/instructions.tex}
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{enumerate}[1.]
-    \input{}
-    \ifbool{solutions}{\newpage\phantomsection}{}
-    \input{}
-    \ifbool{solutions}{\newpage\phantomsection}{}
-    \input{}
-\end{enumerate}
+% \newpage
+% \section*{Complete}
+% En esta parte se incluyen 10 preguntas de complete.
+% \textbf{Puntaje Total = \ref{CT} puntos, 1 punto por cada pregunta correcta}.
+%
+% \vspace{5mm}
+% \textbf{Instrucciones}:
+% Escriba en el espacio en blanco la palabra que complete de forma correcta
+% cada una de las frases de acuerdo con lo visto en clase.
+% Para responder dispone ÚNICAMENTE de este grupo de conceptos,
+% de los cuales 10 corresponden a las respuestas correctas del ejercicio.
+% \textbf{No se repiten conceptos.}
+%
+% \vspace{5mm}
+% \input{00-01-Complete/}
+% \consolidatePoints{CT}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \newpage
+% \section*{Selección única}
+% En esta parte se incluyen 7 preguntas de complete.
+% \textbf{Puntaje Total = \ref{SU} puntos, 2 punto por cada pregunta correcta}.
+%
+% \vspace{5mm}
+% \textbf{Instrucciones}:
+% Marque con una "\textbf{X}" la letra que acompañe a la respuesta correcta,
+% de acuerdo con lo visto en clase.
+% \begin{enumerate}[1.]
+%     \input{}
+%     % \ifbool{solutions}{\newpage\phantomsection}{}
+% \end{enumerate}
+% \consolidatePoints{SU}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \newpage
+% \section*{Desarrollo}
+% A continuación, se incluye un problema de desarrollo.
+% \textbf{Puntaje Total = \ref{DE} puntos}
+%
+% \vspace{5mm}
+% \textbf{Instrucciones}:
+% Resuelva los siguientes problemas de manera clara y ordenada,
+% muestre todos los pasos requeridos para llegar a la respuesta final.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \input{Caso-1/2025C3.tex}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \partialenumi
+% \begin{enumerate}
+%     \setthisindent
+%     \input{}
+%     \ifbool{solutions}{\newpage\phantomsection}{}
+%     \input{}
+%     \ifbool{solutions}{\newpage\phantomsection}{}
+%     \input{}
+% \end{enumerate}
+% \consolidatePoints{DE}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % \ifthenelse{\boolean{solutions}}{}{
 %   \begin{figure}[h!]
@@ -127,11 +148,20 @@
 %   \end{figure}
 % }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \label{LastPage}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % \newpage
 % \phantomsection
+% \addcontentsline{toc}{section}{Formularia \thepartial}
+% \begin{center}
+%   {\large\textsc{\theuni, \theschool}} \\[1.5em]
+%   {\Huge Formulario \thepartial}\\[2em]
+%   {\Large\classname\;\classcode}
+% \end{center}
 % \begin{multicols}{2}
-% \input{Formulario4.tex}
+% \input{Formulario.tex}
 % \end{multicols}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % \includepdf[
 %   addtotoc={
 %     1, 

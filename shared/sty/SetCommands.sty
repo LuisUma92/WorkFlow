@@ -7,6 +7,7 @@
 %==< Definición de directorios importantes >===================================
   \newcommand{\mytex}{/home/luis/.config/mytex}
   \newcommand{\FisicaDir}{/home/luis/Documents/01-U/00-Fisica}
+  \newcommand{\IMGfolder}{\FisicaDir/00II-ImagesFigures}
 
 %==< Definición de booleanos >=================================================
   \newboolean{test}
@@ -76,8 +77,7 @@
         #2
       }{}
     }{
-    #1
-    \newline
+    #1\par
     #2
     }
   }
@@ -88,6 +88,10 @@
       \paragraph{Solución:}
       #2
     }{}
+  }
+  \newcommand{\thegeneralobjective}{}
+  \newcommand{\setobjective}[1]{
+    \renewcommand{\thegeneralobjective}{#1}
   }
 
 %==< Definición de comandos >==================================================
@@ -115,12 +119,9 @@
   }
   
   \newcommand{\scrp}[1]{_{\mbox{\scriptsize{#1}}}}
+  \newcommand{\vc}[1]{\vec{\symbf{#1}}}
   \newcommand{\nc}[2]{$^{#1}$#2}
   \newcommand{\ncm}[2]{^{#1}\text{#2}}
   \newcommand{\then}{=}
   \newcommand{\ifpause}{}
-  \def\rcursub{{\mbox{$\;\resizebox{.05in}{.05in}{\includegraphics{\mytex/img/ScriptR.png}}$}}}
-  \def\brcursub{{\mbox{$\;\resizebox{.05in}{.05in}{\includegraphics{\mytex/img/BoldR.png}}$}}}
-  \def\rcurs{{\mbox{$\;\resizebox{.08in}{.08in}{\includegraphics{\mytex/img/ScriptR.png}}$}}}
-  \def\brcurs{{\mbox{$\;\resizebox{.08in}{.08in}{\includegraphics{\mytex/img/BoldR.png}}$}}}
-  \def\hrcurs{{\mbox{$\;\hat{\rcurs}$}}}
+

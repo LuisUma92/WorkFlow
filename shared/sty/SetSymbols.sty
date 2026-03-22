@@ -1,50 +1,104 @@
-\newcommand{\pc}[1]{\textcolor{Pos}{#1}}
+% --- Helper: vector coloreado ---
+\newcommand{\cvec}[2]{\vec{\symbf{\textcolor{#1}{#2}}}}
 
+% --- Posición ---
+\newcommand{\vpos}{\cvec{Pos}{r}}                       % \vec{r}
+\newcommand{\spos}{\textcolor{Pos}{r}}                   % r
+\newcommand{\sposx}{\textcolor{PosX}{x}}                 % x
+\newcommand{\sposy}{\textcolor{PosY}{y}}                 % y
+\newcommand{\sposz}{\textcolor{PosZ}{z}}                 % z
+\newcommand{\uvi}{\textcolor{PosX}{\hat{\bm{i}}}}       % î
+\newcommand{\uvj}{\textcolor{PosY}{\hat{\bm{j}}}}       % ĵ
+\newcommand{\uvk}{\textcolor{PosZ}{\hat{\bm{k}}}}       % k̂
 \newcommand{\pr}[1][r]{\vc{\textcolor{Pos}{#1}}}
 \newcommand{\mpr}{|\vc{\textcolor{Pos}{r}}|}
-\newcommand{\px}{\textcolor{PosX}{\bm{x}}} %!45!yellow
+\newcommand{\px}{\textcolor{PosX}{x}}
 \newcommand{\py}{\textcolor{PosY}{y}}
 \newcommand{\pz}{\textcolor{PosZ}{z}}
-\newcommand{\vi}{\vh{\textcolor{PosX}{\imath}}}
-\newcommand{\vj}{\vh{\textcolor{PosY}{\jmath}}}
-\newcommand{\vk}{\vh{\textcolor{PosZ}{k}}}
+
+% --- Distancia ---
+\newcommand{\sdis}{\textcolor{Dis}{d}}                   % d
 \newcommand{\di}{\textcolor{Dis}{d}}
+
+% --- Desplazamiento ---
+\newcommand{\vdes}{\textcolor{Des}{\Delta\vec{\bm{r}}}}  % Δ\vec{r}
+\newcommand{\sdes}{\textcolor{Des}{\Delta r}}             % Δr
 \newcommand{\de}{\vc{\textcolor{Des}{d}}}
+
+% --- Velocidad ---
+\newcommand{\vvel}{\cvec{Vel}{v}}                        % \vec{v}
+\newcommand{\svel}{\textcolor{Vel}{v}}                   % v
 \newcommand{\vv}[1][v]{\vc{\textcolor{Vel}{#1}}}
-\newcommand{\vvc}[1]{\vm{\textcolor{Vel}{v}}_{ #1 }}
+\newcommand{\vvc}[1]{\textcolor{Vel}{v_{#1}}}
+
+% --- Rapidez ---
+\newcommand{\srap}{\textcolor{Rap}{v}}                   % v (escalar)
 \newcommand{\ve}[1][v]{\textcolor{Rap}{#1}}
+
+% --- Aceleración ---
+\newcommand{\vace}{\cvec{Ace}{a}}                        % \vec{a}
+\newcommand{\sace}{\textcolor{Ace}{a}}                   % a
 \newcommand{\av}[1][a]{\vc{\textcolor{Ace}{#1}}}
-\newcommand{\avc}[1]{\vm{\textcolor{Ace}{a}}_{ #1 }}
+\newcommand{\avc}[1]{\textcolor{Ace}{a_{#1}}}
+
+% --- Masa ---
+\newcommand{\smas}{\textcolor{Mas}{m}}                   % m
 \newcommand{\mas}{\textcolor{Mas}{m}}
+
+% --- Fuerza ---
+\newcommand{\vfza}{\cvec{Fza}{F}}                        % \vec{F}
+\newcommand{\sfza}{\textcolor{Fza}{F}}                   % F
+\newcommand{\vpeso}{\cvec{Fza}{w}}                       % \vec{w} (peso)
+\newcommand{\speso}{\textcolor{Fza}{w}}                  % w (peso)
 \newcommand{\fz}{\vc{\textcolor{Fza}{F}}}
 \newcommand{\fza}[1]{\vc{\textcolor{Fza}{ #1 }}}
-\newcommand{\fzm}[1]{|\vc{\textcolor{Fza}{ #1 }}|}
-\newcommand{\fzc}[2]{\vm{\textcolor{Fza}{ #1 }}_{ #2 }}
+\newcommand{\fzm}[1]{|\vc{\textcolor{Fza}{#1}}|}
+\newcommand{\fzc}[2]{\textcolor{Fza}{#1_{#2}}}
+
+% --- Momento lineal ---
+\newcommand{\vmom}{\cvec{MomL}{p}}                       % \vec{p}
+\newcommand{\smom}{\textcolor{MomL}{p}}                  % p
+
+% --- Momento angular ---
+\newcommand{\vmoma}{\cvec{MomA}{L}}                      % \vec{L}
+\newcommand{\smoma}{\textcolor{MomA}{L}}                 % L
+
+% --- Energía ---
+\newcommand{\sene}{\textcolor{Ene}{E}}                   % E
+\newcommand{\senek}{\textcolor{EneK}{K}}                 % K
+\newcommand{\seneu}{\textcolor{EneU}{U}}                 % U
+\newcommand{\pc}[1]{\textcolor{Pos}{#1}}
+
 
 %General vector notation
+\newcommand{\vi}{\hat{\imath}}
+\newcommand{\vj}{\hat{\jmath}}
+\newcommand{\vk}{\hat{k}}
 
-\newcommand{\vA}{\vc{\textcolor{Pos!45!red}{A}}}
-\newcommand{\mvA}{|\vc{\textcolor{Pos!45!red}{A}}|}
-\newcommand{\vAt}{\textcolor{Pos!60!red}{\theta_A}}
-\newcommand{\vAx}{\textcolor{PosX!45!red}{A_x}}
-\newcommand{\vAy}{\textcolor{PosY!45!red}{A_y}}
-\newcommand{\vAz}{\textcolor{PosZ!45!red}{A_z}}
+\newcommand{\vA}{{\color{red}\vc{A}}}
+\newcommand{\mvA}{|\vc{\textcolor{red}{A}}|}
+\newcommand{\vAt}{\textcolor{red}{\theta_A}}
+\newcommand{\vAx}{\textcolor{red}{A_x}}
+\newcommand{\vAy}{\textcolor{red}{A_y}}
+\newcommand{\vAz}{\textcolor{red}{A_z}}
 
-\newcommand{\vB}{\vc{\textcolor{Pos!45!blue}{B}}}
-\newcommand{\mvB}{|\vc{\textcolor{Pos!45!blue}{B}}|}
-\newcommand{\vBt}{\textcolor{Pos!60!blue}{\theta_B}}
-\newcommand{\vBx}{\textcolor{PosX!45!blue}{B_x}}
-\newcommand{\vBy}{\textcolor{PosY!45!blue}{B_y}}
-\newcommand{\vBz}{\textcolor{PosZ!45!blue}{B_z}}
+\newcommand{\vB}{{\color{blue}\vc{B}}}
+\newcommand{\mvB}{|\vc{\textcolor{blue}{B}}|}
+\newcommand{\vBt}{\textcolor{blue}{\theta_B}}
+\newcommand{\vBx}{\textcolor{blue}{B_x}}
+\newcommand{\vBy}{\textcolor{blue}{B_y}}
+\newcommand{\vBz}{\textcolor{blue}{B_z}}
 
 \newcommand{\tAB}{\textcolor{blue}{\varphi}}
 
+\newcommand{\fem}{\symbf{\mathcal{E}}}
+
 %============================================================== Comands
 %%%% Script R %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\rcursub{{\mbox{$\;\resizebox{.05in}{.05in}{\includegraphics{\AAfolder/img/ScriptR.png}}$}}}
-\def\brcursub{{\mbox{$\;\resizebox{.05in}{.05in}{\includegraphics{\AAfolder/img/BoldR.png}}$}}}
-\def\rcurs{{\mbox{$\;\resizebox{.08in}{.08in}{\includegraphics{\AAfolder/img/ScriptR.png}}$}}}
-\def\brcurs{{\mbox{$\;\resizebox{.08in}{.08in}{\includegraphics{\AAfolder/img/BoldR.png}}$}}}
+\def\rcursub{{\mbox{$\;\resizebox{.05in}{.05in}{\includegraphics{\mytex/img/ScriptR.png}}$}}}
+\def\brcursub{{\mbox{$\;\resizebox{.05in}{.05in}{\includegraphics{\mytex/img/BoldR.png}}$}}}
+\def\rcurs{{\mbox{$\;\resizebox{.08in}{.08in}{\includegraphics{\mytex/img/ScriptR.png}}$}}}
+\def\brcurs{{\mbox{$\;\resizebox{.08in}{.08in}{\includegraphics{\mytex/img/BoldR.png}}$}}}
 \def\hrcurs{{\mbox{$\;\hat{\rcurs}$}}}
 %%%% vec notaion %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % \newcommand{\rot}[1]{\nabla\times #1}
