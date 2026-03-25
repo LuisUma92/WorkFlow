@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Process Bib Entries</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+     <!-- Include any CSS styles for your template -->
+    <style>
+        /* Define styles for the loading bar */
+        #loading-bar {
+            width: 100%;
+            height: 20px;
+            background-color: lightgray;
+            margin-bottom: 20px;
+        }
+
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background-color: green;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Process Bib Entries</h1>
+    <!-- Section to indicate the current entry -->
+    <!-- <p>Current entry is {{ current_index }} of {{ total_entries }}</p> -->
+    
+    <!-- Loading bar -->
+    <!-- <div id="loading-bar"> -->
+    <!--     <div id="progress-bar"></div> -->
+    <!-- </div> -->
+    <!-- <div id="status"></div> -->
+
+    {% if errors %}
+        <h2>Errors</h2>
+        <form method="post">
+            {% csrf_token %}
+            <div>
+            {% for error in errors %}
+                <h3>Error: {{ error.error }}</h3>
+                <h4>Bib Data</h4>
+                <input type="hidden" name="bibkeys" value="{{ error.entry.0.bibkey }}">
+                {% for key, value in error.entry.0.items %}
+                    <label>{{ key }}</label>
+                    <textarea 
+                        title="input-{{key}}"
+                        name="bib_data[{{error.entry.0.bibkey}}]:{{key}}"
+                        jsaction="paste:puy29d;"
+                        aria-expanded="false"
+                        aria-haspopup="false"
+                        autocapitalize="none"
+                        autocomplete="off"
+                        autocorrect="off"
+                        maxlength="2048"
+                        role="combobox"
+                        rows="1"
+                        spellcheck="false"
+                        >{{ value }}</textarea>
+                    <!-- <input type="text" name="bib_data_{{ forloop.counter }}_{{ key }}" value="{{ value }}"> -->
+                {% endfor %}
+                <h4>Author Data</h4>
+                {% for author_type, authors in error.entry.1.items %}
+                    <h5>{{ author_type }}</h5>
+                    {% for author in authors %}
+                        {% for key, value in author.items %}
+                            <label>{{ key }}</label>
+                    <textarea 
+                        title="input-{{ key}}"
+                        name="author_data[{{error.entry.0.bibkey}}]-{{ author_type }}-{{ key }}"
+                        value="{{ value}}"
+                        jsaction="paste:puy29d;"
+                        aria-expanded="false"
+                        aria-haspopup="false"
+                        autocapitalize="none"
+                        autocomplete="off"
+                        autocorrect="off"
+                        maxlength="2048"
+                        role="combobox"
+                        rows="1"
+                        spellcheck="false"
+                        >{{ value }}</textarea>
+                            <!-- <input type="text" name="author_data_{{ forloop.counter }}_{{ key }}" value="{{ value }}"> -->
+                        {% endfor %}
+                    {% endfor %}
+                {% endfor %}
+                <h4>URL Data</h4>
+                {% for key, value in error.entry.2.items %}
+                    <label>{{ key }}</label>
+                    <textarea 
+                        title="input-{{ key}}"
+                        name="url_data[{{error.entry.0.bibkey}}][{{ key }}]"
+                        value="{{ value}}"
+                        jsaction="paste:puy29d;"
+                        aria-expanded="false"
+                        aria-haspopup="false"
+                        autocapitalize="none"
+                        autocomplete="off"
+                        autocorrect="off"
+                        maxlength="2048"
+                        role="combobox"
+                        rows="1"
+                        spellcheck="false"
+                        >{{ value }}</textarea>
+                    <!-- <input type="text" name="url_data_{{ forloop.counter }}_{{ key }}" value="{{ value }}"> -->
+                {% endfor %}
+            {% endfor %}
+            </div>
+            <input 
+                type="hidden"
+                name="remaining_library"
+                value="{{ remaining_library }}">
+            <input type="hidden" name="file_path" value="{{ file_path }}">
+            <button type="submit">Submit Corrections</button>
+        </form>
+    {% elif differences %}
+        <h2>Compare and Update Entry</h2>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div><ul>
+                {% for field, values in differences.items %}
+                <li>
+                    <label>{{ field }}:</label> 
+                    Database:
+                    <textarea 
+                        title="input-{{ field }}"
+                        name="bib_data-{{ field }}"
+                        value="{{ values.old }}"
+                        jsaction="paste:puy29d;"
+                        aria-expanded="false"
+                        aria-haspopup="false"
+                        autocapitalize="none"
+                        autocomplete="off"
+                        autocorrect="off"
+                        maxlength="2048"
+                        role="combobox"
+                        rows="1"
+                        spellcheck="false"
+                        >{{ values.old }}</textarea>
+                    New: {{ values.new }}
+                </li>
+                {% endfor %}
+            </ul> </div>
+            <input 
+                type="hidden"
+                name="current_entry"
+                value="{{ current_entry }}">
+            <input 
+                type="hidden"
+                name="remaining_library"
+                value="{{ remaining_library }}">
+            <input type="hidden" name="file_path" value="{{ file_path }}">
+            <button type="submit">Submit Corrections</button>
+        </form>
+    {% elif success %}
+        <h2>All entries processed successfully!</h2>
+        <p>
+        <form 
+            action="{% url 'upload_file' %}"
+            method="post"
+            id="ImportBiBFiles">
+            {% csrf_token %}
+            <button type="summit">Return to file import</button>
+        </form>
+        <!-- <a href="{% url 'upload_file' %}" target="_blank">Importar Archivos</a> -->
+        </p>
+    {% endif %}
+
+    <!-- {% if manually %} --
+    <form method="post">
+        {% csrf_token %}
+        {% for key, value in current_entry.items %}
+        <label for="{{ key }}">{{ key }}</label><br>
+        <input type="text" name="{{ key }}" value="{{ value }}" size="50"><br>
+        {% endfor %}
+        <br>
+        <button type="submit">Next</button>
+    </form>
+    !-- {% endif %} -->
+
+<!--     <script> -->
+<!--     $(document).ready(function() { -->
+<!--         $('#refreshButton').click(function() { -->
+<!--             $('#refreshForm').submit(); -->
+<!--         }); -->
+<!--     }); -->
+<!--         var ws = new WebSocket('ws://' + window.location.host + '/ws/progress/'); -->
+<!--         ws.onmessage = function(event) { -->
+<!--             var data = JSON.parse(event.data); -->
+<!--             if (data.percentage) { -->
+<!--                 $('#progress').css('width', data.percentage + '%'); -->
+<!--                 $('#status').text(data.percentage + '% processed'); -->
+<!--             } else if (data.errors) { -->
+<!--                 $('#status').html('<h2>Errors</h2>'); -->
+<!--                 // Render errors dynamically (can be expanded as needed) -->
+<!--             } -->
+<!--         }; -->
+        
+<!--         ws.onerror = function(event) { -->
+<!--             console.error("WebSocket error observed:", event); -->
+<!--         }; -->
+<!--         ws.onclose = function(event) { -->
+<!--             console.log("WebSocket connection closed:", event); -->
+<!--         }; -->
+<!--         // Simulating loading bar progress -->
+<!--         function updateProgress(percentage) { -->
+<!--             $('#progress').css('width', percentage + '%'); -->
+<!--             $('#status').text(percentage + '% processed'); -->
+<!--         } -->
+
+<!--         // This would be called periodically via AJAX in a real implementation -->
+<!--         // updateProgress(percentage); -->
+<!--     </script> -->
+
+</body>
+</html>

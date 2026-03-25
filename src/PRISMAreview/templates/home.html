@@ -1,0 +1,39 @@
+ <!DOCTYPE html>
+<html>
+<head>
+<title>HOME</title>
+</head>
+<body>
+
+<h1>Bienvenido a Personal-Prisma-Review</h1>
+<p>Este es un sitio de prueba para montar un pseudo review académico inspirado en el protocolo 
+    <a href="http://www.prisma-statement.org/" target="_blank">PRISMA2020</a>.</p>
+<p>Actualmente solo se puede agregar artículos en bundle usando el formato .bib (implmenentando)</p>
+<p>Así como un barrido rápido para un descarte inicial. (implmenentando)</p>
+
+<h2>Funciones</h2>
+<form action="{% url 'upload_file' %}" method="get" id="ImportBiBFiles">
+    {% csrf_token %}
+    <button type="summit">Importar Archivos</button>
+</form>
+<form action="{% url 'init_review' %}" method="post" id="InspectDB">
+    {% csrf_token %}
+    <button type="summit">Revisión de artículos</button>
+</form>
+<form action="{% url 'select_model' %}" method="post" id="InspectDB">
+    {% csrf_token %}
+    <button type="summit">Inspeccionar la base de datos</button>
+</form>
+<!-- <p><a href="{% url 'upload_file' %}" target="_blank">Importar Archivos</a></p> -->
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#refreshButton').click(function() {
+            $('#refreshForm').submit();
+        });
+    });
+</script>
+
+</body>
+</html> 

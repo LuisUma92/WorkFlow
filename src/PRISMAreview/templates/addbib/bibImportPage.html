@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Page Title</title>
+    <!-- Add any additional CSS styles or links here -->
+</head>
+
+<body>
+
+    <h1>Your Page Heading</h1>
+
+    <!-- New Button to Clear Page -->
+    <button onclick="clearPage()">New</button>
+
+    <hr>
+
+    <!-- File Upload Section -->
+    <div>
+    <!--label for="fileInput">Upload Local Files:</label>
+    <input type="file" id="fileInput" style="display: none;">
+    <button onclick="openFileExplorer()">Browse Files</button-->
+    <form 
+        method="post"
+        enctype="multipart/form-data">
+        {% csrf_token %}
+        <label for="automatic_import">Automatic Import</label>
+        <input type="checkbox" name="automatic_import" id="automatic_import">
+        <div>
+            {{ form.existing_keyword.label_tag }}
+            {{ form.existing_keyword }}<br>
+            {{ form.new_keyword.label_tag }}
+            {{ form.new_keyword }}<br><br>
+            {{ form.database_name.label_tag}}
+            {{ form.database_name }}
+        </div>
+        <div>
+        {{ form.file }}
+        </div>
+        <button type="submit">Upload</button>
+    </form>
+
+    {% if uploaded_file %}
+    <p>Uploaded File: {{ uploaded_file.name }}</p>
+    {% endif %}
+    </div>
+    <div>
+    <form action="{% url 'homePage' %}" method="get" id="">
+    {% csrf_token %}
+    <button type="summit">Return Home Page</button>
+    </form>
+    </div>
+
+    <hr>
+
+    <!-- Scrollable Table -->
+    <div>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Year</th>
+                <th>First Last Name</th>
+                <th>Title</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Sample Row, you can dynamically populate rows using Django template tags -->
+            {% for entry in bib_entries %}
+            <tr>
+                <td>{{ entry.year }}</td>
+              :  <td>{{ entry.first_last_name }}</td>
+                <td>{{ entry.title|truncatechars:50 }}</td>
+                <td>{{ entry.status }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+
+    <!-- Add any additional scripts or functions here -->
+
+    <script>
+        function clearPage() {
+            // Implement logic to clear the page
+            alert("Clearing the page!");
+        }
+
+        function openFileExplorer() {
+            // Implement logic to open the file explorer
+            document.getElementById("fileInput").click();
+        }
+    </script>
+
+</body>
+
+</html>
+

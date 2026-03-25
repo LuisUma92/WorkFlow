@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset='UTF-8'>
+    <title>Add new tag</title>
+</head>
+<body>
+    <h1>Add new tag to use</h1>
+
+    <div>
+    <form 
+        method="post"
+        action="{% url 'add_tag' %}"
+    >
+        {% csrf_token %}
+        <div>
+        <label>Tag:</label>
+        <textarea 
+            title="input-tag"
+            name="new_tag"
+            jsaction="paste:puy29d;"
+            aria-expanded="false"
+            aria-haspopup="false"
+            autocapitalize="none"
+            autocomplete="off"
+            autocorrect="off"
+            maxlength="2048"
+            role="combobox"
+            rows="1"
+            spellcheck="false"
+            >
+        </textarea>
+        </div>
+        <button type="submit">Submit</button>
+        <!-- <button type="submit">Submit and done</button> -->
+    </form>
+    </div>
+</body>
+</html>

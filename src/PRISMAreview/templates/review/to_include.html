@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset='UTF-8'>
+    <title>Selecting articles to inclide</title>
+</head>
+<body>
+    <h1>Selecting articles to include for the review process</h1>
+    {% if entry %}
+    <h2>Currently reviewing:</h2>
+    <h3>{{ year }} - {{ article_title }}</h3>
+    <div> 
+        <p>Article: {{ entry }}</p>
+        <p>Link: <a href="{{ url }}" target="_blank">
+            Original database page
+        </a></p>
+    </div>
+    <div>
+    <form method="post" action="{% url 'test_for_inclusion' %}">
+        {% csrf_token %}
+    <div>
+    <h4>Select tags</h4>
+    <div>
+        <label for="id_tags">Select existing tags:</label>
+        {{ tag_form.tags }}
+    </div>
+    <div>
+        <label for="id_new_tag">Add new tag:</label>
+        {{ tag_form.new_tag }}
+    </div>
+    <p>
+    Press here to add more tags: 
+    <a href="{% url 'add_tag' %}" target='_blank'>Add new tag</a>
+    </p>
+    </div>
+    <div>
+    <h4>Select if want to include this article</h4>
+        <label for="include_check">Check if want to include</label>
+        <input type="checkbox" name="include_this" id="include_check">
+    <!-- {% for author_type, authors in error.author_data.items %} -->
+        <!-- <h5>{{ author_type }}</h5> -->
+        <!-- {% for author in authors %} -->
+        <!--     {% for key, value in author.items %} -->
+        <!--         <label>{{ key }}</label> -->
+        <!-- <textarea --> 
+        <!--     title="input-{{ key}}" -->
+        <!--     <!-1- name="author_data-{{ author_type }}-{{ key }}" -1-> -->
+            <!-- value="{{ value}}" -->
+            <!-- jsaction="paste:puy29d;" -->
+            <!-- aria-expanded="false" -->
+            <!-- aria-haspopup="false" -->
+            <!-- autocapitalize="none" -->
+            <!-- autocomplete="off" -->
+            <!-- autocorrect="off" -->
+            <!-- maxlength="2048" -->
+            <!-- role="combobox" -->
+            <!-- rows="1" -->
+            <!-- spellcheck="false" -->
+            <!-- >{{ value }}</textarea> -->
+            <!--     <!-1- <input type="text" name="author_data_{{ forloop.counter }}_{{ key }}" value="{{ value }}"> -1-> -->
+            <!-- {% endfor %} -->
+        <!-- {% endfor %} -->
+    <!-- {% endfor %} -->
+    </div>
+    <div>
+    <h4>Select rationale</h4>
+    <div>
+        <label for="rationale">Select the rationale to justify your decision.</label>
+        {{ rationale_form.rationale }}
+    </div>
+    <div>
+        <label for="id_new_rationale">Add new rationale:</label>
+        {{ rationale_form.new_rationale }}
+    </div>
+    <p>
+    Press here to add more arguments: 
+    <a href="{% url 'add_rational' %}" target='_blank'>Add new rational</a>
+    </p>
+    </div>
+    <div>
+        <input type="hidden" name="library" value="{{ library }}">
+        <button type="submit">Next</button>
+    </div>
+    </form>
+    </div>
+    {% else %}
+    <form method="post" action="{% url 'test_for_inclusion' %}">
+        {% csrf_token %}
+        <input type="hidden" name="library" value="{{ library }}">
+        <button type="submit">Start selection</button>
+    </form>
+    {% endif %}
+
+    {{ library }}
+    <!-- <h2>List of all articles</h2> -->
+    <!-- <p>This will despear</p> -->
+    <!-- <ul> -->
+    <!-- {% for entry in library %} -->
+    <!-- <li>{{ entry.id }}. {{ entry.title }}</li> -->
+    <!-- {% endfor %} -->
+    <!-- </ul> -->
+</body>
+</html>

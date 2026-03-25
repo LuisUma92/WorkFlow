@@ -1,0 +1,35 @@
+<!-- myapp/templates/myapp/select_model.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Select Model</title>
+</head>
+<body>
+    <form method="post">
+        {% csrf_token %}
+        <div>
+            <label for="model_name">Select Model:</label>
+            {{ form.model_name }}
+        </div>
+        <div>
+            <label for="pk">Primary Key:</label>
+            {{ form.pk }}
+        </div>
+        <button type="submit">Submit</button>
+    </form>
+    <form action="{% url 'homePage' %}" method="post" id="">
+    {% csrf_token %}
+    <button type="summit">Return Home Page</button>
+</form>
+    </div>
+<script>
+    $(document).ready(function() {
+        $('#refreshButton').click(function() {
+            $('#refreshForm').submit();
+        });
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset='UTF-8'>
+    <title>Add new reason</title>
+</head>
+<body>
+    <h1>Add new reason to justify inclusion</h1>
+
+    <div>
+    <form 
+        method="post"
+        action="{% url 'add_rational' %}"
+    >
+        {% csrf_token %}
+        <div>
+        <label>Rational:</label>
+        <textarea 
+            title="reasoning-input"
+            name="new_rational"
+            jsaction="paste:puy29d;"
+            aria-expanded="false"
+            aria-haspopup="false"
+            autocapitalize="none"
+            autocomplete="off"
+            autocorrect="off"
+            maxlength="2048"
+            role="combobox"
+            rows="1"
+            spellcheck="false"
+            ></textarea>
+        </div>
+        <button type="submit">Submit</button>
+        <!-- <button type="submit">Submit and done</button> -->
+    </form>
+    </div>
+</body>
+</html>
+

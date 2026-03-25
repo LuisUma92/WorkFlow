@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset='UTF-8'>
+    <title>Selecting keywords to review</title>
+</head>
+<body>
+    <h1>Selecting keywords to review</h1>
+    <div>
+        <form method="post">
+        {% csrf_token %}
+        <div>
+        <label for="keyword_name">Select search keywords to review</label>
+        {{ form.keyword_name }}
+        </div>
+        <button type="submit">Submit</button>
+    </form>
+    <form action="{% url 'homePage' %}" method="post" id="">
+    {% csrf_token %}
+    <button type="summit">Return Home Page</button>
+</form>
+    </div>
+<script>
+    $(document).ready(function() {
+        $('#refreshButton').click(function() {
+            $('#refreshForm').submit();
+        });
+    });
+</script>
+</body>
+</html>
