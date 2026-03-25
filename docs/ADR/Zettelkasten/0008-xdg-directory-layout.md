@@ -40,7 +40,7 @@ A clear directory layout is required to comply with XDG semantics and avoid futu
 Contains only:
 
 ```yaml
-vault_path: ~/Documents/01-U/00-Fisica
+vault_path: ~/Documents/01-U
 default_institution: UCR
 default_timezone: America/Costa_Rica
 ```
@@ -66,10 +66,10 @@ No databases, no assets, no templates.
 
 ### Vault root (unchanged)
 
-`~/Documents/01-U/00-Fisica/` is the Obsidian vault root. Internal structure:
+`~/Documents/01-U/` is the Obsidian vault root. Internal structure:
 
 ```
-~/Documents/01-U/00-Fisica/
+~/Documents/01-U
 ├── notes/
 │   ├── permanent/       # Evergreen Zettelkasten notes (tracked in global DB)
 │   ├── literature/      # Literature notes (tracked in global DB)

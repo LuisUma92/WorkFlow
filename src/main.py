@@ -5,6 +5,8 @@ CLI to manege tex proyects
 from itep import manager
 
 from app.iofunc import gather_input
+from workflow.tikz.cli import tikz
+from workflow.validation.cli import validate
 
 import os
 import click
@@ -22,6 +24,10 @@ def help():
 @click.group("workflow")
 def cli():
     pass
+
+
+cli.add_command(tikz)
+cli.add_command(validate)
 
 
 @cli.command()
