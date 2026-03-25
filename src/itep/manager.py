@@ -6,29 +6,32 @@ entities across all four layers of the schema.
 """
 
 from datetime import datetime
-from typing import Type, TypeVar
+from typing import TYPE_CHECKING, Type, TypeVar
+
+if TYPE_CHECKING:
+    from itep.structure import TaxonomyDomain, TaxonomyLevel
 
 from sqlalchemy.orm import Session
 
-from itep.database import (
-    Author,
-    Book,
-    BookAuthor,
-    BookContent,
+from workflow.db.models.bibliography import Author, BibEntry, BibAuthor
+from workflow.db.models.academic import (
+    BibContent,
     Content,
     Course,
     CourseContent,
     CourseEvaluation,
     EvaluationItem,
     EvaluationTemplate,
-    GeneralProject,
-    GeneralProjectBook,
-    GeneralProjectTopic,
     Institution,
     Item,
-    LectureInstance,
     MainTopic,
     Topic,
+)
+from workflow.db.models.project import (
+    GeneralProject,
+    GeneralProjectBib,
+    GeneralProjectTopic,
+    LectureInstance,
 )
 
 
@@ -79,13 +82,10 @@ def create_institution(
 
 
 def get_institution_by_short_name(
-    session: Session, short_name: str,
+    session: Session,
+    short_name: str,
 ) -> Institution | None:
-    return (
-        session.query(Institution)
-        .filter_by(short_name=short_name)
-        .first()
-    )
+    return session.query(Institution).filter_by(short_name=short_name).first()
 
 
 # ── MainTopic ──────────────────────────────────────────────────────────
@@ -136,8 +136,8 @@ def create_book(
     name: str,
     year: int,
     edition: int = 1,
-) -> Book:
-    book = Book(name=name, year=year, edition=edition)
+) -> BibEntry:
+    book = BibEntry(title=name, year=year, edition=edition)
     session.add(book)
     session.commit()
     return book
@@ -149,11 +149,18 @@ def add_book_author(
     author_id: int,
     author_type: str = "author",
     first_author: bool = False,
-) -> BookAuthor:
-    ba = BookAuthor(
-        book_id=book_id,
+) -> BibAuthor:
+    from workflow.db.models.bibliography import AuthorType
+
+    at = session.query(AuthorType).filter_by(type_of_author=author_type).first()
+    if at is None:
+        at = AuthorType(type_of_author=author_type)
+        session.add(at)
+        session.flush()
+    ba = BibAuthor(
+        bib_entry_id=book_id,
         author_id=author_id,
-        author_type=author_type,
+        author_type_id=at.id,
         first_author=first_author,
     )
     session.add(ba)
@@ -213,8 +220,8 @@ def link_book_content(
     session: Session,
     book_id: int,
     content_id: int,
-) -> BookContent:
-    bc = BookContent(book_id=book_id, content_id=content_id)
+) -> BibContent:
+    bc = BibContent(bib_entry_id=book_id, content_id=content_id)
     session.add(bc)
     session.commit()
     return bc
@@ -327,6 +334,7 @@ def create_item(
     template_file: str = "",
 ) -> Item:
     from itep.structure import TaxonomyLevel, TaxonomyDomain
+
     # Accept enum or raw string, store the .value
     if isinstance(taxonomy_level, TaxonomyLevel):
         taxonomy_level = taxonomy_level.value
@@ -418,14 +426,20 @@ def create_general_project(
     session.add(gp)
     session.flush()
 
-    for tid in (topic_ids or []):
-        session.add(GeneralProjectTopic(
-            general_project_id=gp.id, topic_id=tid,
-        ))
-    for bid in (book_ids or []):
-        session.add(GeneralProjectBook(
-            general_project_id=gp.id, book_id=bid,
-        ))
+    for tid in topic_ids or []:
+        session.add(
+            GeneralProjectTopic(
+                general_project_id=gp.id,
+                topic_id=tid,
+            )
+        )
+    for bid in book_ids or []:
+        session.add(
+            GeneralProjectBib(
+                general_project_id=gp.id,
+                bib_entry_id=bid,
+            )
+        )
 
     session.commit()
     return gp

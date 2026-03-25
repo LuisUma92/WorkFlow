@@ -1,34 +1,36 @@
 # src/latexzettel/infra/db.py
 """
-Capa de infraestructura para base de datos (Peewee).
+Capa de infraestructura para base de datos (SQLAlchemy).
 
-Este módulo está diseñado para encapsular el patrón que tenías en manage.py:
-- “asumir DB existente”, pero si falta (tablas no creadas) inicializarla
-  atrapando pw.OperationalError.
+Mantiene la misma API pública que la versión Peewee para que los 7 módulos
+API que importan de aquí no necesiten cambios:
 
-Notas:
-- No depende de Click.
-- Puede ser importado por API y/o CLI.
-- La idea recomendada es: el CLI inicializa una vez; el API usa ensure_tables()
-  solo cuando quieras robustez ante instalaciones nuevas.
+  - ensure_tables(db)           — usado por cli/main.py, server/main.py,
+                                   api/render.py, api/analysis.py,
+                                   api/markdown.py, api/sync.py
+  - ensure_schema_if_needed(db) — usado por api/notes.py
+  - DbHealth                    — dataclass de resultado
+  - connect(db) / close(db)     — no-ops (SQLAlchemy gestiona el pool)
+  - db_session                  — context manager que envuelve Session de SQLAlchemy
 
-Compatibilidad:
-- Espera un módulo `database` tipo el que compartiste antes (LatexZettel/database.py),
-  que expone:
-    - database (pw.Database)
-    - modelos: Note, Label, Link, Citation, Tag
-    - create_all_tables()
+Internamente usa workflow.db.engine para crear el engine/sesión local.
+El parámetro `db` que reciben las funciones es el módulo orm de latexzettel
+(latexzettel.infra.orm), que ahora actúa como shim y expone:
+  - db.engine            — SQLAlchemy engine
+  - db.Note              — clase SQLAlchemy Note (de workflow.db.models.notes)
+  - db.create_all_tables() — crea tablas via LocalBase.metadata.create_all
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 
-import peewee as pw
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import Session
 
-from latexzettel.domain.types import DbModule
 from latexzettel.domain.errors import DomainError
+
 
 # =============================================================================
 # Configuración
@@ -54,60 +56,69 @@ class DbHealth:
 
 
 # =============================================================================
-# API de infraestructura
+# Helpers internos
 # =============================================================================
 
 
-def connect(db: DbModule) -> None:
-    """
-    Abre conexión si no está abierta.
-    Con SQLite y Peewee, es seguro llamar esto repetidamente.
-    """
-    if db.database.is_closed():
-        db.database.connect(reuse_if_open=True)
+def _get_engine(db: Any):
+    """Extrae el engine SQLAlchemy del módulo orm."""
+    return db.engine
 
 
-def close(db: DbModule) -> None:
+def _schema_exists(db: Any) -> bool:
     """
-    Cierra conexión si está abierta.
+    Verifica si la tabla 'note' existe ejecutando una consulta mínima.
     """
-    if not db.database.is_closed():
-        db.database.close()
-
-
-def schema_exists(db: DbModule) -> bool:
-    """
-    Verifica si el esquema existe intentando una consulta mínima sobre Note.
-
-    Si la tabla Note no existe, Peewee típicamente lanza OperationalError.
-    """
+    engine = _get_engine(db)
     try:
-        # Ejecuta SELECT 1 FROM note LIMIT 1 (aprox)
-        _ = db.Note.select().limit(1).execute()
+        with Session(engine) as session:
+            session.query(db.Note).limit(1).all()
         return True
-    except pw.OperationalError:
+    except OperationalError:
         return False
 
 
-def ensure_tables(db: DbModule) -> DbHealth:
+# =============================================================================
+# API pública (mismas firmas que la versión Peewee)
+# =============================================================================
+
+
+def connect(_db: Any) -> None:
+    """
+    No-op: SQLAlchemy gestiona conexiones via pool automáticamente.
+    Se mantiene por compatibilidad con código existente.
+    """
+    pass
+
+
+def close(_db: Any) -> None:
+    """
+    No-op: SQLAlchemy gestiona conexiones via pool automáticamente.
+    Se mantiene por compatibilidad con código existente.
+    """
+    pass
+
+
+def schema_exists(db: Any) -> bool:
+    """
+    Verifica si el esquema existe intentando una consulta mínima sobre Note.
+    """
+    return _schema_exists(db)
+
+
+def ensure_tables(db: Any) -> DbHealth:
     """
     Garantiza que las tablas existan:
     - Si ya existen: no hace nada y retorna initialized=False.
     - Si no existen: crea tablas y retorna initialized=True.
-
-    Este patrón replica el enfoque de manage.py: solo crear si falla.
     """
     try:
-        connect(db)
-
-        if schema_exists(db):
+        if _schema_exists(db):
             return DbHealth(ok=True, initialized=False)
 
-        # Si falta el esquema (tablas), inicializar
         db.create_all_tables()
 
-        # Re-check
-        if schema_exists(db):
+        if _schema_exists(db):
             return DbHealth(ok=True, initialized=True)
 
         return DbHealth(
@@ -119,16 +130,16 @@ def ensure_tables(db: DbModule) -> DbHealth:
         return DbHealth(ok=False, initialized=False, error=str(e))
 
 
-def ensure_schema_if_needed(db: DbModule) -> None:
+def ensure_schema_if_needed(db: Any) -> None:
     """
-    No inicializa “siempre”.
     Solo crea tablas si el primer acceso básico falla por OperationalError
     (típicamente 'no such table').
     """
     try:
-        # consulta mínima para disparar ausencia de tabla
-        db.Note.select().limit(1).execute()
-    except pw.OperationalError:
+        engine = _get_engine(db)
+        with Session(engine) as session:
+            session.query(db.Note).limit(1).all()
+    except OperationalError:
         health = ensure_tables(db)
         if not health.ok:
             raise DomainError(f"DB no disponible: {health.error}")
@@ -141,27 +152,32 @@ def ensure_schema_if_needed(db: DbModule) -> None:
 
 class db_session:
     """
-    Context manager para abrir/cerrar conexión de forma explícita.
+    Context manager que devuelve una SQLAlchemy Session abierta.
 
     Uso:
-        from LatexZettel import database as legacy_db
+        from latexzettel.infra import orm as db_mod
         from latexzettel.infra.db import db_session, ensure_tables
 
-        ensure_tables(legacy_db)
-        with db_session(legacy_db) as db:
-            ... db.Note.select() ...
-
-    Nota:
-    - Cierra la conexión al salir. Si prefieres mantenerla abierta en CLI, no uses este context.
+        ensure_tables(db_mod)
+        with db_session(db_mod) as session:
+            session.query(db_mod.Note).all()
     """
 
-    def __init__(self, db: DbModule):
+    def __init__(self, db: Any):
         self._db = db
+        self._session: Optional[Session] = None
 
-    def __enter__(self) -> DbModule:
-        connect(self._db)
-        return self._db
+    def __enter__(self) -> Session:
+        engine = _get_engine(self._db)
+        self._session = Session(engine)
+        return self._session
 
-    def __exit__(self, exc_type, exc, tb) -> bool:
-        close(self._db)
+    def __exit__(self, exc_type, _exc, _tb) -> bool:
+        if self._session is not None:
+            if exc_type is None:
+                self._session.commit()
+            else:
+                self._session.rollback()
+            self._session.close()
+            self._session = None
         return False

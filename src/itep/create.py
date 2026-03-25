@@ -13,20 +13,21 @@ from pathlib import Path
 
 import click
 
-from itep.database import (
+from workflow.db.models.bibliography import BibEntry
+from workflow.db.models.academic import (
+    Institution as InstitutionModel,
+    MainTopic,
+    Topic,
     Course,
+)
+from workflow.db.models.project import (
     GeneralProject,
-    GeneralProjectBook,
+    GeneralProjectBib,
     GeneralProjectTopic,
     LectureInstance,
-    MainTopic,
-    Book,
-    Topic,
-    Institution as InstitutionModel,
-    get_session,
-    init_db,
-    seed_reference_data,
 )
+from workflow.db.engine import get_global_session, init_global_db
+from workflow.db.seed import seed_reference_data
 from itep.defaults import DEF_ABS_PARENT_DIR, DEF_ABS_SRC_DIR
 from itep.ioconfig import save_config
 from itep.utils import ensure_dir
@@ -102,11 +103,7 @@ def create_lecture(session, parent_dir: Path, src_dir: Path):
         raise click.ClickException("Cannot proceed without an institution.")
 
     # 2. Select or create course
-    courses = (
-        session.query(Course)
-        .filter_by(institution_id=institution.id)
-        .all()
-    )
+    courses = session.query(Course).filter_by(institution_id=institution.id).all()
     if courses:
         course_options = [f"{c.code} - {c.name}" for c in courses]
         course_options.append("** Create new course **")
@@ -142,11 +139,9 @@ def create_lecture(session, parent_dir: Path, src_dir: Path):
 
     # 4. Create directories
     from itep.models import LectureProject
+
     root_dir = parent_dir / instance.root_dir
-    topics = [
-        cc.content.topic
-        for cc in course.course_contents
-    ]
+    topics = [cc.content.topic for cc in course.course_contents]
     _create_dirs_from_tree(root_dir, LectureProject.tree, topics)
 
     # 5. Write config.yaml
@@ -187,9 +182,7 @@ def create_general(session, parent_dir: Path, src_dir: Path):
 
     # Check uniqueness (1:1)
     existing = (
-        session.query(GeneralProject)
-        .filter_by(main_topic_id=main_topic.id)
-        .first()
+        session.query(GeneralProject).filter_by(main_topic_id=main_topic.id).first()
     )
     if existing:
         raise click.ClickException(
@@ -201,7 +194,7 @@ def create_general(session, parent_dir: Path, src_dir: Path):
     topics = _select_multiple_from_db(session, Topic, "topic")
 
     # 3. Select books
-    books = _select_multiple_from_db(session, Book, "book")
+    books = _select_multiple_from_db(session, BibEntry, "book")
 
     # 4. Create project
     project = GeneralProject(
@@ -213,19 +206,24 @@ def create_general(session, parent_dir: Path, src_dir: Path):
     session.flush()  # get project.id
 
     for topic in topics:
-        session.add(GeneralProjectTopic(
-            general_project_id=project.id,
-            topic_id=topic.id,
-        ))
+        session.add(
+            GeneralProjectTopic(
+                general_project_id=project.id,
+                topic_id=topic.id,
+            )
+        )
     for book in books:
-        session.add(GeneralProjectBook(
-            general_project_id=project.id,
-            book_id=book.id,
-        ))
+        session.add(
+            GeneralProjectBib(
+                general_project_id=project.id,
+                bib_entry_id=book.id,
+            )
+        )
     session.commit()
 
     # 5. Create directories
     from itep.models import GeneralProject as GPModel
+
     root_dir = parent_dir / project.root_dir
     _create_dirs_from_tree(root_dir, GPModel.tree, topics)
 
@@ -263,6 +261,7 @@ def clone_cycle(session, source_id: int, parent_dir: Path = None, src_dir: Path 
     session.commit()
 
     from itep.models import LectureProject
+
     root_dir = Path(new_instance.abs_parent_dir) / new_instance.root_dir
     topics = [cc.content.topic for cc in source.course.course_contents]
     _create_dirs_from_tree(root_dir, LectureProject.tree, topics)
@@ -277,24 +276,33 @@ def clone_cycle(session, source_id: int, parent_dir: Path = None, src_dir: Path 
 
 @click.command("init-tex")
 @click.option(
-    "--parent_dir", "-p", type=click.Path(), default=None,
-    help="Parent directory for the project."
+    "--parent_dir",
+    "-p",
+    type=click.Path(),
+    default=None,
+    help="Parent directory for the project.",
 )
 @click.option(
-    "--src_dir", "-s", type=click.Path(), default=None,
-    help="Source directory for LaTeX templates."
+    "--src_dir",
+    "-s",
+    type=click.Path(),
+    default=None,
+    help="Source directory for LaTeX templates.",
 )
 @click.option(
-    "--clone", "clone_id", type=int, default=None,
-    help="Clone an existing lecture instance by ID."
+    "--clone",
+    "clone_id",
+    type=int,
+    default=None,
+    help="Clone an existing lecture instance by ID.",
 )
 def cli(parent_dir, src_dir, clone_id):
     """Create or clone an ITeP project."""
     parent = Path(parent_dir).expanduser() if parent_dir else DEF_ABS_PARENT_DIR
     src = Path(src_dir).expanduser() if src_dir else DEF_ABS_SRC_DIR
 
-    engine = init_db()
-    session = get_session(engine)
+    engine = init_global_db()
+    session = get_global_session(engine)
     seed_reference_data(session)
 
     if clone_id:

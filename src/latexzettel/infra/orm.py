@@ -1,86 +1,50 @@
 # src/latexzettel/infra/orm.py
 """
-Definición del ORM (Peewee) y modelos persistentes.
+Shim de compatibilidad: re-exporta desde workflow.db (SQLAlchemy).
 
-Este archivo reemplaza al legacy LatexZettel/database.py, preservando:
-- SQLite slipbox.db
-- modelos: Note, Citation, Label, Link, Tag, NoteTag
-- helpers: create_tables(), create_all_tables()
+Este módulo expone la interfaz que espera infra/db.py y los callers
+existentes (cli/main.py, server/main.py):
 
-Basado en el esquema existente.
+  - engine              — SQLAlchemy engine para slipbox.db local
+  - Note                — modelo SQLAlchemy Note
+  - create_all_tables() — crea todas las tablas LocalBase en el engine
+
+El engine se crea apuntando al directorio de trabajo actual (cwd).
+Para proyectos que especifican --root, server/main.py y cli/main.py
+pueden reemplazar este módulo con uno configurado adecuadamente, pero
+para uso por defecto '.' es el comportamiento legacy que preservamos.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-import peewee as pw
 
-from latexzettel.config.settings import DEFAULT_SETTINGS
+from workflow.db.engine import get_local_engine, init_local_db
+from workflow.db.models.notes import (  # noqa: F401
+    Citation,
+    Label,
+    Link,
+    Note,
+    NoteTag,
+    Tag,
+)
 
-
-def _default_db_path() -> Path:
-    # Mantiene compatibilidad con slipbox.db en root (como antes).
-    return Path(DEFAULT_SETTINGS.database.filename)
-
-
-# Base de datos (SQLite)
-database = pw.SqliteDatabase(str(_default_db_path()), pragmas={"foreign_keys": 1})
-
-
-class BaseModel(pw.Model):
-    class Meta:
-        database = database
-
-
-class Note(BaseModel):
-    # mismo esquema que legacy
-    filename = pw.CharField(unique=True)
-    reference = pw.CharField(unique=True)
-    last_build_date_html = pw.DateTimeField(null=True)
-    last_build_date_pdf = pw.DateTimeField(null=True)
-    last_edit_date = pw.DateTimeField(null=True)
-    created = pw.DateTimeField(null=True)
-
-
-class Citation(BaseModel):
-    """Model to keep track of which notes reference papers."""
-
-    note = pw.ForeignKeyField(Note, on_delete="CASCADE", backref="citations")
-    citationkey = pw.CharField()
-
-
-class Label(BaseModel):
-    note = pw.ForeignKeyField(Note, on_delete="CASCADE", backref="labels")
-    label = pw.CharField()
-
-
-class Link(BaseModel):
-    """
-    Model to keep track of links between files.
-    source = note containing the reference
-    target = label pointed to (note+label)
-    """
-
-    source = pw.ForeignKeyField(Note, on_delete="CASCADE", backref="references")
-    target = pw.ForeignKeyField(Label, on_delete="CASCADE", backref="referenced_by")
-
-
-class Tag(BaseModel):
-    name = pw.CharField(unique=True)
-    notes = pw.ManyToManyField(Note)
-
-
-NoteTag = Tag.notes.get_through_model()
-
-
-def create_tables(*models: type[pw.Model]) -> None:
-    """
-    Crea tablas; idempotente en práctica si se invoca vía infra/db.ensure_tables()
-    (que solo llama si detecta que faltan tablas).
-    """
-    with database:
-        database.create_tables(models)
+# Engine apuntando a ./slipbox.db (misma ubicación que el Peewee original)
+engine = get_local_engine(project_root=Path("."))
 
 
 def create_all_tables() -> None:
-    create_tables(Note, Citation, Link, Label, Tag, NoteTag)
+    """Crea todas las tablas LocalBase en el engine local."""
+    init_local_db(engine=engine)
+
+
+__all__ = [
+    "engine",
+    "Note",
+    "Citation",
+    "Label",
+    "Link",
+    "Tag",
+    "NoteTag",
+    "create_all_tables",
+]

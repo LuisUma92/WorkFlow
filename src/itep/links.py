@@ -11,11 +11,8 @@ import click
 
 from itep.ioconfig import load_config
 from itep.structure import GeneralDirectory
-from itep.database import (
-    LectureInstance,
-    GeneralProject,
-    init_db,
-)
+from workflow.db.models.project import LectureInstance, GeneralProject
+from workflow.db.engine import init_global_db
 
 
 # ── Symlink helpers ────────────────────────────────────────────────────
@@ -61,6 +58,7 @@ def relink_lecture(instance: LectureInstance):
 
     # Config links for eval/ and lect/
     from itep.defaults import DEF_TEX_CONFIG
+
     for subdir in ("eval", "lect"):
         config_dir = root / subdir / "config"
         config_dir.mkdir(parents=True, exist_ok=True)
@@ -81,9 +79,9 @@ def relink_lecture(instance: LectureInstance):
         if topic.id not in topics_seen:
             topics_seen[topic.id] = topic
 
-        for bc in cc.content.book_links:
-            book = bc.book
-            book_dir_name = f"{book.name}_{book.edition}"
+        for bc in cc.content.bib_links:
+            book = bc.bib_entry
+            book_dir_name = f"{book.title}_{book.edition}"
 
             # eval/img links
             safe_symlink(
@@ -120,6 +118,7 @@ def relink_general(project: GeneralProject):
 
     # Config links
     from itep.defaults import DEF_TEX_CONFIG
+
     config_dir = root / "config"
     config_dir.mkdir(parents=True, exist_ok=True)
     for link_name, src_pattern in DEF_TEX_CONFIG.items():
@@ -130,9 +129,9 @@ def relink_general(project: GeneralProject):
     img_dir = GeneralDirectory.IMG.value
 
     # Book links
-    for gp_book in project.book_links:
-        book = gp_book.book
-        book_dir_name = f"{book.name}_{book.edition}"
+    for gp_book in project.bib_links:
+        book = gp_book.bib_entry
+        book_dir_name = f"{book.title}_{book.edition}"
         safe_symlink(
             parent_dir / img_dir / book_dir_name,
             root / "img" / book_dir_name,
@@ -165,11 +164,9 @@ def cli(project_dir):
     config_file = target_dir / "config.yaml"
 
     if not config_file.exists():
-        raise click.ClickException(
-            f"No config.yaml found in {target_dir}"
-        )
+        raise click.ClickException(f"No config.yaml found in {target_dir}")
 
-    init_db()
+    init_global_db()
     project = load_config(config_file)
 
     if isinstance(project, LectureInstance):

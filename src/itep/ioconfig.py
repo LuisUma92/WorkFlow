@@ -11,11 +11,8 @@ from pathlib import Path
 from typing import Union
 
 from itep.utils import load_yaml, write_yaml
-from itep.database import (
-    LectureInstance,
-    GeneralProject,
-    get_session,
-)
+from workflow.db.models.project import LectureInstance, GeneralProject
+from workflow.db.engine import get_global_session
 
 
 def save_config(
@@ -37,7 +34,7 @@ def load_config(file: Union[str, Path]):
     project_type = cfg["project_type"]
     project_id = cfg["project_id"]
 
-    session = get_session()
+    session = get_global_session()
     if project_type == "lecture":
         project = session.get(LectureInstance, project_id)
     elif project_type == "general":
@@ -46,9 +43,7 @@ def load_config(file: Union[str, Path]):
         raise ValueError(f"Unknown project_type: {project_type}")
 
     if project is None:
-        raise ValueError(
-            f"No {project_type} project with id={project_id} found in DB."
-        )
+        raise ValueError(f"No {project_type} project with id={project_id} found in DB.")
     return project
 
 

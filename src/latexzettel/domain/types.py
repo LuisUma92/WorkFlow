@@ -130,12 +130,16 @@ class NoteRecord(Protocol):
 @runtime_checkable
 class DbModule(Protocol):
     """
-    Contrato mínimo esperado por infra/db.py (modularidad).
-    Coincide con tu diseño: infra/db.py espera un módulo externo 'database'
-    con modelos y create_all_tables().
+    Contrato mínimo esperado por infra/db.py (SQLAlchemy).
+
+    Implementado por latexzettel.infra.orm (shim sobre workflow.db).
+    Requiere:
+      - engine: SQLAlchemy Engine apuntando a slipbox.db
+      - Note:   clase ORM (workflow.db.models.notes.Note)
+      - create_all_tables(): crea todas las tablas LocalBase en el engine
     """
 
-    database: object
+    engine: Any
     Note: type[Any]
 
     def create_all_tables(self) -> None: ...
