@@ -66,7 +66,7 @@ src/workflow/db/
 
 ### Two-base architecture (per ADR-0003)
 
-- **`GlobalBase`**: bibliography, institutions, courses, topics, evaluation templates, projects → `~/.config/workflow/workflow.db`
+- **`GlobalBase`**: bibliography, institutions, courses, topics, evaluation templates, projects → `~/.local/share/workflow/workflow.db`
 - **`LocalBase`**: notes, links, labels, citations, tags, exercises, build state → `<project>/slipbox.db`
 
 ### Repository API
@@ -105,7 +105,7 @@ No module queries the ORM directly. All go through repository implementations.
 
 ## Implementation Notes
 
-- Global DB path: `~/.config/workflow/workflow.db`
+- Global DB path: `~/.local/share/workflow/workflow.db`
 - Local DB path: `<project_root>/slipbox.db`
 - Engine factory: `get_global_engine()`, `get_local_engine(project_root)`
 - Session factory: `get_global_session()`, `get_local_session(project_root)`

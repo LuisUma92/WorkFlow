@@ -36,7 +36,7 @@ A decision is required on how to unify data access while preserving the project-
 
 Adopt a **hybrid database model** with two tiers:
 
-### Global Database (`~/.config/workflow/workflow.db`)
+### Global Database (`~/.local/share/workflow/workflow.db`)
 
 Contains reference data shared across all projects:
 
@@ -81,7 +81,7 @@ Local databases **inherit** relevant knowledge relations from the global DB. Whe
 
 ## Implementation Notes
 
-- Global DB path: `~/.config/workflow/workflow.db` (resolved via `appdirs` or hardcoded default).
+- Global DB path: `~/.local/share/workflow/workflow.db` (resolved via `appdirs` or hardcoded default).
 - Local DB path: `<project_root>/slipbox.db` (existing latexzettel convention).
 - Both use SQLAlchemy with the same `Base` and model definitions.
 - The CLI accepts `--root` to identify the project and `--global-db` to locate the global DB.
