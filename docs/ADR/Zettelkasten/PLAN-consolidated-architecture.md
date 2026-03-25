@@ -260,11 +260,11 @@ Entry points in `pyproject.toml` remain as shortcuts: `inittex`, `relink`, `clet
 
 ---
 
-## Open Questions Requiring User Input
+## Decisions Locked (2026-03-25)
 
-1. **PRISMAreview web UI**: Keep Django for paper screening, or move to CLI-only? Recommendation: keep Django, add DB router to shared SQLite.
-2. **SQLAlchemy version alignment**: ITEP uses SQLAlchemy 2.0 with `Mapped[]`. Confirm this is the target for all new DB code (vs. adding Peewee or raw sqlite3).
-3. **Exercise macro naming**: Confirm `\qstem`, `\qoption`, `\qgeneralfeedback`, `\qsolution`, `\qpenalty`, `\qdiagram` before implementing — changing after content exists is painful.
-4. **Neovim scope**: Should the plugin grow to support exercise editing/preview, or stay focused on Zettelkasten notes?
-5. **Unified DB location**: Single `~/.config/workflow/workflow.db` (global), or per-project `slipbox.db` files? ITEP uses a global DB; latexzettel uses per-project. Recommendation: global for reference data (books, authors, institutions, courses), per-project for notes/links/exercises.
-6. **`crete` evolution**: Fully subsume `crete` into the `exercise` command group, or keep it as a lightweight standalone? Recommendation: subsume — the Exercise DSL replaces crete's template system.
+1. **PRISMAreview web UI**: KEEP Django. Migrate from MariaDB to SQLite. Extract into independent module. Future: extend to interact with all WorkFlow modules.
+2. **SQLAlchemy 2.0 as single ORM**: Confirmed. Migrate latexzettel from Peewee. Abstract DB access behind repository/interface layer for future ORM portability.
+3. **Exercise macros**: EXTEND existing macros (`\question`, `\qpart`, `\pts`, `\exa`, `\rightoption`, `\testdefinition` in shared/sty/), don't replace. Add `\qfeedback`, `\qdiagram`, and commented YAML metadata for CLI parsing. All existing macros must remain compilable.
+4. **Neovim plugin**: Will grow to full WorkFlow scope as independent module, but NOT now. Priority: module synergy and working APIs/CLI first.
+5. **DB layout — Hybrid**: Global DB (`~/.config/workflow/workflow.db`) for ITEP reference data + bibliography + base Zettelkasten structure. Local DB per ITEP project for project-specific notes/links/exercises. Local inherits from global. Projects = structured outputs (papers, lectures, reports).
+6. **`crete`**: Subsume into `exercise` command group. Global DB incorporates Content table data.
