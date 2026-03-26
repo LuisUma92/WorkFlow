@@ -49,6 +49,8 @@ Defined in `pyproject.toml` under `[project.scripts]`:
 
 - **`src/workflow/exercise/`** — Exercise bank management. `parser.py` (parse .tex → domain objects), `moodle.py` (Moodle XML export), `generator.py` (placeholder file creation), `selector.py` (exercise selection by taxonomy), `exam_builder.py` (exam assembly), `cli.py` (8 CLI commands). See ADR-0009, ADR-0010, ADR-0011, ADR-0012.
 
+- **`src/workflow/lecture/`** — Lectures integration. `scanner.py` (discover .tex files, register as notes), `note_splitter.py` (split notes at `%>` markers), `linker.py` (extract `\cite`/`\ref`/`\label`, update Link/Citation tables), `eval_builder.py` (bridge EvaluationTemplate to exercise bank), `cli.py` (4 CLI commands: scan, split, link, build-eval).
+
 - **`src/itep/`** — Init TeX Project (ITeP). Project scaffolding and management. Uses `workflow.db` for models. Config is `config.yaml` per project (pointer to DB record, see ADR ITEP/0003).
 
 - **`src/latexzettel/`** — Zettelkasten engine. CLI + JSONL/NDJSON RPC server + Neovim Lua client. Uses `workflow.db.models.notes` via compatibility shim in `infra/orm.py`.
@@ -74,6 +76,7 @@ Defined in `pyproject.toml` under `[project.scripts]`:
 - `.tex` files are **truth source** for exercise content; DB stores metadata index only (ADR-0010)
 - Exercise CLI: `workflow exercise parse|list|sync|gc|export-moodle|create|create-range|build-exam`
 - LaTeX normalization: custom macros expanded to standard LaTeX before Moodle export (ADR-0012)
+- Lectures CLI: `workflow lecture scan|split|link|build-eval` (Phase 5)
 - Project types: `GeneralProject` and `LectureProject` (see `itep/models.py`)
 
 ### ADR Index
