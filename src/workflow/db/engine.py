@@ -83,6 +83,7 @@ def _ensure_models_loaded():
     import workflow.db.models.academic  # noqa: F401
     import workflow.db.models.project  # noqa: F401
     import workflow.db.models.notes  # noqa: F401
+    import workflow.db.models.exercises  # noqa: F401
 
 
 def init_global_db(engine=None):

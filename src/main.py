@@ -7,6 +7,7 @@ from itep import manager
 from app.iofunc import gather_input
 from workflow.tikz.cli import tikz
 from workflow.validation.cli import validate
+from workflow.exercise.cli import exercise
 
 import os
 import click
@@ -28,6 +29,7 @@ def cli():
 
 cli.add_command(tikz)
 cli.add_command(validate)
+cli.add_command(exercise)
 
 
 @cli.command()
