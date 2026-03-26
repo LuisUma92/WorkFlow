@@ -6,25 +6,29 @@ Uses the exercise parser and ExerciseRepo for DB operations.
 
 from __future__ import annotations
 
-import hashlib
-import json
 from pathlib import Path
 from typing import Any
 
 import click
 from sqlalchemy.orm import Session
 
-from workflow.db.models.exercises import Exercise, ExerciseOption
 from workflow.db.repos.sqlalchemy import SqlExerciseRepo
-from workflow.exercise.domain import ParsedExercise
 from workflow.exercise.exam_builder import build_exam
 from workflow.exercise.generator import generate_exercise_file, generate_from_content
 from workflow.exercise.moodle import exercises_to_quiz_xml
 from workflow.exercise.parser import parse_exercise
 from workflow.exercise.selector import ExerciseSlot, select_exercises
+from workflow.exercise.service import (
+    _MAX_FILE_BYTES,
+    delete_orphans,
+    gc_orphans,
+    parse_and_filter,
+    sync_exercises,
+)
+
+__all__ = ["exercise"]
 
 _MAX_FILES = 10_000
-_MAX_FILE_BYTES = 10 * 1024 * 1024
 
 
 def _get_engine(ctx: click.Context) -> Any:
@@ -37,11 +41,6 @@ def _get_engine(ctx: click.Context) -> Any:
     engine = init_global_db()
     obj["engine"] = engine
     return engine
-
-
-def _file_hash(path: Path) -> str:
-    """SHA-256 hash of file contents."""
-    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _find_tex_files(path: Path) -> list[Path]:
@@ -170,94 +169,15 @@ def sync(ctx, path: str) -> None:
         click.echo("No .tex files found.")
         return
 
-    new_count = 0
-    updated_count = 0
-    unchanged_count = 0
-    skipped_count = 0
-
     with Session(engine) as session:
-        repo = SqlExerciseRepo(session)
+        result, messages = sync_exercises(session, files)
 
-        for filepath in files:
-            if filepath.stat().st_size > _MAX_FILE_BYTES:
-                click.echo(f"  [SKIP] {filepath.name}: file too large")
-                skipped_count += 1
-                continue
-
-            text = filepath.read_text(encoding="utf-8")
-            result = parse_exercise(text, source_path=str(filepath))
-
-            if result.errors:
-                click.echo(f"  [SKIP] {filepath.name}: {result.errors[0]}")
-                skipped_count += 1
-                continue
-
-            ex = result.exercise
-            if ex.metadata is None:
-                click.echo(f"  [SKIP] {filepath.name}: no metadata")
-                skipped_count += 1
-                continue
-
-            current_hash = _file_hash(filepath)
-
-            # Check if record exists
-            existing = repo.get_by_exercise_id(ex.metadata.id)
-
-            if existing is not None and existing.file_hash == current_hash:
-                unchanged_count += 1
-                continue
-
-            # Build tags/concepts as JSON strings
-            tags_json = json.dumps(ex.metadata.tags) if ex.metadata.tags else None
-            concepts_json = (
-                json.dumps(ex.metadata.concepts) if ex.metadata.concepts else None
-            )
-
-            exercise_record = Exercise(
-                exercise_id=ex.metadata.id,
-                source_path=str(filepath.resolve()),
-                file_hash=current_hash,
-                status=ex.status,
-                type=ex.metadata.type,
-                difficulty=ex.metadata.difficulty,
-                taxonomy_level=ex.metadata.taxonomy_level,
-                taxonomy_domain=ex.metadata.taxonomy_domain,
-                tags=tags_json,
-                concepts=concepts_json,
-                default_grade=ex.default_grade,
-                has_images=len(ex.image_refs) > 0,
-                image_refs=json.dumps(list(ex.image_refs)) if ex.image_refs else None,
-                diagram_id=ex.diagram_id,
-                option_count=len(ex.options),
-            )
-
-            result_record = repo.upsert(exercise_record)
-
-            # Clear existing options and rebuild from parsed data
-            result_record.options.clear()
-            for opt in ex.options:
-                result_record.options.append(
-                    ExerciseOption(
-                        label=opt.label,
-                        is_correct=opt.is_correct,
-                        sort_order=ord(opt.label) - ord("a"),
-                    )
-                )
-
-            if existing is not None:
-                updated_count += 1
-                status_label = "updated"
-            else:
-                new_count += 1
-                status_label = "new"
-
-            click.echo(f"  [{status_label}] {ex.metadata.id}: {ex.status}")
-
-        session.commit()
+    for msg in messages:
+        click.echo(msg)
 
     click.echo(
-        f"\nSync complete: {new_count} new, {updated_count} updated, "
-        f"{unchanged_count} unchanged, {skipped_count} skipped."
+        f"\nSync complete: {result.new} new, {result.updated} updated, "
+        f"{result.unchanged} unchanged, {result.skipped} skipped."
     )
 
 
@@ -269,26 +189,23 @@ def gc(ctx, yes: bool) -> None:
     engine = _get_engine(ctx)
 
     with Session(engine) as session:
-        repo = SqlExerciseRepo(session)
-        orphans = repo.get_orphans()
+        ids, paths = gc_orphans(session)
 
-        if not orphans:
+        if not ids:
             click.echo("No orphaned exercises found.")
             return
 
-        click.echo(f"Found {len(orphans)} orphaned exercise(s):")
-        for ex in orphans:
-            click.echo(f"  {ex.exercise_id}: {ex.source_path}")
+        click.echo(f"Found {len(ids)} orphaned exercise(s):")
+        for eid, epath in zip(ids, paths):
+            click.echo(f"  {eid}: {epath}")
 
         if not yes:
             click.confirm("Delete these records?", abort=True)
 
-        for ex in orphans:
-            repo.delete(ex.exercise_id)
-
+        count = delete_orphans(session, ids)
         session.commit()
 
-    click.echo(f"Removed {len(orphans)} orphaned record(s).")
+    click.echo(f"Removed {count} orphaned record(s).")
 
 
 _EXERCISE_TYPES = ["multichoice", "shortanswer", "essay", "numerical", "truefalse"]
@@ -421,48 +338,6 @@ def create_range(
     )
 
 
-def _parse_and_filter(
-    files: list[Path],
-    status: str,
-    tag: tuple[str, ...],
-) -> tuple[list[ParsedExercise], list[Path], int]:
-    """Parse .tex files and filter by status/tags.
-
-    Returns (exercises, source_dirs, skipped_count).
-    """
-    exercises = []
-    source_dirs: list[Path] = []
-    skipped = 0
-
-    for filepath in files:
-        if filepath.stat().st_size > _MAX_FILE_BYTES:
-            skipped += 1
-            continue
-
-        text = filepath.read_text(encoding="utf-8")
-        result = parse_exercise(text, source_path=str(filepath))
-
-        if result.errors or result.exercise is None:
-            skipped += 1
-            continue
-
-        ex = result.exercise
-
-        if ex.status != status:
-            continue
-
-        if tag and ex.metadata:
-            if not any(t in (ex.metadata.tags or []) for t in tag):
-                continue
-        elif tag and not ex.metadata:
-            continue
-
-        exercises.append(ex)
-        source_dirs.append(filepath.parent)
-
-    return exercises, source_dirs, skipped
-
-
 @exercise.command(name="export-moodle")
 @click.argument("path", type=click.Path(exists=True))
 @click.option(
@@ -496,7 +371,7 @@ def export_moodle(
         click.echo("No .tex files found.")
         return
 
-    exercises, source_dirs, skipped = _parse_and_filter(files, status, tag)
+    exercises, source_dirs, skipped = parse_and_filter(files, status, tag)
 
     if not exercises:
         click.echo(f"No exercises found matching filters (status={status}).")

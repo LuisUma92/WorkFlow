@@ -12,6 +12,8 @@ from dataclasses import dataclass
 
 from workflow.validation.schemas import ExerciseMetadata
 
+__all__ = ["ParsedExercise", "ParsedOption", "ParseResult"]
+
 
 @dataclass(frozen=True)
 class ParsedOption:

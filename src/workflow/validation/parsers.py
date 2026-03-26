@@ -6,6 +6,8 @@ import yaml
 
 from workflow.latex.comments import extract_commented_yaml
 
+__all__ = ["parse_md_frontmatter", "parse_tex_metadata"]
+
 _MAX_FILE_SIZE = 1_048_576  # 1 MB
 
 

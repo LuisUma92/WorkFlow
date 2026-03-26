@@ -11,6 +11,8 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
+__all__ = ["ScanResult", "scan_lecture_directory", "register_notes", "generate_note_reference"]
+
 
 @dataclass(frozen=True)
 class ScanResult:

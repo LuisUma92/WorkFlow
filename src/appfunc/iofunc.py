@@ -87,44 +87,4 @@ def gather_dataclass(clas: DataclassInstance) -> DataclassInstance:
             data[f.name] = ask(fs)
             continue
 
-        # De quí en adelante no funciona
-        # ftype = f.type
-        #
-        # if _is_optional(ftype):
-        #     # 2) Optional[T] donde T es dataclass -> preguntar y construir
-        #     inner = _unwrap_optional(ftype)
-        #     if is_dataclass(inner):
-        #         yn = (
-        #             input(f"¿Desea capturar «{f.name}»? (y/N): ").strip().lower() or "n"
-        #         )
-        #         data[f.name] = gather_dataclass(inner) if yn == "y" else None
-        #         continue
-        #     else:
-        #         # Optional de tipo simple sin spec -> dejar None por defecto
-        #         data[f.name] = None
-        #         continue
-        # elif _is_list_of_dataclass(ftype):
-        #     # 3) List[Dataclass] -> pedir cantidad e instanciar cada elemento
-        #     elem_type = get_args(ftype)[0]
-        #     n = ask(spec(f"¿Cuántos elementos para «{f.name}»?", r"[0-9]{1,3}", int))
-        #     items = []
-        #     for i in range(n):
-        #         print(f"\n— {f.name}[{i}] —")
-        #         gather_fn = getattr(elem_type, "gather_info", None)
-        #         items.append(
-        #             gather_fn() if callable(gather_fn) else gather_dataclass(elem_type)
-        #         )
-        #     data[f.name] = items
-        #     continue
-        # elif _is_list(ftype):
-        #     # 4) List simple sin spec -> CSV rápido
-        #     csv = ask(
-        #         spec(f"Ingrese CSV para «{f.name}» (vacío = lista vacía)", r".*", str)
-        #     )
-        #     data[f.name] = [t.strip() for t in csv.split(",")] if csv.strip() else []
-        #     continue
-        #
-        # # 5) Tipos simples sin spec -> omitir (usar default) o podrías añadir un fallback
-        # # data[f.name] no se establece: dataclasses usará default/default_factory
-        #
     return clas(**data)

@@ -10,6 +10,8 @@ import click
 
 from workflow.tikz.builder import build_all, find_tikz_sources, _STATE_FILE, _load_state
 
+__all__ = ["tikz"]
+
 
 @click.group()
 def tikz() -> None:

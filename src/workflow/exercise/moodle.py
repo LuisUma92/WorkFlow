@@ -19,6 +19,7 @@ import warnings
 from workflow.exercise.domain import ParsedExercise, ParsedOption
 from workflow.latex.normalize import normalize, MacroRule
 
+__all__ = ["exercise_to_xml", "exercises_to_quiz_xml"]
 
 # ---------------------------------------------------------------------------
 # Internal helpers

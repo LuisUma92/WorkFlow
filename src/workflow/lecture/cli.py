@@ -16,6 +16,8 @@ from workflow.lecture.linker import link_lecture_files
 from workflow.lecture.note_splitter import split_notes_file
 from workflow.lecture.scanner import register_notes, scan_lecture_directory
 
+__all__ = ["lectures"]
+
 _MAX_EXERCISE_POOL = 10_000
 
 

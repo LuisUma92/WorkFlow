@@ -17,6 +17,7 @@ para uso por defecto '.' es el comportamiento legacy que preservamos.
 
 from __future__ import annotations
 
+import functools
 from pathlib import Path
 
 from workflow.db.engine import get_local_engine, init_local_db
@@ -29,17 +30,25 @@ from workflow.db.models.notes import (  # noqa: F401
     Tag,
 )
 
-# Engine apuntando a ./slipbox.db (misma ubicación que el Peewee original)
-engine = get_local_engine(project_root=Path("."))
+
+@functools.lru_cache(maxsize=1)
+def get_engine():
+    """Lazily create and cache the local DB engine.
+
+    Note: Path(".") is resolved at first-call time. The engine is cached
+    for the process lifetime — CWD must be stable before the first call.
+    Use get_engine.cache_clear() to reset if needed (e.g., in tests).
+    """
+    return get_local_engine(project_root=Path("."))
 
 
 def create_all_tables() -> None:
     """Crea todas las tablas LocalBase en el engine local."""
-    init_local_db(engine=engine)
+    init_local_db(engine=get_engine())
 
 
 __all__ = [
-    "engine",
+    "get_engine",
     "Note",
     "Citation",
     "Label",

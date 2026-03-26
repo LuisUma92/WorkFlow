@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+__all__ = ["SplitFile", "SplitResult", "split_notes_file"]
+
 
 @dataclass(frozen=True)
 class SplitFile:

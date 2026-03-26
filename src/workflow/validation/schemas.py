@@ -4,6 +4,12 @@ from dataclasses import dataclass
 
 from workflow.db.models.academic import _TAXONOMY_LEVELS, _TAXONOMY_DOMAINS
 
+__all__ = [
+    "NoteFrontmatter",
+    "ExerciseMetadata",
+    "validate_note_frontmatter",
+    "validate_exercise_metadata",
+]
 
 _VALID_NOTE_TYPES = {"permanent", "literature", "fleeting"}
 _VALID_EXERCISE_TYPES = {"multichoice", "shortanswer", "essay", "numerical", "truefalse"}

@@ -16,8 +16,6 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
-
 
 # =============================================================================
 # Results
@@ -27,10 +25,10 @@ from typing import Optional
 @dataclass(frozen=True)
 class BuildResult:
     source: Path
-    pdf: Optional[Path]
-    svg: Optional[Path]
+    pdf: Path | None
+    svg: Path | None
     compiled: bool  # True if actually compiled (not skipped)
-    error: Optional[str]  # None on success
+    error: str | None  # None on success
 
 
 # =============================================================================
@@ -228,7 +226,7 @@ def build_all(
         result = compile_tikz(source, output_dir)
 
         # Convert to SVG if requested and compilation succeeded.
-        svg_path: Optional[Path] = None
+        svg_path: Path | None = None
         if svg and result.pdf is not None:
             try:
                 svg_path = convert_to_svg(result.pdf, output_dir)

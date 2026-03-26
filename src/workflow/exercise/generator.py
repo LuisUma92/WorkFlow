@@ -12,6 +12,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+__all__ = ["GeneratedExercise", "generate_exercise_file", "generate_from_content"]
+
 _SAFE_ID_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
 
 

@@ -29,6 +29,8 @@ from workflow.exercise.domain import (
     ParseResult,
 )
 
+__all__ = ["parse_exercise"]
+
 # Regex patterns for image references
 _IMAGE_PATTERNS = [
     re.compile(r"\\includegraphics\s*(?:\[[^\]]*\])?\s*\{([^}]+)\}"),

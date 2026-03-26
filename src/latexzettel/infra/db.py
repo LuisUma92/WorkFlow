@@ -62,6 +62,8 @@ class DbHealth:
 
 def _get_engine(db: Any):
     """Extrae el engine SQLAlchemy del módulo orm."""
+    if callable(getattr(db, "get_engine", None)):
+        return db.get_engine()
     return db.engine
 
 
