@@ -28,12 +28,10 @@ Defined in `pyproject.toml` under `[project.scripts]`:
 
 | Command    | Module              | Purpose                              |
 |------------|---------------------|--------------------------------------|
-| `workflow` | `main:cli`          | Main CLI (tikz, validate, exercise)  |
+| `workflow` | `main:cli`          | Main CLI (exercise, lectures, graph, tikz, validate) |
 | `inittex`  | `itep.create:cli`   | Initialize LaTeX project structure   |
 | `relink`   | `itep.links:cli`    | Recreate symlinks from config.yaml   |
 | `cleta`    | `lectkit.cleta:cli` | Clean TeX auxiliary files            |
-| `crete`    | `lectkit.crete:cli` | Create exercise files (DEPRECATED)   |
-| `nofi`     | `lectkit.nofi:cli`  | Split marked notes into LaTeX files  |
 
 ## Architecture
 
@@ -84,10 +82,19 @@ Defined in `pyproject.toml` under `[project.scripts]`:
 
 ### ADR Index
 
-Architecture decisions in `docs/ADR/Zettelkasten/`:
+Architecture decisions in `docs/ADR/` (see [INDEX.md](docs/ADR/INDEX.md) for full cross-referenced index):
 
 | ADR  | Title | Status |
 |------|-------|--------|
+| ITEP-0000 | ITeP project structure conventions | Accepted |
+| ITEP-0001 | SQLAlchemy as persistence layer | Accepted |
+| ITEP-0002 | Four-layer database schema | Accepted |
+| ITEP-0003 | config.yaml as minimal DB pointer | Accepted |
+| ITEP-0004 | Two project types: Lecture & General | Accepted |
+| ITEP-0005 | Symlink-based shared resource distribution | Accepted |
+| ITEP-0006 | Bloom taxonomy enums | Accepted |
+| ITEP-0007 | CRUD manager abstraction | Accepted |
+| STY-0000..0011 | LaTeX style file ADRs (12 total) | Accepted |
 | 0001 | Zettelkasten note semantic layer | Accepted |
 | 0002 | Markdown as canonical knowledge layer | Accepted |
 | 0003 | Hybrid DB (global + local) | Accepted |

@@ -59,8 +59,6 @@ SQLAlchemy 2.0 con `Mapped[]` es el unico ORM. El acceso a datos pasa por interf
 | `inittex`  | `itep.create:cli`   | Crear o clonar un proyecto LaTeX        |
 | `relink`   | `itep.links:cli`    | Recrear symlinks desde la base de datos |
 | `cleta`    | `lectkit.cleta:cli` | Limpiar archivos auxiliares de TeX      |
-| `crete`    | `lectkit.crete:cli` | **DEPRECADO** — Usar `workflow exercise create` |
-| `nofi`     | `lectkit.nofi:cli`  | Dividir notas (legado — usar `workflow lectures split`) |
 
 ### workflow exercise — Banco de ejercicios
 
@@ -341,7 +339,7 @@ Los macros personalizados se expanden a LaTeX estandar antes de exportar:
 
 ## Decisiones de arquitectura (ADRs)
 
-Documentadas en `docs/ADR/Zettelkasten/`:
+Documentadas en `docs/ADR/` (ver [INDEX.md](docs/ADR/INDEX.md)):
 
 | ADR  | Titulo | Estado |
 |------|--------|--------|

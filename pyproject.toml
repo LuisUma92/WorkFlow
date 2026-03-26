@@ -12,11 +12,9 @@ dependencies = ["appdirs", "bibtexparser", "click", "pyyaml", "sqlalchemy"]
 
 [project.scripts]
 workflow = "main:cli"
-cleta = "lectkit.cleta:cli"
-crete = "lectkit.crete:cli"
 inittex = "itep.create:cli"
 relink = "itep.links:cli"
-nofi = "lectkit.nofi:cli"
+cleta = "lectkit.cleta:cli"
 
 [build-system]
 requires = ["uv-build"]
