@@ -351,3 +351,89 @@ class TestGcCommand:
         with Session(db_engine) as session:
             repo = SqlExerciseRepo(session)
             assert repo.get_by_exercise_id("cli-test-001") is not None
+
+
+# ── Export-moodle command ────────────────────────────────────────────────
+
+
+class TestExportMoodleCommand:
+    def test_export_moodle_basic(self, runner, tmp_path):
+        (tmp_path / "ex001.tex").write_text(COMPLETE_TEX)
+
+        result = runner.invoke(exercise, ["export-moodle", str(tmp_path)])
+        assert result.exit_code == 0
+        assert "<?xml" in result.output
+        assert "<quiz>" in result.output
+        assert "cli-test-001" in result.output
+
+    def test_export_moodle_to_file(self, runner, tmp_path):
+        (tmp_path / "ex001.tex").write_text(COMPLETE_TEX)
+        out_file = tmp_path / "quiz.xml"
+
+        result = runner.invoke(
+            exercise,
+            ["export-moodle", str(tmp_path), "-o", str(out_file)],
+        )
+        assert result.exit_code == 0
+        assert out_file.exists()
+        content = out_file.read_text()
+        assert "<quiz>" in content
+        assert "cli-test-001" in content
+
+    def test_export_moodle_filters_by_status(self, runner, tmp_path):
+        (tmp_path / "ex001.tex").write_text(COMPLETE_TEX)
+        (tmp_path / "ex002.tex").write_text(PLACEHOLDER_TEX)
+
+        result = runner.invoke(
+            exercise,
+            ["export-moodle", str(tmp_path), "--status", "complete"],
+        )
+        assert result.exit_code == 0
+        assert "cli-test-001" in result.output
+        assert "cli-test-002" not in result.output
+
+    def test_export_moodle_no_matching(self, runner, tmp_path):
+        (tmp_path / "ex002.tex").write_text(PLACEHOLDER_TEX)
+
+        result = runner.invoke(
+            exercise,
+            ["export-moodle", str(tmp_path), "--status", "complete"],
+        )
+        assert result.exit_code == 0
+        assert "No exercises found" in result.output
+
+    def test_export_moodle_filters_by_tag(self, runner, tmp_path):
+        """--tag filter includes only exercises with matching tags."""
+        (tmp_path / "ex001.tex").write_text(
+            COMPLETE_TEX
+        )  # has tags: [physics, electrostatics]
+
+        result = runner.invoke(
+            exercise,
+            ["export-moodle", str(tmp_path), "--tag", "physics"],
+        )
+        assert result.exit_code == 0
+        assert "cli-test-001" in result.output
+
+    def test_export_moodle_tag_excludes_nonmatching(self, runner, tmp_path):
+        (tmp_path / "ex001.tex").write_text(COMPLETE_TEX)
+
+        result = runner.invoke(
+            exercise,
+            ["export-moodle", str(tmp_path), "--tag", "chemistry"],
+        )
+        assert result.exit_code == 0
+        assert "No exercises found" in result.output
+
+    def test_export_moodle_custom_macros_expanded(self, runner, tmp_path):
+        """Custom macros like \\vc should be expanded in output."""
+        tex = COMPLETE_TEX.replace(
+            "Find $\\\\vec{E}$",
+            "Find \\\\vc{E}",
+        )
+        (tmp_path / "ex001.tex").write_text(tex)
+
+        result = runner.invoke(exercise, ["export-moodle", str(tmp_path)])
+        assert result.exit_code == 0
+        # \vc{E} should be expanded, not appear raw
+        assert "\\vc{" not in result.output

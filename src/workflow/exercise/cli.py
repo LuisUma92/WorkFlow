@@ -9,19 +9,22 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+from typing import Any
 
 import click
 from sqlalchemy.orm import Session
 
 from workflow.db.models.exercises import Exercise, ExerciseOption
 from workflow.db.repos.sqlalchemy import SqlExerciseRepo
+from workflow.exercise.domain import ParsedExercise
+from workflow.exercise.moodle import exercises_to_quiz_xml
 from workflow.exercise.parser import parse_exercise
 
 _MAX_FILES = 10_000
 _MAX_FILE_BYTES = 10 * 1024 * 1024
 
 
-def _get_engine(ctx: click.Context):
+def _get_engine(ctx: click.Context) -> Any:
     """Get DB engine from Click context or create default."""
     obj = ctx.ensure_object(dict)
     if "engine" in obj:
@@ -102,7 +105,12 @@ def parse(path: str) -> None:
 
 
 @exercise.command(name="list")
-@click.option("--status", type=str, default=None, help="Filter by status.")
+@click.option(
+    "--status",
+    type=click.Choice(["placeholder", "in_progress", "complete"], case_sensitive=False),
+    default=None,
+    help="Filter by status.",
+)
 @click.option("--difficulty", type=str, default=None, help="Filter by difficulty.")
 @click.option(
     "--taxonomy-level", type=str, default=None, help="Filter by taxonomy level."
@@ -278,3 +286,97 @@ def gc(ctx, yes: bool) -> None:
         session.commit()
 
     click.echo(f"Removed {len(orphans)} orphaned record(s).")
+
+
+def _parse_and_filter(
+    files: list[Path],
+    status: str,
+    tag: tuple[str, ...],
+) -> tuple[list[ParsedExercise], list[Path], int]:
+    """Parse .tex files and filter by status/tags.
+
+    Returns (exercises, source_dirs, skipped_count).
+    """
+    exercises = []
+    source_dirs: list[Path] = []
+    skipped = 0
+
+    for filepath in files:
+        if filepath.stat().st_size > _MAX_FILE_BYTES:
+            skipped += 1
+            continue
+
+        text = filepath.read_text(encoding="utf-8")
+        result = parse_exercise(text, source_path=str(filepath))
+
+        if result.errors or result.exercise is None:
+            skipped += 1
+            continue
+
+        ex = result.exercise
+
+        if ex.status != status:
+            continue
+
+        if tag and ex.metadata:
+            if not any(t in ex.metadata.tags for t in tag):
+                continue
+        elif tag and not ex.metadata:
+            continue
+
+        exercises.append(ex)
+        source_dirs.append(filepath.parent)
+
+    return exercises, source_dirs, skipped
+
+
+@exercise.command(name="export-moodle")
+@click.argument("path", type=click.Path(exists=True))
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    default=None,
+    help="Output XML file path. Defaults to stdout.",
+)
+@click.option(
+    "--status",
+    type=click.Choice(["placeholder", "in_progress", "complete"], case_sensitive=False),
+    default="complete",
+    show_default=True,
+    help="Only export exercises with this status.",
+)
+@click.option("--tag", multiple=True, help="Filter by tag (repeatable).")
+@click.pass_context
+def export_moodle(
+    ctx, path: str, output: str | None, status: str, tag: tuple[str, ...]
+) -> None:
+    """Export exercises to Moodle XML format.
+
+    Parses .tex files in PATH, normalizes custom macros to standard
+    LaTeX, and generates a Moodle-importable XML quiz file.
+    """
+    target = Path(path)
+    files = _find_tex_files(target)
+
+    if not files:
+        click.echo("No .tex files found.")
+        return
+
+    exercises, source_dirs, skipped = _parse_and_filter(files, status, tag)
+
+    if not exercises:
+        click.echo(f"No exercises found matching filters (status={status}).")
+        return
+
+    xml_str = exercises_to_quiz_xml(exercises, source_dirs=source_dirs)
+
+    if output:
+        out_path = Path(output)
+        out_path.write_text(xml_str, encoding="utf-8")
+        click.echo(f"Exported {len(exercises)} exercise(s) to {out_path}")
+    else:
+        click.echo(xml_str)
+
+    if skipped:
+        click.echo(f"({skipped} file(s) skipped due to errors or size)", err=True)
