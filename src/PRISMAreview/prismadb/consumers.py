@@ -93,7 +93,7 @@ class BibEntryProcessor(AsyncConsumer):
                     print(e)
 
     def update_authors(self, author_data, bib_data):
-        bib_entry = Bib_entries.objects.get(**bib_entry)
+        bib_entry = Bib_entries.objects.get(**bib_data)
         for author_type in author_data.keys():
             for author in author_data[author_type]:
                 try:

@@ -116,8 +116,6 @@ def set_connection():
 
 def init_structure():
     models = apps.get_models()
-    global STRUCTURE
-
     isn = 'id_isn'
     toa = 'type_of_author'
 

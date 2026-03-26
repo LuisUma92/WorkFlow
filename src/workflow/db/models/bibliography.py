@@ -203,10 +203,10 @@ class BibEntry(GlobalBase):
     author_links: Mapped[list["BibAuthor"]] = relationship(back_populates="bib_entry")
     urls: Mapped[list["BibUrl"]] = relationship(back_populates="bib_entry")
     tag_links: Mapped[list["BibEntryTag"]] = relationship(back_populates="bib_entry")
-    content_links: Mapped[list["BibContent"]] = relationship(  # pyright: ignore[reportUndefinedVariable]
+    content_links: Mapped[list["BibContent"]] = relationship(  # noqa: F821
         back_populates="bib_entry"
     )
-    general_project_links: Mapped[list["GeneralProjectBib"]] = relationship(  # pyright: ignore[reportUndefinedVariable]
+    general_project_links: Mapped[list["GeneralProjectBib"]] = relationship(  # noqa: F821
         back_populates="bib_entry"
     )
 
