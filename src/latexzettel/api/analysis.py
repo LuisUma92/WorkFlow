@@ -3,7 +3,7 @@
 API de análisis del grafo de notas.
 
 Este módulo incorpora la funcionalidad del archivo legacy `analysis.py`,
-que calcula una matriz de adyacencia basada en enlaces (references) entre notas. :contentReference[oaicite:0]{index=0}
+que calcula una matriz de adyacencia basada en enlaces (references) entre notas.
 
 Diferencias respecto al legacy:
 - No usa `Note.id` (tu modelo actual no define id explícito); en Peewee existe
@@ -13,8 +13,8 @@ Diferencias respecto al legacy:
 - Devuelve estructuras listas para usar por CLI o notebooks.
 
 Requisitos:
-- numpy instalado (igual que legacy). :contentReference[oaicite:1]{index=1}
-- Se espera un módulo DB externo (modularidad), con modelos Peewee:
+- numpy instalado (igual que legacy).
+- Se espera un módulo DB externo (modularidad), con modelos SQLAlchemy:
   Note y la relación Note.references -> Link -> target(Label) -> note(Note).
 """
 
@@ -23,10 +23,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+from sqlalchemy import select
 
 from latexzettel.domain.errors import DomainError
 from latexzettel.domain.types import DbModule
-from latexzettel.infra.db import ensure_tables
+from latexzettel.infra.db import ensure_tables, db_session
 
 
 # =============================================================================
@@ -38,7 +39,7 @@ from latexzettel.infra.db import ensure_tables
 class AdjacencyMatrixResult:
     """
     notes:
-      lista de instancias Note (peewee) en el orden usado para indexar la matriz.
+      lista de instancias Note en el orden usado para indexar la matriz.
     adjacency:
       numpy.ndarray NxN donde adjacency[i, j] cuenta la cantidad de links
       desde notes[i] hacia notes[j].
@@ -70,17 +71,16 @@ def calculate_adjacency_matrix(
         for note in Note:
             for reference in note.references:
                 adjacency_matrix[ids.index(note.id), ids.index(reference.target.note.id)] += 1
-    :contentReference[oaicite:2]{index=2}
 
     Parámetros:
-    - db: módulo externo peewee (modularidad), con:
-        - Note iterable
+    - db: módulo externo (modularidad), con:
+        - Note iterable via SQLAlchemy session
         - Link accesible vía note.references
         - reference.target.note en cada link
     - index_by: cómo ordenar notas para indexación:
         - "filename" (recomendado, estable)
         - "reference"
-        - "id" (usa PK implícita si existe)
+        - "id" (usa PK)
 
     Retorna:
     - AdjacencyMatrixResult
@@ -89,37 +89,43 @@ def calculate_adjacency_matrix(
     if not health.ok:
         raise DomainError(f"DB no disponible: {health.error}")
 
-    # Obtener notas en orden estable
-    if index_by == "filename":
-        notes = list(db.Note.select().order_by(db.Note.filename))
-        key = lambda n: n.filename
-    elif index_by == "reference":
-        notes = list(db.Note.select().order_by(db.Note.reference))
-        key = lambda n: n.reference
-    elif index_by == "id":
-        # peewee crea un PK implícito `id` si no defines uno
-        notes = list(db.Note.select().order_by(db.Note.id))
-        key = lambda n: n.id
-    else:
-        raise ValueError("index_by debe ser 'filename', 'reference' o 'id'")
+    with db_session(db) as session:
+        # Obtener notas en orden estable
+        if index_by == "filename":
+            notes = list(
+                session.scalars(select(db.Note).order_by(db.Note.filename)).all()
+            )
+            key = lambda n: n.filename
+        elif index_by == "reference":
+            notes = list(
+                session.scalars(select(db.Note).order_by(db.Note.reference)).all()
+            )
+            key = lambda n: n.reference
+        elif index_by == "id":
+            notes = list(
+                session.scalars(select(db.Note).order_by(db.Note.id)).all()
+            )
+            key = lambda n: n.id
+        else:
+            raise ValueError("index_by debe ser 'filename', 'reference' o 'id'")
 
-    n = len(notes)
-    adjacency = np.zeros((n, n), dtype=float)
+        n = len(notes)
+        adjacency = np.zeros((n, n), dtype=float)
 
-    # Mapa clave->índice para O(1) en lugar de ids.index(...)
-    index = {key(note): i for i, note in enumerate(notes)}
+        # Mapa clave->índice para O(1) en lugar de ids.index(...)
+        index = {key(note): i for i, note in enumerate(notes)}
 
-    for src in notes:
-        src_i = index[key(src)]
-        for link in src.references:
-            tgt_note = link.target.note
-            tgt_k = key(tgt_note)
-            # Es posible que el target no esté en el conjunto (DB inconsistente),
-            # aunque en la práctica debería estarlo.
-            tgt_i = index.get(tgt_k)
-            if tgt_i is None:
-                continue
-            adjacency[src_i, tgt_i] += 1.0
+        for src in notes:
+            src_i = index[key(src)]
+            for link in src.references:
+                tgt_note = link.target.note
+                tgt_k = key(tgt_note)
+                # Es posible que el target no esté en el conjunto (DB inconsistente),
+                # aunque en la práctica debería estarlo.
+                tgt_i = index.get(tgt_k)
+                if tgt_i is None:
+                    continue
+                adjacency[src_i, tgt_i] += 1.0
 
     return AdjacencyMatrixResult(notes=notes, adjacency=adjacency, index_by=index_by)
 
@@ -157,25 +163,33 @@ def remove_duplicate_citations(
 
     deleted = 0
 
-    for note in db.Note:
-        tracked = [c for c in note.citations]
-        keys = [c.citationkey for c in tracked]
-        uniq = set(keys)
+    with db_session(db) as session:
+        all_notes = session.scalars(select(db.Note)).all()
 
-        if len(uniq) == len(keys):
-            continue
+        for note in all_notes:
+            tracked = [c for c in note.citations]
+            keys = [c.citationkey for c in tracked]
+            uniq = set(keys)
 
-        for key in uniq:
-            qs = db.Citation.select().where(
-                (db.Citation.note == note) & (db.Citation.citationkey == key)
-            )
-            # Mantener 1, borrar el resto
-            first = True
-            for c in qs:
-                if first:
-                    first = False
-                    continue
-                c.delete_instance()
-                deleted += 1
+            if len(uniq) == len(keys):
+                continue
+
+            for key in uniq:
+                citations = session.scalars(
+                    select(db.Citation).where(
+                        (db.Citation.note_id == note.id)
+                        & (db.Citation.citationkey == key)
+                    )
+                ).all()
+                # Mantener 1, borrar el resto
+                first = True
+                for c in citations:
+                    if first:
+                        first = False
+                        continue
+                    session.delete(c)
+                    deleted += 1
+
+        session.flush()
 
     return deleted

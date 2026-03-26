@@ -61,9 +61,13 @@ Defined in `pyproject.toml` under `[project.scripts]`:
 
 - **`src/appfunc/`** — Shared utilities: input validation (`FieldSpec` in `iofunc.py`), enum selection, menus.
 
-- **`shared/sty/`** — 17 LaTeX style files (SetCommands, PartialCommands, SetExercises, VectorPGF, etc.). Symlinked into projects from `~/.local/share/workflow/sty/`.
+- **`shared/latex/sty/`** — 18 LaTeX style files (SetCommands, PartialCommands, SetExercises, VectorPGF, SetZettelkasten, etc.). Symlinked into projects from `~/.local/share/workflow/sty/`.
 
-- **`shared/templates/`** — LaTeX templates for notes, exercises, lectures.
+- **`shared/latex/templates/`** — LaTeX templates for notes, exercises, lectures.
+
+- **`shared/latex/cls/`** — texnote.cls and preamble files (moved from latexzettel/defaults/template/).
+
+- **`shared/latex/pandoc/`** — Pandoc pipeline: filter.lua, template.tex, defaults.yaml, preprocess.py (moved from latexzettel/pandoc/).
 
 ### Key Patterns
 
@@ -108,7 +112,7 @@ Architecture decisions in `docs/ADR/` (see [INDEX.md](docs/ADR/INDEX.md) for ful
 | 0011 | LaTeX parser: brace-counting extractor | Accepted |
 | 0012 | Moodle XML export with LaTeX normalization | Accepted |
 | 0013 | Codebase consolidation: sessions, decoupling, CLI split | Accepted |
-| 0014 | Zettelkasten implementation: macros, note model, workspace init | Proposed |
+| 0014 | Zettelkasten implementation: macros, note model, workspace init | Accepted |
 | LZK-0000 | LaTeXZettel 7-layer engine architecture | Accepted |
 | LZK-0001 | JSONL/NDJSON RPC server for Neovim (24 routes) | Accepted |
 | LZK-0002 | Pandoc pipeline: Markdown ↔ LaTeX with wiki-links | Accepted |

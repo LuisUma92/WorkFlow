@@ -1,0 +1,29 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==< SetZettelkasten.sty >=====================================================
+%
+% Zettelkasten semantic layer macros (ADR-0001, ADR-0014).
+% Provides \zlink (alias for \excref), \zlabel, and zettelnote environment.
+%
+% Requires: texnote.cls or hyperref package
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% \zlink{id} — semantic cross-reference (alias for \excref from texnote.cls)
+% If \excref is defined (texnote.cls loaded), alias it.
+% Otherwise, provide a standalone definition using hyperref.
+\@ifundefined{excref}{%
+  \newcommand{\zlink}[1]{\hyperlink{zk:#1}{\textit{$\rightarrow$ #1}}}%
+}{%
+  \let\zlink\excref%
+}
+
+% \zlabel{id} — lightweight Zettelkasten anchor
+\newcommand{\zlabel}[1]{\hypertarget{zk:#1}{}\label{zk:#1}}
+
+% zettelnote environment — semantic note wrapper
+% Usage: \begin{zettelnote}{id}{Title} ... \end{zettelnote}
+\newenvironment{zettelnote}[2]{%
+  \hypertarget{zk:#1}{}%
+  \paragraph{#2}\label{zk:#1}%
+  \marginpar{\tiny\texttt{#1}}%
+}{\par\medskip}

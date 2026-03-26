@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from workflow.db.base import LocalBase
@@ -27,6 +27,28 @@ class Note(LocalBase):
     last_build_date_pdf: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_edit_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    # Phase 7b — Zettelkasten extended fields (all nullable for backward compat)
+    title: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    note_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # note_type values: "permanent" | "literature" | "fleeting"
+    source_format: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    # source_format values: "md" | "tex"
+    zettel_id: Mapped[str | None] = mapped_column(
+        String(100), nullable=True, unique=True,
+        comment="Stable Zettelkasten ID (e.g., 20260326-gauss-law)"
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "note_type IN ('permanent', 'literature', 'fleeting') OR note_type IS NULL",
+            name="ck_note_type_valid",
+        ),
+        CheckConstraint(
+            "source_format IN ('md', 'tex') OR source_format IS NULL",
+            name="ck_source_format_valid",
+        ),
+    )
 
     citations: Mapped[list[Citation]] = relationship(
         "Citation", back_populates="note", cascade="all, delete-orphan"

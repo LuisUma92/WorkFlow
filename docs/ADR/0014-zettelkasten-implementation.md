@@ -1,7 +1,7 @@
 ---
 adr: 0014
-title: "Zettelkasten Implementation: Macros, Note Model, Workspace Init, Markdown Pipeline"
-status: Proposed
+title: "Zettelkasten Implementation: Macros, Note Model, Workspace Init"
+status: Accepted
 date: 2026-03-26
 authors:
   - Luis Fernando Umaña Castro
@@ -23,173 +23,184 @@ related_adrs:
   - "0008"
   - "ITEP-0000"
   - "ITEP-0004"
+  - "LZK-0000"
+  - "LZK-0001"
+  - "LZK-0002"
+  - "LZK-0003"
+  - "LZK-0004"
+  - "PRISMA-0000"
+  - "PRISMA-0001"
 ---
 
 ## Context
 
-ADR-0001 (Zettelkasten semantic layer) and ADR-0002 (Markdown as canonical knowledge) were accepted on 2026-03-24 but never implemented. A gap analysis reveals:
+ADR-0001 (Zettelkasten semantic layer) and ADR-0002 (Markdown as canonical knowledge) were accepted but not fully implemented. A gap analysis against the LZK-* ADRs reveals:
 
-1. **`\zlink{id}` macro**: Required by ADR-0001 but does not exist in any `.sty` file. The closest equivalents are `\excref` and `\exhyperref` in `texnote.cls`, which serve a similar role but are not aligned with the Zettelkasten ID system.
+### What exists and works (per LZK-0000..0004)
 
-2. **`\begin{zettelnote}` environment**: Required by ADR-0001 but not defined. Notes are currently plain `.tex` files with no semantic wrapper.
+- **`\excref{id}`** macro in `texnote.cls` (LZK-0003) — serves the exact purpose ADR-0001 described for `\zlink`
+- **Pandoc pipeline** (LZK-0002) — `preprocess.py` converts `[[wiki-links]]` → `\excref{id}`, `filter.lua` handles theorems
+- **10+ regex patterns** (LZK-0003) — centralized in `infra/regexes.py` for `\excref`, `\cite`, `\label`, `\ref`, `[[wiki-links]]`
+- **JSONL RPC server** (LZK-0001) — 24 routes for Neovim integration
+- **7-layer architecture** (LZK-0000) — clean separation CLI → Server → API → Domain → Infra
+- **DB shim** (LZK-0004) — `infra/orm.py` re-exports SQLAlchemy models, `infra/db.py` provides sessions
 
-3. **Markdown as source of truth**: ADR-0002 declares Markdown canonical, but LaTeX is still the de facto primary format. `inittex` creates only `tex/` directories — no `notes/md/` directories. The `sync_md()` API exists in `latexzettel/api/markdown.py` but uses Peewee ORM calls (32 occurrences) against SQLAlchemy models — it crashes at runtime.
+### What is broken
 
-4. **Directory structure**: GeneralProject tree templates create `tex/` subdirectories only. There is no standard location for Markdown notes, literature notes, or reading annotations.
+- **35 Peewee-pattern calls** in 5 API files (`api/notes.py`, `api/sync.py`, `api/markdown.py`, `api/analysis.py`, `api/workflows.py`) use `.get()`, `.select()`, `.create()`, `.DoesNotExist` — methods that don't exist on SQLAlchemy models. The `db_session()` context manager in `infra/db.py` IS correctly implemented for SQLAlchemy; the API code never adopted it.
 
-5. **Literature notes**: No workflow exists for taking notes on paper readings (PRISMAreview or otherwise). The bibliography system (`bib_entry`) exists but has no connection to a note-taking flow.
+### What is missing
 
-6. **Workspace initialization**: `inittex` creates individual projects but there is no command to initialize the full workspace (`~/Documents/01-U/`) with shared infrastructure (workflow.db, sty symlinks, vault directories).
-
-### User's vision
-
-Each ITeP MainTopic directory (10MC-ClassicalMechanics, 40EM-Electromagnetism, etc.) functions as both:
-- A **GeneralProject** (LaTeX output: papers, summaries, compilations)
-- A **Zettelkasten vault** (Markdown notes: permanent, literature, fleeting)
-
-The notes feed the LaTeX outputs. Lectures draw from the same knowledge base. Exercises connect to topics. The knowledge graph ties everything together.
+- **`notes/` directories** in GeneralProject tree template — `inittex` creates only `tex/`
+- **Note model extensions** — `Note` lacks `title`, `note_type`, `source_format`, `zettel_id`
+- **Workspace init command** — no way to scaffold the full `~/Documents/01-U/` workspace
+- **Literature notes workflow** — no connection between PRISMAreview readings and the Zettelkasten
+- **`\zlink` macro** — ADR-0001 requires it; `\excref` exists but under a different name
 
 ---
 
 ## Decision Drivers
 
-- **ADR compliance**: Implement what 0001 and 0002 promised
-- **Obsidian compatibility**: Notes must work in Obsidian without modification
-- **Existing infrastructure**: Reuse workflow.db, workflow.lecture.scanner/linker, workflow.graph
-- **Minimal disruption**: Don't break existing LaTeX workflows — add Markdown alongside
-- **Literature workflow**: Physics research requires systematic reading notes
+- **Rehabilitate, don't replace**: LaTeXZettel has 33 working files, a clean architecture (LZK-0000), and 24 RPC routes (LZK-0001). Replacing it would waste proven infrastructure.
+- **35 Peewee calls is a small fix**: Porting `.get()` → `session.query().filter_by().first()` across 5 files is ~170 lines of changes, not a rewrite.
+- **`\excref` already IS `\zlink`**: Adding `\let\zlink\excref` in a .sty file satisfies ADR-0001 without breaking anything.
+- **Existing scanners generalize**: `workflow.lecture.scanner` and `workflow.lecture.linker` patterns can handle Markdown notes with minor extensions.
 
 ---
 
 ## Decision
 
-Implement the Zettelkasten system in 5 sub-phases. Each is independently deployable.
+Implement the Zettelkasten system in 5 sub-phases. Strategy: **rehabilitate latexzettel, don't replace it.**
 
-### Phase 7a: LaTeX Macros for Zettelkasten
+### Phase 7a: LaTeX Macro Alias + Note Environment
 
-Create `shared/sty/SetZettelkasten.sty` with:
+Create `shared/latex/sty/SetZettelkasten.sty`:
 
 ```latex
-% \zlink{id} — semantic cross-reference to another note
-% Renders as hyperlink with auto-resolved title
-\newcommand{\zlink}[1]{\hyperlink{zk:#1}{\textit{→ #1}}}
+% \zlink{id} — alias for \excref (satisfies ADR-0001)
+\let\zlink\excref
 
-% \begin{zettelnote}{id}{Title} — semantic note wrapper
-% Sets hypertarget for \zlink, displays title, optional margin note
+% \zlabel{id} — lightweight anchor
+\newcommand{\zlabel}[1]{\hypertarget{zk:#1}{}\label{zk:#1}}
+
+% \begin{zettelnote}{id}{Title} — semantic note wrapper (ADR-0001)
 \newenvironment{zettelnote}[2]{%
   \hypertarget{zk:#1}{}%
   \paragraph{#2}\label{zk:#1}%
   \marginpar{\tiny\texttt{#1}}%
-}{%
-  \par\medskip
-}
-
-% \zlabel{id} — lightweight anchor (for notes that don't need the full environment)
-\newcommand{\zlabel}[1]{\hypertarget{zk:#1}{}\label{zk:#1}}
+}{\par\medskip}
 ```
 
-This fulfills ADR-0001's requirement for `\zlink` and a dedicated note macro.
+**Key decision**: `\zlink` is defined as `\let\zlink\excref`, not a new implementation. This means:
+- All existing `\excref` references continue working
+- The Pandoc preprocessor (LZK-0002) already converts `[[id]]` → `\excref{id}`, which now equals `\zlink{id}`
+- The regex library (LZK-0003) already extracts `\excref` — no new patterns needed
+- New code can use either name; they are identical
 
 ### Phase 7b: Extended Note Model
 
-Extend `workflow.db.models.notes.Note` (LocalBase):
+Add fields to `workflow.db.models.notes.Note` (LocalBase):
 
 ```python
-class Note(LocalBase):
-    # Existing fields
-    id, filename, reference, last_build_date_html, last_build_date_pdf, last_edit_date, created
-
-    # New fields
-    title: Mapped[str | None]           # Human-readable title from frontmatter
-    note_type: Mapped[str | None]       # "permanent" | "literature" | "fleeting"
-    source_format: Mapped[str | None]   # "md" | "tex"
-    zettel_id: Mapped[str | None]       # Stable Zettelkasten ID (e.g., "20260326-gauss-law")
+# New columns (nullable for backward compatibility)
+title: Mapped[str | None] = mapped_column(String, nullable=True)
+note_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # "permanent" | "literature" | "fleeting"
+source_format: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    # "md" | "tex"
+zettel_id: Mapped[str | None] = mapped_column(String(100), nullable=True, unique=True)
+    # Stable Zettelkasten ID (e.g., "20260326-gauss-law")
 ```
 
-Add `NoteRepo.find_by_zettel_id()` and `NoteRepo.find_by_type()` to protocols.
+Extend `NoteRepo` protocol:
+```python
+def find_by_zettel_id(self, zettel_id: str) -> Note | None: ...
+def find_by_type(self, note_type: str) -> list[Note]: ...
+```
 
-### Phase 7c: Workspace Init Command
+### Phase 7c: LaTeXZettel API Rehabilitation
 
-Add `workflow init` command that scaffolds the complete workspace:
+Port 35 Peewee-pattern calls in 5 files to use `db_session()` from `infra/db.py`:
+
+```python
+# BEFORE (Peewee pattern — broken):
+note = db.Note.get(db.Note.reference == reference)
+
+# AFTER (SQLAlchemy via db_session):
+with db_session(db) as session:
+    note = session.query(db.Note).filter_by(reference=reference).first()
+```
+
+Files to port:
+| File | Peewee calls | Lines changed |
+|------|-------------|---------------|
+| `api/notes.py` | 8 | ~30 |
+| `api/sync.py` | 10 | ~40 |
+| `api/markdown.py` | 7 | ~30 |
+| `api/analysis.py` | 5 | ~20 |
+| `api/workflows.py` | 5 | ~20 |
+
+After porting, the full latexzettel system (CLI, server, API) becomes functional against SQLAlchemy. This restores:
+- `sync_md()` — Markdown note sync
+- `tex_to_md()` — LaTeX → Markdown conversion
+- `force_synchronize()` — full DB resync
+- All 24 RPC server routes
+
+### Phase 7d: Workspace Init + CLI Bridge
+
+**`workflow init` command** scaffolds the workspace:
 
 ```bash
 workflow init ~/Documents/01-U/
 ```
 
 Creates:
-
 ```
 ~/Documents/01-U/
-  .workflow/                          # Workspace marker
-    config.yaml                       # Workspace config (pointers to DBs)
-  00AA-Lectures/                      # Lecture instances (existing)
-  00BB-Library/                       # Bibliography (existing)
-  00EE-ExamplesExercises/             # Exercise bank (existing)
-  00II-ImagesFigures/                 # Shared images (existing)
-  00ZZ-Vault/                         # Global Zettelkasten vault
-    inbox/                            # Fleeting notes landing zone
-    templates/                        # Note templates (.md)
-      permanent.md
-      literature.md
-      fleeting.md
-  10MC-ClassicalMechanics/            # GeneralProject + per-topic vault
-    config.yaml
-    slipbox.db
-    notes/                            # Markdown notes (Obsidian vault)
-      .obsidian/                      # Obsidian config (gitignored)
-    tex/                              # LaTeX output (existing)
-    bib/ img/                         # Resources (existing)
-  40EM-Electromagnetism/              # Same structure
-    config.yaml
-    slipbox.db
+  .workflow/config.yaml              # Workspace marker
+  00ZZ-Vault/                        # Global triage zone
+    inbox/                           # Fleeting notes landing
+    templates/                       # Note templates (.md)
+  10MC-ClassicalMechanics/
+    notes/                           # Markdown notes (Obsidian vault)
+    slipbox.db                       # Per-project note DB
+  40EM-Electromagnetism/
     notes/
-    tex/
+    slipbox.db
   ...
 ```
 
-**Key decisions**:
-- Each GeneralProject gets its own `notes/` directory = Obsidian vault
-- `00ZZ-Vault/inbox/` is a global inbox for fleeting notes not yet assigned to a topic
-- `slipbox.db` per project stores that project's notes, links, citations
-- The init command is **idempotent** — safe to run on existing workspace, only creates missing pieces
-- Does NOT move or rename existing directories
-
-### Phase 7d: Markdown Note Pipeline
-
-Create `workflow.notes` module (replaces broken `latexzettel.api`):
+**`workflow notes` CLI bridge** — thin wrapper delegating to rehabilitated latexzettel API:
 
 ```python
-# workflow/notes/scanner.py
-def scan_markdown_notes(notes_dir: Path, session: Session) -> ScanResult:
-    """Discover .md files, parse frontmatter, register in slipbox.db."""
+# workflow/notes/cli.py (~150 lines)
+@click.group()
+def notes(): ...
 
-# workflow/notes/linker.py
-def link_markdown_notes(notes_dir: Path, session: Session) -> LinkResult:
-    """Parse wiki-links [[id]] and \cite{}, update Link/Citation tables."""
+@notes.command()
+def scan(path, project_root):
+    """Scan .md + .tex notes and register in slipbox.db."""
+    # Delegates to latexzettel.api.sync.force_synchronize()
 
-# workflow/notes/converter.py
-def md_to_tex(md_path: Path, output_dir: Path) -> Path:
-    """Convert Markdown note to LaTeX via Pandoc. Returns output path."""
+@notes.command()
+def link(path, project_root):
+    """Extract references and update Link/Citation tables."""
+    # Reuses workflow.lecture.linker patterns + latexzettel.infra.regexes
 
-def tex_to_md(tex_path: Path, output_dir: Path) -> Path:
-    """Convert LaTeX note to Markdown. Returns output path."""
+@notes.command()
+def convert(source, output_dir, reverse):
+    """Convert Markdown ↔ LaTeX via Pandoc."""
+    # Delegates to latexzettel.api.markdown.sync_md() / tex_to_md()
+
+@notes.command()
+def new(title, note_type, project):
+    """Create a new note from template."""
+    # Delegates to latexzettel.api.notes.create_note()
 ```
 
-CLI commands:
+### Phase 7e: Literature Notes
 
 ```bash
-workflow notes scan notes/           # Register .md notes in slipbox.db
-workflow notes link notes/           # Build wiki-link graph
-workflow notes convert note.md -o tex/  # Markdown → LaTeX via Pandoc
-workflow notes new "Gauss's Law" --type permanent --project 10MC
-```
-
-### Phase 7e: Literature Notes Workflow
-
-Literature notes connect PRISMAreview readings to the Zettelkasten:
-
-```bash
-# Create a literature note from a bibliography entry
 workflow notes new-lit serway2019 --project 10MC
 ```
 
@@ -202,20 +213,17 @@ title: "Physics for Scientists and Engineers — Serway"
 type: literature
 bibkey: serway2019
 created: 2026-03-26
-tags: [textbook, physics, mechanics]
+tags: [textbook, physics]
 ---
 
 ## Key ideas
 
 ## Chapter notes
 
-## Questions raised
-
 ## Connections
-- [[20260326-gauss-law]] — Gauss's law derivation from ch. 24
 ```
 
-The note links to permanent notes via wiki-links, and the `bibkey` field connects to `bib_entry` in the global DB. When scanned, the Citation table is populated automatically.
+The `bibkey` field connects to `bib_entry.bibkey` in the global DB. PRISMAreview already reads `bib_entry` via the SharedDbRouter (PRISMA-0001). When scanned, the Citation table is populated via the `bibkey` reference — no new PRISMAreview code needed.
 
 ---
 
@@ -223,25 +231,24 @@ The note links to permanent notes via wiki-links, and the `bibkey` field connect
 
 ### MUST
 
-- Knowledge notes **MUST** be authored in Markdown (`.md`) with YAML frontmatter — fulfilling ADR-0002.
-- Each note **MUST** have a `zettel_id` in frontmatter — fulfilling ADR-0001.
-- Inter-note references in Markdown **MUST** use wiki-links `[[zettel_id]]`.
-- Inter-note references in LaTeX **MUST** use `\zlink{zettel_id}`.
-- LaTeX output **MUST** be treated as derived artifact, not source of truth.
-- `workflow init` **MUST** be idempotent — safe to run on existing workspace.
+- `\zlink` **MUST** be defined as `\let\zlink\excref` — alias, not replacement.
+- Knowledge notes **MUST** be authored in Markdown with YAML frontmatter (ADR-0002).
+- `workflow init` **MUST** be idempotent — safe on existing workspace.
+- LaTeXZettel API rehabilitation **MUST** use `db_session()` from `infra/db.py` — no new session patterns.
+- Literature notes **MUST** reference `bibkey` in frontmatter for bibliography linkage.
 
 ### SHOULD
 
-- Each GeneralProject **SHOULD** have a `notes/` directory serving as its Obsidian vault.
-- Literature notes **SHOULD** reference their `bibkey` in frontmatter.
-- The Pandoc pipeline **SHOULD** convert `[[id]]` wiki-links to `\zlink{id}` in LaTeX output.
-- Notes **SHOULD** be assigned to a MainTopic project, not floating.
+- Each GeneralProject **SHOULD** have a `notes/` directory as its Obsidian vault.
+- The Pandoc pipeline (LZK-0002) **SHOULD** convert `[[id]]` → `\zlink{id}` (which equals `\excref{id}`).
+- `workflow.notes` CLI **SHOULD** delegate to latexzettel API, not reimplement logic.
+- `workflow.lecture.linker` **SHOULD** be extended to parse wiki-links from .md files.
 
 ### MUST NOT
 
-- `workflow notes` module **MUST NOT** use Peewee ORM calls — all DB access via SQLAlchemy sessions.
+- ADR-0014 **MUST NOT** duplicate infrastructure that exists in latexzettel (LZK-0000..0004).
+- `workflow.notes` **MUST NOT** bypass the latexzettel API layer — it is a CLI bridge, not a replacement.
 - `workflow init` **MUST NOT** move, rename, or delete existing directories.
-- Literature notes **MUST NOT** duplicate bibliography metadata — they reference `bib_entry` via `bibkey`.
 
 ---
 
@@ -251,33 +258,37 @@ The note links to permanent notes via wiki-links, and the `bibkey` field connect
 
 ```
 7a (macros)     ──┐
-                  ├──→ 7c (init command) ──→ 7e (literature notes)
+                  ├──→ 7d (init + CLI bridge) ──→ 7e (literature notes)
 7b (note model) ──┤
-                  └──→ 7d (markdown pipeline)
+                  └──→ 7c (API rehabilitation)
 ```
 
-7a and 7b are independent. 7c needs 7b (creates slipbox.db with new fields). 7d needs 7b (registers notes with extended model). 7e needs 7c+7d.
+7a and 7b are independent. 7c needs 7b (extended Note model). 7d needs 7b+7c (working API + new fields). 7e needs 7d (workspace + note creation).
 
-### What to reuse
+### What to reuse (not rebuild)
 
-| Existing module | Reuse in Phase 7 |
-|-----------------|-----------------|
-| `workflow.lecture.scanner` | Pattern for `workflow.notes.scanner` |
-| `workflow.lecture.linker` | Pattern for `workflow.notes.linker` (add wiki-link parsing) |
-| `workflow.validation.schemas` | `NoteFrontmatter` already validated |
-| `workflow.validation.parsers` | `parse_md_frontmatter` already works |
-| `workflow.graph.collectors` | `collect_notes` already reads Note/Link/Citation |
-| `latexzettel/pandoc/` | Pandoc filter + template (reuse as-is) |
+| Existing | Reuse for |
+|----------|-----------|
+| `\excref{id}` (texnote.cls) | `\zlink` via alias |
+| `infra/regexes.py` (10+ patterns) | Reference extraction in notes |
+| `pandoc/preprocess.py` | Wiki-link → LaTeX conversion |
+| `pandoc/filter.lua` | Theorem environment handling |
+| `infra/db.py:db_session()` | Session management for rehabilitated API |
+| `workflow.lecture.scanner` | Pattern for note scanning |
+| `workflow.lecture.linker` | Pattern for reference linking |
+| `workflow.validation.schemas.NoteFrontmatter` | Frontmatter validation |
+| PRISMA SharedDbRouter (PRISMA-0001) | Literature note → bib_entry linkage |
 
-### What NOT to reuse
+### Effort estimate
 
-| Module | Why not |
-|--------|---------|
-| `latexzettel/api/*.py` | 32 Peewee ORM calls — completely broken against SQLAlchemy |
-| `latexzettel/cli/main.py` | Tied to broken API layer |
-| `latexzettel/infra/db.py` | Overly complex for what `workflow.db.engine` already provides |
-
-The `latexzettel` package should be treated as legacy. Its Pandoc infrastructure (`pandoc/`) is reusable, but its API and CLI layers need replacement by `workflow.notes`.
+| Phase | New files | Modified files | Lines |
+|-------|-----------|---------------|-------|
+| 7a | 1 (.sty) | 0 | ~20 |
+| 7b | 0 | 2 (notes.py, protocols.py) | ~30 |
+| 7c | 0 | 5 (latexzettel API) | ~170 |
+| 7d | 3 (cli.py, init.py, templates) | 2 (main.py, models.py) | ~250 |
+| 7e | 1 (lit template) | 1 (cli.py) | ~50 |
+| **Total** | **5** | **10** | **~520** |
 
 ---
 
@@ -285,63 +296,57 @@ The `latexzettel` package should be treated as legacy. Its Pandoc infrastructure
 
 ### Benefits
 
-- ADR-0001 and ADR-0002 finally implemented after 7 phases of other work
-- Obsidian-compatible note workflow alongside LaTeX compilation
-- Literature notes connect readings to the knowledge graph
-- Single `workflow init` command sets up entire workspace
-- Knowledge graph (Phase 6) becomes useful — notes are the primary graph nodes
+- ADR-0001 and ADR-0002 fulfilled without rebuilding latexzettel
+- 24 RPC server routes restored (Neovim integration works again)
+- Obsidian-compatible note workflow per project
+- Literature notes connect readings to knowledge graph
+- ~520 lines vs ~800+ for a replacement approach
 
 ### Costs
 
-- New module (`workflow.notes`) — ~500 lines estimated
-- `SetZettelkasten.sty` — new .sty file to maintain
-- Pandoc becomes a runtime dependency for conversion
-- `latexzettel` API layer effectively deprecated (replaced by `workflow.notes`)
+- LaTeXZettel API rehabilitation requires understanding 5 API files
+- Two CLI systems coexist temporarily (latexzettel CLI + workflow notes CLI)
+- `\zlink` and `\excref` are aliases — users see two names for the same thing
 
 ### What stays unchanged
 
-- All 18 existing CLI commands continue working
-- Exercise workflow unchanged
-- Lecture workflow unchanged (but benefits from richer note graph)
-- Graph module unchanged (but sees more data from Markdown notes)
-- `inittex` still works for creating individual projects
+- All 18 existing CLI commands
+- All 24 JSONL RPC server routes (once API is rehabilitated)
+- Pandoc pipeline (filter.lua, preprocess.py, template.tex)
+- Exercise, lecture, graph, tikz, validation modules
 
 ---
 
 ## Alternatives Considered
 
-### Alternative A: Fix latexzettel API instead of replacing
+### Alternative A: Replace latexzettel with workflow.notes (original ADR-0014 v1)
 
-Rewrite the 32 Peewee calls in `latexzettel/api/` to use SQLAlchemy.
+Create a new `workflow.notes` module with its own scanner, linker, converter.
 
-**Rejected**: The latexzettel API layer has deep coupling to Peewee patterns (`.get()`, `.DoesNotExist`, `.select().where()`). Rewriting 5 files to SQLAlchemy is more work than creating a clean `workflow.notes` module that follows the established patterns from `workflow.exercise` and `workflow.lecture`.
+**Rejected (rev 2)**: Duplicates LZK-0002 (Pandoc pipeline), LZK-0003 (regex library), and LZK-0000 (7-layer architecture). 33 working files would be abandoned. The 35 broken Peewee calls are a smaller fix (~170 lines) than building a replacement module (~800+ lines).
 
-### Alternative B: Single global vault instead of per-project
+### Alternative B: Define `\zlink` as a new macro independent of `\excref`
 
-Put all notes in `00ZZ-Vault/` instead of per-project `notes/` directories.
+**Rejected**: `\excref` already does exactly what `\zlink` needs. The regex library extracts it. The Pandoc preprocessor converts wiki-links to it. Creating a parallel macro would split the reference ecosystem.
 
-**Rejected**: This breaks the project-as-context model. A physics topic (10MC) should have its notes co-located. The `00ZZ-Vault/inbox/` serves as a triage zone for unassigned notes.
+### Alternative C: Skip workspace init, let users create directories manually
 
-### Alternative C: Skip Markdown, keep LaTeX-only notes
-
-Continue using LaTeX as the note format, add `\zettelnote` and `\zlink` only.
-
-**Rejected**: Violates ADR-0002 which was accepted. Markdown provides superior editing experience, Obsidian compatibility, and separation between content and rendering.
+**Rejected**: The workspace structure (`notes/`, `slipbox.db`, symlinks) has enough pieces that manual setup is error-prone. An idempotent `workflow init` is worth the ~100 lines.
 
 ---
 
 ## Compatibility / Migration
 
-- **Non-breaking**: All existing projects continue working without changes
-- **Incremental**: `workflow init` adds `notes/` directories to existing projects without moving files
-- **Migration path**: Existing `.tex` notes can be converted to `.md` via `workflow notes convert --reverse`
-- **latexzettel**: Continues to work for its JSONL server (Neovim client) but API layer is deprecated
+- **Non-breaking**: All existing projects continue working
+- **Incremental**: `workflow init` adds `notes/` to existing projects without moving files
+- **Backward compatible**: `\excref` continues to work; `\zlink` is an alias
+- **LaTeXZettel**: Server and CLI restored to full function after API rehabilitation
 
 ---
 
 ## Status
 
-**Proposed** — awaiting review
+**Accepted** — revision 2 (incorporates LZK-* ADR analysis, changes strategy from replacement to rehabilitation)
 
 ---
 
@@ -349,4 +354,5 @@ Continue using LaTeX as the note format, add `\zettelnote` and `\zlink` only.
 
 | Date       | Change      |
 | ---------- | ----------- |
-| 2026-03-26 | Initial ADR |
+| 2026-03-26 | Initial ADR (v1) — proposed workflow.notes replacement |
+| 2026-03-26 | Revision 2 — changed to rehabilitation strategy after LZK-* ADR review |

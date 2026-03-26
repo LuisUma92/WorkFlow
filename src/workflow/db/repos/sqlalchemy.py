@@ -160,6 +160,14 @@ class SqlNoteRepo:
         self._session.flush()
         return True
 
+    def find_by_zettel_id(self, zettel_id: str) -> Note | None:
+        stmt = select(Note).where(Note.zettel_id == zettel_id)
+        return self._session.scalars(stmt).first()
+
+    def find_by_type(self, note_type: str) -> list[Note]:
+        stmt = select(Note).where(Note.note_type == note_type)
+        return list(self._session.scalars(stmt).all())
+
 
 # ── Link ─────────────────────────────────────────────────────────────────────
 

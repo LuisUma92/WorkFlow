@@ -6,7 +6,7 @@ API de alto nivel para operaciones sobre notas (crear/renombrar/eliminar).
 Estado actual (arquitectura):
 - La DB se inyecta como "módulo externo" (modularidad), compatible con infra/db.py.
 - Este módulo NO depende de Click y NO hace I/O interactivo (sin input/print).
-- La inicialización del esquema NO se ejecuta “siempre”; se hace únicamente si
+- La inicialización del esquema NO se ejecuta "siempre"; se hace únicamente si
   detectamos que faltan tablas (OperationalError), replicando el patrón legacy.
 """
 
@@ -17,6 +17,7 @@ import re
 import shutil
 from typing import Optional
 
+from sqlalchemy import select
 
 from latexzettel.config.settings import NotesPaths, DEFAULT_SETTINGS
 from latexzettel.domain.errors import (
@@ -25,7 +26,7 @@ from latexzettel.domain.errors import (
     NoteNotFound,
 )
 from latexzettel.domain.types import DbModule
-from latexzettel.infra.db import ensure_schema_if_needed
+from latexzettel.infra.db import ensure_schema_if_needed, db_session
 from latexzettel.util.text import (
     default_reference_name,
     default_filename,
@@ -55,8 +56,7 @@ def create_note(
     - agrega entrada a notes/documents.tex (opcional)
     - crea registro Note en DB
 
-    db: módulo externo Peewee con:
-      - database
+    db: módulo externo con:
       - modelos (Note, ...)
       - create_all_tables() (usado indirectamente por infra/db.ensure_tables)
     """
@@ -71,32 +71,35 @@ def create_note(
 
     ensure_schema_if_needed(db)
 
-    # Unicidad por filename
-    try:
-        db.Note.get(db.Note.filename == note_name)
-        raise NoteAlreadyExists(f"Ya existe note filename='{note_name}'")
-    except db.Note.DoesNotExist:
-        pass
+    with db_session(db) as session:
+        # Unicidad por filename
+        existing = session.scalars(
+            select(db.Note).where(db.Note.filename == note_name)
+        ).first()
+        if existing is not None:
+            raise NoteAlreadyExists(f"Ya existe note filename='{note_name}'")
 
-    # Unicidad por reference
-    try:
-        db.Note.get(db.Note.reference == reference_name)
-        raise ReferenceAlreadyExists(f"Ya existe note reference='{reference_name}'")
-    except db.Note.DoesNotExist:
-        pass
+        # Unicidad por reference
+        existing_ref = session.scalars(
+            select(db.Note).where(db.Note.reference == reference_name)
+        ).first()
+        if existing_ref is not None:
+            raise ReferenceAlreadyExists(f"Ya existe note reference='{reference_name}'")
 
-    if create_file:
-        create_note_file(paths, filename=note_name, extension=extension)
+        if create_file:
+            create_note_file(paths, filename=note_name, extension=extension)
 
-    if add_to_documents:
-        append_documents_entry(paths, filename=note_name, reference=reference_name)
+        if add_to_documents:
+            append_documents_entry(paths, filename=note_name, reference=reference_name)
 
-    db.Note.create(
-        filename=note_name,
-        reference=reference_name,
-        created=ts,
-        last_edit_date=ts,
-    )
+        note = db.Note(
+            filename=note_name,
+            reference=reference_name,
+            created=ts,
+            last_edit_date=ts,
+        )
+        session.add(note)
+        session.flush()
 
 
 def create_note_md(
@@ -139,34 +142,36 @@ def rename_note_file(
 
     ensure_schema_if_needed(db)
 
-    try:
-        note = db.Note.get(db.Note.filename == old_filename)
-    except db.Note.DoesNotExist as e:
-        raise NoteNotFound(f"No existe nota filename='{old_filename}'") from e
+    with db_session(db) as session:
+        note = session.scalars(
+            select(db.Note).where(db.Note.filename == old_filename)
+        ).first()
+        if note is None:
+            raise NoteNotFound(f"No existe nota filename='{old_filename}'")
 
-    slipbox = paths.abs(paths.slipbox_dir)
-    src = slipbox / f"{old_filename}.tex"
-    dst = slipbox / f"{new_filename}.tex"
+        slipbox = paths.abs(paths.slipbox_dir)
+        src = slipbox / f"{old_filename}.tex"
+        dst = slipbox / f"{new_filename}.tex"
 
-    if dst.exists():
-        raise NoteAlreadyExists(f"El archivo ya existe: {dst}")
+        if dst.exists():
+            raise NoteAlreadyExists(f"El archivo ya existe: {dst}")
 
-    if not src.exists():
-        raise NoteNotFound(f"No existe el archivo fuente: {src}")
+        if not src.exists():
+            raise NoteNotFound(f"No existe el archivo fuente: {src}")
 
-    shutil.copyfile(src, dst)
-    src.unlink()
+        shutil.copyfile(src, dst)
+        src.unlink()
 
-    note.filename = new_filename
-    note.save()
+        note.filename = new_filename
+        session.flush()
 
-    doc = ensure_documents_tex(paths, create=False)
-    text = doc.read_text(encoding="utf-8")
+        doc = ensure_documents_tex(paths, create=False)
+        text = doc.read_text(encoding="utf-8")
 
-    pattern = rf"\\externaldocument\[{re.escape(note.reference)}\-\]\{{{re.escape(old_filename)}\}}"
-    repl = rf"\\externaldocument[{note.reference}-]{{{new_filename}}}"
+        pattern = rf"\\externaldocument\[{re.escape(note.reference)}\-\]\{{{re.escape(old_filename)}\}}"
+        repl = rf"\\externaldocument[{note.reference}-]{{{new_filename}}}"
 
-    doc.write_text(re.sub(pattern, repl, text), encoding="utf-8")
+        doc.write_text(re.sub(pattern, repl, text), encoding="utf-8")
 
 
 def rename_reference(
@@ -190,66 +195,68 @@ def rename_reference(
 
     ensure_schema_if_needed(db)
 
-    try:
-        note = db.Note.get(db.Note.reference == old_reference)
-    except db.Note.DoesNotExist as e:
-        raise NoteNotFound(f"No existe nota reference='{old_reference}'") from e
+    with db_session(db) as session:
+        note = session.scalars(
+            select(db.Note).where(db.Note.reference == old_reference)
+        ).first()
+        if note is None:
+            raise NoteNotFound(f"No existe nota reference='{old_reference}'")
 
-    # colisión
-    try:
-        db.Note.get(db.Note.reference == new_reference)
-        raise ReferenceAlreadyExists(f"Ya existe note reference='{new_reference}'")
-    except db.Note.DoesNotExist:
-        pass
+        # colisión
+        collision = session.scalars(
+            select(db.Note).where(db.Note.reference == new_reference)
+        ).first()
+        if collision is not None:
+            raise ReferenceAlreadyExists(f"Ya existe note reference='{new_reference}'")
 
-    # documents.tex
-    doc = ensure_documents_tex(paths, create=False)
-    text = doc.read_text(encoding="utf-8")
+        # documents.tex
+        doc = ensure_documents_tex(paths, create=False)
+        text = doc.read_text(encoding="utf-8")
 
-    pattern = rf"\\externaldocument\[{re.escape(old_reference)}\-\]\{{{re.escape(note.filename)}\}}"
-    repl = rf"\\externaldocument[{new_reference}-]{{{note.filename}}}"
-    doc.write_text(re.sub(pattern, repl, text), encoding="utf-8")
+        pattern = rf"\\externaldocument\[{re.escape(old_reference)}\-\]\{{{re.escape(note.filename)}\}}"
+        repl = rf"\\externaldocument[{new_reference}-]{{{note.filename}}}"
+        doc.write_text(re.sub(pattern, repl, text), encoding="utf-8")
 
-    if update_backrefs:
-        slipbox = paths.abs(paths.slipbox_dir)
+        if update_backrefs:
+            slipbox = paths.abs(paths.slipbox_dir)
 
-        # \ex(hyper)?(c)?ref([label])?{OldReference}
-        rx = re.compile(
-            rf"\\ex(hyper)?(c)?ref(\[([^]]+)\])?\{{{re.escape(old_reference)}\}}"
-        )
-
-        def _repl(m: re.Match) -> str:
-            opt = m.group(4)
-            is_hyper = m.group(1) is not None
-            if is_hyper:
-                return (
-                    rf"\exhyperref[{opt}]{{{new_reference}}}"
-                    if opt
-                    else rf"\exhyperref{{{new_reference}}}"
-                )
-            return (
-                rf"\excref[{opt}]{{{new_reference}}}"
-                if opt
-                else rf"\excref{{{new_reference}}}"
+            # \ex(hyper)?(c)?ref([label])?{OldReference}
+            rx = re.compile(
+                rf"\\ex(hyper)?(c)?ref(\[([^]]+)\])?\{{{re.escape(old_reference)}\}}"
             )
 
-        # El legacy obtiene backrefs vía labels->referenced_by->source.filename
-        backref_files: set[str] = set()
-        for lbl in note.labels:
-            for backref in lbl.referenced_by:
-                backref_files.add(backref.source.filename)
+            def _repl(m: re.Match) -> str:
+                opt = m.group(4)
+                is_hyper = m.group(1) is not None
+                if is_hyper:
+                    return (
+                        rf"\exhyperref[{opt}]{{{new_reference}}}"
+                        if opt
+                        else rf"\exhyperref{{{new_reference}}}"
+                    )
+                return (
+                    rf"\excref[{opt}]{{{new_reference}}}"
+                    if opt
+                    else rf"\excref{{{new_reference}}}"
+                )
 
-        for fname in backref_files:
-            fpath = slipbox / f"{fname}.tex"
-            if not fpath.exists():
-                continue
-            content = fpath.read_text(encoding="utf-8")
-            updated = rx.sub(_repl, content)
-            if updated != content:
-                fpath.write_text(updated, encoding="utf-8")
+            # Obtener backrefs vía labels->referenced_by->source.filename
+            backref_files: set[str] = set()
+            for lbl in note.labels:
+                for backref in lbl.referenced_by:
+                    backref_files.add(backref.source.filename)
 
-    note.reference = new_reference
-    note.save()
+            for fname in backref_files:
+                fpath = slipbox / f"{fname}.tex"
+                if not fpath.exists():
+                    continue
+                content = fpath.read_text(encoding="utf-8")
+                updated = rx.sub(_repl, content)
+                if updated != content:
+                    fpath.write_text(updated, encoding="utf-8")
+
+        note.reference = new_reference
+        session.flush()
 
 
 def remove_note(
@@ -274,14 +281,14 @@ def remove_note(
 
     ensure_schema_if_needed(db)
 
-    note = None
-    try:
-        note = db.Note.get(db.Note.filename == filename)
-    except db.Note.DoesNotExist:
-        note = None
+    with db_session(db) as session:
+        note = session.scalars(
+            select(db.Note).where(db.Note.filename == filename)
+        ).first()
 
-    if delete_db_entry and note is not None:
-        note.delete_instance()
+        if delete_db_entry and note is not None:
+            session.delete(note)
+            session.flush()
 
     if delete_documents_entry:
         doc = ensure_documents_tex(paths, create=False)

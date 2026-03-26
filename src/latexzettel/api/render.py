@@ -33,9 +33,11 @@ from latexzettel.domain.errors import (
     DomainError,
     NoteNotFound,
 )
+from sqlalchemy import select
+
 from latexzettel.domain.types import DbModule, RenderFormat
 from latexzettel.infra import processes
-from latexzettel.infra.db import ensure_tables
+from latexzettel.infra.db import ensure_tables, db_session
 from latexzettel.util.time import now
 
 from latexzettel.api.sync import synchronize
@@ -206,10 +208,12 @@ def render_note(
         raise DomainError(f"DB no disponible: {health.error}")
 
     # Obtener Note desde DB
-    try:
-        note = db.Note.get(db.Note.filename == filename)
-    except db.Note.DoesNotExist as e:
-        raise NoteNotFound(f"No existe nota en DB: filename='{filename}'") from e
+    with db_session(db) as session:
+        note = session.scalars(
+            select(db.Note).where(db.Note.filename == filename)
+        ).first()
+    if note is None:
+        raise NoteNotFound(f"No existe nota en DB: filename='{filename}'")
 
     # Render->biber->render (semántica original)
     if run_biber:
@@ -315,11 +319,15 @@ def render_note(
         )
 
     # Actualizar timestamps en DB
-    if format == RenderFormat.HTML:
-        note.last_build_date_html = ts
-    else:
-        note.last_build_date_pdf = ts
-    note.save()
+    with db_session(db) as session:
+        db_note = session.scalars(
+            select(db.Note).where(db.Note.filename == filename)
+        ).first()
+        if db_note is not None:
+            if format == RenderFormat.HTML:
+                db_note.last_build_date_html = ts
+            else:
+                db_note.last_build_date_pdf = ts
 
     return RenderResult(
         filename=filename,
@@ -441,7 +449,9 @@ def render_updates(
 
     # 2) Extender updated con notas que requieren render por timestamps (igual que legacy)
     #    y, al agregarlas, marcar run_biber=True y extender new_links con note.references
-    for note in db.Note:
+    with db_session(db) as session:
+        all_notes = session.scalars(select(db.Note)).all()
+    for note in all_notes:
         if note in updated:
             continue
 
