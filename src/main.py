@@ -9,6 +9,7 @@ from workflow.tikz.cli import tikz
 from workflow.validation.cli import validate
 from workflow.exercise.cli import exercise
 from workflow.lecture.cli import lectures
+from workflow.graph.cli import graph
 
 import os
 import click
@@ -32,6 +33,7 @@ cli.add_command(tikz)
 cli.add_command(validate)
 cli.add_command(exercise)
 cli.add_command(lectures)
+cli.add_command(graph)
 
 
 @cli.command()
