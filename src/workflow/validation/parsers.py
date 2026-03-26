@@ -4,6 +4,8 @@ from pathlib import Path
 
 import yaml
 
+from workflow.latex.comments import extract_commented_yaml
+
 _MAX_FILE_SIZE = 1_048_576  # 1 MB
 
 
@@ -46,51 +48,12 @@ def parse_md_frontmatter(filepath: Path) -> dict | None:
 
 
 def parse_tex_metadata(filepath: Path) -> dict | None:
-    """Extract commented YAML metadata from a LaTeX file.
-
-    Reads lines between '% ---' markers, strips leading '% ' prefix,
-    then parses the result as YAML.
-    Returns the parsed dict, or None if no metadata block is found.
-    """
-    if filepath.stat().st_size > _MAX_FILE_SIZE:
-        return None
+    """Parse commented YAML metadata from a .tex file."""
     try:
+        if filepath.stat().st_size > _MAX_FILE_SIZE:
+            return None
         text = filepath.read_text(encoding="utf-8")
     except OSError:
         return None
-
-    lines = text.splitlines()
-    start_index = None
-    end_index = None
-
-    for i, line in enumerate(lines):
-        stripped = line.strip()
-        if stripped == "% ---":
-            if start_index is None:
-                start_index = i
-            else:
-                end_index = i
-                break
-
-    if start_index is None or end_index is None:
-        return None
-
-    yaml_lines = []
-    for line in lines[start_index + 1 : end_index]:
-        if line.startswith("% "):
-            yaml_lines.append(line[2:])
-        elif line.strip() == "%":
-            yaml_lines.append("")
-        else:
-            yaml_lines.append(line)
-
-    yaml_block = "\n".join(yaml_lines)
-    try:
-        parsed = yaml.safe_load(yaml_block)
-    except yaml.YAMLError:
-        return None
-
-    if not isinstance(parsed, dict):
-        return None
-
-    return parsed
+    metadata, _ = extract_commented_yaml(text)
+    return metadata if isinstance(metadata, dict) else None

@@ -107,6 +107,7 @@ Architecture decisions in `docs/ADR/` (see [INDEX.md](docs/ADR/INDEX.md) for ful
 | 0010 | Exercise persistence: file as truth, DB as index | Accepted |
 | 0011 | LaTeX parser: brace-counting extractor | Accepted |
 | 0012 | Moodle XML export with LaTeX normalization | Accepted |
+| 0013 | Codebase consolidation: sessions, decoupling, CLI split | Accepted |
 
 ## Build & CI
 

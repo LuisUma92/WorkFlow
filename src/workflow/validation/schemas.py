@@ -1,25 +1,25 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-from itep.structure import TaxonomyLevel, TaxonomyDomain
+from workflow.db.models.academic import _TAXONOMY_LEVELS, _TAXONOMY_DOMAINS
 
 
 _VALID_NOTE_TYPES = {"permanent", "literature", "fleeting"}
 _VALID_EXERCISE_TYPES = {"multichoice", "shortanswer", "essay", "numerical", "truefalse"}
 _VALID_DIFFICULTIES = {"easy", "medium", "hard"}
-_VALID_TAXONOMY_LEVELS = {v.value for v in TaxonomyLevel}
-_VALID_TAXONOMY_DOMAINS = {v.value for v in TaxonomyDomain}
+_VALID_TAXONOMY_LEVELS = set(_TAXONOMY_LEVELS)
+_VALID_TAXONOMY_DOMAINS = set(_TAXONOMY_DOMAINS)
 
 
 @dataclass(frozen=True)
 class NoteFrontmatter:
     id: str
     title: str
-    tags: list[str] = field(default_factory=list)
+    tags: tuple[str, ...] = ()
     created: str | None = None
-    concepts: list[str] = field(default_factory=list)
-    references: list[str] = field(default_factory=list)
+    concepts: tuple[str, ...] = ()
+    references: tuple[str, ...] = ()
     type: str = "permanent"
 
 
@@ -30,8 +30,8 @@ class ExerciseMetadata:
     difficulty: str
     taxonomy_level: str
     taxonomy_domain: str
-    tags: list[str] = field(default_factory=list)
-    concepts: list[str] = field(default_factory=list)
+    tags: tuple[str, ...] = ()
+    concepts: tuple[str, ...] = ()
 
 
 def validate_note_frontmatter(data: dict) -> tuple[NoteFrontmatter | None, list[str]]:
@@ -91,10 +91,10 @@ def validate_note_frontmatter(data: dict) -> tuple[NoteFrontmatter | None, list[
         NoteFrontmatter(
             id=note_id,
             title=title,
-            tags=list(tags),
+            tags=tuple(tags),
             created=created,
-            concepts=list(concepts),
-            references=list(references),
+            concepts=tuple(concepts),
+            references=tuple(references),
             type=note_type,
         ),
         [],
@@ -170,8 +170,8 @@ def validate_exercise_metadata(data: dict) -> tuple[ExerciseMetadata | None, lis
             difficulty=difficulty,
             taxonomy_level=taxonomy_level,
             taxonomy_domain=taxonomy_domain,
-            tags=list(tags),
-            concepts=list(concepts),
+            tags=tuple(tags),
+            concepts=tuple(concepts),
         ),
         [],
     )

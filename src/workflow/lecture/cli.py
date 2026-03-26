@@ -10,10 +10,13 @@ from pathlib import Path
 from typing import Any
 
 import click
+from sqlalchemy.orm import Session
 
 from workflow.lecture.linker import link_lecture_files
 from workflow.lecture.note_splitter import split_notes_file
 from workflow.lecture.scanner import register_notes, scan_lecture_directory
+
+_MAX_EXERCISE_POOL = 10_000
 
 
 def _get_local_engine(project_root: Path) -> Any:
@@ -44,10 +47,7 @@ def scan(lecture_dir: str, project_root: str) -> None:
 
     engine = _get_local_engine(root_path)
 
-    from sqlalchemy.orm import sessionmaker
-
-    Session = sessionmaker(bind=engine)
-    with Session() as session:
+    with Session(engine) as session:
         result = register_notes(lecture_path, session)
         session.commit()
 
@@ -126,10 +126,7 @@ def link(lecture_dir: str, project_root: str) -> None:
 
     engine = _get_local_engine(root_path)
 
-    from sqlalchemy.orm import sessionmaker
-
-    Session = sessionmaker(bind=engine)
-    with Session() as session:
+    with Session(engine) as session:
         tex_files = scan_lecture_directory(lecture_path)
         result = link_lecture_files(tex_files, session)
         session.commit()
@@ -175,7 +172,6 @@ def build_eval(
     Selects exercises matching taxonomy criteria, assembles exam document,
     and optionally exports to Moodle XML.
     """
-    from sqlalchemy.orm import Session as SASession
     from workflow.db.engine import init_global_db
     from workflow.db.repos.sqlalchemy import SqlExerciseRepo
     from workflow.exercise.selector import select_exercises
@@ -197,9 +193,9 @@ def build_eval(
 
     # Query DB for complete exercises
     engine = init_global_db()
-    with SASession(engine) as session:
+    with Session(engine) as session:
         repo = SqlExerciseRepo(session)
-        pool = repo.find_by_filters(status="complete", limit=10000)
+        pool = repo.find_by_filters(status="complete", limit=_MAX_EXERCISE_POOL)
 
         selection = select_exercises(list(spec.slots), pool)
         exam = build_exam(selection, title=title)

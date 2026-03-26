@@ -105,6 +105,12 @@ STY-0000 (format/packages)
 0001 (Zettelkasten) ──→ 0002 (Markdown layer)
 ```
 
+## Maintenance & Consolidation
+
+| ADR | Title | Domain | Status | Depends On |
+|-----|-------|--------|--------|------------|
+| [0013](0013-codebase-consolidation.md) | Codebase consolidation: sessions, decoupling, CLI split | System | Proposed | 0003, 0004, 0007, 0009 |
+
 ## Planning & Review Documents
 
 | Document | Purpose |
