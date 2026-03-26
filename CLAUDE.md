@@ -28,11 +28,11 @@ Defined in `pyproject.toml` under `[project.scripts]`:
 
 | Command    | Module              | Purpose                              |
 |------------|---------------------|--------------------------------------|
-| `workflow` | `main:cli`          | Main CLI (tikz, validate, etc.)      |
+| `workflow` | `main:cli`          | Main CLI (tikz, validate, exercise)  |
 | `inittex`  | `itep.create:cli`   | Initialize LaTeX project structure   |
 | `relink`   | `itep.links:cli`    | Recreate symlinks from config.yaml   |
 | `cleta`    | `lectkit.cleta:cli` | Clean TeX auxiliary files            |
-| `crete`    | `lectkit.crete:cli` | Create exercise files from book refs |
+| `crete`    | `lectkit.crete:cli` | Create exercise files (DEPRECATED)   |
 | `nofi`     | `lectkit.nofi:cli`  | Split marked notes into LaTeX files  |
 
 ## Architecture
@@ -45,17 +45,21 @@ Defined in `pyproject.toml` under `[project.scripts]`:
 
 - **`src/workflow/validation/`** — Frontmatter validation. Validates YAML frontmatter in `.md` notes and commented YAML in `.tex` exercises.
 
+- **`src/workflow/latex/`** — Shared LaTeX parsing utilities. `braces.py` (brace-counting macro extraction), `comments.py` (commented YAML), `normalize.py` (custom macro expansion for Moodle export). See ADR-0011, ADR-0012.
+
+- **`src/workflow/exercise/`** — Exercise bank management. `parser.py` (parse .tex → domain objects), `moodle.py` (Moodle XML export), `generator.py` (placeholder file creation), `selector.py` (exercise selection by taxonomy), `exam_builder.py` (exam assembly), `cli.py` (8 CLI commands). See ADR-0009, ADR-0010, ADR-0011, ADR-0012.
+
 - **`src/itep/`** — Init TeX Project (ITeP). Project scaffolding and management. Uses `workflow.db` for models. Config is `config.yaml` per project (pointer to DB record, see ADR ITEP/0003).
 
 - **`src/latexzettel/`** — Zettelkasten engine. CLI + JSONL/NDJSON RPC server + Neovim Lua client. Uses `workflow.db.models.notes` via compatibility shim in `infra/orm.py`.
 
-- **`src/lectkit/`** — Lecture utilities: `cleta` (cleanup), `nofi` (note splitting), `crete` (exercise generation).
+- **`src/lectkit/`** — Lecture utilities: `cleta` (cleanup), `nofi` (note splitting), `crete` (exercise generation — **deprecated**, use `workflow exercise create`).
 
 - **`src/PRISMAreview/`** — Django 5.0 PRISMA systematic review web app. Backed by MariaDB. `shared_db/router.py` enables reading from shared `workflow.db`.
 
 - **`src/appfunc/`** — Shared utilities: input validation (`FieldSpec` in `iofunc.py`), enum selection, menus.
 
-- **`shared/sty/`** — 16 LaTeX style files (SetCommands, PartialCommands, VectorPGF, etc.). Symlinked into projects from `~/.local/share/workflow/sty/`.
+- **`shared/sty/`** — 17 LaTeX style files (SetCommands, PartialCommands, SetExercises, VectorPGF, etc.). Symlinked into projects from `~/.local/share/workflow/sty/`.
 
 - **`shared/templates/`** — LaTeX templates for notes, exercises, lectures.
 
@@ -67,6 +71,9 @@ Defined in `pyproject.toml` under `[project.scripts]`:
 - **Hybrid DB**: global for reference data, local per project (ADR-0003)
 - XDG layout: config in `~/.config/workflow/`, data in `~/.local/share/workflow/` (ADR-0008)
 - Exercise macros: extend existing `\question`, `\qpart`, `\pts` — never replace (ADR-0005)
+- `.tex` files are **truth source** for exercise content; DB stores metadata index only (ADR-0010)
+- Exercise CLI: `workflow exercise parse|list|sync|gc|export-moodle|create|create-range|build-exam`
+- LaTeX normalization: custom macros expanded to standard LaTeX before Moodle export (ADR-0012)
 - Project types: `GeneralProject` and `LectureProject` (see `itep/models.py`)
 
 ### ADR Index
