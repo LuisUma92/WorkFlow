@@ -72,6 +72,26 @@ These decisions define how exercises are authored, parsed, indexed, and exported
 | [0011](0011-latex-exercise-parser-strategy.md) | LaTeX parser: brace-counting extractor | Zettelkasten | Accepted | 0009 |
 | [0012](0012-moodle-xml-export-mapping.md) | Moodle XML export with LaTeX normalization | Zettelkasten | Accepted | 0011, STY-0002, STY-0003 |
 
+## LaTeXZettel: Note Management Engine
+
+| ADR | Title | Domain | Status | Depends On |
+|-----|-------|--------|--------|------------|
+| [LZK-0000](LZK-0000-zettelkasten-engine-architecture.md) | 7-layer engine architecture (CLI → Server → API → Domain → Infra) | LaTeXZettel | Accepted | 0001, 0002, 0003 |
+| [LZK-0001](LZK-0001-jsonl-rpc-server.md) | JSONL/NDJSON RPC server for Neovim (24 routes) | LaTeXZettel | Accepted | LZK-0000 |
+| [LZK-0002](LZK-0002-pandoc-conversion-pipeline.md) | Pandoc pipeline: Markdown ↔ LaTeX with wiki-links | LaTeXZettel | Accepted | LZK-0000, 0002 |
+| [LZK-0003](LZK-0003-note-reference-system.md) | Note reference system: IDs, regex patterns, cross-refs | LaTeXZettel | Accepted | LZK-0000, 0001 |
+| [LZK-0004](LZK-0004-dependency-injection-db-shim.md) | Dependency injection and Peewee → SQLAlchemy shim | LaTeXZettel | Accepted | LZK-0000, 0004 |
+
+## PRISMAreview: Systematic Literature Review
+
+| ADR | Title | Domain | Status | Depends On |
+|-----|-------|--------|--------|------------|
+| [PRISMA-0000](PRISMA-0000-systematic-review-architecture.md) | Systematic review architecture (Django, dual-DB) | PRISMA | Accepted | 0003, 0007 |
+| [PRISMA-0001](PRISMA-0001-dual-database-router.md) | Dual-database router: MariaDB + shared SQLite | PRISMA | Accepted | PRISMA-0000, 0003 |
+| [PRISMA-0002](PRISMA-0002-bibliography-import-pipeline.md) | Bibliography import pipeline (BibTeX → structured data) | PRISMA | Accepted | PRISMA-0000 |
+| [PRISMA-0003](PRISMA-0003-screening-review-workflow.md) | Article screening and review workflow | PRISMA | Accepted | PRISMA-0002 |
+| [PRISMA-0004](PRISMA-0004-data-model-schema.md) | Data model: 30+ Django models for systematic review | PRISMA | Accepted | PRISMA-0000 |
+
 ## Asset Pipeline
 
 | ADR | Title | Domain | Status | Depends On |
@@ -105,11 +125,17 @@ STY-0000 (format/packages)
 0001 (Zettelkasten) ──→ 0002 (Markdown layer)
 ```
 
+## Zettelkasten Implementation
+
+| ADR | Title | Domain | Status | Depends On |
+|-----|-------|--------|--------|------------|
+| [0014](0014-zettelkasten-implementation.md) | Zettelkasten implementation: macros, note model, workspace init, Markdown pipeline | System | Proposed | 0001, 0002, 0003, 0007, ITEP-0000 |
+
 ## Maintenance & Consolidation
 
 | ADR | Title | Domain | Status | Depends On |
 |-----|-------|--------|--------|------------|
-| [0013](0013-codebase-consolidation.md) | Codebase consolidation: sessions, decoupling, CLI split | System | Proposed | 0003, 0004, 0007, 0009 |
+| [0013](0013-codebase-consolidation.md) | Codebase consolidation: sessions, decoupling, CLI split | System | Accepted | 0003, 0004, 0007, 0009 |
 
 ## Planning & Review Documents
 

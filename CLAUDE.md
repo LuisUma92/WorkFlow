@@ -108,12 +108,23 @@ Architecture decisions in `docs/ADR/` (see [INDEX.md](docs/ADR/INDEX.md) for ful
 | 0011 | LaTeX parser: brace-counting extractor | Accepted |
 | 0012 | Moodle XML export with LaTeX normalization | Accepted |
 | 0013 | Codebase consolidation: sessions, decoupling, CLI split | Accepted |
+| 0014 | Zettelkasten implementation: macros, note model, workspace init | Proposed |
+| LZK-0000 | LaTeXZettel 7-layer engine architecture | Accepted |
+| LZK-0001 | JSONL/NDJSON RPC server for Neovim (24 routes) | Accepted |
+| LZK-0002 | Pandoc pipeline: Markdown ↔ LaTeX with wiki-links | Accepted |
+| LZK-0003 | Note reference system: IDs, regex, cross-refs | Accepted |
+| LZK-0004 | Dependency injection and Peewee → SQLAlchemy shim | Accepted |
+| PRISMA-0000 | Systematic review architecture (Django, dual-DB) | Accepted |
+| PRISMA-0001 | Dual-database router: MariaDB + shared SQLite | Accepted |
+| PRISMA-0002 | Bibliography import pipeline (BibTeX → structured data) | Accepted |
+| PRISMA-0003 | Article screening and review workflow | Accepted |
+| PRISMA-0004 | Data model: 30+ Django models for systematic review | Accepted |
 
 ## Build & CI
 
 - Build backend: `uv_build`
-- Python: `>=3.10`
-- CI: GitHub Actions on push/PR to `master`, tests on Python 3.9/3.10/3.11
+- Python: `>=3.12`
+- CI: GitHub Actions on push/PR to `master`, tests on Python 3.12/3.13/3.14
 - Linter: flake8 (max line length 127, max complexity 10)
 - Test framework: pytest (pythonpath configured to `"."`)
 - Dependencies: sqlalchemy, click, pyyaml, appdirs, bibtexparser, peewee (legacy, being removed)

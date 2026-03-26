@@ -1,14 +1,28 @@
 [project]
 name = "workflow"
 version = "1.2.2.1"
+description = "CLI toolkit for LaTeX projects, Zettelkasten notes, exercises, and knowledge graphs"
 readme = { file = "README.md", content-type = "text/markdown" }
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = { file = "LICENSE" }
 authors = [
   { name = "Luis Fernando Umaña Castro", email = "luis.umanacastro@ucr.ac.cr" },
 ]
-classifiers = ["Development Status :: 2 - Pre-Alpha"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Text Processing :: Markup :: LaTeX",
+  "Topic :: Education",
+]
 dependencies = ["appdirs", "bibtexparser", "click", "pyyaml", "sqlalchemy"]
+
+[project.urls]
+Repository = "https://github.com/LuisUma92/WorkFlow"
+Documentation = "https://github.com/LuisUma92/WorkFlow/tree/master/docs/wiki"
+"ADR Index" = "https://github.com/LuisUma92/WorkFlow/tree/master/docs/ADR/INDEX.md"
+"Getting Started" = "https://github.com/LuisUma92/WorkFlow/tree/master/docs/wiki/Getting-Started.md"
+"Issue Tracker" = "https://github.com/LuisUma92/WorkFlow/issues"
 
 [project.scripts]
 workflow = "main:cli"
@@ -24,7 +38,4 @@ build-backend = "uv_build"
 pythonpath = "."
 
 [dependency-groups]
-dev = [
-    "flake8>=7.3.0",
-    "pytest>=9.0.2",
-]
+dev = ["flake8>=7.3.0", "pytest>=9.0.2"]
