@@ -1,5 +1,7 @@
 # WorkFlow
 
+[![Python package](https://github.com/LuisUma92/WorkFlow/actions/workflows/python-package.yml/badge.svg)](https://github.com/LuisUma92/WorkFlow/actions/workflows/python-package.yml)
+
 Toolkit CLI en Python para gestionar proyectos LaTeX y un sistema unificado de Zettelkasten para escritura academica (tesis, cursos, ejercicios). Integra notas en Markdown, renderizado LaTeX, diagramas TikZ, banco de ejercicios, exportacion a Moodle, y gestion bibliografica a traves de multiples instituciones (UCR, UFide, UCIMED).
 
 ## Instalacion
