@@ -17,8 +17,11 @@ from sqlalchemy.orm import Session
 from workflow.db.models.exercises import Exercise, ExerciseOption
 from workflow.db.repos.sqlalchemy import SqlExerciseRepo
 from workflow.exercise.domain import ParsedExercise
+from workflow.exercise.exam_builder import build_exam
+from workflow.exercise.generator import generate_exercise_file, generate_from_content
 from workflow.exercise.moodle import exercises_to_quiz_xml
 from workflow.exercise.parser import parse_exercise
+from workflow.exercise.selector import ExerciseSlot, select_exercises
 
 _MAX_FILES = 10_000
 _MAX_FILE_BYTES = 10 * 1024 * 1024
@@ -288,6 +291,136 @@ def gc(ctx, yes: bool) -> None:
     click.echo(f"Removed {len(orphans)} orphaned record(s).")
 
 
+_EXERCISE_TYPES = ["multichoice", "shortanswer", "essay", "numerical", "truefalse"]
+_DIFFICULTIES = ["easy", "medium", "hard"]
+
+
+@exercise.command()
+@click.argument("exercise-id")
+@click.option("--output-dir", "-d", type=click.Path(), required=True)
+@click.option(
+    "--type",
+    "exercise_type",
+    type=click.Choice(_EXERCISE_TYPES, case_sensitive=False),
+    default="essay",
+    show_default=True,
+)
+@click.option(
+    "--difficulty",
+    type=click.Choice(_DIFFICULTIES, case_sensitive=False),
+    default="medium",
+    show_default=True,
+)
+@click.option("--taxonomy-level", type=str, default="Usar-Aplicar", show_default=True)
+@click.option(
+    "--taxonomy-domain", type=str, default="Procedimiento Mental", show_default=True
+)
+@click.option("--tag", multiple=True, help="Tag (repeatable).")
+@click.option("--book", type=str, default=None, help="Book citation key.")
+@click.option("--chapter", type=int, default=None, help="Chapter number.")
+@click.option("--exercise-num", type=int, default=None, help="Exercise number.")
+def create(
+    exercise_id: str,
+    output_dir: str,
+    exercise_type: str,
+    difficulty: str,
+    taxonomy_level: str,
+    taxonomy_domain: str,
+    tag: tuple[str, ...],
+    book: str | None,
+    chapter: int | None,
+    exercise_num: int | None,
+) -> None:
+    """Create a new exercise placeholder .tex file."""
+    out = Path(output_dir)
+    result = generate_exercise_file(
+        out,
+        exercise_id,
+        exercise_type=exercise_type,
+        difficulty=difficulty,
+        taxonomy_level=taxonomy_level,
+        taxonomy_domain=taxonomy_domain,
+        tags=list(tag) if tag else None,
+        book_cite=book,
+        chapter=chapter,
+        exercise_num=exercise_num,
+    )
+    if result.created:
+        click.echo(f"Created: {result.file_path}")
+    else:
+        click.echo(f"Skipped (already exists): {result.file_path}")
+
+
+@exercise.command(name="create-range")
+@click.option("--output-dir", "-d", type=click.Path(), required=True)
+@click.option("--book", type=str, required=True, help="Book citation key.")
+@click.option("--chapter", type=int, required=True, help="Chapter number.")
+@click.option("--first", type=int, required=True, help="First exercise number.")
+@click.option(
+    "--last", type=int, required=True, help="Last exercise number (inclusive)."
+)
+@click.option(
+    "--type",
+    "exercise_type",
+    type=click.Choice(_EXERCISE_TYPES, case_sensitive=False),
+    default="essay",
+    show_default=True,
+)
+@click.option(
+    "--difficulty",
+    type=click.Choice(_DIFFICULTIES, case_sensitive=False),
+    default="medium",
+    show_default=True,
+)
+@click.option("--taxonomy-level", type=str, default="Usar-Aplicar", show_default=True)
+@click.option(
+    "--taxonomy-domain", type=str, default="Procedimiento Mental", show_default=True
+)
+@click.option("--tag", multiple=True, help="Tag (repeatable).")
+def create_range(
+    output_dir: str,
+    book: str,
+    chapter: int,
+    first: int,
+    last: int,
+    exercise_type: str,
+    difficulty: str,
+    taxonomy_level: str,
+    taxonomy_domain: str,
+    tag: tuple[str, ...],
+) -> None:
+    """Create placeholder .tex files for a range of book exercises."""
+    if first > last:
+        raise click.ClickException(f"--first ({first}) must be <= --last ({last}).")
+
+    out = Path(output_dir)
+    results = generate_from_content(
+        out,
+        book,
+        chapter=chapter,
+        first_exercise=first,
+        last_exercise=last,
+        tags=list(tag) if tag else None,
+        exercise_type=exercise_type,
+        difficulty=difficulty,
+        taxonomy_level=taxonomy_level,
+        taxonomy_domain=taxonomy_domain,
+    )
+
+    created = [r for r in results if r.created]
+    skipped = [r for r in results if not r.created]
+
+    for r in created:
+        click.echo(f"  [created] {r.file_path.name}")
+    for r in skipped:
+        click.echo(f"  [skipped] {r.file_path.name}")
+
+    click.echo(
+        f"\nDone: {len(created)} created, {len(skipped)} skipped "
+        f"({len(results)} total)."
+    )
+
+
 def _parse_and_filter(
     files: list[Path],
     status: str,
@@ -319,7 +452,7 @@ def _parse_and_filter(
             continue
 
         if tag and ex.metadata:
-            if not any(t in ex.metadata.tags for t in tag):
+            if not any(t in (ex.metadata.tags or []) for t in tag):
                 continue
         elif tag and not ex.metadata:
             continue
@@ -380,3 +513,110 @@ def export_moodle(
 
     if skipped:
         click.echo(f"({skipped} file(s) skipped due to errors or size)", err=True)
+
+
+@exercise.command(name="build-exam")
+@click.option(
+    "--taxonomy-level",
+    "-l",
+    multiple=True,
+    required=True,
+    help="Taxonomy level (repeatable).",
+)
+@click.option(
+    "--taxonomy-domain",
+    "-d",
+    multiple=True,
+    help="Taxonomy domain (repeatable, paired with --taxonomy-level by position).",
+)
+@click.option(
+    "--count",
+    "-n",
+    type=int,
+    default=5,
+    show_default=True,
+    help="Exercises per slot.",
+)
+@click.option(
+    "--points",
+    "-p",
+    type=float,
+    default=10.0,
+    show_default=True,
+    help="Points per exercise.",
+)
+@click.option("--title", type=str, default="Exam", show_default=True)
+@click.option(
+    "--instructions",
+    type=str,
+    default="",
+    help="Exam instructions text.",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    default=None,
+    help="Output file path. Defaults to stdout.",
+)
+@click.pass_context
+def build_exam_cmd(
+    ctx,
+    taxonomy_level: tuple[str, ...],
+    taxonomy_domain: tuple[str, ...],
+    count: int,
+    points: float,
+    title: str,
+    instructions: str,
+    output: str | None,
+) -> None:
+    """Build an exam by selecting exercises from the bank.
+
+    Each --taxonomy-level creates a slot. Pair --taxonomy-domain values
+    positionally with levels (missing domains default to empty string).
+    """
+    engine = _get_engine(ctx)
+
+    # Build slots — pair levels with domains by index
+    slots: list[ExerciseSlot] = []
+    for i, level in enumerate(taxonomy_level):
+        domain = taxonomy_domain[i] if i < len(taxonomy_domain) else ""
+        slots.append(
+            ExerciseSlot(
+                taxonomy_level=level,
+                taxonomy_domain=domain,
+                count=count,
+                points_per_item=points,
+            )
+        )
+
+    # Query DB for complete exercises, let select_exercises handle matching
+    with Session(engine) as session:
+        repo = SqlExerciseRepo(session)
+        pool = repo.find_by_filters(status="complete", limit=10_000)
+
+        selection = select_exercises(slots, pool)
+
+        doc = build_exam(selection, title=title, instructions=instructions)
+
+    # Report warnings
+    for w in doc.warnings:
+        click.echo(f"[WARN] {w}", err=True)
+
+    if selection.unfilled:
+        click.echo(
+            f"[WARN] {len(selection.unfilled)} slot(s) could not be fully filled.",
+            err=True,
+        )
+
+    click.echo(
+        f"% Built: {doc.exercise_count} exercise(s), {doc.total_points:g} total points",
+        err=True,
+    )
+
+    if output:
+        out_path = Path(output)
+        out_path.write_text(doc.content, encoding="utf-8")
+        click.echo(f"Exam written to {out_path}")
+    else:
+        click.echo(doc.content)

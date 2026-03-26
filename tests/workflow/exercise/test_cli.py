@@ -437,3 +437,302 @@ class TestExportMoodleCommand:
         assert result.exit_code == 0
         # \vc{E} should be expanded, not appear raw
         assert "\\vc{" not in result.output
+
+
+# ── Create command ─────────────────────────────────────────────────────────
+
+
+class TestCreateCommand:
+    def test_create_single_creates_file(self, runner, tmp_path):
+        result = runner.invoke(
+            exercise,
+            [
+                "create",
+                "my-ex-001",
+                "--output-dir",
+                str(tmp_path),
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        assert (tmp_path / "my-ex-001.tex").exists()
+
+    def test_create_single_reports_created(self, runner, tmp_path):
+        result = runner.invoke(
+            exercise,
+            ["create", "my-ex-001", "--output-dir", str(tmp_path)],
+        )
+        assert result.exit_code == 0
+        assert "my-ex-001" in result.output
+
+    def test_create_with_options(self, runner, tmp_path):
+        result = runner.invoke(
+            exercise,
+            [
+                "create",
+                "serway-ch01-005",
+                "--output-dir",
+                str(tmp_path),
+                "--type",
+                "essay",
+                "--difficulty",
+                "hard",
+                "--book",
+                "serway",
+                "--chapter",
+                "1",
+                "--exercise-num",
+                "5",
+                "--tag",
+                "physics",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        content = (tmp_path / "serway-ch01-005.tex").read_text()
+        assert "id: serway-ch01-005" in content
+        assert "difficulty: hard" in content
+        assert r"\exa[1]{5}" in content
+
+    def test_create_existing_skips_without_overwrite(self, runner, tmp_path):
+        path = tmp_path / "ex-001.tex"
+        path.write_text("EXISTING")
+
+        result = runner.invoke(
+            exercise,
+            ["create", "ex-001", "--output-dir", str(tmp_path)],
+        )
+        assert result.exit_code == 0
+        assert path.read_text() == "EXISTING"
+        assert "skip" in result.output.lower() or "exist" in result.output.lower()
+
+
+# ── Create-range command ───────────────────────────────────────────────────
+
+
+class TestCreateRangeCommand:
+    def test_create_range_creates_correct_files(self, runner, tmp_path):
+        result = runner.invoke(
+            exercise,
+            [
+                "create-range",
+                "--output-dir",
+                str(tmp_path),
+                "--book",
+                "serway",
+                "--chapter",
+                "1",
+                "--first",
+                "1",
+                "--last",
+                "5",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        for num in range(1, 6):
+            assert (tmp_path / f"serway-ch01-{num:03d}.tex").exists()
+
+    def test_create_range_reports_count(self, runner, tmp_path):
+        result = runner.invoke(
+            exercise,
+            [
+                "create-range",
+                "--output-dir",
+                str(tmp_path),
+                "--book",
+                "serway",
+                "--chapter",
+                "2",
+                "--first",
+                "10",
+                "--last",
+                "14",
+            ],
+        )
+        assert result.exit_code == 0
+        assert "5" in result.output  # 5 files created
+
+    def test_create_range_skips_existing(self, runner, tmp_path):
+        existing = tmp_path / "serway-ch01-001.tex"
+        existing.write_text("PRE-EXISTING")
+
+        result = runner.invoke(
+            exercise,
+            [
+                "create-range",
+                "--output-dir",
+                str(tmp_path),
+                "--book",
+                "serway",
+                "--chapter",
+                "1",
+                "--first",
+                "1",
+                "--last",
+                "3",
+            ],
+        )
+        assert result.exit_code == 0
+        assert existing.read_text() == "PRE-EXISTING"
+
+    def test_create_range_with_tags(self, runner, tmp_path):
+        result = runner.invoke(
+            exercise,
+            [
+                "create-range",
+                "--output-dir",
+                str(tmp_path),
+                "--book",
+                "halliday",
+                "--chapter",
+                "5",
+                "--first",
+                "1",
+                "--last",
+                "2",
+                "--tag",
+                "mechanics",
+                "--tag",
+                "forces",
+            ],
+        )
+        assert result.exit_code == 0
+        content = (tmp_path / "halliday-ch05-001.tex").read_text()
+        assert "mechanics" in content
+        assert "forces" in content
+
+
+# ── Build-exam command ────────────────────────────────────────────────────
+
+COMPLETE_TEX_RECORDAR = """\
+% ---
+% id: exam-ex-001
+% type: multichoice
+% difficulty: medium
+% taxonomy_level: Recordar
+% taxonomy_domain: Información
+% tags: [physics]
+% status: complete
+% ---
+\\question{
+  What is $2+2$?
+}{
+  $4$
+}
+"""
+
+COMPLETE_TEX_COMPRENDER = """\
+% ---
+% id: exam-ex-002
+% type: essay
+% difficulty: easy
+% taxonomy_level: Comprender
+% taxonomy_domain: Información
+% tags: [physics]
+% status: complete
+% ---
+\\question{
+  Explain Newton's first law.
+}{
+  Objects at rest stay at rest.
+}
+"""
+
+
+class TestBuildExamCommand:
+    def test_build_exam_cli_basic(self, runner, tmp_path, db_engine):
+        """With exercises synced, build-exam produces non-empty output."""
+        (tmp_path / "ex001.tex").write_text(COMPLETE_TEX_RECORDAR)
+        runner.invoke(exercise, ["sync", str(tmp_path)], obj={"engine": db_engine})
+
+        result = runner.invoke(
+            exercise,
+            [
+                "build-exam",
+                "--taxonomy-level",
+                "Recordar",
+                "--count",
+                "1",
+                "--points",
+                "10",
+                "--title",
+                "Test Exam",
+            ],
+            obj={"engine": db_engine},
+        )
+        assert result.exit_code == 0, result.output
+        assert len(result.output.strip()) > 0
+
+    def test_build_exam_cli_to_file(self, runner, tmp_path, db_engine):
+        """--output writes exam content to a file."""
+        (tmp_path / "ex001.tex").write_text(COMPLETE_TEX_RECORDAR)
+        runner.invoke(exercise, ["sync", str(tmp_path)], obj={"engine": db_engine})
+
+        out_file = tmp_path / "exam.tex"
+        result = runner.invoke(
+            exercise,
+            [
+                "build-exam",
+                "--taxonomy-level",
+                "Recordar",
+                "--count",
+                "1",
+                "--points",
+                "10",
+                "--output",
+                str(out_file),
+            ],
+            obj={"engine": db_engine},
+        )
+        assert result.exit_code == 0, result.output
+        assert out_file.exists()
+        assert len(out_file.read_text()) > 0
+
+    def test_build_exam_cli_no_matching(self, runner, tmp_path, db_engine):
+        """When no exercises match criteria, warns the user."""
+        (tmp_path / "ex001.tex").write_text(COMPLETE_TEX_COMPRENDER)
+        runner.invoke(exercise, ["sync", str(tmp_path)], obj={"engine": db_engine})
+
+        result = runner.invoke(
+            exercise,
+            [
+                "build-exam",
+                "--taxonomy-level",
+                "Recordar",
+                "--taxonomy-domain",
+                "Información",
+                "--count",
+                "2",
+                "--points",
+                "10",
+            ],
+            obj={"engine": db_engine},
+        )
+        assert result.exit_code == 0, result.output
+        # Should warn about unfilled slots
+        assert (
+            "warn" in result.output.lower()
+            or "unfill" in result.output.lower()
+            or "0" in result.output
+        )
+
+    def test_build_exam_cli_multiple_levels(self, runner, tmp_path, db_engine):
+        """Multiple --taxonomy-level creates multiple slots."""
+        (tmp_path / "ex001.tex").write_text(COMPLETE_TEX_RECORDAR)
+        (tmp_path / "ex002.tex").write_text(COMPLETE_TEX_COMPRENDER)
+        runner.invoke(exercise, ["sync", str(tmp_path)], obj={"engine": db_engine})
+
+        result = runner.invoke(
+            exercise,
+            [
+                "build-exam",
+                "--taxonomy-level",
+                "Recordar",
+                "--taxonomy-level",
+                "Comprender",
+                "--count",
+                "1",
+                "--points",
+                "10",
+            ],
+            obj={"engine": db_engine},
+        )
+        assert result.exit_code == 0, result.output

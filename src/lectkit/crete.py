@@ -1,4 +1,5 @@
 from re import M
+import warnings
 import click
 import subprocess
 from pathlib import Path
@@ -25,6 +26,15 @@ EXERCISE_TEMPLATE = "TNNE000.tex"
 VERBOSE = 1
 
 # loading current root files
+
+
+def _deprecation_warning() -> None:
+    warnings.warn(
+        "crete is deprecated. Use 'workflow exercise create' or "
+        "'workflow exercise create-range' instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
 
 @cli.command()
@@ -166,6 +176,7 @@ def create_book_solutions_files(book, output_dir):
 @click.option("--output", default=".")
 @click.option("--verbose", default=1)
 def init(file, name, output, verbose):
+    _deprecation_warning()
     global VERBOSE
     VERBOSE = verbose
     book = get_book(name)
