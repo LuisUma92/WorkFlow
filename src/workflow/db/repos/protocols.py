@@ -13,6 +13,7 @@ from typing import Protocol, runtime_checkable
 
 from workflow.db.models.bibliography import Author, BibEntry
 from workflow.db.models.academic import Content
+from workflow.db.models.exercises import Exercise
 from workflow.db.models.notes import Link, Note, Tag
 
 
@@ -34,7 +35,10 @@ class AuthorRepo(Protocol):
 @runtime_checkable
 class ContentRepo(Protocol):
     def get_by_bib_entry(self, bib_entry_id: int) -> list[Content]: ...
-    def get_exercises_for_chapter(self, bib_entry_id: int, chapter: int) -> list[Content]: ...
+
+    def get_exercises_for_chapter(
+        self, bib_entry_id: int, chapter: int
+    ) -> list[Content]: ...
 
 
 @runtime_checkable
@@ -59,10 +63,36 @@ class TagRepo(Protocol):
     def get_notes_by_tag(self, tag_name: str) -> list[Note]: ...
 
 
+@runtime_checkable
+class ExerciseRepo(Protocol):
+    def get_by_exercise_id(self, exercise_id: str) -> Exercise | None: ...
+
+    def find_by_filters(
+        self,
+        *,
+        tags: list[str] | None = None,
+        difficulty: str | None = None,
+        taxonomy_level: str | None = None,
+        taxonomy_domain: str | None = None,
+        status: str | None = None,
+        exercise_type: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[Exercise]: ...
+    def upsert(self, exercise: Exercise) -> Exercise: ...
+    def list_all(self, limit: int = 100, offset: int = 0) -> list[Exercise]: ...
+    def delete(self, exercise_id: str) -> bool: ...
+
+    def get_orphans(self) -> list[Exercise]:
+        """Exercises whose source_path no longer exists on disk."""
+        ...
+
+
 __all__ = [
     "AuthorRepo",
     "BibRepo",
     "ContentRepo",
+    "ExerciseRepo",
     "LinkRepo",
     "NoteRepo",
     "TagRepo",

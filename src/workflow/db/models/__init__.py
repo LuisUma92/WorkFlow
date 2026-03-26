@@ -43,6 +43,10 @@ from workflow.db.models.notes import (
     NoteTag,
     Tag,
 )
+from workflow.db.models.exercises import (
+    Exercise,
+    ExerciseOption,
+)
 
 __all__ = [
     # bibliography
@@ -80,4 +84,7 @@ __all__ = [
     "Note",
     "NoteTag",
     "Tag",
+    # exercises
+    "Exercise",
+    "ExerciseOption",
 ]

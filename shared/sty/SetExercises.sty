@@ -1,0 +1,34 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==< SetExercises.sty >========================================================
+%
+% Additional exercise macros for CLI-parseable metadata.
+% Extends SetCommands.sty and PartialCommands.sty (ADR-0005).
+%
+% These macros are OPTIONAL — exercise files without them compile normally.
+% Content is consumed by workflow CLI tools (parse, export-moodle).
+%
+% Usage:
+%   \qfeedback{General feedback text shown after answering.}
+%   \qdiagram{tikz-asset-id}
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% \qfeedback{text}
+% General feedback for a question — displayed after the student submits.
+% In LaTeX output: rendered as a paragraph when solutions mode is on.
+% In Moodle XML: maps to <generalfeedback>.
+\newcommand{\qfeedback}[1]{%
+  \ifthenelse{\boolean{solutions}}{%
+    \paragraph{Retroalimentación:} #1%
+  }{}%
+}
+
+% \qdiagram{tikz-asset-id}
+% Reference to a TikZ standalone diagram from the asset pipeline (Phase 2).
+% In LaTeX output: no-op (diagram is included via \includegraphics separately).
+% In Moodle XML: resolved to compiled SVG/PNG and embedded as <file>.
+% The argument is the asset ID, not a file path.
+\newcommand{\qdiagram}[1]{%
+  % No-op in LaTeX — diagram inclusion is handled by \includegraphics.
+  % This macro exists solely for CLI parsing and Moodle export.
+}

@@ -10,8 +10,11 @@ from __future__ import annotations
 from sqlalchemy import select, or_
 from sqlalchemy.orm import Session
 
+from pathlib import Path
+
 from workflow.db.models.bibliography import Author, BibEntry
 from workflow.db.models.academic import BibContent, Content
+from workflow.db.models.exercises import Exercise
 from workflow.db.models.notes import Link, Note, NoteTag, Tag
 
 
@@ -211,10 +214,108 @@ class SqlTagRepo:
         return list(self._session.scalars(stmt).all())
 
 
+# ── Exercise ────────────────────────────────────────────────────────────────
+
+
+class SqlExerciseRepo:
+    """Implements ExerciseRepo against the global workflow.db."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def get_by_exercise_id(self, exercise_id: str) -> Exercise | None:
+        stmt = select(Exercise).where(Exercise.exercise_id == exercise_id)
+        return self._session.scalars(stmt).first()
+
+    def find_by_filters(
+        self,
+        *,
+        tags: list[str] | None = None,
+        difficulty: str | None = None,
+        taxonomy_level: str | None = None,
+        taxonomy_domain: str | None = None,
+        status: str | None = None,
+        exercise_type: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[Exercise]:
+        stmt = select(Exercise)
+
+        if difficulty is not None:
+            stmt = stmt.where(Exercise.difficulty == difficulty)
+        if taxonomy_level is not None:
+            stmt = stmt.where(Exercise.taxonomy_level == taxonomy_level)
+        if taxonomy_domain is not None:
+            stmt = stmt.where(Exercise.taxonomy_domain == taxonomy_domain)
+        if status is not None:
+            stmt = stmt.where(Exercise.status == status)
+        if exercise_type is not None:
+            stmt = stmt.where(Exercise.type == exercise_type)
+        if tags is not None:
+            for tag in tags:
+                stmt = stmt.where(Exercise.tags.contains(f'"{tag}"'))
+
+        stmt = stmt.offset(offset).limit(limit)
+        return list(self._session.scalars(stmt).all())
+
+    # Fields that can be updated during upsert
+    _UPDATABLE_FIELDS = (
+        "source_path",
+        "file_hash",
+        "status",
+        "type",
+        "difficulty",
+        "taxonomy_level",
+        "taxonomy_domain",
+        "tags",
+        "concepts",
+        "content_id",
+        "book_id",
+        "default_grade",
+        "penalty",
+        "has_images",
+        "image_refs",
+        "diagram_id",
+        "option_count",
+    )
+
+    def upsert(self, exercise: Exercise) -> Exercise:
+        existing = self.get_by_exercise_id(exercise.exercise_id)
+        if existing is not None:
+            for field in self._UPDATABLE_FIELDS:
+                value = getattr(exercise, field)
+                if value is not None:
+                    setattr(existing, field, value)
+            self._session.flush()
+            return existing
+        else:
+            self._session.add(exercise)
+            self._session.flush()
+            return exercise
+
+    def list_all(self, limit: int = 100, offset: int = 0) -> list[Exercise]:
+        stmt = select(Exercise).offset(offset).limit(limit)
+        return list(self._session.scalars(stmt).all())
+
+    def delete(self, exercise_id: str) -> bool:
+        exercise = self.get_by_exercise_id(exercise_id)
+        if exercise is None:
+            return False
+        self._session.delete(exercise)
+        self._session.flush()
+        return True
+
+    def get_orphans(self) -> list[Exercise]:
+        """Return exercises whose source_path no longer exists on disk."""
+        all_exercises = list(self._session.scalars(select(Exercise)).all())
+        return [ex for ex in all_exercises if not Path(ex.source_path).exists()]
+
+
 __all__ = [
     "SqlAuthorRepo",
     "SqlBibRepo",
     "SqlContentRepo",
+    "SqlExerciseRepo",
     "SqlLinkRepo",
     "SqlNoteRepo",
     "SqlTagRepo",
