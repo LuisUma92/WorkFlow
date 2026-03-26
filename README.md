@@ -4,6 +4,8 @@
 
 Toolkit CLI en Python para gestionar proyectos LaTeX y un sistema unificado de Zettelkasten para escritura academica (tesis, cursos, ejercicios). Integra notas en Markdown, renderizado LaTeX, diagramas TikZ, banco de ejercicios, exportacion a Moodle, y gestion bibliografica a traves de multiples instituciones (UCR, UFide, UCIMED).
 
+**Wiki**: [Getting Started](docs/wiki/Getting-Started.md) | [Exercise Workflow](docs/wiki/Exercise-Workflow.md) | [Lectures](docs/wiki/Lectures-Workflow.md) | [Knowledge Graph](docs/wiki/Knowledge-Graph.md) | [LaTeX Macros](docs/wiki/LaTeX-Macros.md) | [Architecture](docs/wiki/Architecture.md)
+
 ## Instalacion
 
 ```bash
