@@ -14,9 +14,9 @@ decision_scope: component
 supersedes: null
 superseded_by: null
 related_adrs:
-  - "LATEX-STY/0001"
-  - "LATEX-STY/0008"
-  - "LATEX-STY/0003"
+  - "STY-0001"
+  - "STY-0008"
+  - "STY-0003"
 ---
 
 ## Context

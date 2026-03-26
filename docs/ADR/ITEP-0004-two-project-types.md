@@ -13,8 +13,8 @@ decision_scope: module
 supersedes: null
 superseded_by: null
 related_adrs:
-  - "ITEP/0002"
-  - "ITEP/0005"
+  - "ITEP-0002"
+  - "ITEP-0005"
 ---
 
 ## Context

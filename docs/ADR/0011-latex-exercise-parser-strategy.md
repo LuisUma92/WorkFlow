@@ -15,8 +15,8 @@ decision_scope: component
 supersedes: null
 superseded_by: null
 related_adrs:
-  - "Zettelkasten/0005"
-  - "Zettelkasten/0009"
+  - "0005"
+  - "0009"
 ---
 
 ## Context

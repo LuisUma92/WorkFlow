@@ -14,7 +14,7 @@ decision_scope: component
 supersedes: null
 superseded_by: null
 related_adrs:
-  - "ITEP/0002"
+  - "ITEP-0002"
 ---
 
 ## Context

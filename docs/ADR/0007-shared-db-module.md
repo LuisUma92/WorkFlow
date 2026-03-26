@@ -15,9 +15,9 @@ decision_scope: system
 supersedes: null
 superseded_by: null
 related_adrs:
-  - "Zettelkasten/0003"
-  - "Zettelkasten/0004"
-  - "Zettelkasten/0005"
+  - "0003"
+  - "0004"
+  - "0005"
 ---
 
 ## Context
