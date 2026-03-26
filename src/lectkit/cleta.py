@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 from appdirs import user_config_dir
-import subprocess
 import click
 
 # loading User config folder
@@ -63,7 +62,7 @@ def clean(path):
     toClean = getExt()
     for term in toClean:
         # print(Path(path,term))
-        subprocess.run("rm " + str(path / term), shell=True)
+        (path / term).unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

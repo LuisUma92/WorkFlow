@@ -179,6 +179,11 @@ def communicate_db(
             log(f"Connected to MariaDB version {db_Info}", 0)
             cursor = dbcnx.cursor()
             log(msn, 2)
+            # WARNING: msn is constructed via string formatting in callers
+            # (format_select, communicate_db call sites). Input values come
+            # from BibTeX data — treat as potentially untrusted. Migrate to
+            # parameterized queries (cursor.execute(sql, params)) when
+            # refactoring this module.
             cursor.execute(msn)
             if query:
                 output = cursor.fetchall()
