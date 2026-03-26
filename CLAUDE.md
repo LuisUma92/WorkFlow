@@ -83,6 +83,10 @@ Architecture decisions in `docs/ADR/Zettelkasten/`:
 | 0006 | TikZ standalone asset pipeline | Accepted |
 | 0007 | Shared DB module with repository API | Accepted |
 | 0008 | XDG directory layout | Accepted |
+| 0009 | Exercise module boundary + shared LaTeX parsing | Accepted |
+| 0010 | Exercise persistence: file as truth, DB as index | Accepted |
+| 0011 | LaTeX parser: brace-counting extractor | Accepted |
+| 0012 | Moodle XML export with LaTeX normalization | Accepted |
 
 ## Build & CI
 
