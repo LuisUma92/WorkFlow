@@ -4,7 +4,7 @@
 
 Toolkit CLI en Python para gestionar proyectos LaTeX y un sistema unificado de Zettelkasten para escritura academica (tesis, cursos, ejercicios). Integra notas en Markdown, renderizado LaTeX, diagramas TikZ, banco de ejercicios, exportacion a Moodle, y gestion bibliografica a traves de multiples instituciones (UCR, UFide, UCIMED).
 
-**Wiki**: [Getting Started](docs/wiki/Getting-Started.md) | [Exercise Workflow](docs/wiki/Exercise-Workflow.md) | [Lectures](docs/wiki/Lectures-Workflow.md) | [Knowledge Graph](docs/wiki/Knowledge-Graph.md) | [LaTeX Macros](docs/wiki/LaTeX-Macros.md) | [Architecture](docs/wiki/Architecture.md)
+**Wiki**: [Getting Started](docs/wiki/Getting-Started.md) | [Zettelkasten](docs/wiki/Zettelkasten-Notes.md) | [Exercises](docs/wiki/Exercise-Workflow.md) | [Lectures](docs/wiki/Lectures-Workflow.md) | [Graph](docs/wiki/Knowledge-Graph.md) | [Macros](docs/wiki/LaTeX-Macros.md) | [Architecture](docs/wiki/Architecture.md)
 
 ## Instalacion
 
@@ -22,17 +22,18 @@ pip install -e .
 
 Opcional: `networkx` (para clustering en el grafo de conocimiento)
 
-Python >= 3.10
+Python >= 3.12
 
 ## Vista general
 
-WorkFlow organiza el trabajo academico en torno a cinco pilares:
+WorkFlow organiza el trabajo academico en torno a seis pilares:
 
-1. **Proyectos LaTeX** (`inittex`, `relink`) — Scaffolding y gestion de directorios para cursos y tesis
-2. **Banco de ejercicios** (`workflow exercise`) — Parseo, indexacion, generacion, seleccion y exportacion de ejercicios
-3. **Gestion de cursos** (`workflow lectures`) — Escaneo de archivos, enlaces cruzados, construccion de evaluaciones
-4. **Grafo de conocimiento** (`workflow graph`) — Analisis de conexiones entre notas, ejercicios, bibliografia y cursos
-5. **Pipeline TikZ** (`workflow tikz`) — Compilacion incremental de diagramas standalone a PDF/SVG
+1. **Zettelkasten** (`workflow notes`) — Notas en Markdown (Obsidian-compatible), inicializacion de workspace, enlaces wiki
+2. **Proyectos LaTeX** (`inittex`, `relink`) — Scaffolding y gestion de directorios para cursos y tesis
+3. **Banco de ejercicios** (`workflow exercise`) — Parseo, indexacion, generacion, seleccion y exportacion de ejercicios
+4. **Gestion de cursos** (`workflow lectures`) — Escaneo de archivos, enlaces cruzados, construccion de evaluaciones
+5. **Grafo de conocimiento** (`workflow graph`) — Analisis de conexiones entre notas, ejercicios, bibliografia y cursos
+6. **Pipeline TikZ** (`workflow tikz`) — Compilacion incremental de diagramas standalone a PDF/SVG
 
 ## Arquitectura
 
@@ -48,7 +49,8 @@ SQLAlchemy 2.0 con `Mapped[]` es el unico ORM. El acceso a datos pasa por interf
 ### Principios clave
 
 - **Archivo como fuente de verdad**: Los archivos `.tex` contienen el contenido de ejercicios y notas. La DB almacena solo metadatos e indices (ADR-0010)
-- **Extender, nunca reemplazar**: Los macros de ejercicio (`\question`, `\qpart`, `\pts`) extienden los existentes en `shared/sty/` (ADR-0005)
+- **Markdown como capa canonica**: Las notas se escriben en Markdown con YAML frontmatter; LaTeX es formato derivado (ADR-0002)
+- **Extender, nunca reemplazar**: Los macros de ejercicio (`\question`, `\qpart`, `\pts`) extienden los existentes en `shared/latex/sty/` (ADR-0005). `\zlink` es alias de `\excref` (ADR-0014)
 - **Normalizacion LaTeX**: Macros personalizados se expanden a LaTeX estandar antes de exportar a Moodle (ADR-0012)
 - **Layout XDG**: Configuracion en `~/.config/workflow/`, datos en `~/.local/share/workflow/` (ADR-0008)
 - **Inmutabilidad**: Todos los tipos de dominio usan `@dataclass(frozen=True)` con `tuple` en lugar de `list`
@@ -59,10 +61,58 @@ SQLAlchemy 2.0 con `Mapped[]` es el unico ORM. El acceso a datos pasa por interf
 
 | Comando    | Modulo              | Descripcion                             |
 | ---------- | ------------------- | --------------------------------------- |
-| `workflow` | `main:cli`          | CLI principal (exercise, lectures, graph, tikz, validate) |
+| `workflow` | `main:cli`          | CLI principal (notes, exercise, lectures, graph, tikz, validate) |
 | `inittex`  | `itep.create:cli`   | Crear o clonar un proyecto LaTeX        |
 | `relink`   | `itep.links:cli`    | Recrear symlinks desde la base de datos |
 | `cleta`    | `lectkit.cleta:cli` | Limpiar archivos auxiliares de TeX      |
+
+### workflow notes — Zettelkasten
+
+Inicializacion del workspace y gestion de notas en Markdown (Obsidian-compatible).
+
+```bash
+# Inicializar workspace con directorios de notas por proyecto
+workflow notes init ~/Documents/01-U/
+```
+
+Crea la estructura:
+
+```
+~/Documents/01-U/
+  .workflow/config.yaml              # Marcador de workspace
+  00ZZ-Vault/                        # Zona de triage global
+    inbox/                           # Notas fugaces sin asignar
+    templates/                       # Templates: permanent.md, literature.md, fleeting.md
+  10MC-ClassicalMechanics/
+    notes/                           # Vault Obsidian por proyecto
+    slipbox.db                       # DB local de notas
+  40EM-Electromagnetism/
+    notes/
+    slipbox.db
+```
+
+Cada `MainTopic` (10MC, 40EM, 50MQ) funciona como:
+- Un **GeneralProject** de ITeP (salida LaTeX)
+- Un **vault Zettelkasten** (notas Markdown que alimentan los documentos)
+
+#### Macros Zettelkasten
+
+| Macro | Archivo | Uso |
+|-------|---------|-----|
+| `\zlink{id}` | SetZettelkasten.sty | Referencia cruzada entre notas (alias de `\excref`) |
+| `\zlabel{id}` | SetZettelkasten.sty | Ancla ligera para un punto de referencia |
+| `\begin{zettelnote}{id}{Titulo}` | SetZettelkasten.sty | Entorno semantico de nota |
+
+En Markdown, las referencias usan wiki-links: `[[20260326-gauss-law]]` o `[[id|texto]]`.
+El pipeline Pandoc convierte `[[id]]` → `\zlink{id}` al compilar a LaTeX.
+
+#### Tipos de nota
+
+| Tipo | Uso | Formato frontmatter |
+|------|-----|---------------------|
+| `permanent` | Ideas propias, conceptos consolidados | `type: permanent` |
+| `literature` | Notas sobre lecturas y articulos | `type: literature`, `bibkey: serway2019` |
+| `fleeting` | Ideas rapidas, pendientes de procesar | `type: fleeting` |
 
 ### workflow exercise — Banco de ejercicios
 
@@ -359,6 +409,10 @@ Documentadas en `docs/ADR/` (ver [INDEX.md](docs/ADR/INDEX.md)):
 | 0010 | Persistencia: archivo como verdad, DB como indice | Aceptado |
 | 0011 | Parser LaTeX con extraccion por conteo de llaves | Aceptado |
 | 0012 | Exportacion Moodle XML con normalizacion LaTeX | Aceptado |
+| 0013 | Consolidacion: sesiones, desacople, CLI split | Aceptado |
+| 0014 | Implementacion Zettelkasten: macros, modelo Note, workspace init | Aceptado |
+| LZK-0000..0004 | Motor LaTeXZettel (5 ADRs: arquitectura, RPC, Pandoc, refs, DI) | Aceptado |
+| PRISMA-0000..0004 | PRISMAreview (5 ADRs: arquitectura, router, import, screening, modelo) | Aceptado |
 
 ## Estructura del modulo
 
@@ -366,32 +420,37 @@ Documentadas en `docs/ADR/` (ver [INDEX.md](docs/ADR/INDEX.md)):
 src/
   workflow/
     db/           # Base de datos unificada (SQLAlchemy 2.0, repos Protocol)
-    tikz/         # Pipeline de diagramas TikZ
-    validation/   # Validacion de frontmatter
-    latex/        # Parsing compartido (llaves, comentarios, normalizacion)
-    exercise/     # Banco de ejercicios (parser, moodle, generator, selector, exam_builder)
+    notes/        # Zettelkasten: inicializacion de workspace, gestion de notas
+    exercise/     # Banco de ejercicios (parser, moodle, generator, selector, exam_builder, service)
     lecture/      # Integracion de cursos (scanner, splitter, linker, eval_builder)
     graph/        # Grafo de conocimiento (dominio, collectors, analisis, DOT, TikZ, clustering)
+    latex/        # Parsing compartido (llaves, comentarios, normalizacion)
+    tikz/         # Pipeline de diagramas TikZ
+    validation/   # Validacion de frontmatter
   itep/           # Scaffolding de proyectos LaTeX
-  latexzettel/    # Motor Zettelkasten + servidor JSONL + cliente Neovim
-  lectkit/        # Utilidades legado (cleta, nofi, crete — deprecado)
+  latexzettel/    # Motor Zettelkasten + servidor JSONL/RPC (24 rutas) + cliente Neovim
+  lectkit/        # Utilidades (cleta)
   PRISMAreview/   # App web Django para revision sistematica PRISMA
   appfunc/        # Utilidades compartidas
 shared/
-  sty/            # 17 archivos de estilo LaTeX
-  templates/      # Templates para notas, ejercicios, clases
+  latex/
+    sty/          # 18 archivos de estilo LaTeX (incl. SetZettelkasten.sty)
+    cls/          # texnote.cls y preambulos
+    templates/    # Templates para notas, ejercicios, clases
+    pandoc/       # Pipeline Pandoc: filter.lua, template.tex, preprocess.py
 ```
 
 ## Tests
 
 ```bash
-# Todos los tests (411 tests)
+# Todos los tests (484 tests)
 uv run pytest
 
 # Solo un modulo
 uv run pytest tests/workflow/exercise/
 uv run pytest tests/workflow/graph/
 uv run pytest tests/workflow/lecture/
+uv run pytest tests/workflow/notes/
 
 # Con cobertura
 uv run pytest --cov=src/workflow --cov-report=term-missing
@@ -401,12 +460,12 @@ uv run pytest --cov=src/workflow --cov-report=term-missing
 
 ```bash
 # Errores criticos (CI gate)
-uv run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+uv run flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
 
 # Completo (informativo)
-uv run flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+uv run flake8 src/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 ```
 
 ## CI
 
-GitHub Actions en push/PR a `master`. Tests en Python 3.9, 3.10, 3.11.
+GitHub Actions en push/PR a `master`. Tests en Python 3.12, 3.13, 3.14.

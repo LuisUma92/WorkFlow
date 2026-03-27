@@ -8,20 +8,24 @@ Descripcion de la arquitectura del sistema WorkFlow, sus modulos, patrones y dec
 src/
   workflow/           # Core del sistema unificado
     db/               # Base de datos (SQLAlchemy 2.0)
+    notes/            # Zettelkasten: workspace init, gestion de notas
+    exercise/         # Banco de ejercicios (parser, moodle, generator, selector, service)
+    lecture/          # Integracion de cursos (scanner, splitter, linker, eval_builder)
+    graph/            # Grafo de conocimiento (dominio, collectors, DOT, TikZ, clustering)
     latex/            # Parsing compartido de LaTeX
-    exercise/         # Banco de ejercicios
-    lecture/          # Integracion de cursos
-    graph/            # Grafo de conocimiento
     tikz/             # Pipeline de diagramas
     validation/       # Validacion de frontmatter
   itep/               # Scaffolding de proyectos LaTeX
-  latexzettel/        # Motor Zettelkasten + servidor JSONL
-  lectkit/            # Utilidades legado (cleta)
+  latexzettel/        # Motor Zettelkasten + servidor JSONL/RPC (24 rutas)
+  lectkit/            # Utilidades (cleta)
   PRISMAreview/       # App web Django (PRISMA)
   appfunc/            # Utilidades compartidas
 shared/
-  sty/                # 17 archivos de estilo LaTeX
-  templates/          # Templates para notas, ejercicios, clases
+  latex/
+    sty/              # 18 archivos de estilo LaTeX (incl. SetZettelkasten.sty)
+    cls/              # texnote.cls y preambulos
+    templates/        # Templates para notas, ejercicios, clases
+    pandoc/           # Pipeline Pandoc (filter.lua, template.tex, preprocess.py)
 ```
 
 ## Base de datos hibrida ([ADR-0003](../ADR/0003-hybrid-database.md))
