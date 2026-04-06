@@ -57,8 +57,9 @@ These ADRs document the custom LaTeX packages in `shared/sty/`.
 
 | ADR | Title | Domain | Status | Depends On |
 |-----|-------|--------|--------|------------|
-| [0001](0001-Zettelkasten-system.md) | Zettelkasten note semantic layer | Zettelkasten | Accepted | — |
+| [0001](0001-Zettelkasten-system.md) | Zettelkasten note semantic layer | Zettelkasten | Superseded by 0015 | — |
 | [0002](0002-Unified-knowledge.md) | Markdown as canonical knowledge layer | Zettelkasten | Accepted | 0001 |
+| [0015](0015-zettelkasten-dailly-work.md) | Zettelkasten daily work: notes, demos, images, exercises | Zettelkasten | Accepted | 0001, 0002 |
 
 ## Exercise System
 

@@ -1,12 +1,19 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %==< SetZettelkasten.sty >=====================================================
 %
-% Zettelkasten semantic layer macros (ADR-0001, ADR-0014).
-% Provides \zlink (alias for \excref), \zlabel, and zettelnote environment.
+% Zettelkasten semantic layer macros (ADR-0001, ADR-0014, ADR-0015).
+% Provides:
+%   \zlink      — cross-reference (alias for \excref)
+%   \zlabel     — lightweight anchor
+%   zettelnote  — semantic note wrapper
+%   demonstration — mathematical demonstration/example environment
 %
 % Requires: texnote.cls or hyperref package
+% Optional: amsmath, amsthm (for demonstration numbering)
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%==< Note identity and linking >===============================================
 
 % \zlink{id} — semantic cross-reference (alias for \excref from texnote.cls)
 % If \excref is defined (texnote.cls loaded), alias it.
@@ -27,3 +34,36 @@
   \paragraph{#2}\label{zk:#1}%
   \marginpar{\tiny\texttt{#1}}%
 }{\par\medskip}
+
+%==< Mathematical demonstrations (ADR-0015 point 8) >=========================
+%
+% For worked examples, proofs, and derivations that live as standalone
+% LaTeX files and are referenced from Markdown notes.
+%
+% Usage:
+%   \begin{demonstration}{Title}
+%     Step-by-step derivation...
+%   \end{demonstration}
+%
+%   \begin{demonstration}[short-label]{Full Title}
+%     Derivation with custom label for \ref{demo:short-label}
+%   \end{demonstration}
+
+\newcounter{demo}[section]
+\renewcommand{\thedemo}{\thesection.\arabic{demo}}
+
+\newenvironment{demonstration}[2][]{%
+  \refstepcounter{demo}%
+  \par\medskip\noindent%
+  \textbf{Ejemplo \thedemo\quad #2}%
+  \ifx\\#1\\%
+  \else%
+    \label{demo:#1}%
+  \fi%
+  \par\smallskip\noindent\itshape
+}{%
+  \par\medskip\upshape
+}
+
+% \demoref{label} — reference a demonstration by label
+\newcommand{\demoref}[1]{Ejemplo~\ref{demo:#1}}

@@ -26,6 +26,8 @@ class NoteFrontmatter:
     created: str | None = None
     concepts: tuple[str, ...] = ()
     references: tuple[str, ...] = ()
+    exercises: tuple[str, ...] = ()
+    images: tuple[str, ...] = ()
     type: str = "permanent"
 
 
@@ -84,6 +86,22 @@ def validate_note_frontmatter(data: dict) -> tuple[NoteFrontmatter | None, list[
         errors.append("all items in 'references' must be strings")
         references = []
 
+    exercises = data.get("exercises", [])
+    if not isinstance(exercises, list):
+        errors.append("'exercises' must be a list")
+        exercises = []
+    elif not all(isinstance(e, str) for e in exercises):
+        errors.append("all items in 'exercises' must be strings")
+        exercises = []
+
+    images = data.get("images", [])
+    if not isinstance(images, list):
+        errors.append("'images' must be a list")
+        images = []
+    elif not all(isinstance(i, str) for i in images):
+        errors.append("all items in 'images' must be strings")
+        images = []
+
     note_type = data.get("type", "permanent")
     if note_type not in _VALID_NOTE_TYPES:
         errors.append(
@@ -101,6 +119,8 @@ def validate_note_frontmatter(data: dict) -> tuple[NoteFrontmatter | None, list[
             created=created,
             concepts=tuple(concepts),
             references=tuple(references),
+            exercises=tuple(exercises),
+            images=tuple(images),
             type=note_type,
         ),
         [],

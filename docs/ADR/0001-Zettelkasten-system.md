@@ -1,7 +1,7 @@
 ---
 adr: 0001
 title: "Zettelkasten Note Semantic Layer in LaTeX"
-status: Accepted
+status: Superseded
 date: 2026-03-24
 authors:
   - Luis Fernando Umaña Castro
@@ -12,7 +12,7 @@ tags:
   - latex
 decision_scope: system
 supersedes: null
-superseded_by: null
+superseded_by: "0015"
 related_adrs:
   - "0002"
 ---

@@ -128,6 +128,8 @@ def _create_note_templates(templates_dir: Path) -> None:
             "created: \n"
             "tags: []\n"
             "concepts: []\n"
+            "exercises: []\n"
+            "images: []\n"
             "---\n\n"
             "## Summary\n\n"
             "## Key ideas\n\n"

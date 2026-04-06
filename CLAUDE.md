@@ -113,6 +113,7 @@ Architecture decisions in `docs/ADR/` (see [INDEX.md](docs/ADR/INDEX.md) for ful
 | 0012 | Moodle XML export with LaTeX normalization | Accepted |
 | 0013 | Codebase consolidation: sessions, decoupling, CLI split | Accepted |
 | 0014 | Zettelkasten implementation: macros, note model, workspace init | Accepted |
+| 0015 | Zettelkasten daily work: notes, demos, images, exercises | Accepted |
 | LZK-0000 | LaTeXZettel 7-layer engine architecture | Accepted |
 | LZK-0001 | JSONL/NDJSON RPC server for Neovim (24 routes) | Accepted |
 | LZK-0002 | Pandoc pipeline: Markdown ↔ LaTeX with wiki-links | Accepted |
