@@ -73,22 +73,35 @@ function M.validate_frontmatter()
 end
 
 function M.list_recent()
-  local client = M.client()
-  local server = require("workflow.server")
-  server.ensure_running(client, M._config)
-  client:request("notes.list_recent", { n = 20 }, function(result, err)
-    vim.schedule(function()
-      if err then
-        vim.notify("Error: " .. vim.inspect(err), vim.log.levels.ERROR, { title = "workflow" })
-        return
-      end
-      local lines = { "Recent notes:" }
-      for i, it in ipairs(result.items or {}) do
-        table.insert(lines, ("%02d  %s"):format(i, it.filename))
-      end
-      UI.show_output("Recent Notes", lines)
-    end)
-  end)
+  -- List recent .md files from the vault directory (file-based, no DB dependency)
+  if not M._config or not M._config.workspace_dir then
+    vim.notify("No workspace configured", vim.log.levels.WARN, { title = "workflow" })
+    return
+  end
+
+  local workspace = vim.fn.expand(M._config.workspace_dir)
+  local vault = workspace .. "/" .. M._config.vault_dir
+  -- Find all .md files in the vault, sorted by modification time (newest first)
+  local cmd = string.format(
+    "find %s -name '*.md' -not -path '*/.obsidian/*' -not -path '*/templates/*' -printf '%%T@ %%p\\n' | sort -rn | head -30",
+    vim.fn.shellescape(vault)
+  )
+  local output = vim.fn.systemlist(cmd)
+
+  local lines = { "Recent notes (by modification time):" }
+  for i, entry in ipairs(output) do
+    local _, path = entry:match("^(%S+)%s+(.+)$")
+    if path then
+      local rel = path:gsub("^" .. vim.pesc(workspace) .. "/", "")
+      table.insert(lines, string.format("%02d  %s", i, rel))
+    end
+  end
+
+  if #lines == 1 then
+    table.insert(lines, "  (no .md files found)")
+  end
+
+  UI.show_output("Recent Notes", lines)
 end
 
 function M.server_start()

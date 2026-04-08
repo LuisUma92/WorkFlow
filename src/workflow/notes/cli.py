@@ -32,11 +32,6 @@ def init_cmd(workspace: str) -> None:
         for d in result.directories_created:
             click.echo(f"  + {d}")
 
-    if result.projects_initialized:
-        click.echo(f"\nProjects initialized ({len(result.projects_initialized)}):")
-        for p in result.projects_initialized:
-            click.echo(f"  + {p}/slipbox.db")
-
     if result.already_existed and not result.directories_created:
         click.echo("Workspace already initialized — nothing to do.")
 

@@ -5,16 +5,11 @@ local M = {}
 
 function M.ensure_running(client, config)
   if client:is_running() then return true end
-  -- Set working directory to workspace for server
-  local prev_cwd = vim.fn.getcwd()
+  -- Pass workspace as cwd to jobstart (don't change Neovim's cwd)
   if config.workspace_dir then
-    vim.cmd("cd " .. vim.fn.fnameescape(config.workspace_dir))
+    client.config.cwd = vim.fn.expand(config.workspace_dir)
   end
-  local ok = client:start()
-  if prev_cwd ~= vim.fn.getcwd() then
-    vim.cmd("cd " .. vim.fn.fnameescape(prev_cwd))
-  end
-  return ok
+  return client:start()
 end
 
 function M.health(client)

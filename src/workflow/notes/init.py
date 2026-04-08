@@ -1,4 +1,9 @@
-"""Workspace initialization for WorkFlow Zettelkasten projects."""
+"""Workspace initialization for WorkFlow Zettelkasten system.
+
+Single-vault model: all Markdown notes live in 0000AA-Vault/.
+Project directories (0010MC-, 0040EM-, etc.) are LaTeX output only.
+One slipbox.db at the workspace root indexes all notes.
+"""
 
 from __future__ import annotations
 
@@ -10,10 +15,10 @@ from workflow.db.engine import init_local_db
 __all__ = [
     "InitResult",
     "init_workspace",
+    "VAULT_NAME",
 ]
 
-# Special two-letter suffixes for 00XX directories that should be skipped
-_SPECIAL_SUFFIXES = {"AA", "BB", "EE", "II", "ZZ"}
+VAULT_NAME = "0000AA-Vault"
 
 
 @dataclass(frozen=True)
@@ -21,7 +26,6 @@ class InitResult:
     """Result of workspace initialization."""
 
     workspace_dir: Path
-    projects_initialized: tuple[str, ...]
     directories_created: tuple[str, ...]
     already_existed: tuple[str, ...]
     warnings: tuple[str, ...]
@@ -30,19 +34,19 @@ class InitResult:
 def init_workspace(workspace_dir: Path) -> InitResult:
     """Initialize a WorkFlow workspace directory.
 
-    Creates:
+    Single-vault model:
     - .workflow/config.yaml (workspace marker)
-    - 00ZZ-Vault/inbox/ (global triage zone for fleeting notes)
-    - 00ZZ-Vault/templates/ (note templates)
-    - For each existing project directory (matches [0-9]*-*/ pattern):
-      - notes/ subdirectory (Markdown vault)
-      - slipbox.db (if not exists)
+    - 0000AA-Vault/inbox/ (fleeting notes landing zone)
+    - 0000AA-Vault/templates/ (note templates)
+    - slipbox.db at workspace root (single DB for all notes)
 
-    Idempotent — safe to run on existing workspace.
+    Does NOT create per-project notes/ directories.
+    Project directories are LaTeX output only.
+
+    Idempotent -- safe to run on existing workspace.
     """
     dirs_created: list[str] = []
     already_existed: list[str] = []
-    projects_init: list[str] = []
     warnings: list[str] = []
 
     # Create workspace marker
@@ -51,12 +55,16 @@ def init_workspace(workspace_dir: Path) -> InitResult:
         workflow_dir.mkdir(parents=True)
         dirs_created.append(".workflow/")
         config = workflow_dir / "config.yaml"
-        config.write_text(f"workspace: {workspace_dir}\nversion: 1\n")
+        config.write_text(
+            f"workspace: {workspace_dir}\n"
+            f"vault: {VAULT_NAME}\n"
+            f"version: 2\n"
+        )
     else:
         already_existed.append(".workflow/")
 
-    # Create global vault
-    vault = workspace_dir / "00ZZ-Vault"
+    # Create central vault
+    vault = workspace_dir / VAULT_NAME
     inbox = vault / "inbox"
     templates = vault / "templates"
 
@@ -68,52 +76,23 @@ def init_workspace(workspace_dir: Path) -> InitResult:
         else:
             already_existed.append(rel)
 
-    # Create note templates if they don't exist
+    # Create note templates
     _create_note_templates(templates)
 
-    # Initialize project directories
-    for entry in sorted(workspace_dir.iterdir()):
-        if not entry.is_dir():
-            continue
-        name = entry.name
-        # Must start with a digit and contain a hyphen
-        if not name[0].isdigit() or "-" not in name:
-            continue
-        # Skip special 00XX directories
-        if _is_special_dir(name):
-            continue
-
-        # This is a project directory — initialize notes/
-        notes_dir = entry / "notes"
-        rel = f"{name}/notes/"
-        if not notes_dir.exists():
-            notes_dir.mkdir()
-            dirs_created.append(rel)
-        else:
-            already_existed.append(rel)
-
-        # Create slipbox.db if not exists
-        slipbox = entry / "slipbox.db"
-        if not slipbox.exists():
-            init_local_db(project_root=entry)
-            projects_init.append(name)
+    # Create single slipbox.db at workspace root
+    slipbox = workspace_dir / "slipbox.db"
+    if not slipbox.exists():
+        init_local_db(project_root=workspace_dir)
+        dirs_created.append("slipbox.db")
+    else:
+        already_existed.append("slipbox.db")
 
     return InitResult(
         workspace_dir=workspace_dir,
-        projects_initialized=tuple(projects_init),
         directories_created=tuple(dirs_created),
         already_existed=tuple(already_existed),
         warnings=tuple(warnings),
     )
-
-
-def _is_special_dir(name: str) -> bool:
-    """Return True if this is a special 00XX- directory that should be skipped."""
-    if not name.startswith("00"):
-        return False
-    # Check the two characters after "00"
-    suffix = name[2:4]
-    return suffix in _SPECIAL_SUFFIXES
 
 
 def _create_note_templates(templates_dir: Path) -> None:
@@ -128,6 +107,7 @@ def _create_note_templates(templates_dir: Path) -> None:
             "created: \n"
             "tags: []\n"
             "concepts: []\n"
+            "references: []\n"
             "exercises: []\n"
             "images: []\n"
             "---\n\n"

@@ -131,12 +131,25 @@ end
 
 ---@param self WorkflowClient
 local function _stdout_on_data(self, data)
+	-- jobstart on_stdout delivers chunks as a table of strings.
+	-- Lines are split by \n, but a single JSON response may span multiple chunks.
+	-- We buffer partial lines in self.stdout_buf and process complete lines.
 	if type(data) ~= "table" then
 		return
 	end
-	for _, line in ipairs(data) do
-		if line ~= nil then
-			_handle_stdout_line(self, line)
+	for i, chunk in ipairs(data) do
+		if chunk == nil then
+			-- skip
+		elseif i == 1 then
+			-- First chunk continues any buffered partial line
+			self.stdout_buf = (self.stdout_buf or "") .. chunk
+		else
+			-- Subsequent chunks mean a newline was received; process the buffered line
+			local complete_line = self.stdout_buf or ""
+			self.stdout_buf = chunk
+			if complete_line ~= "" then
+				_handle_stdout_line(self, complete_line)
+			end
 		end
 	end
 end
@@ -171,6 +184,7 @@ function M.start(self)
 		stdin = "pipe",
 		stdout_buffered = false,
 		stderr_buffered = false,
+		cwd = self.config.cwd or nil,
 		on_stdout = function(_, data, _)
 			_stdout_on_data(self, data)
 		end,
