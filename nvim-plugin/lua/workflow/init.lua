@@ -1,9 +1,11 @@
 -- lua/workflow/init.lua
--- WorkFlow Neovim plugin — Zettelkasten daily workflow
+-- WorkFlow Neovim plugin — complements obsidian.nvim with DB sync,
+-- validation, server RPC, and exercise/image/graph integration.
+--
+-- Note creation and wiki-link navigation are handled by obsidian.nvim.
 
 local Client = require("workflow.client")
 local Config = require("workflow.config")
-local UI = require("workflow.ui")
 
 local M = {}
 
@@ -30,16 +32,6 @@ function M.setup(opts)
   if M._config.keymaps then
     require("workflow.keymaps").setup(M._config.keymap_prefix, M)
   end
-
-  -- Set up buffer-local gf for markdown files already open
-  for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-    if vim.api.nvim_buf_is_loaded(bufnr) then
-      local name = vim.api.nvim_buf_get_name(bufnr)
-      if name:match("%.md$") and Config.is_in_workspace(name, M._config.workspace_dir) then
-        require("workflow.keymaps").setup_buffer_gf(bufnr, M._config)
-      end
-    end
-  end
 end
 
 function M.client()
@@ -47,11 +39,7 @@ function M.client()
   return M._client
 end
 
--- Public actions
-
-function M.new_note(note_type)
-  require("workflow.templates").prompt_new_note(note_type or "permanent", M._config)
-end
+-- Public actions (unique to workflow, not in obsidian.nvim)
 
 function M.sync_current()
   local client = M.client()
@@ -72,8 +60,15 @@ function M.validate_frontmatter()
   require("workflow.frontmatter").validate_buffer(vim.api.nvim_get_current_buf())
 end
 
-function M.list_recent()
-  -- List recent .md files from the vault directory (file-based, no DB dependency)
+function M.promote_note()
+  local bufnr = vim.api.nvim_get_current_buf()
+  local filepath = vim.api.nvim_buf_get_name(bufnr)
+
+  if not filepath or filepath == "" then
+    vim.notify("No file open", vim.log.levels.WARN, { title = "workflow" })
+    return
+  end
+
   if not M._config or not M._config.workspace_dir then
     vim.notify("No workspace configured", vim.log.levels.WARN, { title = "workflow" })
     return
@@ -81,27 +76,49 @@ function M.list_recent()
 
   local workspace = vim.fn.expand(M._config.workspace_dir)
   local vault = workspace .. "/" .. M._config.vault_dir
-  -- Find all .md files in the vault, sorted by modification time (newest first)
-  local cmd = string.format(
-    "find %s -name '*.md' -not -path '*/.obsidian/*' -not -path '*/templates/*' -printf '%%T@ %%p\\n' | sort -rn | head -30",
-    vim.fn.shellescape(vault)
-  )
-  local output = vim.fn.systemlist(cmd)
+  local inbox = vault .. "/inbox"
 
-  local lines = { "Recent notes (by modification time):" }
-  for i, entry in ipairs(output) do
-    local _, path = entry:match("^(%S+)%s+(.+)$")
-    if path then
-      local rel = path:gsub("^" .. vim.pesc(workspace) .. "/", "")
-      table.insert(lines, string.format("%02d  %s", i, rel))
+  -- Check if file is in inbox
+  if not vim.startswith(filepath, inbox) then
+    vim.notify("Note is not in inbox — already promoted?", vim.log.levels.INFO, { title = "workflow" })
+    return
+  end
+
+  -- Parse frontmatter to update type
+  local fm = require("workflow.frontmatter")
+  local data, err = fm.extract(bufnr)
+  if not data then
+    vim.notify("No frontmatter: " .. (err or ""), vim.log.levels.WARN, { title = "workflow" })
+    return
+  end
+
+  -- Move file from inbox/ to vault root
+  local filename = vim.fn.fnamemodify(filepath, ":t")
+  local dest = vault .. "/" .. filename
+
+  if vim.fn.filereadable(dest) == 1 then
+    vim.notify("Destination exists: " .. dest, vim.log.levels.ERROR, { title = "workflow" })
+    return
+  end
+
+  -- Save buffer, close, move file, reopen
+  vim.cmd("write")
+  vim.cmd("bdelete")
+  vim.fn.rename(filepath, dest)
+
+  -- Update type from fleeting to permanent in the moved file
+  local lines = vim.fn.readfile(dest)
+  for i, line in ipairs(lines) do
+    if line:match("^type:%s*fleeting") then
+      lines[i] = "type: permanent"
+      break
     end
   end
+  vim.fn.writefile(lines, dest)
 
-  if #lines == 1 then
-    table.insert(lines, "  (no .md files found)")
-  end
-
-  UI.show_output("Recent Notes", lines)
+  -- Open the promoted note
+  vim.cmd("edit " .. vim.fn.fnameescape(dest))
+  vim.notify("Promoted to permanent: " .. filename, vim.log.levels.INFO, { title = "workflow" })
 end
 
 function M.server_start()
