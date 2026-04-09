@@ -121,11 +121,20 @@ def remove_evaluation_item(
     session: Session,
     *,
     evaluation_item_id: int,
+    template_id: int | None = None,
 ) -> bool:
-    """Remove an evaluation item link. Returns True if deleted, False if not found."""
+    """Remove an evaluation item link. Returns True if deleted, False if not found.
+
+    If template_id is provided, validates the item belongs to that template.
+    """
     ei = session.get(EvaluationItem, evaluation_item_id)
     if ei is None:
         return False
+    if template_id is not None and ei.evaluation_id != template_id:
+        raise ValueError(
+            f"EvaluationItem id={evaluation_item_id} does not belong to "
+            f"template id={template_id}."
+        )
     session.delete(ei)
     session.flush()
     return True
@@ -149,8 +158,10 @@ def rename_evaluation_template(
         EvaluationTemplate.id != tmpl.id,
     )
     if session.scalars(stmt).first() is not None:
+        inst = session.get(Institution, tmpl.institution_id)
+        inst_name = inst.short_name if inst else "unknown"
         raise ValueError(
-            f"Duplicate: template '{new_name}' already exists for this institution."
+            f"Duplicate: template '{new_name}' already exists for {inst_name}."
         )
 
     tmpl.name = new_name

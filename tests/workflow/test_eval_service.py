@@ -530,3 +530,46 @@ class TestRemoveEvaluationItem:
 
         result = remove_evaluation_item(db_session, evaluation_item_id=9999)
         assert result is False
+
+    def test_remove_rejects_wrong_template(self, db_session, seed_institutions):
+        from workflow.evaluation.service import (
+            add_evaluation_item,
+            create_evaluation_template,
+            create_item,
+            remove_evaluation_item,
+        )
+
+        t1 = create_evaluation_template(
+            db_session,
+            institution_short_name="UCR",
+            name="Template A",
+        )
+        t2 = create_evaluation_template(
+            db_session,
+            institution_short_name="UCR",
+            name="Template B",
+        )
+        it = create_item(
+            db_session,
+            name="SU",
+            taxonomy_level="Recordar",
+            taxonomy_domain="Información",
+        )
+        db_session.flush()
+
+        ei = add_evaluation_item(
+            db_session,
+            template_id=t1.id,
+            item_id=it.id,
+            amount=1,
+            points_per_item=5,
+        )
+        db_session.flush()
+
+        # Try to remove ei from wrong template
+        with pytest.raises(ValueError, match="does not belong"):
+            remove_evaluation_item(
+                db_session,
+                evaluation_item_id=ei.id,
+                template_id=t2.id,
+            )

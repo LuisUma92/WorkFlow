@@ -641,3 +641,78 @@ class TestEvaluationsEdit:
             seeded_engine,
         )
         assert result.exit_code != 0
+
+    def test_add_item_invalid_item_id(self, runner, seeded_engine):
+        tmpl_result = _invoke(runner, evaluations, ["list", "--json"], seeded_engine)
+        tmpl_id = str(json.loads(tmpl_result.output)[0]["id"])
+
+        result = _invoke(
+            runner,
+            evaluations,
+            [
+                "edit",
+                tmpl_id,
+                "add-item",
+                "--item-id",
+                "9999",
+                "--amount",
+                "1",
+                "--points",
+                "5",
+            ],
+            seeded_engine,
+        )
+        assert result.exit_code != 0
+
+    def test_remove_nonexistent_eval_item(self, runner, seeded_engine):
+        tmpl_result = _invoke(runner, evaluations, ["list", "--json"], seeded_engine)
+        tmpl_id = str(json.loads(tmpl_result.output)[0]["id"])
+
+        result = _invoke(
+            runner,
+            evaluations,
+            [
+                "edit",
+                tmpl_id,
+                "remove-item",
+                "--eval-item-id",
+                "9999",
+            ],
+            seeded_engine,
+        )
+        assert result.exit_code != 0
+
+    def test_rename_duplicate_fails(self, runner, seeded_engine):
+        # Create a second template for the same institution
+        _invoke(
+            runner,
+            evaluations,
+            [
+                "add",
+                "--inst",
+                "UFide",
+                "--name",
+                "Parcial UFide",
+            ],
+            seeded_engine,
+        )
+
+        # Get the new template's id
+        result = _invoke(runner, evaluations, ["list", "--json"], seeded_engine)
+        data = json.loads(result.output)
+        new_tmpl = [d for d in data if d["name"] == "Parcial UFide"][0]
+
+        # Try to rename it to the existing name
+        result = _invoke(
+            runner,
+            evaluations,
+            [
+                "edit",
+                str(new_tmpl["id"]),
+                "rename",
+                "--name",
+                "Estudio de caso",
+            ],
+            seeded_engine,
+        )
+        assert result.exit_code != 0

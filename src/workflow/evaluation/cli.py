@@ -169,8 +169,17 @@ def eval_remove_item(ctx: click.Context, eval_item_id: int) -> None:
     """Remove an item link from the template."""
     engine = _get_engine(ctx)
 
+    template_id = ctx.obj["template_id"]
+
     with Session(engine) as session:
-        removed = remove_evaluation_item(session, evaluation_item_id=eval_item_id)
+        try:
+            removed = remove_evaluation_item(
+                session,
+                evaluation_item_id=eval_item_id,
+                template_id=template_id,
+            )
+        except ValueError as e:
+            raise click.ClickException(str(e))
         if not removed:
             raise click.ClickException(f"EvaluationItem id={eval_item_id} not found.")
         session.commit()
@@ -291,10 +300,20 @@ def course_list(ctx: click.Context, inst: str | None, as_json: bool) -> None:
 @click.option("--code", required=True, help="Course code.")
 @click.option("--name", required=True, help="Course name.")
 @click.option(
-    "--lpw", type=int, default=3, show_default=True, help="Lectures per week."
+    "--lectures-per-week",
+    "--lpw",
+    type=int,
+    default=3,
+    show_default=True,
+    help="Lectures per week.",
 )
 @click.option(
-    "--hpl", type=int, default=2, show_default=True, help="Hours per lecture."
+    "--hours-per-lecture",
+    "--hpl",
+    type=int,
+    default=2,
+    show_default=True,
+    help="Hours per lecture.",
 )
 @click.pass_context
 def course_add(
@@ -302,8 +321,8 @@ def course_add(
     inst: str,
     code: str,
     name: str,
-    lpw: int,
-    hpl: int,
+    lectures_per_week: int,
+    hours_per_lecture: int,
 ) -> None:
     """Create a new course."""
     engine = _get_engine(ctx)
@@ -315,8 +334,8 @@ def course_add(
                 institution_short_name=inst,
                 code=code,
                 name=name,
-                lectures_per_week=lpw,
-                hours_per_lecture=hpl,
+                lectures_per_week=lectures_per_week,
+                hours_per_lecture=hours_per_lecture,
             )
             session.commit()
         except ValueError as e:
