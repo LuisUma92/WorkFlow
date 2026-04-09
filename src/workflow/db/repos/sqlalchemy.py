@@ -12,8 +12,18 @@ from sqlalchemy.orm import Session
 
 from pathlib import Path
 
+from sqlalchemy.orm import selectinload
+
 from workflow.db.models.bibliography import Author, BibEntry
-from workflow.db.models.academic import BibContent, Content
+from workflow.db.models.academic import (
+    BibContent,
+    Content,
+    Course,
+    EvaluationItem,
+    EvaluationTemplate,
+    Institution,
+    Item,
+)
 from workflow.db.models.exercises import Exercise
 from workflow.db.models.notes import Link, Note, NoteTag, Tag
 
@@ -319,11 +329,98 @@ class SqlExerciseRepo:
         return [ex for ex in all_exercises if not Path(ex.source_path).exists()]
 
 
+# ── EvaluationTemplate ─────────────────────────────────────────────────────
+
+
+class SqlEvalTemplateRepo:
+    """Implements EvalTemplateRepo against the global workflow.db."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def list_all(
+        self, *, institution: str | None = None, limit: int = 100
+    ) -> list[EvaluationTemplate]:
+        stmt = select(EvaluationTemplate).join(
+            Institution,
+            EvaluationTemplate.institution_id == Institution.id,
+        )
+        if institution is not None:
+            stmt = stmt.where(Institution.short_name == institution)
+        stmt = stmt.options(
+            selectinload(EvaluationTemplate.institution),
+            selectinload(EvaluationTemplate.evaluation_items).selectinload(
+                EvaluationItem.item
+            ),
+        ).limit(limit)
+        return list(self._session.scalars(stmt).all())
+
+    def get_detail(self, template_id: int) -> EvaluationTemplate | None:
+        stmt = (
+            select(EvaluationTemplate)
+            .where(EvaluationTemplate.id == template_id)
+            .options(
+                selectinload(EvaluationTemplate.institution),
+                selectinload(EvaluationTemplate.evaluation_items).selectinload(
+                    EvaluationItem.item
+                ),
+            )
+        )
+        return self._session.scalars(stmt).first()
+
+
+# ── Item ───────────────────────────────────────────────────────────────────
+
+
+class SqlItemRepo:
+    """Implements ItemRepo against the global workflow.db."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def list_all(
+        self,
+        *,
+        domain: str | None = None,
+        level: str | None = None,
+        limit: int = 100,
+    ) -> list[Item]:
+        stmt = select(Item)
+        if domain is not None:
+            stmt = stmt.where(Item.taxonomy_domain == domain)
+        if level is not None:
+            stmt = stmt.where(Item.taxonomy_level == level)
+        stmt = stmt.limit(limit)
+        return list(self._session.scalars(stmt).all())
+
+
+# ── Course ─────────────────────────────────────────────────────────────────
+
+
+class SqlCourseRepo:
+    """Implements CourseRepo against the global workflow.db."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def list_all(
+        self, *, institution: str | None = None, limit: int = 100
+    ) -> list[Course]:
+        stmt = select(Course).join(Institution, Course.institution_id == Institution.id)
+        if institution is not None:
+            stmt = stmt.where(Institution.short_name == institution)
+        stmt = stmt.options(selectinload(Course.institution)).limit(limit)
+        return list(self._session.scalars(stmt).all())
+
+
 __all__ = [
     "SqlAuthorRepo",
     "SqlBibRepo",
     "SqlContentRepo",
+    "SqlCourseRepo",
+    "SqlEvalTemplateRepo",
     "SqlExerciseRepo",
+    "SqlItemRepo",
     "SqlLinkRepo",
     "SqlNoteRepo",
     "SqlTagRepo",

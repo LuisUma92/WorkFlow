@@ -12,7 +12,12 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 
 from workflow.db.models.bibliography import Author, BibEntry
-from workflow.db.models.academic import Content
+from workflow.db.models.academic import (
+    Content,
+    Course,
+    EvaluationTemplate,
+    Item,
+)
 from workflow.db.models.exercises import Exercise
 from workflow.db.models.notes import Link, Note, Tag
 
@@ -90,11 +95,43 @@ class ExerciseRepo(Protocol):
         ...
 
 
+@runtime_checkable
+class EvalTemplateRepo(Protocol):
+    def list_all(
+        self, *, institution: str | None = None, limit: int = 100
+    ) -> list[EvaluationTemplate]: ...
+
+    def get_detail(self, template_id: int) -> EvaluationTemplate | None:
+        """Return template with evaluation_items and their items eagerly loaded."""
+        ...
+
+
+@runtime_checkable
+class ItemRepo(Protocol):
+    def list_all(
+        self,
+        *,
+        domain: str | None = None,
+        level: str | None = None,
+        limit: int = 100,
+    ) -> list[Item]: ...
+
+
+@runtime_checkable
+class CourseRepo(Protocol):
+    def list_all(
+        self, *, institution: str | None = None, limit: int = 100
+    ) -> list[Course]: ...
+
+
 __all__ = [
     "AuthorRepo",
     "BibRepo",
     "ContentRepo",
+    "CourseRepo",
+    "EvalTemplateRepo",
     "ExerciseRepo",
+    "ItemRepo",
     "LinkRepo",
     "NoteRepo",
     "TagRepo",

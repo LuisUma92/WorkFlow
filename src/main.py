@@ -10,6 +10,7 @@ from workflow.exercise.cli import exercise
 from workflow.lecture.cli import lectures
 from workflow.graph.cli import graph
 from workflow.notes.cli import notes
+from workflow.evaluation.cli import evaluations, item, course
 
 
 @click.group("workflow")
@@ -23,6 +24,9 @@ cli.add_command(exercise)
 cli.add_command(lectures)
 cli.add_command(graph)
 cli.add_command(notes)
+cli.add_command(evaluations)
+cli.add_command(item)
+cli.add_command(course)
 
 
 if __name__ == "__main__":
