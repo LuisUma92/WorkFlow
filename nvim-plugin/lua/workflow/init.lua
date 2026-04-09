@@ -1,29 +1,20 @@
 -- lua/workflow/init.lua
 -- WorkFlow Neovim plugin — complements obsidian.nvim with DB sync,
--- validation, server RPC, and exercise/image/graph integration.
+-- validation, promote, and exercise/image integration.
 --
--- Note creation and wiki-link navigation are handled by obsidian.nvim.
+-- Uses CLI calls (not JSONL server) for reliability.
 
-local Client = require("workflow.client")
 local Config = require("workflow.config")
 
 local M = {}
 
-M._client = nil
 M._config = nil
 
 function M.setup(opts)
   M._config = Config.resolve(opts)
 
-  M._client = Client.new({
-    cmd = M._config.server_cmd,
-    protocol_version = M._config.protocol_version,
-    debug = M._config.debug,
-    request_timeout_ms = M._config.request_timeout_ms,
-  })
-
   -- Register autocommands
-  require("workflow.autocmds").setup(function() return M._client end, M._config)
+  require("workflow.autocmds").setup(M._config)
 
   -- Register user commands
   require("workflow.commands").setup(M)
@@ -34,26 +25,10 @@ function M.setup(opts)
   end
 end
 
-function M.client()
-  if not M._client then M.setup({}) end
-  return M._client
-end
-
--- Public actions (unique to workflow, not in obsidian.nvim)
+-- Public actions
 
 function M.sync_current()
-  local client = M.client()
-  local server = require("workflow.server")
-  server.ensure_running(client, M._config)
-  client:request("sync.synchronize", {}, function(result, err)
-    vim.schedule(function()
-      if err then
-        vim.notify("Sync error: " .. vim.inspect(err), vim.log.levels.ERROR, { title = "workflow" })
-      else
-        vim.notify("Synced", vim.log.levels.INFO, { title = "workflow" })
-      end
-    end)
-  end)
+  require("workflow.server").sync(M._config)
 end
 
 function M.validate_frontmatter()
@@ -81,14 +56,6 @@ function M.promote_note()
   -- Check if file is in inbox
   if not vim.startswith(filepath, inbox) then
     vim.notify("Note is not in inbox — already promoted?", vim.log.levels.INFO, { title = "workflow" })
-    return
-  end
-
-  -- Parse frontmatter to update type
-  local fm = require("workflow.frontmatter")
-  local data, err = fm.extract(bufnr)
-  if not data then
-    vim.notify("No frontmatter: " .. (err or ""), vim.log.levels.WARN, { title = "workflow" })
     return
   end
 
@@ -121,21 +88,9 @@ function M.promote_note()
   vim.notify("Promoted to permanent: " .. filename, vim.log.levels.INFO, { title = "workflow" })
 end
 
-function M.server_start()
-  require("workflow.server").ensure_running(M.client(), M._config)
-end
-
-function M.server_stop()
-  M.client():stop()
-end
-
-function M.server_restart()
-  M.client():restart()
-end
-
 -- Statusline component
 function M.statusline()
-  return require("workflow.statusline").component(function() return M._client end)
+  return require("workflow.statusline").component()
 end
 
 return M

@@ -4,19 +4,13 @@
 local M = {}
 
 M.defaults = {
-  server_cmd = { "python", "-m", "latexzettel.server.main" },
-  protocol_version = 1,
-  debug = false,
-  request_timeout_ms = 30000,
-  auto_start = true,
+  workflow_cmd = nil, -- auto-detected from venv or PATH
   auto_sync_on_save = true,
   auto_validate_on_save = true,
-  workspace_dir = nil, -- auto-detected
+  workspace_dir = nil, -- auto-detected from .workflow/config.yaml
   vault_dir = "0000AA-Vault",
-  templates_dir = "0000AA-Vault/templates",
   keymaps = true,
   keymap_prefix = "<leader>z",
-  conceallevel = 2,
 }
 
 function M.resolve(opts)

@@ -1,10 +1,9 @@
 -- lua/workflow/statusline.lua
 local M = {}
 
-function M.component(get_client)
+function M.component()
   return function()
-    local server = require("workflow.server")
-    return server.status_text(get_client())
+    return "ZK"
   end
 end
 
