@@ -11,6 +11,8 @@ from typing import Any
 from workflow.db.models.bibliography import (
     BibEntry,
     BibKeyword,
+    BibTag,
+    RationaleOption,
     ReviewRecord,
 )
 
@@ -162,3 +164,39 @@ def format_review_table(records: list[ReviewRecord], keyword_text: str = "") -> 
 def format_review_json(records: list[ReviewRecord]) -> str:
     data = [_review_to_dict(rec) for rec in records]
     return json.dumps(data, ensure_ascii=False, indent=2)
+
+
+# ── Tags ─────────────────────────────────────────────────────────────────
+
+
+def _tag_to_dict(tag: BibTag) -> dict[str, Any]:
+    return {"id": tag.id, "tag": tag.tag}
+
+
+def format_tag_table(tags: list[BibTag]) -> str:
+    if not tags:
+        return "No tags found."
+    return "\n".join(f"  {t.id:4d}  {t.tag}" for t in tags)
+
+
+def format_tag_json(tags: list[BibTag]) -> str:
+    return json.dumps([_tag_to_dict(t) for t in tags], ensure_ascii=False, indent=2)
+
+
+# ── Rationales ───────────────────────────────────────────────────────────
+
+
+def _rationale_to_dict(opt: RationaleOption) -> dict[str, Any]:
+    return {"id": opt.id, "rationale_argument": opt.rationale_argument}
+
+
+def format_rationale_table(rationales: list[RationaleOption]) -> str:
+    if not rationales:
+        return "No rationales found."
+    return "\n".join(f"  {r.id:4d}  {r.rationale_argument or ''}" for r in rationales)
+
+
+def format_rationale_json(rationales: list[RationaleOption]) -> str:
+    return json.dumps(
+        [_rationale_to_dict(r) for r in rationales], ensure_ascii=False, indent=2
+    )

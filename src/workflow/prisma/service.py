@@ -5,13 +5,16 @@ Business logic for bibliography, keywords, and review records.
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from workflow.db.models.bibliography import (
+    Author,
     BibAuthor,
     BibEntry,
     BibKeyword,
+    BibTag,
+    RationaleOption,
     ReviewRecord,
 )
 
@@ -50,11 +53,7 @@ def list_bib_entries(
 
 def get_bib_detail(session: Session, bib_id: int) -> BibEntry | None:
     """Get a single bibliography entry with eager-loaded relationships."""
-    stmt = (
-        select(BibEntry)
-        .where(BibEntry.id == bib_id)
-        .options(*_bib_entry_options())
-    )
+    stmt = select(BibEntry).where(BibEntry.id == bib_id).options(*_bib_entry_options())
     return session.scalars(stmt).first()
 
 
@@ -91,11 +90,176 @@ def list_reviews(
     )
 
     if status is not None:
-        status_val = REVIEW_STATUS.get(status)
         if status == "pending":
             stmt = stmt.where(ReviewRecord.included.is_(None))
+        elif status == "included":
+            stmt = stmt.where(ReviewRecord.included == 1)
+        elif status == "excluded":
+            stmt = stmt.where(ReviewRecord.included == 0)
         else:
-            stmt = stmt.where(ReviewRecord.included == status_val)
+            raise ValueError(f"Unknown status: '{status}'")
 
     records = list(session.scalars(stmt).all())
     return records, kw
+
+
+# ── Search ───────────────────────────────────────────────────────────────
+
+
+def search_bib_entries(
+    session: Session,
+    *,
+    title: str | None = None,
+    author: str | None = None,
+    year: int | None = None,
+) -> list[BibEntry]:
+    """Search bibliography entries by title, author name, and/or year.
+
+    Raises ValueError if no filter is provided.
+    """
+    if title is None and author is None and year is None:
+        raise ValueError("At least one search filter is required.")
+
+    stmt = select(BibEntry).options(*_bib_entry_options())
+
+    if title is not None:
+        pattern = f"%{title}%"
+        stmt = stmt.where(BibEntry.title.ilike(pattern))
+
+    if author is not None:
+        pattern = f"%{author}%"
+        stmt = stmt.where(
+            BibEntry.id.in_(
+                select(BibAuthor.bib_entry_id)
+                .join(Author, BibAuthor.author_id == Author.id)
+                .where(
+                    or_(
+                        Author.last_name.ilike(pattern),
+                        Author.first_name.ilike(pattern),
+                    )
+                )
+            )
+        )
+
+    if year is not None:
+        stmt = stmt.where(BibEntry.year == year)
+
+    stmt = stmt.order_by(BibEntry.year.desc(), BibEntry.title)
+    return list(session.scalars(stmt).all())
+
+
+# ── Keyword CRUD ─────────────────────────────────────────────────────────
+
+
+def create_keyword(session: Session, *, text: str) -> BibKeyword:
+    """Create a new search keyword. Raises ValueError on duplicate."""
+    existing = session.scalars(
+        select(BibKeyword).where(BibKeyword.keyword_list == text)
+    ).first()
+    if existing is not None:
+        raise ValueError(f"Keyword '{text}' already exists.")
+
+    kw = BibKeyword(keyword_list=text)
+    session.add(kw)
+    session.flush()
+    return kw
+
+
+# ── Tag CRUD ─────────────────────────────────────────────────────────────
+
+
+def list_tags(session: Session) -> list[BibTag]:
+    """List all tags."""
+    stmt = select(BibTag).order_by(BibTag.id)
+    return list(session.scalars(stmt).all())
+
+
+def create_tag(session: Session, *, text: str) -> BibTag:
+    """Create a new tag. Raises ValueError on duplicate."""
+    existing = session.scalars(select(BibTag).where(BibTag.tag == text)).first()
+    if existing is not None:
+        raise ValueError(f"Tag '{text}' already exists.")
+
+    tag = BibTag(tag=text)
+    session.add(tag)
+    session.flush()
+    return tag
+
+
+# ── Rationale CRUD ───────────────────────────────────────────────────────
+
+
+def list_rationales(session: Session) -> list[RationaleOption]:
+    """List all rationale options."""
+    stmt = select(RationaleOption).order_by(RationaleOption.id)
+    return list(session.scalars(stmt).all())
+
+
+def create_rationale(session: Session, *, text: str) -> RationaleOption:
+    """Create a new rationale option. Raises ValueError on duplicate."""
+    existing = session.scalars(
+        select(RationaleOption).where(RationaleOption.rationale_argument == text)
+    ).first()
+    if existing is not None:
+        raise ValueError(f"Rationale '{text}' already exists.")
+
+    opt = RationaleOption(rationale_argument=text)
+    session.add(opt)
+    session.flush()
+    return opt
+
+
+# ── Screening ────────────────────────────────────────────────────────────
+
+
+def screen_article(
+    session: Session,
+    *,
+    bib_entry_id: int,
+    keyword_id: int,
+    include: bool,
+    rationale: str | None = None,
+) -> ReviewRecord:
+    """Screen an article: set included/excluded for a keyword.
+
+    If a pending ReviewRecord exists, updates it. Otherwise creates a new one.
+    Raises ValueError if article or keyword not found.
+    """
+    entry = session.get(BibEntry, bib_entry_id)
+    if entry is None:
+        raise ValueError(f"BibEntry with id={bib_entry_id} not found.")
+
+    kw = session.get(BibKeyword, keyword_id)
+    if kw is None:
+        raise ValueError(f"Keyword with id={keyword_id} not found.")
+
+    # Check for existing review record
+    stmt = select(ReviewRecord).where(
+        ReviewRecord.keyword_id == keyword_id,
+        ReviewRecord.bib_entry_id == bib_entry_id,
+    )
+    rec = session.scalars(stmt).first()
+
+    status_val = REVIEW_STATUS["included" if include else "excluded"]
+
+    if rec is not None:
+        if rec.included is not None:
+            raise ValueError(
+                f"Article {bib_entry_id} already screened as "
+                f"'{REVIEW_STATUS_LABELS[rec.included]}' for keyword {keyword_id}."
+            )
+        rec.included = status_val
+        if rationale is not None:
+            rec.include_rationale = rationale
+    else:
+        rec = ReviewRecord(
+            keyword_id=keyword_id,
+            bib_entry_id=bib_entry_id,
+            retrieved=1,
+            included=status_val,
+            include_rationale=rationale,
+        )
+        session.add(rec)
+
+    session.flush()
+    return rec
