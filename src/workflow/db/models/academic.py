@@ -194,6 +194,7 @@ class EvaluationTemplate(GlobalBase):
     institution_id: Mapped[int] = mapped_column(ForeignKey("institution.id"))
     name: Mapped[str] = mapped_column(String(80))
     template_file: Mapped[str] = mapped_column(String(300), default="")
+    description: Mapped[str] = mapped_column(String(500), default="")
 
     institution: Mapped["Institution"] = relationship(
         back_populates="evaluation_templates"
@@ -204,6 +205,10 @@ class EvaluationTemplate(GlobalBase):
     course_evaluations: Mapped[list["CourseEvaluation"]] = relationship(
         back_populates="evaluation"
     )
+
+    @property
+    def total_points(self) -> int:
+        return sum(ei.total_amount * ei.points_per_item for ei in self.evaluation_items)
 
 
 class Item(GlobalBase):
@@ -228,6 +233,7 @@ class Item(GlobalBase):
     template_file: Mapped[str] = mapped_column(String(300), default="")
     taxonomy_level: Mapped[str] = mapped_column(String(30))
     taxonomy_domain: Mapped[str] = mapped_column(String(40))
+    item_type: Mapped[str | None] = mapped_column(String(20), default=None)
 
     evaluation_links: Mapped[list["EvaluationItem"]] = relationship(
         back_populates="item"

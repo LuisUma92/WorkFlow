@@ -16,6 +16,7 @@ from workflow.db.repos.sqlalchemy import (
     SqlEvalTemplateRepo,
     SqlItemRepo,
 )
+from workflow.db.models.academic import _TAXONOMY_DOMAINS, _TAXONOMY_LEVELS
 from workflow.evaluation.formatters import (
     format_course_json,
     format_course_table,
@@ -23,6 +24,10 @@ from workflow.evaluation.formatters import (
     format_eval_table,
     format_item_json,
     format_item_table,
+)
+from workflow.evaluation.service import (
+    create_evaluation_template,
+    create_item,
 )
 
 __all__ = ["evaluations", "item", "course"]
@@ -74,6 +79,30 @@ def eval_list(ctx: click.Context, inst: str | None, full: bool, as_json: bool) -
             click.echo(format_eval_table(templates, full=full))
 
 
+@evaluations.command(name="add")
+@click.option("--inst", required=True, help="Institution short name.")
+@click.option("--name", required=True, help="Template name.")
+@click.option("--description", default="", help="Template description.")
+@click.pass_context
+def eval_add(ctx: click.Context, inst: str, name: str, description: str) -> None:
+    """Create a new evaluation template."""
+    engine = _get_engine(ctx)
+
+    with Session(engine) as session:
+        try:
+            tmpl = create_evaluation_template(
+                session,
+                institution_short_name=inst,
+                name=name,
+                description=description,
+            )
+            session.commit()
+        except ValueError as e:
+            raise click.ClickException(str(e))
+
+        click.echo(f"Created template: [{inst}] {tmpl.name} (id={tmpl.id})")
+
+
 # ── item group ────────────────────────────────────────────────────────────
 
 
@@ -104,6 +133,51 @@ def item_list(
             click.echo(format_item_json(items))
         else:
             click.echo(format_item_table(items))
+
+
+@item.command(name="add")
+@click.option("--name", required=True, help="Item name.")
+@click.option(
+    "--level",
+    required=True,
+    type=click.Choice(list(_TAXONOMY_LEVELS), case_sensitive=False),
+    help="Taxonomy level.",
+)
+@click.option(
+    "--domain",
+    required=True,
+    type=click.Choice(list(_TAXONOMY_DOMAINS), case_sensitive=False),
+    help="Taxonomy domain.",
+)
+@click.option("--item-type", default=None, help="Item type (SU, RC, Desarrollo).")
+@click.pass_context
+def item_add(
+    ctx: click.Context,
+    name: str,
+    level: str,
+    domain: str,
+    item_type: str | None,
+) -> None:
+    """Create a new taxonomy item."""
+    engine = _get_engine(ctx)
+
+    with Session(engine) as session:
+        try:
+            it = create_item(
+                session,
+                name=name,
+                taxonomy_level=level,
+                taxonomy_domain=domain,
+                item_type=item_type,
+            )
+            session.commit()
+        except ValueError as e:
+            raise click.ClickException(str(e))
+
+        click.echo(
+            f"Created item: {it.name} "
+            f"({it.taxonomy_domain}/{it.taxonomy_level}, id={it.id})"
+        )
 
 
 # ── course group ──────────────────────────────────────────────────────────

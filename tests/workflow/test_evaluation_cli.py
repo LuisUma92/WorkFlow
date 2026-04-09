@@ -37,18 +37,23 @@ def seeded_engine(engine):
     """Engine with institutions, templates, items, courses seeded."""
     with Session(engine) as session:
         ucr = Institution(
-            short_name="UCR", full_name="Universidad de Costa Rica",
-            cycle_weeks=16, cycle_name="Semestre",
+            short_name="UCR",
+            full_name="Universidad de Costa Rica",
+            cycle_weeks=16,
+            cycle_name="Semestre",
         )
         ufide = Institution(
-            short_name="UFide", full_name="Universidad Fidélitas",
-            cycle_weeks=15, cycle_name="Cuatrimestre",
+            short_name="UFide",
+            full_name="Universidad Fidélitas",
+            cycle_weeks=15,
+            cycle_name="Cuatrimestre",
         )
         session.add_all([ucr, ufide])
         session.flush()
 
         tmpl = EvaluationTemplate(
-            institution_id=ufide.id, name="Estudio de caso",
+            institution_id=ufide.id,
+            name="Estudio de caso",
         )
         session.add(tmpl)
         session.flush()
@@ -66,18 +71,30 @@ def seeded_engine(engine):
         session.add_all([it1, it2])
         session.flush()
 
-        session.add(EvaluationItem(
-            evaluation_id=tmpl.id, item_id=it1.id,
-            total_amount=2, points_per_item=5,
-        ))
-        session.add(EvaluationItem(
-            evaluation_id=tmpl.id, item_id=it2.id,
-            total_amount=1, points_per_item=16,
-        ))
+        session.add(
+            EvaluationItem(
+                evaluation_id=tmpl.id,
+                item_id=it1.id,
+                total_amount=2,
+                points_per_item=5,
+            )
+        )
+        session.add(
+            EvaluationItem(
+                evaluation_id=tmpl.id,
+                item_id=it2.id,
+                total_amount=1,
+                points_per_item=16,
+            )
+        )
 
-        session.add(Course(
-            institution_id=ucr.id, code="FI-201", name="Física II",
-        ))
+        session.add(
+            Course(
+                institution_id=ucr.id,
+                code="FI-201",
+                name="Física II",
+            )
+        )
         session.commit()
     return engine
 
@@ -110,7 +127,10 @@ class TestEvaluationsList:
 
     def test_list_full(self, runner, seeded_engine):
         result = _invoke(
-            runner, evaluations, ["list", "--full"], seeded_engine,
+            runner,
+            evaluations,
+            ["list", "--full"],
+            seeded_engine,
         )
         assert result.exit_code == 0
         assert "SU - Info/Recordar" in result.output
@@ -118,7 +138,10 @@ class TestEvaluationsList:
 
     def test_list_json(self, runner, seeded_engine):
         result = _invoke(
-            runner, evaluations, ["list", "--json"], seeded_engine,
+            runner,
+            evaluations,
+            ["list", "--json"],
+            seeded_engine,
         )
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -127,7 +150,10 @@ class TestEvaluationsList:
 
     def test_list_json_full(self, runner, seeded_engine):
         result = _invoke(
-            runner, evaluations, ["list", "--json", "--full"], seeded_engine,
+            runner,
+            evaluations,
+            ["list", "--json", "--full"],
+            seeded_engine,
         )
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -148,7 +174,10 @@ class TestItemList:
 
     def test_list_filter_by_domain(self, runner, seeded_engine):
         result = _invoke(
-            runner, item, ["list", "--domain", "Información"], seeded_engine,
+            runner,
+            item,
+            ["list", "--domain", "Información"],
+            seeded_engine,
         )
         assert result.exit_code == 0
         assert "SU - Info/Recordar" in result.output
@@ -179,3 +208,166 @@ class TestCourseList:
         data = json.loads(result.output)
         assert len(data) == 1
         assert data[0]["code"] == "FI-201"
+
+
+# ── P1: Add command tests ────────────────────────────────────────────────
+
+
+class TestItemAdd:
+    def test_add_item_basic(self, runner, seeded_engine):
+        result = _invoke(
+            runner,
+            item,
+            [
+                "add",
+                "--name",
+                "SU - Info/Recordar",
+                "--level",
+                "Recordar",
+                "--domain",
+                "Información",
+            ],
+            seeded_engine,
+        )
+        assert result.exit_code == 0
+        assert "Created item" in result.output
+
+    def test_add_item_with_type(self, runner, seeded_engine):
+        result = _invoke(
+            runner,
+            item,
+            [
+                "add",
+                "--name",
+                "SU - Info/Recordar",
+                "--level",
+                "Recordar",
+                "--domain",
+                "Información",
+                "--item-type",
+                "SU",
+            ],
+            seeded_engine,
+        )
+        assert result.exit_code == 0
+
+    def test_add_item_invalid_level(self, runner, seeded_engine):
+        result = _invoke(
+            runner,
+            item,
+            [
+                "add",
+                "--name",
+                "Bad",
+                "--level",
+                "Inventado",
+                "--domain",
+                "Información",
+            ],
+            seeded_engine,
+        )
+        assert result.exit_code != 0
+
+    def test_add_item_shows_in_list(self, runner, seeded_engine):
+        _invoke(
+            runner,
+            item,
+            [
+                "add",
+                "--name",
+                "NewItem",
+                "--level",
+                "Comprender",
+                "--domain",
+                "Información",
+            ],
+            seeded_engine,
+        )
+        result = _invoke(runner, item, ["list", "--json"], seeded_engine)
+        data = json.loads(result.output)
+        names = [d["name"] for d in data]
+        assert "NewItem" in names
+
+
+class TestEvaluationsAdd:
+    def test_add_template_basic(self, runner, seeded_engine):
+        result = _invoke(
+            runner,
+            evaluations,
+            [
+                "add",
+                "--inst",
+                "UFide",
+                "--name",
+                "Prueba parcial",
+            ],
+            seeded_engine,
+        )
+        assert result.exit_code == 0
+        assert "Created" in result.output
+
+    def test_add_template_with_description(self, runner, seeded_engine):
+        result = _invoke(
+            runner,
+            evaluations,
+            [
+                "add",
+                "--inst",
+                "UCR",
+                "--name",
+                "Parcial 1",
+                "--description",
+                "Primera evaluación parcial.",
+            ],
+            seeded_engine,
+        )
+        assert result.exit_code == 0
+
+    def test_add_template_shows_in_list(self, runner, seeded_engine):
+        _invoke(
+            runner,
+            evaluations,
+            [
+                "add",
+                "--inst",
+                "UCR",
+                "--name",
+                "Parcial nuevo",
+            ],
+            seeded_engine,
+        )
+        result = _invoke(runner, evaluations, ["list", "--json"], seeded_engine)
+        data = json.loads(result.output)
+        names = [d["name"] for d in data]
+        assert "Parcial nuevo" in names
+
+    def test_add_template_duplicate_fails(self, runner, seeded_engine):
+        """Estudio de caso already exists for UFide in seed data."""
+        result = _invoke(
+            runner,
+            evaluations,
+            [
+                "add",
+                "--inst",
+                "UFide",
+                "--name",
+                "Estudio de caso",
+            ],
+            seeded_engine,
+        )
+        assert result.exit_code != 0
+
+    def test_add_template_invalid_institution(self, runner, seeded_engine):
+        result = _invoke(
+            runner,
+            evaluations,
+            [
+                "add",
+                "--inst",
+                "NONEXIST",
+                "--name",
+                "Test",
+            ],
+            seeded_engine,
+        )
+        assert result.exit_code != 0
