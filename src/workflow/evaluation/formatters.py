@@ -24,15 +24,16 @@ def _eval_to_dict(tmpl: EvaluationTemplate, full: bool = False) -> dict[str, Any
         "id": tmpl.id,
         "institution": inst_name,
         "name": tmpl.name,
+        "description": tmpl.description or "",
         "total_points": tmpl.total_points,
         "item_count": len(tmpl.evaluation_items),
     }
     if full:
         d["items"] = [
             {
-                "item_name": ei.item.name,
-                "taxonomy_domain": ei.item.taxonomy_domain,
-                "taxonomy_level": ei.item.taxonomy_level,
+                "item_name": ei.item.name if ei.item else "?",
+                "taxonomy_domain": ei.item.taxonomy_domain if ei.item else "?",
+                "taxonomy_level": ei.item.taxonomy_level if ei.item else "?",
                 "amount": ei.total_amount,
                 "points_per_item": ei.points_per_item,
             }
@@ -53,6 +54,8 @@ def format_eval_table(templates: list[EvaluationTemplate], full: bool = False) -
             f"({d['total_points']} pts, {d['item_count']} items)"
         )
         lines.append(header)
+        if full and d.get("description"):
+            lines.append(f"  {d['description']}")
         if full and "items" in d:
             for i, it in enumerate(d["items"], 1):
                 lines.append(
@@ -66,6 +69,16 @@ def format_eval_table(templates: list[EvaluationTemplate], full: bool = False) -
 def format_eval_json(templates: list[EvaluationTemplate], full: bool = False) -> str:
     data = [_eval_to_dict(tmpl, full=full) for tmpl in templates]
     return json.dumps(data, ensure_ascii=False, indent=2)
+
+
+def format_eval_detail_table(tmpl: EvaluationTemplate) -> str:
+    """Format a single template with full item breakdown."""
+    return format_eval_table([tmpl], full=True)
+
+
+def format_eval_detail_json(tmpl: EvaluationTemplate) -> str:
+    """Format a single template as JSON with items."""
+    return json.dumps(_eval_to_dict(tmpl, full=True), ensure_ascii=False, indent=2)
 
 
 # ── Items ─────────────────────────────────────────────────────────────────

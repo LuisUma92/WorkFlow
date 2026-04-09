@@ -1,6 +1,7 @@
 """Tests for evaluation CLI commands (evaluations, item, course)."""
 
 import json
+import re
 
 import pytest
 from click.testing import CliRunner
@@ -604,12 +605,9 @@ class TestEvaluationsEdit:
         assert add_result.exit_code == 0
         # Extract eval_item_id from output
         # Output should mention the id
-        ei_id = None
-        for word in add_result.output.split():
-            if word.startswith("id="):
-                ei_id = word.split("=")[1].rstrip(")")
-                break
-        assert ei_id is not None
+        m = re.search(r"id=(\d+)\)", add_result.output)
+        assert m is not None, f"Could not find ei id in: {add_result.output!r}"
+        ei_id = m.group(1)
 
         # Remove it
         result = _invoke(
@@ -682,6 +680,62 @@ class TestEvaluationsEdit:
         )
         assert result.exit_code != 0
 
+    def test_remove_item_wrong_template(self, runner, seeded_engine):
+        """Removing an item that belongs to a different template fails."""
+        # Create a second template
+        _invoke(
+            runner,
+            evaluations,
+            ["add", "--inst", "UCR", "--name", "Other template"],
+            seeded_engine,
+        )
+        result = _invoke(runner, evaluations, ["list", "--json"], seeded_engine)
+        data = json.loads(result.output)
+        other_id = str([d for d in data if d["name"] == "Other template"][0]["id"])
+
+        # Get an eval_item_id from the original (UFide) template
+        full_result = _invoke(
+            runner,
+            evaluations,
+            ["list", "--json", "--full"],
+            seeded_engine,
+        )
+        full_data = json.loads(full_result.output)
+        ufide_tmpl = [d for d in full_data if d["institution"] == "UFide"][0]
+        # We need the actual EvaluationItem id — add one to get it
+        item_result = _invoke(runner, item, ["list", "--json"], seeded_engine)
+        item_id = str(json.loads(item_result.output)[0]["id"])
+        ufide_id = str(ufide_tmpl["id"])
+
+        add_result = _invoke(
+            runner,
+            evaluations,
+            [
+                "edit",
+                ufide_id,
+                "add-item",
+                "--item-id",
+                item_id,
+                "--amount",
+                "1",
+                "--points",
+                "5",
+            ],
+            seeded_engine,
+        )
+        m = re.search(r"id=(\d+)\)", add_result.output)
+        assert m is not None, f"Could not find ei id in: {add_result.output!r}"
+        ei_id = m.group(1)
+
+        # Try removing from the wrong template
+        result = _invoke(
+            runner,
+            evaluations,
+            ["edit", other_id, "remove-item", "--eval-item-id", ei_id],
+            seeded_engine,
+        )
+        assert result.exit_code != 0
+
     def test_rename_duplicate_fails(self, runner, seeded_engine):
         # Create a second template for the same institution
         _invoke(
@@ -716,3 +770,77 @@ class TestEvaluationsEdit:
             seeded_engine,
         )
         assert result.exit_code != 0
+
+
+# ── P3: evaluations show ────────────────────────────────────────────────
+
+
+class TestEvaluationsShow:
+    def test_show_existing_template(self, runner, seeded_engine):
+        result = _invoke(runner, evaluations, ["list", "--json"], seeded_engine)
+        tmpl_id = str(json.loads(result.output)[0]["id"])
+
+        result = _invoke(runner, evaluations, ["show", tmpl_id], seeded_engine)
+        assert result.exit_code == 0
+        assert "Estudio de caso" in result.output
+        assert "UFide" in result.output
+
+    def test_show_includes_items(self, runner, seeded_engine):
+        result = _invoke(runner, evaluations, ["list", "--json"], seeded_engine)
+        tmpl_id = str(json.loads(result.output)[0]["id"])
+
+        result = _invoke(runner, evaluations, ["show", tmpl_id], seeded_engine)
+        assert result.exit_code == 0
+        assert "SU - Info/Recordar" in result.output
+        assert "2 × 5 pts" in result.output
+
+    def test_show_json(self, runner, seeded_engine):
+        result = _invoke(runner, evaluations, ["list", "--json"], seeded_engine)
+        tmpl_id = str(json.loads(result.output)[0]["id"])
+
+        result = _invoke(
+            runner,
+            evaluations,
+            ["show", tmpl_id, "--json"],
+            seeded_engine,
+        )
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert data["name"] == "Estudio de caso"
+        assert data["total_points"] == 26  # 2×5 + 1×16
+        assert "items" in data
+        assert len(data["items"]) == 2
+
+    def test_show_nonexistent(self, runner, seeded_engine):
+        result = _invoke(runner, evaluations, ["show", "9999"], seeded_engine)
+        assert result.exit_code != 0
+
+    def test_show_description(self, runner, seeded_engine):
+        """Show includes the description field."""
+        _invoke(
+            runner,
+            evaluations,
+            [
+                "add",
+                "--inst",
+                "UCR",
+                "--name",
+                "Parcial con desc",
+                "--description",
+                "Evaluación parcial del curso.",
+            ],
+            seeded_engine,
+        )
+        result = _invoke(runner, evaluations, ["list", "--json"], seeded_engine)
+        data = json.loads(result.output)
+        tmpl = [d for d in data if d["name"] == "Parcial con desc"][0]
+
+        result = _invoke(
+            runner,
+            evaluations,
+            ["show", str(tmpl["id"]), "--json"],
+            seeded_engine,
+        )
+        assert result.exit_code == 0
+        detail = json.loads(result.output)
+        assert detail["description"] == "Evaluación parcial del curso."

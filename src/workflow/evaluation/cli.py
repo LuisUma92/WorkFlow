@@ -21,6 +21,8 @@ from workflow.db.models.academic import _TAXONOMY_DOMAINS, _TAXONOMY_LEVELS
 from workflow.evaluation.formatters import (
     format_course_json,
     format_course_table,
+    format_eval_detail_json,
+    format_eval_detail_table,
     format_eval_json,
     format_eval_table,
     format_item_json,
@@ -75,6 +77,27 @@ def eval_list(ctx: click.Context, inst: str | None, full: bool, as_json: bool) -
             click.echo(format_eval_json(templates, full=full))
         else:
             click.echo(format_eval_table(templates, full=full))
+
+
+@evaluations.command(name="show")
+@click.argument("template_id", type=int)
+@click.option("--json", "as_json", is_flag=True, help="JSON output.")
+@click.pass_context
+def eval_show(ctx: click.Context, template_id: int, as_json: bool) -> None:
+    """Show a single evaluation template with item breakdown."""
+    engine = _get_engine(ctx)
+
+    with Session(engine) as session:
+        repo = SqlEvalTemplateRepo(session)
+        tmpl = repo.get_detail(template_id)
+
+        if tmpl is None:
+            raise click.ClickException(f"Template with id={template_id} not found.")
+
+        if as_json:
+            click.echo(format_eval_detail_json(tmpl))
+        else:
+            click.echo(format_eval_detail_table(tmpl))
 
 
 @evaluations.command(name="add")
