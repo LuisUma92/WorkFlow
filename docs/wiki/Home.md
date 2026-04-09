@@ -12,6 +12,8 @@ WorkFlow es un toolkit CLI en Python para gestionar proyectos LaTeX y un sistema
 | [Lectures Workflow](Lectures-Workflow.md) | Escaneo de cursos, enlaces cruzados, evaluaciones |
 | [Knowledge Graph](Knowledge-Graph.md) | Analisis de conexiones, exportacion DOT/TikZ |
 | [LaTeX Macros](LaTeX-Macros.md) | Referencia de macros personalizados y normalizacion |
+| [Evaluation CLI](Evaluation-CLI.md) | Plantillas de evaluacion, items taxonomicos, cursos |
+| [PRISMA Review](PRISMA-Review.md) | Bibliografia, keywords, screening sistematico |
 | [Architecture](Architecture.md) | Modulos, base de datos, patrones de diseno |
 
 ## Referencia rapida
@@ -25,6 +27,14 @@ workflow graph    orphans|stats|export-dot|export-tikz|clusters|neighbors
 workflow tikz     build|list|clean
 workflow validate notes|exercises
 
+# Evaluaciones y PRISMA
+workflow evaluations list|show|add|edit
+workflow item         list|add
+workflow course       list|add
+workflow prisma bib     list|show
+workflow prisma keyword list
+workflow prisma review  list
+
 # Utilidades independientes
 inittex    # Crear proyecto LaTeX
 relink     # Recrear symlinks
@@ -37,7 +47,8 @@ Todas las decisiones estan documentadas en [docs/ADR/INDEX.md](../ADR/INDEX.md):
 
 - **ITEP-0000..0007** — Estructura de proyectos, esquema de DB, taxonomia Bloom
 - **STY-0000..0011** — Archivos de estilo LaTeX (macros, formatos, colores)
-- **0001..0012** — Sistema Zettelkasten, ejercicios, exportacion Moodle, grafo
+- **0001..0016** — Sistema Zettelkasten, ejercicios, exportacion Moodle, grafo, evaluaciones
+- **PRISMA-0000..0005** — Revision sistematica, modelo de datos, CLI SQLAlchemy
 
 ## Enlaces
 

@@ -83,15 +83,22 @@ These decisions define how exercises are authored, parsed, indexed, and exported
 | [LZK-0003](LZK-0003-note-reference-system.md) | Note reference system: IDs, regex patterns, cross-refs | LaTeXZettel | Accepted | LZK-0000, 0001 |
 | [LZK-0004](LZK-0004-dependency-injection-db-shim.md) | Dependency injection and Peewee → SQLAlchemy shim | LaTeXZettel | Accepted | LZK-0000, 0004 |
 
+## Evaluation CLI
+
+| ADR | Title | Domain | Status | Depends On |
+|-----|-------|--------|--------|------------|
+| [0016](0016-evaluation-cli.md) | Evaluation CLI: Template, Item, and Course Management | Evaluation | Accepted | ITEP-0002, ITEP-0006, 0007, 0013 |
+
 ## PRISMAreview: Systematic Literature Review
 
 | ADR | Title | Domain | Status | Depends On |
 |-----|-------|--------|--------|------------|
 | [PRISMA-0000](PRISMA-0000-systematic-review-architecture.md) | Systematic review architecture (Django, dual-DB) | PRISMA | Accepted | 0003, 0007 |
-| [PRISMA-0001](PRISMA-0001-dual-database-router.md) | Dual-database router: MariaDB + shared SQLite | PRISMA | Accepted | PRISMA-0000, 0003 |
+| [PRISMA-0001](PRISMA-0001-dual-database-router.md) | Dual-database router: MariaDB + shared SQLite | PRISMA | Superseded by PRISMA-0005 | PRISMA-0000, 0003 |
 | [PRISMA-0002](PRISMA-0002-bibliography-import-pipeline.md) | Bibliography import pipeline (BibTeX → structured data) | PRISMA | Accepted | PRISMA-0000 |
 | [PRISMA-0003](PRISMA-0003-screening-review-workflow.md) | Article screening and review workflow | PRISMA | Accepted | PRISMA-0002 |
 | [PRISMA-0004](PRISMA-0004-data-model-schema.md) | Data model: 30+ Django models for systematic review | PRISMA | Accepted | PRISMA-0000 |
+| [PRISMA-0005](PRISMA-0005-cli-sqlalchemy-migration.md) | PRISMA CLI: SQLAlchemy migration and unified workflow.db | PRISMA | Accepted | PRISMA-0000, PRISMA-0004, 0004, 0007, 0016 |
 
 ## Asset Pipeline
 
@@ -124,6 +131,15 @@ STY-0000 (format/packages)
     └── STY-0008..0011 (profiles, headers, centred, constants)
 
 0001 (Zettelkasten) ──→ 0002 (Markdown layer)
+
+ITEP-0002 (schema) ──→ 0016 (evaluation CLI) ──→ Telescope pickers
+ITEP-0006 (taxonomy) ─┘
+
+PRISMA-0000 (architecture)
+    ├── PRISMA-0001 (dual-DB router) ──→ Superseded by PRISMA-0005
+    ├── PRISMA-0002 (import pipeline) ──→ PRISMA-0003 (screening)
+    ├── PRISMA-0004 (data model) ──→ PRISMA-0005 (CLI + SQLAlchemy migration)
+    └── 0007 (shared DB) ──────────┘
 ```
 
 ## Zettelkasten Implementation

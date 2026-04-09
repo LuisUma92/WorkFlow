@@ -51,13 +51,17 @@ Defined in `pyproject.toml` under `[project.scripts]`:
 
 - **`src/workflow/graph/`** — Knowledge graph analysis and export. `domain.py` (GraphNode, GraphEdge, KnowledgeGraph), `collectors.py` (query global+local DBs), `analysis.py` (orphans, hubs, components, neighbors, stats), `dot_export.py` (Graphviz DOT), `tikz_export.py` (TikZ with spring layout), `clustering.py` (optional networkx communities), `cli.py` (6 CLI commands: orphans, stats, export-dot, export-tikz, clusters, neighbors).
 
+- **`src/workflow/evaluation/`** — Evaluation CLI. `cli.py` (3 Click groups: evaluations, item, course), `service.py` (business logic, validation), `formatters.py` (table + JSON output). Commands: evaluations list|show|add|edit, item list|add, course list|add. Neovim Telescope pickers in nvim-plugin. See ADR-0016.
+
+- **`src/workflow/prisma/`** — PRISMA systematic review CLI. `cli.py` (prisma group: bib, keyword, review subgroups), `service.py` (queries, status constants), `formatters.py` (table + JSON). Commands: prisma bib list|show, keyword list, review list. See ADR PRISMA-0005.
+
 - **`src/itep/`** — Init TeX Project (ITeP). Project scaffolding and management. Uses `workflow.db` for models. Config is `config.yaml` per project (pointer to DB record, see ADR ITEP/0003).
 
 - **`src/latexzettel/`** — Zettelkasten engine. CLI + JSONL/NDJSON RPC server + Neovim Lua client. Uses `workflow.db.models.notes` via compatibility shim in `infra/orm.py`.
 
 - **`src/lectkit/`** — Lecture utilities: `cleta` (cleanup), `nofi` (note splitting), `crete` (exercise generation — **deprecated**, use `workflow exercise create`).
 
-- **`src/PRISMAreview/`** — Django 5.0 PRISMA systematic review web app. Backed by MariaDB. `shared_db/router.py` enables reading from shared `workflow.db`.
+- **`src/PRISMAreview/`** — Django 5.0 PRISMA systematic review web app. Backed by MariaDB. Web interface for BibTeX import. CLI access via `workflow prisma` (see `src/workflow/prisma/`).
 
 - **`src/appfunc/`** — Shared utilities: input validation (`FieldSpec` in `iofunc.py`), enum selection, menus.
 
@@ -82,6 +86,9 @@ Defined in `pyproject.toml` under `[project.scripts]`:
 - LaTeX normalization: custom macros expanded to standard LaTeX before Moodle export (ADR-0012)
 - Lectures CLI: `workflow lectures scan|split|link|build-eval`
 - Graph CLI: `workflow graph orphans|stats|export-dot|export-tikz|clusters|neighbors`
+- Evaluation CLI: `workflow evaluations list|show|add|edit`, `workflow item list|add`, `workflow course list|add` (ADR-0016)
+- PRISMA CLI: `workflow prisma bib list|show`, `workflow prisma keyword list`, `workflow prisma review list` (ADR PRISMA-0005)
+- Shared `get_engine_from_ctx()` in `workflow.db.engine` for all Click commands
 - Project types: `GeneralProject` and `LectureProject` (see `itep/models.py`)
 
 ### ADR Index
@@ -124,6 +131,8 @@ Architecture decisions in `docs/ADR/` (see [INDEX.md](docs/ADR/INDEX.md) for ful
 | PRISMA-0002 | Bibliography import pipeline (BibTeX → structured data) | Accepted |
 | PRISMA-0003 | Article screening and review workflow | Accepted |
 | PRISMA-0004 | Data model: 30+ Django models for systematic review | Accepted |
+| PRISMA-0005 | PRISMA CLI: SQLAlchemy migration and unified workflow.db | Accepted |
+| 0016 | Evaluation CLI: Template, Item, and Course Management | Accepted |
 
 ## Build & CI
 
