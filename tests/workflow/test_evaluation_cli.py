@@ -183,6 +183,17 @@ class TestItemList:
         assert "SU - Info/Recordar" in result.output
         assert "Proc. Mental" not in result.output
 
+    def test_list_filter_by_level(self, runner, seeded_engine):
+        result = _invoke(
+            runner,
+            item,
+            ["list", "--level", "Recordar"],
+            seeded_engine,
+        )
+        assert result.exit_code == 0
+        assert "SU - Info/Recordar" in result.output
+        assert "Usar-Aplicar" not in result.output
+
     def test_list_json(self, runner, seeded_engine):
         result = _invoke(runner, item, ["list", "--json"], seeded_engine)
         assert result.exit_code == 0
@@ -201,6 +212,16 @@ class TestCourseList:
         assert result.exit_code == 0
         assert "FI-201" in result.output
         assert "Física II" in result.output
+
+    def test_list_filter_by_inst(self, runner, seeded_engine):
+        result = _invoke(runner, course, ["list", "--inst", "UCR"], seeded_engine)
+        assert result.exit_code == 0
+        assert "FI-201" in result.output
+
+    def test_list_filter_by_inst_no_match(self, runner, seeded_engine):
+        result = _invoke(runner, course, ["list", "--inst", "UFide"], seeded_engine)
+        assert result.exit_code == 0
+        assert "No courses found" in result.output
 
     def test_list_json(self, runner, seeded_engine):
         result = _invoke(runner, course, ["list", "--json"], seeded_engine)

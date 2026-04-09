@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 import click
+
 from sqlalchemy.orm import Session
 
 from workflow.db.repos.sqlalchemy import (
@@ -64,14 +65,7 @@ def eval_list(ctx: click.Context, inst: str | None, full: bool, as_json: bool) -
 
     with Session(engine) as session:
         repo = SqlEvalTemplateRepo(session)
-        if full:
-            # Fetch with eager loading for item details
-            ids = [t.id for t in repo.list_all(institution=inst)]
-            templates = [
-                repo.get_detail(tid) for tid in ids if repo.get_detail(tid) is not None
-            ]
-        else:
-            templates = repo.list_all(institution=inst)
+        templates = repo.list_all(institution=inst)
 
         if as_json:
             click.echo(format_eval_json(templates, full=full))
@@ -149,7 +143,12 @@ def item_list(
     type=click.Choice(list(_TAXONOMY_DOMAINS), case_sensitive=False),
     help="Taxonomy domain.",
 )
-@click.option("--item-type", default=None, help="Item type (SU, RC, Desarrollo).")
+@click.option(
+    "--item-type",
+    type=click.Choice(["SU", "RC", "Desarrollo"], case_sensitive=False),
+    default=None,
+    help="Item type.",
+)
 @click.pass_context
 def item_add(
     ctx: click.Context,

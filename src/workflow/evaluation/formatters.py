@@ -20,14 +20,11 @@ from workflow.db.models.academic import (
 
 def _eval_to_dict(tmpl: EvaluationTemplate, full: bool = False) -> dict[str, Any]:
     inst_name = tmpl.institution.short_name if tmpl.institution else "?"
-    total_pts = sum(
-        ei.total_amount * ei.points_per_item for ei in tmpl.evaluation_items
-    )
     d: dict[str, Any] = {
         "id": tmpl.id,
         "institution": inst_name,
         "name": tmpl.name,
-        "total_points": total_pts,
+        "total_points": tmpl.total_points,
         "item_count": len(tmpl.evaluation_items),
     }
     if full:
@@ -44,9 +41,7 @@ def _eval_to_dict(tmpl: EvaluationTemplate, full: bool = False) -> dict[str, Any
     return d
 
 
-def format_eval_table(
-    templates: list[EvaluationTemplate], full: bool = False
-) -> str:
+def format_eval_table(templates: list[EvaluationTemplate], full: bool = False) -> str:
     if not templates:
         return "No evaluation templates found."
 
@@ -68,9 +63,7 @@ def format_eval_table(
     return "\n".join(lines)
 
 
-def format_eval_json(
-    templates: list[EvaluationTemplate], full: bool = False
-) -> str:
+def format_eval_json(templates: list[EvaluationTemplate], full: bool = False) -> str:
     data = [_eval_to_dict(tmpl, full=full) for tmpl in templates]
     return json.dumps(data, ensure_ascii=False, indent=2)
 
@@ -126,10 +119,10 @@ def format_course_table(courses: list[Course]) -> str:
 
     lines: list[str] = []
     for c in courses:
-        inst = c.institution.short_name if c.institution else "?"
+        d = _course_to_dict(c)
         lines.append(
-            f"  [{inst}] {c.code:10s}  {c.name:40s}  "
-            f"{c.lectures_per_week}lpw {c.hours_per_lecture}hpl"
+            f"  [{d['institution']}] {d['code']:10s}  {d['name']:40s}  "
+            f"{d['lectures_per_week']}lpw {d['hours_per_lecture']}hpl"
         )
     return "\n".join(lines)
 
