@@ -9,8 +9,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import click
 from appdirs import user_data_dir
-from sqlalchemy import create_engine, event
+from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from workflow.db.base import GlobalBase, LocalBase
@@ -22,7 +23,21 @@ __all__ = [
     "get_local_session",
     "init_global_db",
     "init_local_db",
+    "get_engine_from_ctx",
 ]
+
+# ── Click context helper ──────────────────────────────────────────────────
+
+
+def get_engine_from_ctx(ctx: click.Context) -> Engine:
+    """Get DB engine from Click context, creating one if absent."""
+    obj = ctx.ensure_object(dict)
+    if "engine" in obj:
+        return obj["engine"]
+    engine = init_global_db()
+    obj["engine"] = engine
+    return engine
+
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 

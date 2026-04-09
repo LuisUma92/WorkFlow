@@ -6,12 +6,11 @@ Groups: ``evaluations`` and ``item``.
 
 from __future__ import annotations
 
-from typing import Any
-
 import click
 
 from sqlalchemy.orm import Session
 
+from workflow.db.engine import get_engine_from_ctx
 from workflow.db.repos.sqlalchemy import (
     SqlCourseRepo,
     SqlEvalTemplateRepo,
@@ -40,16 +39,7 @@ from workflow.evaluation.service import (
 __all__ = ["evaluations", "item", "course"]
 
 
-def _get_engine(ctx: click.Context) -> Any:
-    """Get DB engine from Click context or create default."""
-    obj = ctx.ensure_object(dict)
-    if "engine" in obj:
-        return obj["engine"]
-    from workflow.db.engine import init_global_db
-
-    engine = init_global_db()
-    obj["engine"] = engine
-    return engine
+_get_engine = get_engine_from_ctx
 
 
 # ── evaluations group ─────────────────────────────────────────────────────

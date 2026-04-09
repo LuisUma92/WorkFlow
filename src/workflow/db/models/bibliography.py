@@ -209,6 +209,9 @@ class BibEntry(GlobalBase):
     general_project_links: Mapped[list["GeneralProjectBib"]] = relationship(  # noqa: F821
         back_populates="bib_entry"
     )
+    review_records: Mapped[list["ReviewRecord"]] = relationship(
+        back_populates="bib_entry"
+    )
 
     def __repr__(self) -> str:
         title_short = (self.title or "")[:60]
@@ -278,6 +281,10 @@ class BibKeyword(GlobalBase):
         DateTime, default=datetime.now, onupdate=datetime.now
     )
 
+    review_records: Mapped[list["ReviewRecord"]] = relationship(
+        back_populates="keyword"
+    )
+
     def __repr__(self) -> str:
         return f"<BibKeyword {self.keyword_list[:50]}>"
 
@@ -310,3 +317,80 @@ class BibEntryTag(GlobalBase):
 
     bib_entry: Mapped["BibEntry"] = relationship(back_populates="tag_links")
     bib_tag: Mapped["BibTag"] = relationship(back_populates="entry_links")
+
+
+# ── PRISMA review tables ─────────────────────────────────────────────────
+
+
+class RationaleOption(GlobalBase):
+    """Pre-defined rationale for include/exclude decisions."""
+
+    __tablename__ = "rationale_option"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    rationale_argument: Mapped[str | None] = mapped_column(String(500), default=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now, onupdate=datetime.now
+    )
+
+    review_rationale_links: Mapped[list["ReviewRationale"]] = relationship(
+        back_populates="rationale_option"
+    )
+
+    def __repr__(self) -> str:
+        return f"<RationaleOption {self.rationale_argument}>"
+
+
+class ReviewRecord(GlobalBase):
+    """Screening decision for a (keyword, article) pair."""
+
+    __tablename__ = "review_record"
+    __table_args__ = (
+        UniqueConstraint("keyword_id", "bib_entry_id", name="uq_review_per_article"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    keyword_id: Mapped[int] = mapped_column(ForeignKey("bib_keyword.id"))
+    bib_entry_id: Mapped[int] = mapped_column(ForeignKey("bib_entry.id"))
+    retrieved: Mapped[int | None] = mapped_column(SmallInteger, default=None)
+    included: Mapped[int | None] = mapped_column(SmallInteger, default=None)
+    include_rationale: Mapped[str | None] = mapped_column(Text, default=None)
+    retrieve_rationale: Mapped[str | None] = mapped_column(Text, default=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now, onupdate=datetime.now
+    )
+
+    keyword: Mapped["BibKeyword"] = relationship(back_populates="review_records")
+    bib_entry: Mapped["BibEntry"] = relationship(back_populates="review_records")
+    rationale_links: Mapped[list["ReviewRationale"]] = relationship(
+        back_populates="review_record"
+    )
+
+    def __repr__(self) -> str:
+        return f"<ReviewRecord kw={self.keyword_id} bib={self.bib_entry_id}>"
+
+
+class ReviewRationale(GlobalBase):
+    """Links a rationale option to a specific review record."""
+
+    __tablename__ = "review_rationale"
+    __table_args__ = (
+        UniqueConstraint(
+            "review_record_id",
+            "rationale_option_id",
+            name="uq_rationale_per_review",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    review_record_id: Mapped[int] = mapped_column(ForeignKey("review_record.id"))
+    rationale_option_id: Mapped[int] = mapped_column(ForeignKey("rationale_option.id"))
+
+    review_record: Mapped["ReviewRecord"] = relationship(
+        back_populates="rationale_links"
+    )
+    rationale_option: Mapped["RationaleOption"] = relationship(
+        back_populates="review_rationale_links"
+    )

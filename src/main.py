@@ -11,6 +11,7 @@ from workflow.lecture.cli import lectures
 from workflow.graph.cli import graph
 from workflow.notes.cli import notes
 from workflow.evaluation.cli import evaluations, item, course
+from workflow.prisma.cli import prisma
 
 
 @click.group("workflow")
@@ -27,6 +28,7 @@ cli.add_command(notes)
 cli.add_command(evaluations)
 cli.add_command(item)
 cli.add_command(course)
+cli.add_command(prisma)
 
 
 if __name__ == "__main__":
