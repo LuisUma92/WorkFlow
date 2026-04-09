@@ -392,3 +392,252 @@ class TestEvaluationsAdd:
             seeded_engine,
         )
         assert result.exit_code != 0
+
+
+# ── P2: course add ───────────────────────────────────────────────────────
+
+
+class TestCourseAdd:
+    def test_add_course_basic(self, runner, seeded_engine):
+        result = _invoke(
+            runner,
+            course,
+            [
+                "add",
+                "--inst",
+                "UCR",
+                "--code",
+                "MA-101",
+                "--name",
+                "Cálculo I",
+            ],
+            seeded_engine,
+        )
+        assert result.exit_code == 0
+        assert "Created course" in result.output
+
+    def test_add_course_with_schedule(self, runner, seeded_engine):
+        result = _invoke(
+            runner,
+            course,
+            [
+                "add",
+                "--inst",
+                "UFide",
+                "--code",
+                "FI-301",
+                "--name",
+                "Física III",
+                "--lpw",
+                "4",
+                "--hpl",
+                "1",
+            ],
+            seeded_engine,
+        )
+        assert result.exit_code == 0
+
+    def test_add_course_shows_in_list(self, runner, seeded_engine):
+        _invoke(
+            runner,
+            course,
+            [
+                "add",
+                "--inst",
+                "UCR",
+                "--code",
+                "QU-100",
+                "--name",
+                "Química General",
+            ],
+            seeded_engine,
+        )
+        result = _invoke(runner, course, ["list", "--json"], seeded_engine)
+        data = json.loads(result.output)
+        codes = [d["code"] for d in data]
+        assert "QU-100" in codes
+
+    def test_add_course_duplicate_fails(self, runner, seeded_engine):
+        """FI-201 already exists for UCR in seed data."""
+        result = _invoke(
+            runner,
+            course,
+            [
+                "add",
+                "--inst",
+                "UCR",
+                "--code",
+                "FI-201",
+                "--name",
+                "Duplicate",
+            ],
+            seeded_engine,
+        )
+        assert result.exit_code != 0
+
+    def test_add_course_invalid_institution(self, runner, seeded_engine):
+        result = _invoke(
+            runner,
+            course,
+            [
+                "add",
+                "--inst",
+                "NONEXIST",
+                "--code",
+                "X-1",
+                "--name",
+                "Test",
+            ],
+            seeded_engine,
+        )
+        assert result.exit_code != 0
+
+
+# ── P2: evaluations edit ─────────────────────────────────────────────────
+
+
+class TestEvaluationsEdit:
+    def test_rename_template(self, runner, seeded_engine):
+        # Get the template id first
+        result = _invoke(runner, evaluations, ["list", "--json"], seeded_engine)
+        data = json.loads(result.output)
+        tmpl_id = str(data[0]["id"])
+
+        result = _invoke(
+            runner,
+            evaluations,
+            [
+                "edit",
+                tmpl_id,
+                "rename",
+                "--name",
+                "Nuevo nombre",
+            ],
+            seeded_engine,
+        )
+        assert result.exit_code == 0
+        assert "Renamed" in result.output
+
+    def test_rename_shows_in_list(self, runner, seeded_engine):
+        result = _invoke(runner, evaluations, ["list", "--json"], seeded_engine)
+        data = json.loads(result.output)
+        tmpl_id = str(data[0]["id"])
+
+        _invoke(
+            runner,
+            evaluations,
+            [
+                "edit",
+                tmpl_id,
+                "rename",
+                "--name",
+                "Renamed template",
+            ],
+            seeded_engine,
+        )
+
+        result = _invoke(runner, evaluations, ["list", "--json"], seeded_engine)
+        data = json.loads(result.output)
+        names = [d["name"] for d in data]
+        assert "Renamed template" in names
+
+    def test_add_item_to_template(self, runner, seeded_engine):
+        # Get template and item ids
+        tmpl_result = _invoke(runner, evaluations, ["list", "--json"], seeded_engine)
+        tmpl_id = str(json.loads(tmpl_result.output)[0]["id"])
+
+        item_result = _invoke(runner, item, ["list", "--json"], seeded_engine)
+        item_id = str(json.loads(item_result.output)[0]["id"])
+
+        result = _invoke(
+            runner,
+            evaluations,
+            [
+                "edit",
+                tmpl_id,
+                "add-item",
+                "--item-id",
+                item_id,
+                "--amount",
+                "3",
+                "--points",
+                "10",
+            ],
+            seeded_engine,
+        )
+        assert result.exit_code == 0
+        assert "Added item" in result.output
+
+    def test_remove_item_from_template(self, runner, seeded_engine):
+        # Get the full template to find an evaluation_item id
+        tmpl_result = _invoke(
+            runner,
+            evaluations,
+            ["list", "--json", "--full"],
+            seeded_engine,
+        )
+        data = json.loads(tmpl_result.output)
+        # The seeded template has items with ids; we need eval_item id
+        # Use the evaluations show or get detail — we'll get it via service
+        # For now, add an item then remove it
+        tmpl_id = str(data[0]["id"])
+        item_result = _invoke(runner, item, ["list", "--json"], seeded_engine)
+        item_id = str(json.loads(item_result.output)[0]["id"])
+
+        # Add item
+        add_result = _invoke(
+            runner,
+            evaluations,
+            [
+                "edit",
+                tmpl_id,
+                "add-item",
+                "--item-id",
+                item_id,
+                "--amount",
+                "1",
+                "--points",
+                "5",
+            ],
+            seeded_engine,
+        )
+        assert add_result.exit_code == 0
+        # Extract eval_item_id from output
+        # Output should mention the id
+        ei_id = None
+        for word in add_result.output.split():
+            if word.startswith("id="):
+                ei_id = word.split("=")[1].rstrip(")")
+                break
+        assert ei_id is not None
+
+        # Remove it
+        result = _invoke(
+            runner,
+            evaluations,
+            [
+                "edit",
+                tmpl_id,
+                "remove-item",
+                "--eval-item-id",
+                ei_id,
+            ],
+            seeded_engine,
+        )
+        assert result.exit_code == 0
+        assert "Removed" in result.output
+
+    def test_edit_nonexistent_template(self, runner, seeded_engine):
+        result = _invoke(
+            runner,
+            evaluations,
+            [
+                "edit",
+                "9999",
+                "rename",
+                "--name",
+                "X",
+            ],
+            seeded_engine,
+        )
+        assert result.exit_code != 0

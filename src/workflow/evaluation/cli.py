@@ -27,8 +27,12 @@ from workflow.evaluation.formatters import (
     format_item_table,
 )
 from workflow.evaluation.service import (
+    add_evaluation_item,
+    create_course,
     create_evaluation_template,
     create_item,
+    remove_evaluation_item,
+    rename_evaluation_template,
 )
 
 __all__ = ["evaluations", "item", "course"]
@@ -95,6 +99,83 @@ def eval_add(ctx: click.Context, inst: str, name: str, description: str) -> None
             raise click.ClickException(str(e))
 
         click.echo(f"Created template: [{inst}] {tmpl.name} (id={tmpl.id})")
+
+
+@evaluations.group(name="edit")
+@click.argument("template_id", type=int)
+@click.pass_context
+def eval_edit(ctx: click.Context, template_id: int) -> None:
+    """Edit an evaluation template (rename, add/remove items)."""
+    ctx.ensure_object(dict)["template_id"] = template_id
+
+
+@eval_edit.command(name="rename")
+@click.option("--name", required=True, help="New template name.")
+@click.pass_context
+def eval_rename(ctx: click.Context, name: str) -> None:
+    """Rename an evaluation template."""
+    engine = _get_engine(ctx)
+    template_id = ctx.obj["template_id"]
+
+    with Session(engine) as session:
+        try:
+            tmpl = rename_evaluation_template(
+                session,
+                template_id=template_id,
+                new_name=name,
+            )
+            session.commit()
+        except ValueError as e:
+            raise click.ClickException(str(e))
+
+        click.echo(f"Renamed template id={tmpl.id} to '{tmpl.name}'")
+
+
+@eval_edit.command(name="add-item")
+@click.option("--item-id", required=True, type=int, help="Item ID to add.")
+@click.option("--amount", required=True, type=int, help="Number of items.")
+@click.option("--points", required=True, type=int, help="Points per item.")
+@click.pass_context
+def eval_add_item(ctx: click.Context, item_id: int, amount: int, points: int) -> None:
+    """Add a taxonomy item to the template."""
+    engine = _get_engine(ctx)
+    template_id = ctx.obj["template_id"]
+
+    with Session(engine) as session:
+        try:
+            ei = add_evaluation_item(
+                session,
+                template_id=template_id,
+                item_id=item_id,
+                amount=amount,
+                points_per_item=points,
+            )
+            session.commit()
+        except ValueError as e:
+            raise click.ClickException(str(e))
+
+        click.echo(
+            f"Added item id={ei.item_id} to template id={template_id} "
+            f"({ei.total_amount} × {ei.points_per_item} pts, id={ei.id})"
+        )
+
+
+@eval_edit.command(name="remove-item")
+@click.option(
+    "--eval-item-id", required=True, type=int, help="EvaluationItem ID to remove."
+)
+@click.pass_context
+def eval_remove_item(ctx: click.Context, eval_item_id: int) -> None:
+    """Remove an item link from the template."""
+    engine = _get_engine(ctx)
+
+    with Session(engine) as session:
+        removed = remove_evaluation_item(session, evaluation_item_id=eval_item_id)
+        if not removed:
+            raise click.ClickException(f"EvaluationItem id={eval_item_id} not found.")
+        session.commit()
+
+    click.echo(f"Removed evaluation item id={eval_item_id}")
 
 
 # ── item group ────────────────────────────────────────────────────────────
@@ -203,3 +284,42 @@ def course_list(ctx: click.Context, inst: str | None, as_json: bool) -> None:
             click.echo(format_course_json(courses))
         else:
             click.echo(format_course_table(courses))
+
+
+@course.command(name="add")
+@click.option("--inst", required=True, help="Institution short name.")
+@click.option("--code", required=True, help="Course code.")
+@click.option("--name", required=True, help="Course name.")
+@click.option(
+    "--lpw", type=int, default=3, show_default=True, help="Lectures per week."
+)
+@click.option(
+    "--hpl", type=int, default=2, show_default=True, help="Hours per lecture."
+)
+@click.pass_context
+def course_add(
+    ctx: click.Context,
+    inst: str,
+    code: str,
+    name: str,
+    lpw: int,
+    hpl: int,
+) -> None:
+    """Create a new course."""
+    engine = _get_engine(ctx)
+
+    with Session(engine) as session:
+        try:
+            c = create_course(
+                session,
+                institution_short_name=inst,
+                code=code,
+                name=name,
+                lectures_per_week=lpw,
+                hours_per_lecture=hpl,
+            )
+            session.commit()
+        except ValueError as e:
+            raise click.ClickException(str(e))
+
+        click.echo(f"Created course: [{inst}] {c.code} — {c.name} (id={c.id})")

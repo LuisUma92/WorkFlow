@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from workflow.db.models.academic import (
+    Course,
     EvaluationItem,
     EvaluationTemplate,
     Institution,
@@ -114,3 +115,78 @@ def add_evaluation_item(
     session.add(ei)
     session.flush()
     return ei
+
+
+def remove_evaluation_item(
+    session: Session,
+    *,
+    evaluation_item_id: int,
+) -> bool:
+    """Remove an evaluation item link. Returns True if deleted, False if not found."""
+    ei = session.get(EvaluationItem, evaluation_item_id)
+    if ei is None:
+        return False
+    session.delete(ei)
+    session.flush()
+    return True
+
+
+def rename_evaluation_template(
+    session: Session,
+    *,
+    template_id: int,
+    new_name: str,
+) -> EvaluationTemplate:
+    """Rename an evaluation template with duplicate validation."""
+    tmpl = session.get(EvaluationTemplate, template_id)
+    if tmpl is None:
+        raise ValueError(f"Template with id={template_id} not found.")
+
+    # Check for duplicate (same name + institution)
+    stmt = select(EvaluationTemplate).where(
+        EvaluationTemplate.institution_id == tmpl.institution_id,
+        EvaluationTemplate.name == new_name,
+        EvaluationTemplate.id != tmpl.id,
+    )
+    if session.scalars(stmt).first() is not None:
+        raise ValueError(
+            f"Duplicate: template '{new_name}' already exists for this institution."
+        )
+
+    tmpl.name = new_name
+    session.flush()
+    return tmpl
+
+
+def create_course(
+    session: Session,
+    *,
+    institution_short_name: str,
+    code: str,
+    name: str,
+    lectures_per_week: int = 3,
+    hours_per_lecture: int = 2,
+) -> Course:
+    """Create a new course with duplicate validation."""
+    inst = _resolve_institution(session, institution_short_name)
+
+    # Check for duplicate (same code + institution)
+    stmt = select(Course).where(
+        Course.institution_id == inst.id,
+        Course.code == code,
+    )
+    if session.scalars(stmt).first() is not None:
+        raise ValueError(
+            f"Duplicate: course '{code}' already exists for {institution_short_name}."
+        )
+
+    c = Course(
+        institution_id=inst.id,
+        code=code,
+        name=name,
+        lectures_per_week=lectures_per_week,
+        hours_per_lecture=hours_per_lecture,
+    )
+    session.add(c)
+    session.flush()
+    return c

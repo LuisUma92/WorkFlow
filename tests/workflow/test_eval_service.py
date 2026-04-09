@@ -34,12 +34,16 @@ def db_session():
 @pytest.fixture
 def seed_institutions(db_session):
     ucr = Institution(
-        short_name="UCR", full_name="Universidad de Costa Rica",
-        cycle_weeks=16, cycle_name="Semestre",
+        short_name="UCR",
+        full_name="Universidad de Costa Rica",
+        cycle_weeks=16,
+        cycle_name="Semestre",
     )
     ufide = Institution(
-        short_name="UFide", full_name="Universidad Fidélitas",
-        cycle_weeks=15, cycle_name="Cuatrimestre",
+        short_name="UFide",
+        full_name="Universidad Fidélitas",
+        cycle_weeks=15,
+        cycle_name="Cuatrimestre",
     )
     db_session.add_all([ucr, ufide])
     db_session.flush()
@@ -77,7 +81,9 @@ class TestSchemaAdditions:
         loaded = db_session.get(Item, it.id)
         assert loaded.item_type is None
 
-    def test_evaluation_template_accepts_description(self, db_session, seed_institutions):
+    def test_evaluation_template_accepts_description(
+        self, db_session, seed_institutions
+    ):
         """EvaluationTemplate should accept a description field."""
         inst = seed_institutions["UFide"]
         tmpl = EvaluationTemplate(
@@ -113,22 +119,34 @@ class TestSchemaAdditions:
         db_session.flush()
 
         it1 = Item(
-            name="A", taxonomy_level="Recordar", taxonomy_domain="Información",
+            name="A",
+            taxonomy_level="Recordar",
+            taxonomy_domain="Información",
         )
         it2 = Item(
-            name="B", taxonomy_level="Comprender", taxonomy_domain="Información",
+            name="B",
+            taxonomy_level="Comprender",
+            taxonomy_domain="Información",
         )
         db_session.add_all([it1, it2])
         db_session.flush()
 
-        db_session.add(EvaluationItem(
-            evaluation_id=tmpl.id, item_id=it1.id,
-            total_amount=2, points_per_item=5,
-        ))
-        db_session.add(EvaluationItem(
-            evaluation_id=tmpl.id, item_id=it2.id,
-            total_amount=3, points_per_item=10,
-        ))
+        db_session.add(
+            EvaluationItem(
+                evaluation_id=tmpl.id,
+                item_id=it1.id,
+                total_amount=2,
+                points_per_item=5,
+            )
+        )
+        db_session.add(
+            EvaluationItem(
+                evaluation_id=tmpl.id,
+                item_id=it2.id,
+                total_amount=3,
+                points_per_item=10,
+            )
+        )
         db_session.flush()
 
         assert tmpl.total_points == 40  # 2*5 + 3*10
@@ -255,10 +273,14 @@ class TestCreateEvaluationTemplate:
         from workflow.evaluation.service import create_evaluation_template
 
         t1 = create_evaluation_template(
-            db_session, institution_short_name="UFide", name="Parcial",
+            db_session,
+            institution_short_name="UFide",
+            name="Parcial",
         )
         t2 = create_evaluation_template(
-            db_session, institution_short_name="UCR", name="Parcial",
+            db_session,
+            institution_short_name="UCR",
+            name="Parcial",
         )
         assert t1.id != t2.id
 
@@ -272,10 +294,14 @@ class TestAddEvaluationItem:
         )
 
         tmpl = create_evaluation_template(
-            db_session, institution_short_name="UCR", name="Parcial",
+            db_session,
+            institution_short_name="UCR",
+            name="Parcial",
         )
         it = create_item(
-            db_session, name="SU", taxonomy_level="Recordar",
+            db_session,
+            name="SU",
+            taxonomy_level="Recordar",
             taxonomy_domain="Información",
         )
         db_session.flush()
@@ -296,8 +322,11 @@ class TestAddEvaluationItem:
 
         with pytest.raises(ValueError, match="[Tt]emplate"):
             add_evaluation_item(
-                db_session, template_id=9999, item_id=1,
-                amount=1, points_per_item=1,
+                db_session,
+                template_id=9999,
+                item_id=1,
+                amount=1,
+                points_per_item=1,
             )
 
     def test_add_item_rejects_invalid_item(self, db_session, seed_institutions):
@@ -307,12 +336,197 @@ class TestAddEvaluationItem:
         )
 
         tmpl = create_evaluation_template(
-            db_session, institution_short_name="UCR", name="Parcial",
+            db_session,
+            institution_short_name="UCR",
+            name="Parcial",
         )
         db_session.flush()
 
         with pytest.raises(ValueError, match="[Ii]tem"):
             add_evaluation_item(
-                db_session, template_id=tmpl.id, item_id=9999,
-                amount=1, points_per_item=1,
+                db_session,
+                template_id=tmpl.id,
+                item_id=9999,
+                amount=1,
+                points_per_item=1,
             )
+
+
+# ── P2: Course creation ──────────────────────────────────────────────────
+
+
+class TestCreateCourse:
+    def test_create_course_basic(self, db_session, seed_institutions):
+        from workflow.evaluation.service import create_course
+
+        c = create_course(
+            db_session,
+            institution_short_name="UCR",
+            code="FI-201",
+            name="Física II",
+        )
+        assert c.id is not None
+        assert c.code == "FI-201"
+        assert c.name == "Física II"
+        assert c.institution.short_name == "UCR"
+
+    def test_create_course_with_schedule(self, db_session, seed_institutions):
+        from workflow.evaluation.service import create_course
+
+        c = create_course(
+            db_session,
+            institution_short_name="UFide",
+            code="MAT-101",
+            name="Cálculo I",
+            lectures_per_week=4,
+            hours_per_lecture=1,
+        )
+        assert c.lectures_per_week == 4
+        assert c.hours_per_lecture == 1
+
+    def test_create_course_rejects_unknown_institution(self, db_session):
+        from workflow.evaluation.service import create_course
+
+        with pytest.raises(ValueError, match="Institution"):
+            create_course(
+                db_session,
+                institution_short_name="NONEXIST",
+                code="X-1",
+                name="Test",
+            )
+
+    def test_create_course_rejects_duplicate_code(self, db_session, seed_institutions):
+        from workflow.evaluation.service import create_course
+
+        create_course(
+            db_session,
+            institution_short_name="UCR",
+            code="FI-201",
+            name="Física II",
+        )
+        db_session.flush()
+
+        with pytest.raises(ValueError, match="[Dd]uplicate"):
+            create_course(
+                db_session,
+                institution_short_name="UCR",
+                code="FI-201",
+                name="Física II diferente",
+            )
+
+    def test_create_course_same_code_different_inst_ok(
+        self,
+        db_session,
+        seed_institutions,
+    ):
+        from workflow.evaluation.service import create_course
+
+        c1 = create_course(
+            db_session,
+            institution_short_name="UCR",
+            code="FI-201",
+            name="Física II",
+        )
+        c2 = create_course(
+            db_session,
+            institution_short_name="UFide",
+            code="FI-201",
+            name="Física II",
+        )
+        assert c1.id != c2.id
+
+
+# ── P2: Edit operations ──────────────────────────────────────────────────
+
+
+class TestRenameEvaluationTemplate:
+    def test_rename_template(self, db_session, seed_institutions):
+        from workflow.evaluation.service import (
+            create_evaluation_template,
+            rename_evaluation_template,
+        )
+
+        tmpl = create_evaluation_template(
+            db_session,
+            institution_short_name="UCR",
+            name="Parcial 1",
+        )
+        db_session.flush()
+
+        renamed = rename_evaluation_template(
+            db_session, template_id=tmpl.id, new_name="Examen final"
+        )
+        assert renamed.name == "Examen final"
+
+    def test_rename_rejects_nonexistent(self, db_session):
+        from workflow.evaluation.service import rename_evaluation_template
+
+        with pytest.raises(ValueError, match="[Tt]emplate"):
+            rename_evaluation_template(db_session, template_id=9999, new_name="X")
+
+    def test_rename_rejects_duplicate(self, db_session, seed_institutions):
+        from workflow.evaluation.service import (
+            create_evaluation_template,
+            rename_evaluation_template,
+        )
+
+        create_evaluation_template(
+            db_session,
+            institution_short_name="UCR",
+            name="Parcial 1",
+        )
+        t2 = create_evaluation_template(
+            db_session,
+            institution_short_name="UCR",
+            name="Parcial 2",
+        )
+        db_session.flush()
+
+        with pytest.raises(ValueError, match="[Dd]uplicate"):
+            rename_evaluation_template(
+                db_session, template_id=t2.id, new_name="Parcial 1"
+            )
+
+
+class TestRemoveEvaluationItem:
+    def test_remove_item_from_template(self, db_session, seed_institutions):
+        from workflow.evaluation.service import (
+            add_evaluation_item,
+            create_evaluation_template,
+            create_item,
+            remove_evaluation_item,
+        )
+
+        tmpl = create_evaluation_template(
+            db_session,
+            institution_short_name="UCR",
+            name="Parcial",
+        )
+        it = create_item(
+            db_session,
+            name="SU",
+            taxonomy_level="Recordar",
+            taxonomy_domain="Información",
+        )
+        db_session.flush()
+
+        ei = add_evaluation_item(
+            db_session,
+            template_id=tmpl.id,
+            item_id=it.id,
+            amount=2,
+            points_per_item=5,
+        )
+        db_session.flush()
+
+        result = remove_evaluation_item(db_session, evaluation_item_id=ei.id)
+        assert result is True
+
+        # Verify it's gone
+        assert db_session.get(EvaluationItem, ei.id) is None
+
+    def test_remove_nonexistent_returns_false(self, db_session):
+        from workflow.evaluation.service import remove_evaluation_item
+
+        result = remove_evaluation_item(db_session, evaluation_item_id=9999)
+        assert result is False
