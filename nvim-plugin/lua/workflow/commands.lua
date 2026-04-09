@@ -6,7 +6,7 @@ function M.setup(workflow)
   vim.api.nvim_create_user_command("WorkflowValidate", function() workflow.validate_frontmatter() end, {})
   vim.api.nvim_create_user_command("WorkflowPromote", function() workflow.promote_note() end, {})
 
-  -- Telescope pickers (Phase 3)
+  -- Snacks pickers (Phase 3)
   vim.api.nvim_create_user_command("WorkflowEvalPicker", function(cmd_opts)
     workflow.pick_evaluations({ inst = cmd_opts.fargs[1] })
   end, { nargs = "?" })

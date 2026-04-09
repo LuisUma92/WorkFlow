@@ -88,18 +88,18 @@ function M.promote_note()
   vim.notify("Promoted to permanent: " .. filename, vim.log.levels.INFO, { title = "workflow" })
 end
 
--- Telescope pickers (Phase 3)
+-- Snacks pickers (Phase 3)
 
 function M.pick_evaluations(opts)
-  require("workflow.telescope.evaluations").picker(opts)
+  require("workflow.picker.evaluations").pick(opts)
 end
 
 function M.pick_items(opts)
-  require("workflow.telescope.items").picker(opts)
+  require("workflow.picker.items").pick(opts)
 end
 
 function M.pick_courses(opts)
-  require("workflow.telescope.courses").picker(opts)
+  require("workflow.picker.courses").pick(opts)
 end
 
 -- Statusline component

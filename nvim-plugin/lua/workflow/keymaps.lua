@@ -11,13 +11,13 @@ function M.setup(prefix, workflow)
   vim.keymap.set("n", prefix .. "p", function() workflow.promote_note() end,
     vim.tbl_extend("force", opts, { desc = "workflow: promote fleeting → permanent" }))
 
-  -- Telescope pickers (Phase 3)
+  -- Snacks pickers (Phase 3)
   vim.keymap.set("n", prefix .. "te", function() workflow.pick_evaluations() end,
-    vim.tbl_extend("force", opts, { desc = "workflow: telescope evaluations" }))
+    vim.tbl_extend("force", opts, { desc = "workflow: pick evaluations" }))
   vim.keymap.set("n", prefix .. "ti", function() workflow.pick_items() end,
-    vim.tbl_extend("force", opts, { desc = "workflow: telescope items" }))
+    vim.tbl_extend("force", opts, { desc = "workflow: pick items" }))
   vim.keymap.set("n", prefix .. "tc", function() workflow.pick_courses() end,
-    vim.tbl_extend("force", opts, { desc = "workflow: telescope courses" }))
+    vim.tbl_extend("force", opts, { desc = "workflow: pick courses" }))
 end
 
 return M
