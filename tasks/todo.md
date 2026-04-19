@@ -42,6 +42,12 @@
 - [x] D4. Reviewer-esquema fixes: type `_count_table model`, extract helper from chained ternary, clarify docstring (items 1-3 global, 4-6 scoped), tighten `[x]` assertion, add zero-records + detail="complete" tests, label-set guard
 - [x] D5. VERIFY: 8/8 checklist; 672 total workflow; flake8 clean
 
+### Phase P3 — Neovim Snacks Pickers ✅ DONE
+- [x] P3.1 Three pickers (bib, keywords, reviews) via snacks.picker mirroring evaluations.lua
+- [x] P3.2 Commands: `:WorkflowPrismaBibPicker [year=... type=...]`, `:WorkflowPrismaKeywordPicker`, `:WorkflowPrismaReviewPicker <kw-id> [status]`
+- [x] P3.3 Reviewer-esquema (code+security): module-level `_stats_cache` keyed by kw id (not ctx.item mutation), `vim.NIL` handling on nullable `included`, forward config from kw → reviews picker, allowlist validate `status`, numeric-validate `year`
+- [x] P3.4 Syntax check all 5 lua files via `luac -p`; manual nvim smoke-test pending
+
 ### Phase E — Finalize ✅ DONE
 - [x] E1. 672/672 workflow tests; flake8 clean
 - [x] E2. ADR PRISMA-0005 updated: CLI structure (P0+P1+P2), architecture layers (importer/exporter), MUST rules, change log

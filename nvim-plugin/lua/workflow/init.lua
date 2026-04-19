@@ -102,6 +102,20 @@ function M.pick_courses(opts)
   require("workflow.picker.courses").pick(opts)
 end
 
+-- PRISMA pickers (P3)
+
+function M.pick_prisma_bib(opts)
+  require("workflow.picker.prisma_bib").pick(opts)
+end
+
+function M.pick_prisma_keywords(opts)
+  require("workflow.picker.prisma_keywords").pick(opts)
+end
+
+function M.pick_prisma_reviews(opts)
+  require("workflow.picker.prisma_reviews").pick(opts)
+end
+
 -- Statusline component
 function M.statusline()
   return require("workflow.statusline").component()
