@@ -13,20 +13,20 @@
 
 ## Tasks
 
-### Phase A — `bib import`
-- [ ] A1. RED: write ~12 import tests in `tests/workflow/test_prisma_cli.py`
-- [ ] A2. GREEN: create `src/workflow/prisma/importer.py` with `ImportResult`, `import_bib_file`, helpers
-- [ ] A3. GREEN: wire `prisma bib import` command in `cli.py`
-- [ ] A4. GREEN: `format_import_result_table/json` in `formatters.py`
-- [ ] A5. VERIFY: `pytest tests/workflow/test_prisma_cli.py -k import`
-- [ ] A6. Commit: `feat(prisma): add bib import command (P2)`
+### Phase A — `bib import` ✅ DONE (commit 57e4d4c)
+- [x] A1. RED: 12 import tests
+- [x] A2. GREEN: `importer.py` (ImportResult, import_bib_file, helpers)
+- [x] A3. GREEN: `prisma bib import` wired in cli.py
+- [x] A4. GREEN: `format_import_result_{table,json}` in formatters.py
+- [x] A5. VERIFY: 12/12 pass; full 634/634 workflow tests pass
+- [x] A6. Commit: 57e4d4c
 
-### Phase B — `bib export`
-- [ ] B1. RED: ~6 export tests (including import→export round-trip)
-- [ ] B2. GREEN: create `src/workflow/prisma/exporter.py` with `export_bib_entries`, `_entry_to_bibtex`, `_join_authors`
-- [ ] B3. GREEN: wire `prisma bib export` in `cli.py` (validate --status requires --keyword-id)
-- [ ] B4. VERIFY tests pass
-- [ ] B5. Commit: `feat(prisma): add bib export command (P2)`
+### Phase B — `bib export` ✅ DONE
+- [x] B1. RED: 12 → 17 tests
+- [x] B2. GREEN: `exporter.py` with `export_bib_entries`, `_entry_to_bibtex`, `_join_authors`
+- [x] B3. GREEN: `prisma bib export` wired (--keyword-id, --status, --output, --force)
+- [x] B4. Reviewer-esquema fixes: model→bib mapping direction, date round-trip, type hints, injection sanitization, overwrite guard
+- [x] B5. VERIFY: 17/17 export tests pass; 656 total workflow tests; flake8 clean
 
 ### Phase C — `review stats`
 - [ ] C1. RED: ~5 stats tests

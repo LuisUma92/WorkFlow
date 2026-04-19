@@ -6,6 +6,9 @@ Groups: ``prisma`` with subgroups ``bib``, ``keyword``, ``review``, ``tag``, ``r
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import cast
+
 import click
 from sqlalchemy.orm import Session
 
@@ -26,6 +29,7 @@ from workflow.prisma.formatters import (
     format_tag_json,
     format_tag_table,
 )
+from workflow.prisma.exporter import ReviewStatus, export_bib_entries
 from workflow.prisma.importer import import_bib_file
 from workflow.prisma.service import (
     REVIEW_STATUS_LABELS,
@@ -162,6 +166,57 @@ def bib_import(
         click.echo(format_import_result_json(result))
     else:
         click.echo(format_import_result_table(result, verbose=verbose))
+
+
+@bib.command(name="export")
+@click.option("--keyword-id", type=int, default=None, help="Filter by keyword id.")
+@click.option(
+    "--status",
+    type=click.Choice(["included", "excluded", "pending"]),
+    default=None,
+    help="Filter by review status (requires --keyword-id).",
+)
+@click.option(
+    "--output",
+    type=click.Path(dir_okay=False, writable=True),
+    default=None,
+    help="Write BibTeX to this file instead of stdout.",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Overwrite --output if it exists.",
+)
+@click.pass_context
+def bib_export(
+    ctx: click.Context,
+    keyword_id: int | None,
+    status: str | None,
+    output: str | None,
+    force: bool,
+) -> None:
+    """Export bibliography entries as BibTeX."""
+    if status is not None and keyword_id is None:
+        raise click.ClickException("--status requires --keyword-id")
+
+    review_status = cast("ReviewStatus | None", status)
+
+    engine = get_engine_from_ctx(ctx)
+    try:
+        with Session(engine) as session:
+            bibtex = export_bib_entries(
+                session, keyword_id=keyword_id, status=review_status
+            )
+    except ValueError as exc:
+        raise click.ClickException(str(exc))
+
+    if output:
+        out_path = Path(output)
+        if out_path.exists() and not force:
+            raise click.ClickException(f"{output} exists; pass --force to overwrite.")
+        out_path.write_text(bibtex, encoding="utf-8")
+    else:
+        click.echo(bibtex)
 
 
 # ── keyword subgroup ─────────────────────────────────────────────────────

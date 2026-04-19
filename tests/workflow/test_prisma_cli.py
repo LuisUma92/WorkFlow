@@ -984,3 +984,229 @@ class TestPrismaBibImport:
         path = _write_bib(tmp_path, SAMPLE_BIB)
         result = _invoke(runner, prisma, ["bib", "import", path], engine)
         assert result.exit_code != 0
+
+
+# ── prisma bib export ───────────────────────────────────────────────────
+
+
+def _kw_id_by_text(runner, engine, needle: str) -> str:
+    result = _invoke(runner, prisma, ["keyword", "list", "--json"], engine)
+    for kw in json.loads(result.output):
+        if needle in kw["keyword_list"]:
+            return str(kw["id"])
+    raise AssertionError(f"keyword containing {needle!r} not in seed")
+
+
+class TestPrismaBibExport:
+    def test_export_all_entries(self, runner, seeded_engine):
+        result = _invoke(runner, prisma, ["bib", "export"], seeded_engine)
+        assert result.exit_code == 0
+        out = result.output
+        assert "@article{smith2023ml" in out
+        assert "@article{jones2024dl" in out
+        assert "@inproceedings{doe2022nlp" in out
+
+    def test_export_bibtex_valid_syntax(self, runner, seeded_engine):
+        result = _invoke(runner, prisma, ["bib", "export"], seeded_engine)
+        assert result.exit_code == 0
+        out = result.output
+        # Balanced braces, field = {value} shape
+        assert out.count("{") == out.count("}")
+        assert "title = {" in out
+        assert "year = {" in out
+
+    def test_export_filter_by_keyword_included_only(self, runner, seeded_engine):
+        kw1 = _kw_id_by_text(runner, seeded_engine, "machine learning")
+        result = _invoke(
+            runner,
+            prisma,
+            ["bib", "export", "--keyword-id", kw1, "--status", "included"],
+            seeded_engine,
+        )
+        assert result.exit_code == 0
+        out = result.output
+        assert "smith2023ml" in out  # b1 included for kw1
+        assert "jones2024dl" not in out  # b2 excluded for kw1
+        assert "doe2022nlp" not in out  # b3 pending for kw1
+
+    def test_export_filter_by_keyword_excluded(self, runner, seeded_engine):
+        kw1 = _kw_id_by_text(runner, seeded_engine, "machine learning")
+        result = _invoke(
+            runner,
+            prisma,
+            ["bib", "export", "--keyword-id", kw1, "--status", "excluded"],
+            seeded_engine,
+        )
+        assert result.exit_code == 0
+        assert "jones2024dl" in result.output
+        assert "smith2023ml" not in result.output
+
+    def test_export_filter_by_keyword_pending(self, runner, seeded_engine):
+        kw1 = _kw_id_by_text(runner, seeded_engine, "machine learning")
+        result = _invoke(
+            runner,
+            prisma,
+            ["bib", "export", "--keyword-id", kw1, "--status", "pending"],
+            seeded_engine,
+        )
+        assert result.exit_code == 0
+        assert "doe2022nlp" in result.output
+        assert "smith2023ml" not in result.output
+
+    def test_export_filter_by_keyword_no_status(self, runner, seeded_engine):
+        """--keyword-id without --status returns all records for that kw."""
+        kw1 = _kw_id_by_text(runner, seeded_engine, "machine learning")
+        result = _invoke(
+            runner, prisma, ["bib", "export", "--keyword-id", kw1], seeded_engine
+        )
+        assert result.exit_code == 0
+        out = result.output
+        assert "smith2023ml" in out
+        assert "jones2024dl" in out
+        assert "doe2022nlp" in out
+
+    def test_export_status_without_keyword_errors(self, runner, seeded_engine):
+        result = _invoke(
+            runner,
+            prisma,
+            ["bib", "export", "--status", "included"],
+            seeded_engine,
+        )
+        assert result.exit_code != 0
+        assert "keyword" in result.output.lower()
+
+    def test_export_invalid_status(self, runner, seeded_engine):
+        kw1 = _kw_id_by_text(runner, seeded_engine, "machine learning")
+        result = _invoke(
+            runner,
+            prisma,
+            ["bib", "export", "--keyword-id", kw1, "--status", "bogus"],
+            seeded_engine,
+        )
+        assert result.exit_code != 0
+
+    def test_export_author_joining(self, runner, seeded_engine):
+        """Authors format: 'Last, First and Last, First'."""
+        result = _invoke(runner, prisma, ["bib", "export"], seeded_engine)
+        assert result.exit_code == 0
+        assert "Smith, Alice" in result.output
+        assert "Jones, Bob" in result.output
+
+    def test_export_to_output_file(self, runner, seeded_engine, tmp_path):
+        out_path = tmp_path / "out.bib"
+        result = _invoke(
+            runner,
+            prisma,
+            ["bib", "export", "--output", str(out_path)],
+            seeded_engine,
+        )
+        assert result.exit_code == 0
+        assert out_path.exists()
+        content = out_path.read_text()
+        assert "@article{smith2023ml" in content
+
+    def test_export_output_refuses_overwrite(self, runner, seeded_engine, tmp_path):
+        out_path = tmp_path / "existing.bib"
+        out_path.write_text("OLD")
+        result = _invoke(
+            runner,
+            prisma,
+            ["bib", "export", "--output", str(out_path)],
+            seeded_engine,
+        )
+        assert result.exit_code != 0
+        assert out_path.read_text() == "OLD"
+
+    def test_export_output_force_overwrite(self, runner, seeded_engine, tmp_path):
+        out_path = tmp_path / "existing.bib"
+        out_path.write_text("OLD")
+        result = _invoke(
+            runner,
+            prisma,
+            ["bib", "export", "--output", str(out_path), "--force"],
+            seeded_engine,
+        )
+        assert result.exit_code == 0
+        assert "@article" in out_path.read_text()
+
+    def test_export_roundtrip_structural(self, runner, engine, tmp_path):
+        """Import → export → re-import into fresh DB → compare DB state."""
+        from sqlalchemy import create_engine as _ce
+        from sqlalchemy import event as _ev
+
+        path = _write_bib(tmp_path, SAMPLE_BIB)
+        _invoke(runner, prisma, ["bib", "import", path], engine)
+
+        out_path = tmp_path / "roundtrip.bib"
+        _invoke(
+            runner,
+            prisma,
+            ["bib", "export", "--output", str(out_path)],
+            engine,
+        )
+
+        fresh = _ce("sqlite:///:memory:")
+        _ev.listen(fresh, "connect", _enable_fk)
+        GlobalBase.metadata.create_all(fresh)
+        _invoke(runner, prisma, ["bib", "import", str(out_path)], fresh)
+
+        with Session(engine) as a, Session(fresh) as b:
+            assert _count(a, BibEntry) == _count(b, BibEntry)
+            assert {e.title for e in _all(a, BibEntry)} == {
+                e.title for e in _all(b, BibEntry)
+            }
+            assert {e.bibkey for e in _all(a, BibEntry)} == {
+                e.bibkey for e in _all(b, BibEntry)
+            }
+
+    def test_export_multi_author_order_preserved(self, runner, engine, tmp_path):
+        """Two authors retain comma-format ordering across export."""
+        bib = r"""@article{multi2025,
+  title = {Multi author paper},
+  author = {Primary, Pat and Secondary, Sam},
+  year = {2025},
+  volume = {7},
+}
+"""
+        path = _write_bib(tmp_path, bib)
+        _invoke(runner, prisma, ["bib", "import", path], engine)
+        result = _invoke(runner, prisma, ["bib", "export"], engine)
+        assert result.exit_code == 0
+        assert "Primary, Pat and Secondary, Sam" in result.output
+
+    def test_export_keyword_zero_match_status(self, runner, seeded_engine):
+        """Valid keyword with zero matches for status → empty output, exit 0."""
+        kw2 = _kw_id_by_text(runner, seeded_engine, "deep learning")
+        result = _invoke(
+            runner,
+            prisma,
+            ["bib", "export", "--keyword-id", kw2, "--status", "pending"],
+            seeded_engine,
+        )
+        assert result.exit_code == 0
+        assert result.output.strip() == ""
+
+    def test_export_sanitizes_injection(self, runner, engine):
+        """DB value containing raw braces doesn't escape the field wrapper."""
+        with Session(engine) as s:
+            s.add(
+                BibEntry(
+                    title="Evil } = {injected",
+                    year=2025,
+                    entry_type="article",
+                    bibkey="evil2025",
+                )
+            )
+            s.commit()
+        result = _invoke(runner, prisma, ["bib", "export"], engine)
+        assert result.exit_code == 0
+        assert result.output.count("{") == result.output.count("}")
+
+    def test_export_nonexistent_keyword(self, runner, seeded_engine):
+        result = _invoke(
+            runner,
+            prisma,
+            ["bib", "export", "--keyword-id", "9999"],
+            seeded_engine,
+        )
+        assert result.exit_code != 0
