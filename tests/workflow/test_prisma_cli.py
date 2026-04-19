@@ -1210,3 +1210,149 @@ class TestPrismaBibExport:
             seeded_engine,
         )
         assert result.exit_code != 0
+
+
+# ── prisma review stats ─────────────────────────────────────────────────
+
+
+class TestPrismaReviewStats:
+    def test_stats_mixed_statuses(self, runner, seeded_engine):
+        """kw1 seed: 1 included, 1 excluded, 1 pending, total 3."""
+        kw1 = _kw_id_by_text(runner, seeded_engine, "machine learning")
+        result = _invoke(
+            runner,
+            prisma,
+            ["review", "stats", "--keyword-id", kw1, "--json"],
+            seeded_engine,
+        )
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert data["included"] == 1
+        assert data["excluded"] == 1
+        assert data["pending"] == 1
+        assert data["total"] == 3
+        assert "machine learning" in data["keyword"]
+        assert data["keyword_id"] == int(kw1)
+
+    def test_stats_only_included(self, runner, seeded_engine):
+        """kw2 seed: 1 included only."""
+        kw2 = _kw_id_by_text(runner, seeded_engine, "deep learning")
+        result = _invoke(
+            runner,
+            prisma,
+            ["review", "stats", "--keyword-id", kw2, "--json"],
+            seeded_engine,
+        )
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert data["included"] == 1
+        assert data["excluded"] == 0
+        assert data["pending"] == 0
+        assert data["total"] == 1
+
+    def test_stats_nonexistent_keyword(self, runner, seeded_engine):
+        result = _invoke(
+            runner,
+            prisma,
+            ["review", "stats", "--keyword-id", "9999"],
+            seeded_engine,
+        )
+        assert result.exit_code != 0
+
+    def test_stats_empty_keyword_no_records(self, runner, engine):
+        """Newly-created keyword with zero review records → all zeros."""
+        from workflow.db.models.bibliography import BibKeyword as _Kw
+
+        with Session(engine) as s:
+            kw = _Kw(keyword_list="untouched topic")
+            s.add(kw)
+            s.commit()
+            kw_id = str(kw.id)
+        result = _invoke(
+            runner,
+            prisma,
+            ["review", "stats", "--keyword-id", kw_id, "--json"],
+            engine,
+        )
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert data["included"] == 0
+        assert data["excluded"] == 0
+        assert data["pending"] == 0
+        assert data["total"] == 0
+
+    def test_stats_table_output(self, runner, seeded_engine):
+        """Default output is human-readable and includes the actual counts."""
+        kw1 = _kw_id_by_text(runner, seeded_engine, "machine learning")
+        result = _invoke(
+            runner,
+            prisma,
+            ["review", "stats", "--keyword-id", kw1],
+            seeded_engine,
+        )
+        assert result.exit_code == 0
+        out = result.output
+        assert "Included: 1" in out
+        assert "Excluded: 1" in out
+        assert "Pending:  1" in out
+        assert "Total:    3" in out
+
+    def test_stats_missing_keyword_id(self, runner, seeded_engine):
+        result = _invoke(runner, prisma, ["review", "stats"], seeded_engine)
+        assert result.exit_code != 0
+
+    def test_stats_zero_keyword_id_rejected(self, runner, seeded_engine):
+        """--keyword-id must be a positive integer (IntRange min=1)."""
+        result = _invoke(
+            runner,
+            prisma,
+            ["review", "stats", "--keyword-id", "0"],
+            seeded_engine,
+        )
+        assert result.exit_code != 0
+
+    def test_stats_all_pending(self, runner, engine):
+        """Records exist but all have included=None → pending == total."""
+        from workflow.db.models.bibliography import (
+            BibEntry as _BE,
+            BibKeyword as _Kw,
+            ReviewRecord as _RR,
+        )
+
+        with Session(engine) as s:
+            kw = _Kw(keyword_list="all pending topic")
+            b_a = _BE(title="Undecided A", year=2020, volume="a", entry_type="article")
+            b_b = _BE(title="Undecided B", year=2020, volume="b", entry_type="article")
+            s.add_all([kw, b_a, b_b])
+            s.flush()
+            s.add_all(
+                [
+                    _RR(
+                        keyword_id=kw.id,
+                        bib_entry_id=b_a.id,
+                        retrieved=1,
+                        included=None,
+                    ),
+                    _RR(
+                        keyword_id=kw.id,
+                        bib_entry_id=b_b.id,
+                        retrieved=1,
+                        included=None,
+                    ),
+                ]
+            )
+            s.commit()
+            kw_id = str(kw.id)
+
+        result = _invoke(
+            runner,
+            prisma,
+            ["review", "stats", "--keyword-id", kw_id, "--json"],
+            engine,
+        )
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert data["included"] == 0
+        assert data["excluded"] == 0
+        assert data["pending"] == 2
+        assert data["total"] == 2

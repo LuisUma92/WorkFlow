@@ -5,7 +5,9 @@ Business logic for bibliography, keywords, and review records.
 
 from __future__ import annotations
 
-from sqlalchemy import or_, select
+from typing import TypedDict
+
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from workflow.db.models.bibliography import (
@@ -22,6 +24,20 @@ from workflow.db.models.bibliography import (
 
 REVIEW_STATUS = {"included": 1, "excluded": 0, "pending": None}
 REVIEW_STATUS_LABELS = {1: "included", 0: "excluded", None: "pending"}
+
+_INCLUDED = REVIEW_STATUS["included"]
+_EXCLUDED = REVIEW_STATUS["excluded"]
+
+
+class ReviewStats(TypedDict):
+    """Per-keyword screening counts for `get_review_stats`."""
+
+    keyword_id: int
+    keyword: str
+    included: int
+    excluded: int
+    pending: int
+    total: int
 
 
 # ── Bibliography ─────────────────────────────────────────────────────────
@@ -263,3 +279,38 @@ def screen_article(
 
     session.flush()
     return rec
+
+
+# ── Stats (P2) ───────────────────────────────────────────────────────────
+
+
+def get_review_stats(session: Session, keyword_id: int) -> ReviewStats:
+    """Return per-keyword screening counts.
+
+    Issues one aggregate query (``CASE`` over ``included``) so ``total``
+    always equals the true row count for the keyword, even if a new
+    status value is introduced later. Raises ``ValueError`` if
+    ``keyword_id`` does not exist.
+    """
+    kw = session.get(BibKeyword, keyword_id)
+    if kw is None:
+        raise ValueError(f"keyword_id={keyword_id} not found")
+
+    stmt = select(
+        func.sum(case((ReviewRecord.included == _INCLUDED, 1), else_=0)),
+        func.sum(case((ReviewRecord.included == _EXCLUDED, 1), else_=0)),
+        func.sum(case((ReviewRecord.included.is_(None), 1), else_=0)),
+        func.count(),
+    ).where(ReviewRecord.keyword_id == keyword_id)
+
+    row = session.execute(stmt).one()
+    included, excluded, pending, total = (int(v or 0) for v in row)
+
+    return ReviewStats(
+        keyword_id=kw.id,
+        keyword=kw.keyword_list,
+        included=included,
+        excluded=excluded,
+        pending=pending,
+        total=total,
+    )

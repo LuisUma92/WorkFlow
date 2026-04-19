@@ -28,12 +28,12 @@
 - [x] B4. Reviewer-esquema fixes: model→bib mapping direction, date round-trip, type hints, injection sanitization, overwrite guard
 - [x] B5. VERIFY: 17/17 export tests pass; 656 total workflow tests; flake8 clean
 
-### Phase C — `review stats`
-- [ ] C1. RED: ~5 stats tests
-- [ ] C2. GREEN: `get_review_stats` in `service.py`
-- [ ] C3. GREEN: wire `prisma review stats` in `cli.py` + `format_stats_*` formatters
-- [ ] C4. VERIFY tests pass
-- [ ] C5. Commit: `feat(prisma): add review stats command (P2)`
+### Phase C — `review stats` ✅ DONE
+- [x] C1. RED: 8 stats tests (incl. all-pending + zero-id rejection)
+- [x] C2. GREEN: `get_review_stats -> ReviewStats` TypedDict in service.py (single CASE aggregate query)
+- [x] C3. GREEN: `prisma review stats` wired; IntRange(min=1) on --keyword-id
+- [x] C4. Reviewer-esquema fixes: TypedDict, single-query aggregate, constants not magic ints, formatter typing + docstrings
+- [x] C5. VERIFY: 8/8 stats tests; 664 total workflow; flake8 clean
 
 ### Phase D — `checklist show`
 - [ ] D1. RED: ~5 checklist tests

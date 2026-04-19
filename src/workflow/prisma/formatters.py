@@ -17,7 +17,7 @@ from workflow.db.models.bibliography import (
 )
 
 from workflow.prisma.importer import ImportResult
-from workflow.prisma.service import REVIEW_STATUS_LABELS
+from workflow.prisma.service import REVIEW_STATUS_LABELS, ReviewStats
 
 
 # ── Bibliography entries ─────────────────────────────────────────────────
@@ -220,6 +220,23 @@ def format_import_result_table(result: ImportResult, verbose: bool = False) -> s
         lines.append("Errors:")
         lines.extend(f"  - {e}" for e in result.errors)
     return "\n".join(lines)
+
+
+def format_stats_table(stats: ReviewStats) -> str:
+    """Render `get_review_stats` result as a human-readable block."""
+    lines = [
+        f"Keyword: {stats['keyword']} (id={stats['keyword_id']})",
+        f"  Included: {stats['included']}",
+        f"  Excluded: {stats['excluded']}",
+        f"  Pending:  {stats['pending']}",
+        f"  Total:    {stats['total']}",
+    ]
+    return "\n".join(lines)
+
+
+def format_stats_json(stats: ReviewStats) -> str:
+    """Render `get_review_stats` result as a JSON object."""
+    return json.dumps(stats, ensure_ascii=False, indent=2)
 
 
 def format_import_result_json(result: ImportResult) -> str:

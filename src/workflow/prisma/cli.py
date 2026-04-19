@@ -26,6 +26,8 @@ from workflow.prisma.formatters import (
     format_rationale_table,
     format_review_json,
     format_review_table,
+    format_stats_json,
+    format_stats_table,
     format_tag_json,
     format_tag_table,
 )
@@ -37,6 +39,7 @@ from workflow.prisma.service import (
     create_rationale,
     create_tag,
     get_bib_detail,
+    get_review_stats,
     list_bib_entries,
     list_keywords,
     list_rationales,
@@ -416,3 +419,27 @@ def review_screen(
             f"Screened bib_entry id={bib_id} as {status_label} "
             f"for keyword id={keyword_id} (review id={rec.id})"
         )
+
+
+@review.command(name="stats")
+@click.option(
+    "--keyword-id",
+    required=True,
+    type=click.IntRange(min=1),
+    help="Keyword ID.",
+)
+@click.option("--json", "as_json", is_flag=True, help="JSON output.")
+@click.pass_context
+def review_stats(ctx: click.Context, keyword_id: int, as_json: bool) -> None:
+    """Per-keyword screening counts."""
+    engine = get_engine_from_ctx(ctx)
+    try:
+        with Session(engine) as session:
+            stats = get_review_stats(session, keyword_id)
+    except ValueError as exc:
+        raise click.ClickException(str(exc))
+
+    if as_json:
+        click.echo(format_stats_json(stats))
+    else:
+        click.echo(format_stats_table(stats))
