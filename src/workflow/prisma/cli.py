@@ -15,6 +15,8 @@ from workflow.prisma.formatters import (
     format_bib_detail_table,
     format_bib_json,
     format_bib_table,
+    format_import_result_json,
+    format_import_result_table,
     format_keyword_json,
     format_keyword_table,
     format_rationale_json,
@@ -24,6 +26,7 @@ from workflow.prisma.formatters import (
     format_tag_json,
     format_tag_table,
 )
+from workflow.prisma.importer import import_bib_file
 from workflow.prisma.service import (
     REVIEW_STATUS_LABELS,
     create_keyword,
@@ -124,6 +127,38 @@ def bib_search(
             click.echo(format_bib_json(entries))
         else:
             click.echo(format_bib_table(entries))
+
+
+@bib.command(name="import")
+@click.argument(
+    "path",
+    type=click.Path(exists=True, dir_okay=False, readable=True),
+)
+@click.option(
+    "--database-name",
+    default=None,
+    help="Source database label (e.g., 'PubMed'). Inferred from filename prefix if omitted.",
+)
+@click.option("--verbose", is_flag=True, help="Print per-entry status.")
+@click.option("--json", "as_json", is_flag=True, help="JSON output.")
+@click.pass_context
+def bib_import(
+    ctx: click.Context,
+    path: str,
+    database_name: str | None,
+    verbose: bool,
+    as_json: bool,
+) -> None:
+    """Import a BibTeX file into the bibliography."""
+    engine = get_engine_from_ctx(ctx)
+
+    with Session(engine) as session:
+        result = import_bib_file(session, path, database_name=database_name)
+
+    if as_json:
+        click.echo(format_import_result_json(result))
+    else:
+        click.echo(format_import_result_table(result, verbose=verbose))
 
 
 # ── keyword subgroup ─────────────────────────────────────────────────────

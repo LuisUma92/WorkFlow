@@ -14,6 +14,8 @@ from workflow.db.models.bibliography import (
     AuthorType,
     BibEntry,
     BibKeyword,
+    BibUrl,
+    ReferencedDatabase,
     ReviewRecord,
 )
 from workflow.prisma.cli import prisma
@@ -725,3 +727,164 @@ class TestPrismaReviewScreen:
         )
         assert result.exit_code != 0
         assert "already screened" in result.output.lower()
+
+
+# ── prisma bib import ───────────────────────────────────────────────────
+
+SAMPLE_BIB = r"""@article{smith2023ml,
+  title = {Machine learning in education},
+  author = {Smith, John and Doe, Jane},
+  journal = {J. Educational Tech},
+  year = {2023},
+  volume = {10},
+  doi = {10.1000/abc},
+}
+
+@article{jones2024dl,
+  title = {Deep learning for vision},
+  author = {Jones, Bob},
+  journal = {Neural Computing},
+  year = {2024},
+  volume = {5},
+}
+"""
+
+
+def _write_bib(tmp_path, content, name="sample.bib"):
+    p = tmp_path / name
+    p.write_text(content)
+    return str(p)
+
+
+class TestPrismaBibImport:
+    def test_import_creates_entries(self, runner, engine, tmp_path):
+        path = _write_bib(tmp_path, SAMPLE_BIB)
+        result = _invoke(runner, prisma, ["bib", "import", path], engine)
+        assert result.exit_code == 0, result.output
+        assert "created" in result.output.lower()
+        with Session(engine) as s:
+            assert s.query(BibEntry).count() == 2
+
+    def test_import_dedup_skips_on_reimport(self, runner, engine, tmp_path):
+        path = _write_bib(tmp_path, SAMPLE_BIB)
+        _invoke(runner, prisma, ["bib", "import", path], engine)
+        result = _invoke(runner, prisma, ["bib", "import", path], engine)
+        assert result.exit_code == 0
+        with Session(engine) as s:
+            assert s.query(BibEntry).count() == 2
+        assert "skipped" in result.output.lower()
+
+    def test_import_author_comma_format(self, runner, engine, tmp_path):
+        path = _write_bib(tmp_path, SAMPLE_BIB)
+        _invoke(runner, prisma, ["bib", "import", path], engine)
+        with Session(engine) as s:
+            names = {(a.first_name, a.last_name) for a in s.query(Author).all()}
+        assert ("John", "Smith") in names
+        assert ("Jane", "Doe") in names
+
+    def test_import_author_space_format(self, runner, engine, tmp_path):
+        bib = r"""@article{x2020,
+  title = {T},
+  author = {John Smith},
+  year = {2020},
+}
+"""
+        path = _write_bib(tmp_path, bib)
+        _invoke(runner, prisma, ["bib", "import", path], engine)
+        with Session(engine) as s:
+            names = {(a.first_name, a.last_name) for a in s.query(Author).all()}
+        assert ("John", "Smith") in names
+
+    def test_import_author_corporate_braces(self, runner, engine, tmp_path):
+        bib = r"""@book{acme2020,
+  title = {Handbook},
+  author = {{Acme Corporation}},
+  year = {2020},
+}
+"""
+        path = _write_bib(tmp_path, bib)
+        _invoke(runner, prisma, ["bib", "import", path], engine)
+        with Session(engine) as s:
+            names = {(a.first_name, a.last_name) for a in s.query(Author).all()}
+        assert ("", "Acme Corporation") in names
+
+    def test_import_multiple_author_types(self, runner, engine, tmp_path):
+        bib = r"""@book{ed2021,
+  title = {Collection},
+  author = {Smith, Alice},
+  editor = {Jones, Bob},
+  year = {2021},
+}
+"""
+        path = _write_bib(tmp_path, bib)
+        _invoke(runner, prisma, ["bib", "import", path], engine)
+        with Session(engine) as s:
+            links = s.query(BibAuthor).all()
+            types = {link.author_type.type_of_author for link in links}
+        assert "author" in types
+        assert "editor" in types
+
+    def test_import_missing_year(self, runner, engine, tmp_path):
+        bib = r"""@misc{noyear,
+  title = {Something},
+  author = {Roe, Richard},
+}
+"""
+        path = _write_bib(tmp_path, bib)
+        result = _invoke(runner, prisma, ["bib", "import", path], engine)
+        assert result.exit_code == 0
+        with Session(engine) as s:
+            e = s.query(BibEntry).first()
+            assert e is not None
+            assert e.year is None
+
+    def test_import_empty_file(self, runner, engine, tmp_path):
+        path = _write_bib(tmp_path, "")
+        result = _invoke(runner, prisma, ["bib", "import", path], engine)
+        assert result.exit_code == 0
+        with Session(engine) as s:
+            assert s.query(BibEntry).count() == 0
+
+    def test_import_verbose_flag(self, runner, engine, tmp_path):
+        path = _write_bib(tmp_path, SAMPLE_BIB)
+        result = _invoke(runner, prisma, ["bib", "import", path, "--verbose"], engine)
+        assert result.exit_code == 0
+        assert "smith2023ml" in result.output
+        assert "jones2024dl" in result.output
+
+    def test_import_json_flag(self, runner, engine, tmp_path):
+        path = _write_bib(tmp_path, SAMPLE_BIB)
+        result = _invoke(runner, prisma, ["bib", "import", path, "--json"], engine)
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert data["created"] == 2
+        assert data["skipped"] == 0
+        assert isinstance(data["errors"], list)
+
+    def test_import_url_creates_bib_url(self, runner, engine, tmp_path):
+        bib = r"""@article{url2022,
+  title = {With URL},
+  author = {Noe, Nora},
+  year = {2022},
+  url = {https://example.com/paper},
+}
+"""
+        path = _write_bib(tmp_path, bib)
+        _invoke(
+            runner,
+            prisma,
+            ["bib", "import", path, "--database-name", "PubMed"],
+            engine,
+        )
+        with Session(engine) as s:
+            urls = s.query(BibUrl).all()
+            assert len(urls) == 1
+            assert urls[0].url_string == "https://example.com/paper"
+            dbs = s.query(ReferencedDatabase).all()
+            assert any(d.name == "PubMed" for d in dbs)
+
+    def test_import_nonexistent_file(self, runner, engine):
+        result = _invoke(
+            runner, prisma, ["bib", "import", "/nonexistent/file.bib"], engine
+        )
+        assert result.exit_code != 0

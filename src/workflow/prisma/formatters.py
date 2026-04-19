@@ -200,3 +200,35 @@ def format_rationale_json(rationales: list[RationaleOption]) -> str:
     return json.dumps(
         [_rationale_to_dict(r) for r in rationales], ensure_ascii=False, indent=2
     )
+
+
+# ── Import results (P2) ──────────────────────────────────────────────────
+
+
+def format_import_result_table(result: Any, verbose: bool = False) -> str:
+    lines = [
+        f"Created: {result.created}",
+        f"Skipped: {result.skipped}",
+        f"Errors:  {len(result.errors)}",
+    ]
+    if verbose and result.statuses:
+        lines.append("")
+        lines.extend(f"  {key}: {status}" for key, status in result.statuses)
+    if result.errors:
+        lines.append("")
+        lines.append("Errors:")
+        lines.extend(f"  - {e}" for e in result.errors)
+    return "\n".join(lines)
+
+
+def format_import_result_json(result: Any) -> str:
+    return json.dumps(
+        {
+            "created": result.created,
+            "skipped": result.skipped,
+            "errors": list(result.errors),
+            "statuses": [{"bibkey": k, "status": s} for k, s in result.statuses],
+        },
+        ensure_ascii=False,
+        indent=2,
+    )
