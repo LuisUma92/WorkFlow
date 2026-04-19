@@ -17,7 +17,11 @@ from workflow.db.models.bibliography import (
 )
 
 from workflow.prisma.importer import ImportResult
-from workflow.prisma.service import REVIEW_STATUS_LABELS, ReviewStats
+from workflow.prisma.service import (
+    REVIEW_STATUS_LABELS,
+    ChecklistItem,
+    ReviewStats,
+)
 
 
 # ── Bibliography entries ─────────────────────────────────────────────────
@@ -237,6 +241,23 @@ def format_stats_table(stats: ReviewStats) -> str:
 def format_stats_json(stats: ReviewStats) -> str:
     """Render `get_review_stats` result as a JSON object."""
     return json.dumps(stats, ensure_ascii=False, indent=2)
+
+
+# ── Checklist ───────────────────────────────────────────────────────────
+
+
+def format_checklist_table(items: list[ChecklistItem]) -> str:
+    """Render `get_checklist` result as `[x]` / `[ ]` rows with details."""
+    lines = []
+    for item in items:
+        mark = "[x]" if item["satisfied"] else "[ ]"
+        lines.append(f"  {mark} {item['item']} — {item['detail']}")
+    return "\n".join(lines) if lines else "No checklist items."
+
+
+def format_checklist_json(items: list[ChecklistItem]) -> str:
+    """Render `get_checklist` result as a JSON list."""
+    return json.dumps(items, ensure_ascii=False, indent=2)
 
 
 def format_import_result_json(result: ImportResult) -> str:

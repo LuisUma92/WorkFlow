@@ -1356,3 +1356,140 @@ class TestPrismaReviewStats:
         assert data["excluded"] == 0
         assert data["pending"] == 2
         assert data["total"] == 2
+
+
+# ── prisma checklist show ───────────────────────────────────────────────
+
+
+_EXPECTED_CHECKLIST_LABELS = {
+    "Search keywords defined",
+    "Bibliography imported",
+    "Screening criteria defined",
+    "Articles retrieved",
+    "Screening in progress",
+    "All articles decided",
+}
+
+
+class TestPrismaChecklistShow:
+    def test_checklist_empty_db_all_unchecked(self, runner, engine):
+        result = _invoke(runner, prisma, ["checklist", "show", "--json"], engine)
+        assert result.exit_code == 0
+        items = json.loads(result.output)
+        assert isinstance(items, list)
+        assert len(items) >= 6
+        assert all(item["satisfied"] is False for item in items)
+
+    def test_checklist_seeded_partial(self, runner, seeded_engine):
+        """Seed has keywords, bib entries, review records but no rationales."""
+        result = _invoke(runner, prisma, ["checklist", "show", "--json"], seeded_engine)
+        assert result.exit_code == 0
+        raw = json.loads(result.output)
+        assert {it["item"] for it in raw} == _EXPECTED_CHECKLIST_LABELS
+        items = {it["item"]: it for it in raw}
+        assert items["Search keywords defined"]["satisfied"] is True
+        assert items["Bibliography imported"]["satisfied"] is True
+        assert items["Articles retrieved"]["satisfied"] is True
+        assert items["Screening criteria defined"]["satisfied"] is False
+
+    def test_checklist_with_keyword_filter(self, runner, seeded_engine):
+        """kw1 seed has 1 pending → 'All articles decided' unsatisfied."""
+        kw1 = _kw_id_by_text(runner, seeded_engine, "machine learning")
+        result = _invoke(
+            runner,
+            prisma,
+            ["checklist", "show", "--keyword-id", kw1, "--json"],
+            seeded_engine,
+        )
+        assert result.exit_code == 0
+        items = {item["item"]: item for item in json.loads(result.output)}
+        assert items["Screening in progress"]["satisfied"] is True
+        assert items["All articles decided"]["satisfied"] is False
+        assert "pending" in items["All articles decided"]["detail"].lower()
+
+    def test_checklist_with_keyword_fully_decided(self, runner, seeded_engine):
+        """kw2 seed has 1 included, 0 pending → 'All articles decided' True.
+
+        Also confirms detail string is the exact literal 'complete'.
+        """
+        kw2 = _kw_id_by_text(runner, seeded_engine, "deep learning")
+        result = _invoke(
+            runner,
+            prisma,
+            ["checklist", "show", "--keyword-id", kw2, "--json"],
+            seeded_engine,
+        )
+        assert result.exit_code == 0
+        items = {item["item"]: item for item in json.loads(result.output)}
+        assert items["All articles decided"]["satisfied"] is True
+        assert items["All articles decided"]["detail"] == "complete"
+
+    def test_checklist_keyword_exists_zero_records(self, runner, engine):
+        """Keyword with no ReviewRecords → both review-scoped items False,
+        and 'All articles decided' detail is the literal 'no records'."""
+        from workflow.db.models.bibliography import BibKeyword as _Kw
+
+        with Session(engine) as s:
+            kw = _Kw(keyword_list="lonely keyword")
+            s.add(kw)
+            s.commit()
+            kw_id = str(kw.id)
+
+        result = _invoke(
+            runner,
+            prisma,
+            ["checklist", "show", "--keyword-id", kw_id, "--json"],
+            engine,
+        )
+        assert result.exit_code == 0
+        items = {item["item"]: item for item in json.loads(result.output)}
+        assert items["Articles retrieved"]["satisfied"] is False
+        assert items["Screening in progress"]["satisfied"] is False
+        assert items["All articles decided"]["satisfied"] is False
+        assert items["All articles decided"]["detail"] == "no records"
+
+    def test_checklist_nonexistent_keyword(self, runner, seeded_engine):
+        result = _invoke(
+            runner,
+            prisma,
+            ["checklist", "show", "--keyword-id", "9999"],
+            seeded_engine,
+        )
+        assert result.exit_code != 0
+
+    def test_checklist_table_output(self, runner, seeded_engine):
+        """Default output uses [x] / [ ] markers."""
+        result = _invoke(runner, prisma, ["checklist", "show"], seeded_engine)
+        assert result.exit_code == 0
+        out = result.output
+        assert "[x]" in out
+        assert "[ ]" in out
+
+    def test_checklist_all_satisfied(self, runner, engine):
+        """Fully populated state → every item satisfied."""
+        from workflow.db.models.bibliography import (
+            BibEntry as _BE,
+            BibKeyword as _Kw,
+            RationaleOption as _Rat,
+            ReviewRecord as _RR,
+        )
+
+        with Session(engine) as s:
+            kw = _Kw(keyword_list="fully done")
+            rat = _Rat(rationale_argument="off topic")
+            be = _BE(title="Decided paper", year=2025, volume="1", entry_type="article")
+            s.add_all([kw, rat, be])
+            s.flush()
+            s.add(_RR(keyword_id=kw.id, bib_entry_id=be.id, retrieved=1, included=1))
+            s.commit()
+            kw_id = str(kw.id)
+
+        result = _invoke(
+            runner,
+            prisma,
+            ["checklist", "show", "--keyword-id", kw_id, "--json"],
+            engine,
+        )
+        assert result.exit_code == 0
+        items = json.loads(result.output)
+        assert all(item["satisfied"] is True for item in items)

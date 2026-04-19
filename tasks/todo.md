@@ -35,12 +35,12 @@
 - [x] C4. Reviewer-esquema fixes: TypedDict, single-query aggregate, constants not magic ints, formatter typing + docstrings
 - [x] C5. VERIFY: 8/8 stats tests; 664 total workflow; flake8 clean
 
-### Phase D — `checklist show`
-- [ ] D1. RED: ~5 checklist tests
-- [ ] D2. GREEN: `get_checklist` in `service.py`
-- [ ] D3. GREEN: wire `prisma checklist show` subgroup in `cli.py` + formatters
-- [ ] D4. VERIFY tests pass
-- [ ] D5. Commit: `feat(prisma): add checklist show command (P2)`
+### Phase D — `checklist show` ✅ DONE
+- [x] D1. RED: 8 tests (empty, partial, keyword filter, fully decided, zero records, nonexistent, table, all-satisfied)
+- [x] D2. GREEN: `get_checklist -> list[ChecklistItem]` TypedDict; `_all_decided_detail` helper
+- [x] D3. GREEN: `prisma checklist show` subgroup; IntRange(min=1) on --keyword-id
+- [x] D4. Reviewer-esquema fixes: type `_count_table model`, extract helper from chained ternary, clarify docstring (items 1-3 global, 4-6 scoped), tighten `[x]` assertion, add zero-records + detail="complete" tests, label-set guard
+- [x] D5. VERIFY: 8/8 checklist; 672 total workflow; flake8 clean
 
 ### Phase E — Finalize
 - [ ] E1. Full test run `pytest` green; flake8 clean

@@ -40,6 +40,14 @@ class ReviewStats(TypedDict):
     total: int
 
 
+class ChecklistItem(TypedDict):
+    """Single row in `get_checklist` result."""
+
+    item: str
+    satisfied: bool
+    detail: str
+
+
 # ── Bibliography ─────────────────────────────────────────────────────────
 
 
@@ -314,3 +322,86 @@ def get_review_stats(session: Session, keyword_id: int) -> ReviewStats:
         pending=pending,
         total=total,
     )
+
+
+# ── Checklist (P2) ───────────────────────────────────────────────────────
+
+
+def _count_table(session: Session, model: type) -> int:
+    return int(session.scalar(select(func.count()).select_from(model)) or 0)
+
+
+def _count_reviews(
+    session: Session, keyword_id: int | None, only_decided: bool = False
+) -> int:
+    stmt = select(func.count()).select_from(ReviewRecord)
+    if keyword_id is not None:
+        stmt = stmt.where(ReviewRecord.keyword_id == keyword_id)
+    if only_decided:
+        stmt = stmt.where(ReviewRecord.included.is_not(None))
+    return int(session.scalar(stmt) or 0)
+
+
+def _count_pending(session: Session, keyword_id: int | None) -> int:
+    stmt = (
+        select(func.count())
+        .select_from(ReviewRecord)
+        .where(ReviewRecord.included.is_(None))
+    )
+    if keyword_id is not None:
+        stmt = stmt.where(ReviewRecord.keyword_id == keyword_id)
+    return int(session.scalar(stmt) or 0)
+
+
+def _item(label: str, satisfied: bool, detail: str) -> ChecklistItem:
+    return ChecklistItem(item=label, satisfied=satisfied, detail=detail)
+
+
+def _all_decided_detail(n_reviews: int, n_pending: int) -> str:
+    if n_reviews == 0:
+        return "no records"
+    if n_pending > 0:
+        return f"{n_pending} pending"
+    return "complete"
+
+
+def get_checklist(
+    session: Session, keyword_id: int | None = None
+) -> list[ChecklistItem]:
+    """Return PRISMA compliance checklist derived from DB state.
+
+    Items 1-3 (keywords / bibliography / screening criteria) always
+    reflect global counts across the DB. Items 4-6 (review-record
+    items) are scoped to ``keyword_id`` when given; otherwise they
+    aggregate across all keywords. Raises ``ValueError`` if
+    ``keyword_id`` is provided but does not exist.
+    """
+    if keyword_id is not None:
+        kw = session.get(BibKeyword, keyword_id)
+        if kw is None:
+            raise ValueError(f"keyword_id={keyword_id} not found")
+
+    n_keywords = _count_table(session, BibKeyword)
+    n_bib = _count_table(session, BibEntry)
+    n_rationale = _count_table(session, RationaleOption)
+
+    n_reviews = _count_reviews(session, keyword_id)
+    n_decided = _count_reviews(session, keyword_id, only_decided=True)
+    n_pending = _count_pending(session, keyword_id)
+
+    return [
+        _item("Search keywords defined", n_keywords > 0, f"{n_keywords} keywords"),
+        _item("Bibliography imported", n_bib > 0, f"{n_bib} entries"),
+        _item(
+            "Screening criteria defined",
+            n_rationale > 0,
+            f"{n_rationale} rationale options",
+        ),
+        _item("Articles retrieved", n_reviews > 0, f"{n_reviews} records"),
+        _item("Screening in progress", n_decided > 0, f"{n_decided} decided"),
+        _item(
+            "All articles decided",
+            n_reviews > 0 and n_pending == 0,
+            _all_decided_detail(n_reviews, n_pending),
+        ),
+    ]

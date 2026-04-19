@@ -18,6 +18,8 @@ from workflow.prisma.formatters import (
     format_bib_detail_table,
     format_bib_json,
     format_bib_table,
+    format_checklist_json,
+    format_checklist_table,
     format_import_result_json,
     format_import_result_table,
     format_keyword_json,
@@ -39,6 +41,7 @@ from workflow.prisma.service import (
     create_rationale,
     create_tag,
     get_bib_detail,
+    get_checklist,
     get_review_stats,
     list_bib_entries,
     list_keywords,
@@ -443,3 +446,35 @@ def review_stats(ctx: click.Context, keyword_id: int, as_json: bool) -> None:
         click.echo(format_stats_json(stats))
     else:
         click.echo(format_stats_table(stats))
+
+
+# ── checklist subgroup ───────────────────────────────────────────────────
+
+
+@prisma.group()
+def checklist() -> None:
+    """PRISMA compliance checklist."""
+
+
+@checklist.command(name="show")
+@click.option(
+    "--keyword-id",
+    type=click.IntRange(min=1),
+    default=None,
+    help="Scope keyword-specific items to this keyword.",
+)
+@click.option("--json", "as_json", is_flag=True, help="JSON output.")
+@click.pass_context
+def checklist_show(ctx: click.Context, keyword_id: int | None, as_json: bool) -> None:
+    """Show PRISMA compliance checklist from DB state."""
+    engine = get_engine_from_ctx(ctx)
+    try:
+        with Session(engine) as session:
+            items = get_checklist(session, keyword_id=keyword_id)
+    except ValueError as exc:
+        raise click.ClickException(str(exc))
+
+    if as_json:
+        click.echo(format_checklist_json(items))
+    else:
+        click.echo(format_checklist_table(items))
