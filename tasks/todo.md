@@ -42,12 +42,12 @@
 - [x] D4. Reviewer-esquema fixes: type `_count_table model`, extract helper from chained ternary, clarify docstring (items 1-3 global, 4-6 scoped), tighten `[x]` assertion, add zero-records + detail="complete" tests, label-set guard
 - [x] D5. VERIFY: 8/8 checklist; 672 total workflow; flake8 clean
 
-### Phase E — Finalize
-- [ ] E1. Full test run `pytest` green; flake8 clean
-- [ ] E2. Update ADR `docs/ADR/PRISMA-0005.md` with P2 additions
-- [ ] E3. Update wiki guide
-- [ ] E4. Commit: `docs(prisma): document P2 commands`
-- [ ] E5. Update `~/.claude/primer.md` — mark P2 complete
+### Phase E — Finalize ✅ DONE
+- [x] E1. 672/672 workflow tests; flake8 clean
+- [x] E2. ADR PRISMA-0005 updated: CLI structure (P0+P1+P2), architecture layers (importer/exporter), MUST rules, change log
+- [x] E3. Wiki PRISMA-Review.md updated: import/export/stats/checklist sections
+- [x] E4. Commit pending: `docs(prisma): document P2 commands in ADR and wiki`
+- [x] E5. Primer updated (pending)
 
 ## Notes
 

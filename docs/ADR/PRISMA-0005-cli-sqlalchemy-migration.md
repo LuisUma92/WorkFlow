@@ -85,13 +85,29 @@ Relationships added to existing models:
 
 ### CLI Structure
 
-New Click group `prisma` with three subgroups:
+New Click group `prisma` with subgroups `bib`, `keyword`, `tag`, `rationale`, `review`, `checklist`:
 
 ```
+# P0 — read-only
 workflow prisma bib list [--year] [--type] [--json]
 workflow prisma bib show <id> [--json]
 workflow prisma keyword list [--json]
 workflow prisma review list --keyword-id <id> [--status included|excluded|pending] [--json]
+
+# P1 — CRUD + screening
+workflow prisma bib search [--title] [--author] [--year] [--json]
+workflow prisma keyword add --text TEXT
+workflow prisma tag list [--json]
+workflow prisma tag add --text TEXT
+workflow prisma rationale list [--json]
+workflow prisma rationale add --text TEXT
+workflow prisma review screen <bib_id> --keyword-id <id> --include/--exclude [--rationale]
+
+# P2 — import, stats, export, checklist
+workflow prisma bib import <file.bib> [--database-name TEXT] [--verbose] [--json]
+workflow prisma bib export [--keyword-id INT] [--status ...] [--output PATH] [--force]
+workflow prisma review stats --keyword-id <id> [--json]
+workflow prisma checklist show [--keyword-id INT] [--json]
 ```
 
 ### Architecture Layers
@@ -99,12 +115,23 @@ workflow prisma review list --keyword-id <id> [--status included|excluded|pendin
 ```
 cli.py          Click commands (thin handlers)
     |
-service.py      Business logic (list_bib_entries, get_bib_detail,
-    |            list_keywords, list_reviews with keyword validation)
+service.py      Business logic: list/get/search, create_*, screen_article,
+    |            get_review_stats (-> ReviewStats TypedDict),
+    |            get_checklist (-> list[ChecklistItem])
     |
-formatters.py   Table + JSON formatters
+importer.py     BibTeX -> DB: bibtexparser parse, per-item savepoint
+    |            dedup, author-string splitter, URL scheme allowlist,
+    |            file-size cap (MAX_BIB_SIZE_BYTES), ImportResult dataclass
     |
-models/         BibEntry, BibKeyword, ReviewRecord (bibliography.py)
+exporter.py     DB -> BibTeX: model-column -> bibtex-field mapping,
+    |            author join "Last, First and Last, First", brace
+    |            sanitization on all field values, keyword + status filters
+    |
+formatters.py   Table + JSON formatters (bib, keyword, review, tag,
+    |            rationale, import result, stats, checklist)
+    |
+models/         BibEntry, BibKeyword, ReviewRecord, RationaleOption,
+                ReviewRationale, BibTag, BibEntryTag (bibliography.py)
 ```
 
 ### Status Constants
@@ -131,6 +158,9 @@ REVIEW_STATUS_LABELS = {1: "included", 0: "excluded", None: "pending"}
 - `review list` **MUST** validate that `--keyword-id` exists before querying — raise `ClickException` if not found.
 - All list commands **MUST** support `--json` output for Neovim integration.
 - `bib list` and `bib show` **MUST** eagerly load `author_links` → `author` + `author_type`.
+- Per-entry `bib import` errors **MUST NOT** abort the batch; each entry **MUST** be wrapped in a savepoint so one failure does not discard prior inserts.
+- `bib export` **MUST** sanitize field values (strip raw `{` / `}`) to prevent BibTeX injection when rendering DB content to file.
+- Service functions returning composite data (`get_review_stats`, `get_checklist`) **MUST** use `TypedDict` return types, not bare `dict`.
 
 ### SHOULD
 
@@ -151,7 +181,7 @@ REVIEW_STATUS_LABELS = {1: "included", 0: "excluded", None: "pending"}
 - Package location: `src/workflow/prisma/` (cli.py, formatters.py, service.py)
 - Models: `ReviewRecord`, `RationaleOption`, `ReviewRationale` in `workflow.db.models.bibliography`
 - Engine: shared `get_engine_from_ctx()` in `workflow.db.engine`
-- Tests: `tests/workflow/test_prisma_cli.py` (25 tests)
+- Tests: `tests/workflow/test_prisma_cli.py` (95 tests as of P2)
 - Wired in `src/main.py` as `cli.add_command(prisma)`
 
 ### Phased Implementation
@@ -252,3 +282,5 @@ Separate CLI binary instead of `workflow prisma` subgroup.
 | Date       | Change      |
 | ---------- | ----------- |
 | 2026-04-09 | Initial ADR — documents PRISMA P0 CLI migration |
+| 2026-04-18 | P1 delivered: bib search, keyword/tag/rationale add, review screen (50 tests) |
+| 2026-04-19 | P2 delivered: bib import / bib export / review stats / checklist show (95 tests). Adds importer.py, exporter.py, ReviewStats + ChecklistItem TypedDicts. Per-entry savepoints, BibTeX-injection sanitization, file-size cap, URL-scheme allowlist, --output overwrite guard. |
