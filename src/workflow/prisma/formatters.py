@@ -16,6 +16,7 @@ from workflow.db.models.bibliography import (
     ReviewRecord,
 )
 
+from workflow.prisma.importer import ImportResult
 from workflow.prisma.service import REVIEW_STATUS_LABELS
 
 
@@ -205,7 +206,7 @@ def format_rationale_json(rationales: list[RationaleOption]) -> str:
 # ── Import results (P2) ──────────────────────────────────────────────────
 
 
-def format_import_result_table(result: Any, verbose: bool = False) -> str:
+def format_import_result_table(result: ImportResult, verbose: bool = False) -> str:
     lines = [
         f"Created: {result.created}",
         f"Skipped: {result.skipped}",
@@ -221,7 +222,7 @@ def format_import_result_table(result: Any, verbose: bool = False) -> str:
     return "\n".join(lines)
 
 
-def format_import_result_json(result: Any) -> str:
+def format_import_result_json(result: ImportResult) -> str:
     return json.dumps(
         {
             "created": result.created,

@@ -8,7 +8,10 @@ Uses per-item savepoint rollback on IntegrityError for dedup.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
+from typing import Literal
+from urllib.parse import urlparse
 
 import bibtexparser
 from sqlalchemy import select
@@ -24,17 +27,26 @@ from workflow.db.models.bibliography import (
     ReferencedDatabase,
 )
 
-__all__ = ["ImportResult", "import_bib_file"]
+__all__ = ["ImportResult", "import_bib_file", "MAX_BIB_SIZE_BYTES"]
 
+
+MAX_BIB_SIZE_BYTES: int = 50 * 1024 * 1024  # 50 MB hard cap on input
+
+_ALLOWED_URL_SCHEMES: frozenset[str] = frozenset({"http", "https", "ftp"})
+
+EntryStatus = Literal["created", "skipped"]
 
 TRANSLATED_BIB_KEYS: dict[str, str] = {
     "entry_type": "ENTRYTYPE",
     "bibkey": "ID",
     "journaltitle": "journal",
+    "publication_date": "date",
     "notes": "note",
     "abstract_text": "abstract",
     "file_path": "file",
 }
+
+_DATE_BIB_FIELDS: frozenset[str] = frozenset({"publication_date"})
 
 _STRING_BIB_FIELDS: frozenset[str] = frozenset(
     {
@@ -108,6 +120,18 @@ def _clean(s: object | None) -> str | None:
     return v or None
 
 
+def _parse_date(val: str) -> date | None:
+    """Parse BibLaTeX date strings (YYYY, YYYY-MM, YYYY-MM-DD)."""
+    parts = val.split("-")
+    try:
+        year = int(parts[0])
+        month = int(parts[1]) if len(parts) > 1 else 1
+        day = int(parts[2]) if len(parts) > 2 else 1
+        return date(year, month, day)
+    except (ValueError, IndexError):
+        return None
+
+
 def _split_authors(author_string: str) -> list[tuple[str, str]]:
     """Split BibTeX author string into ``(first_name, last_name)`` tuples.
 
@@ -142,7 +166,7 @@ _IGNORED_BIB_KEYS: frozenset[str] = frozenset(
 )
 
 
-def _assign_direct(out: dict, key: str, val: object) -> None:
+def _assign_direct(out: dict[str, object], key: str, val: object) -> None:
     """Populate ``out[key]`` from a 1:1 BibTeX field (string or int)."""
     cleaned = _clean(val)
     if cleaned is None:
@@ -156,14 +180,24 @@ def _assign_direct(out: dict, key: str, val: object) -> None:
             pass
 
 
-def _parse_fields(raw: dict) -> dict:
+def _assign_translated(out: dict[str, object], model_key: str, raw_val: object) -> None:
+    cleaned = _clean(raw_val)
+    if cleaned is None:
+        return
+    if model_key in _DATE_BIB_FIELDS:
+        parsed = _parse_date(cleaned)
+        if parsed is not None:
+            out[model_key] = parsed
+    else:
+        out[model_key] = cleaned
+
+
+def _parse_fields(raw: dict[str, object]) -> dict[str, object]:
     """Map a ``bibtexparser`` entry to a BibEntry kwarg dict."""
-    out: dict = {}
+    out: dict[str, object] = {}
     for model_key, bib_key in TRANSLATED_BIB_KEYS.items():
         if bib_key in raw:
-            val = _clean(raw[bib_key])
-            if val is not None:
-                out[model_key] = val
+            _assign_translated(out, model_key, raw[bib_key])
     for key, val in raw.items():
         if key in _IGNORED_BIB_KEYS:
             continue
@@ -243,12 +277,22 @@ def _process_authors(
             savepoint.rollback()
 
 
+def _is_safe_url(url: str) -> bool:
+    try:
+        scheme = urlparse(url).scheme.lower()
+    except ValueError:
+        return False
+    return scheme in _ALLOWED_URL_SCHEMES
+
+
 def _process_url(
     session: Session,
     bib_entry: BibEntry,
     url_string: str,
     database_name: str | None,
 ) -> None:
+    if not _is_safe_url(url_string):
+        return
     db = _get_or_create_database(session, database_name or "unknown")
     savepoint = session.begin_nested()
     try:
@@ -265,7 +309,9 @@ def _process_url(
         savepoint.rollback()
 
 
-def _process_entry(session: Session, raw: dict, database_name: str | None) -> str:
+def _process_entry(
+    session: Session, raw: dict[str, object], database_name: str | None
+) -> EntryStatus:
     fields_dict = _parse_fields(raw)
     entry = BibEntry(**fields_dict)
 
@@ -279,10 +325,12 @@ def _process_entry(session: Session, raw: dict, database_name: str | None) -> st
         return "skipped"
 
     for afield in _AUTHOR_FIELDS:
-        if afield in raw and raw[afield]:
-            _process_authors(session, entry, raw[afield], afield)
+        val = raw.get(afield)
+        if isinstance(val, str) and val:
+            _process_authors(session, entry, val, afield)
 
-    url = _clean(raw.get("url"))
+    url_raw = raw.get("url")
+    url = _clean(url_raw) if url_raw is not None else None
     if url:
         _process_url(session, entry, url, database_name)
 
@@ -303,13 +351,20 @@ def import_bib_file(
 ) -> ImportResult:
     """Parse a .bib file and insert rows into the session.
 
-    Commits the session on completion. Raises FileNotFoundError if path
-    does not exist. Per-entry errors are collected into the result
-    rather than raised.
+    Commits the session on completion. Raises ``FileNotFoundError`` if
+    path does not exist and ``ValueError`` if the file exceeds
+    ``MAX_BIB_SIZE_BYTES``. Per-entry errors are isolated by savepoint
+    and collected into the result rather than raised.
     """
     p = Path(path)
     if not p.exists():
         raise FileNotFoundError(f"bib file not found: {path}")
+
+    size = p.stat().st_size
+    if size > MAX_BIB_SIZE_BYTES:
+        raise ValueError(
+            f"bib file too large ({size} bytes > {MAX_BIB_SIZE_BYTES} cap)"
+        )
 
     with p.open() as f:
         parsed = bibtexparser.load(f)
@@ -324,18 +379,20 @@ def import_bib_file(
 
     for raw in parsed.entries:
         bibkey = raw.get("ID", "<no-id>")
+        entry_savepoint = session.begin_nested()
         try:
             status = _process_entry(session, raw, database_name)
+            entry_savepoint.commit()
             if status == "created":
                 created += 1
-            elif status == "skipped":
+            else:
                 skipped += 1
             statuses.append((bibkey, status))
         except Exception as exc:  # noqa: BLE001 — per-entry isolation
-            session.rollback()
-            msg = f"{bibkey}: {exc}"
-            errors.append(msg)
-            statuses.append((bibkey, f"error: {exc}"))
+            entry_savepoint.rollback()
+            label = type(exc).__name__
+            errors.append(f"{bibkey}: {label}")
+            statuses.append((bibkey, f"error: {label}"))
 
     session.commit()
     return ImportResult(

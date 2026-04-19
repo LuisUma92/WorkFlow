@@ -152,8 +152,11 @@ def bib_import(
     """Import a BibTeX file into the bibliography."""
     engine = get_engine_from_ctx(ctx)
 
-    with Session(engine) as session:
-        result = import_bib_file(session, path, database_name=database_name)
+    try:
+        with Session(engine) as session:
+            result = import_bib_file(session, path, database_name=database_name)
+    except (FileNotFoundError, ValueError) as exc:
+        raise click.ClickException(str(exc))
 
     if as_json:
         click.echo(format_import_result_json(result))
