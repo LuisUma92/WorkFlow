@@ -6,7 +6,7 @@
 % filas y que permite usar \\ como cambio de línea en la celda
 %==< Definición de directorios importantes >===================================
   \newcommand{\mytex}{/home/luis/.config/mytex}
-  \newcommand{\FisicaDir}{/home/luis/Documents/01-U/00-Fisica}
+  \newcommand{\FisicaDir}{/home/luis/Documents/01-U}
   \newcommand{\IMGfolder}{\FisicaDir/00II-ImagesFigures}
 
 %==< Definición de booleanos >=================================================
@@ -94,6 +94,32 @@
     \renewcommand{\thegeneralobjective}{#1}
   }
 
+\newcommand{\ptsdistro}{
+  \paragraph{Distribución de puntos}
+  \renewcommand{\labelenumiii}{\theenumi\theenumii-\arabic{enumiii})}
+}
+\newcommand{\pts}[2][]{
+  (\textit{#2 pts.})
+  \ifthenelse{\equal{#1}{add}}{
+    \addtocounter{points}{#2}
+  }{}
+}
+\newcommand{\upt}[1][]{
+  (\textit{1 pt.})
+  \ifthenelse{\equal{#1}{add}}{
+    \addtocounter{points}{1}
+  }{}
+}
+\newcommand{\uptcu}{(\textit{1 pt c/u.})}
+\newcommand{\ptscu}[1]{(\textit{#1 pts c/u.})}
+\newcommand{\consolidatePoints}[1]{
+  \setcounter{sectionPoints}{\value{points}}
+  \addtocounter{totalPoints}{\value{points}}
+  \setcounter{points}{0}
+  \protected@write\@auxout{}{%
+    \string\newlabel{#1}{{\arabic{sectionPoints}}{\thepage}}%
+  }%
+}
 %==< Definición de comandos >==================================================
   \newcommand\mailto[1]{\href{mailto:#1}{#1}}
   \newcommand{\minitab}[2]{\begin{tabular}{#1}#2\end{tabular}}
