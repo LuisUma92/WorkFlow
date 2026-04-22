@@ -202,11 +202,53 @@ El campo `bibkey: serway2019` conecta con `bib_entry.bibkey` en la DB global. PR
 
 ---
 
+## Creacion de notas (fleeting / permanent / literature)
+
+**Decision de diseno:** Ni el CLI `workflow notes` ni el plugin `nvim-plugin/workflow` exponen un comando para *crear* notas nuevas. Esto es intencional, no un bug.
+
+### Responsabilidades
+
+| Herramienta | Crea notas | Rol |
+|-------------|-----------|-----|
+| `obsidian.nvim` (externo) | SI | Creacion de notas fleeting/permanent/literature en `0000AA-Vault/inbox/` o raiz del vault. Usa `:ObsidianNew`. |
+| `workflow notes init` | NO | Scaffold del workspace y plantillas (`templates/fleeting.md`, `permanent.md`, `literature.md`). |
+| `nvim-plugin/workflow` | NO | **Complementa** obsidian.nvim: sync DB, validacion frontmatter, promote fleeting→permanent, pickers. |
+
+### Keymaps disponibles en `nvim-plugin/workflow`
+
+Prefijo configurable (default `<leader>w`):
+
+| Keymap | Accion | Funcion |
+|--------|--------|---------|
+| `<prefix>s` | Sync DB | `workflow.sync_current()` |
+| `<prefix>v` | Validar frontmatter | `workflow.validate_frontmatter()` |
+| `<prefix>p` | Promote fleeting→permanent | `workflow.promote_note()` — mueve de `inbox/` a raiz del vault y cambia `type:` |
+| `<prefix>te/ti/tc` | Pickers Snacks (evaluations/items/courses) | |
+| `<prefix>tb/tk/tr` | Pickers PRISMA (bib/keywords/reviews) | |
+
+### Flujo recomendado para crear una fleeting
+
+1. `:ObsidianNew fleeting-<tema>` — obsidian.nvim aplica plantilla y abre buffer en `0000AA-Vault/inbox/`
+2. Escribir la idea
+3. `<prefix>v` — validar frontmatter contra `workflow.validation`
+4. Cuando este madura: `<prefix>p` — mueve a raiz del vault + cambia `type: permanent`
+5. `<prefix>s` — indexa en `slipbox.db`
+
+### Por que no un `workflow notes new`?
+
+- **Separacion de responsabilidades:** obsidian.nvim ya resuelve creacion con plantillas, autocompletado de wiki-links y UI. Duplicarlo seria trabajo redundante.
+- **WorkFlow se enfoca en el pipeline DB/LaTeX/exercises** — lo que obsidian.nvim no hace.
+- Si no usas obsidian.nvim, las plantillas en `0000AA-Vault/templates/` son copiables manualmente con cualquier editor.
+
+Si en el futuro se requiere independencia de obsidian.nvim, se podria agregar `workflow notes new --type fleeting <titulo>` que renderice la plantilla con `id` generado + timestamp. Ver backlog.
+
+---
+
 ## Flujo de trabajo diario
 
 ```
-1. Idea rapida          →  Crear nota fleeting en 00ZZ-Vault/inbox/
-2. Procesar fleeting    →  Mover a proyecto (10MC/notes/), cambiar type a permanent
+1. Idea rapida          →  :ObsidianNew fleeting-* en 0000AA-Vault/inbox/
+2. Procesar fleeting    →  <prefix>p: promote a raiz del vault, type → permanent
 3. Leer un articulo     →  Crear nota literature con bibkey
 4. Escribir/editar      →  Agregar wiki-links [[id]] a otras notas
 5. Registrar en DB      →  workflow lectures scan proyecto/ --project-root proyecto/
