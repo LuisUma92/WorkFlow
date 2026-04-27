@@ -84,14 +84,44 @@ class MainTopic(GlobalBase):
     name: Mapped[str] = mapped_column(String(120))
     code: Mapped[str] = mapped_column(String(10), unique=True)
     ddc_mds: Mapped[str] = mapped_column(String(20), default="")
+    parent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("main_topic.id"), nullable=True, default=None
+    )
 
     topics: Mapped[list["Topic"]] = relationship(back_populates="main_topic")
     general_project: Mapped["GeneralProject | None"] = relationship(
         back_populates="main_topic"
     )
+    parent: Mapped["MainTopic | None"] = relationship(
+        back_populates="children",
+        remote_side="MainTopic.id",
+    )
+    children: Mapped[list["MainTopic"]] = relationship(back_populates="parent")
 
     def __repr__(self) -> str:
         return f"<MainTopic {self.code} {self.name}>"
+
+
+class DisciplineArea(GlobalBase):
+    """Reference table for discipline area codes loaded from data/DD-*Codes.csv.
+
+    Source of truth for valid DDTTAA codes (see ADR ITEP-0008). Distinct from
+    MainTopic: DisciplineArea is pure reference data; MainTopic carries the
+    project-hierarchy (parent_id → child) and is created on-demand by inittex.
+    """
+
+    __tablename__ = "discipline_area"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(String(6), unique=True)
+    name: Mapped[str] = mapped_column(String(120))
+    dewey: Mapped[str] = mapped_column(String(20), default="")
+    discipline_num: Mapped[int] = mapped_column(Integer)
+    topic_num: Mapped[int] = mapped_column(Integer)
+    area_initials: Mapped[str] = mapped_column(String(2))
+
+    def __repr__(self) -> str:
+        return f"<DisciplineArea {self.code} {self.name}>"
 
 
 # ── Layer 2: Master entities ───────────────────────────────────────────

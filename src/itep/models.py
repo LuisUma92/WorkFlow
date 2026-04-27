@@ -11,10 +11,11 @@ from itep.defaults import (
 class GeneralProject(ProjectModel):
     name = "general"
     parent = DEF_ABS_PARENT_DIR
-    root = "{code}-{name}"
+    root = "{code}-{year}{project_initials}-{title}"
     patterns = {
-        "numbering": "^[0-9]{2}",
+        "numbering": "^[0-9]{4}",
         "initials": "^[A-Z]{2}",
+        "project": "^[0-9]{2}[A-Z]{2}$",
     }
     main_topics = DEF_ABS_PARENT_DIR / GeneralDirectory.BIB
     tree = [
