@@ -59,12 +59,12 @@ SQLAlchemy 2.0 con `Mapped[]` es el unico ORM. El acceso a datos pasa por interf
 
 ### Entry points directos
 
-| Comando    | Modulo              | Descripcion                             |
-| ---------- | ------------------- | --------------------------------------- |
+| Comando    | Modulo              | Descripcion                                                      |
+| ---------- | ------------------- | ---------------------------------------------------------------- |
 | `workflow` | `main:cli`          | CLI principal (notes, exercise, lectures, graph, tikz, validate) |
-| `inittex`  | `itep.create:cli`   | Crear o clonar un proyecto LaTeX        |
-| `relink`   | `itep.links:cli`    | Recrear symlinks desde la base de datos |
-| `cleta`    | `lectkit.cleta:cli` | Limpiar archivos auxiliares de TeX      |
+| `inittex`  | `itep.create:cli`   | Crear o clonar un proyecto LaTeX                                 |
+| `relink`   | `itep.links:cli`    | Recrear symlinks desde la base de datos                          |
+| `cleta`    | `lectkit.cleta:cli` | Limpiar archivos auxiliares de TeX                               |
 
 ### workflow notes — Zettelkasten
 
@@ -92,27 +92,28 @@ Crea la estructura:
 ```
 
 Cada `MainTopic` (10MC, 40EM, 50MQ) funciona como:
+
 - Un **GeneralProject** de ITeP (salida LaTeX)
 - Un **vault Zettelkasten** (notas Markdown que alimentan los documentos)
 
 #### Macros Zettelkasten
 
-| Macro | Archivo | Uso |
-|-------|---------|-----|
-| `\zlink{id}` | SetZettelkasten.sty | Referencia cruzada entre notas (alias de `\excref`) |
-| `\zlabel{id}` | SetZettelkasten.sty | Ancla ligera para un punto de referencia |
-| `\begin{zettelnote}{id}{Titulo}` | SetZettelkasten.sty | Entorno semantico de nota |
+| Macro                            | Archivo             | Uso                                                 |
+| -------------------------------- | ------------------- | --------------------------------------------------- |
+| `\zlink{id}`                     | SetZettelkasten.sty | Referencia cruzada entre notas (alias de `\excref`) |
+| `\zlabel{id}`                    | SetZettelkasten.sty | Ancla ligera para un punto de referencia            |
+| `\begin{zettelnote}{id}{Titulo}` | SetZettelkasten.sty | Entorno semantico de nota                           |
 
 En Markdown, las referencias usan wiki-links: `[[20260326-gauss-law]]` o `[[id|texto]]`.
 El pipeline Pandoc convierte `[[id]]` → `\zlink{id}` al compilar a LaTeX.
 
 #### Tipos de nota
 
-| Tipo | Uso | Formato frontmatter |
-|------|-----|---------------------|
-| `permanent` | Ideas propias, conceptos consolidados | `type: permanent` |
-| `literature` | Notas sobre lecturas y articulos | `type: literature`, `bibkey: serway2019` |
-| `fleeting` | Ideas rapidas, pendientes de procesar | `type: fleeting` |
+| Tipo         | Uso                                   | Formato frontmatter                      |
+| ------------ | ------------------------------------- | ---------------------------------------- |
+| `permanent`  | Ideas propias, conceptos consolidados | `type: permanent`                        |
+| `literature` | Notas sobre lecturas y articulos      | `type: literature`, `bibkey: serway2019` |
+| `fleeting`   | Ideas rapidas, pendientes de procesar | `type: fleeting`                         |
 
 ### workflow exercise — Banco de ejercicios
 
@@ -258,14 +259,14 @@ workflow graph neighbors note:42 --depth 2 --project .
 
 El grafo unifica datos de ambas bases de datos:
 
-| Fuente | Tipo de nodo | Tipo de arista |
-|--------|-------------|----------------|
-| Notas (slipbox.db) | `note` | `link` (nota→nota via Label) |
-| Citas (slipbox.db) | — | `citation` (nota→bib_entry) |
-| Ejercicios (workflow.db) | `exercise` | `exercise_content`, `exercise_book` |
-| Contenidos (workflow.db) | `content`, `topic` | `bib_content`, `course_content` |
-| Bibliografia (workflow.db) | `bib_entry` | — |
-| Cursos (workflow.db) | `course` | — |
+| Fuente                     | Tipo de nodo       | Tipo de arista                      |
+| -------------------------- | ------------------ | ----------------------------------- |
+| Notas (slipbox.db)         | `note`             | `link` (nota→nota via Label)        |
+| Citas (slipbox.db)         | —                  | `citation` (nota→bib_entry)         |
+| Ejercicios (workflow.db)   | `exercise`         | `exercise_content`, `exercise_book` |
+| Contenidos (workflow.db)   | `content`, `topic` | `bib_content`, `course_content`     |
+| Bibliografia (workflow.db) | `bib_entry`        | —                                   |
+| Cursos (workflow.db)       | `course`           | —                                   |
 
 ### workflow tikz — Pipeline de diagramas
 
@@ -341,19 +342,23 @@ UCR-FS0121/
 ### Base global (workflow.db) — 4 capas
 
 **Capa 1 — Datos de referencia:**
+
 - `institution` — UCR (18 sem), UFide (15 cuatri), UCIMED (24 sem)
 - `main_topic` — Temas principales con codigo Dewey
 
 **Capa 2 — Entidades maestras:**
+
 - `bib_entry`, `bib_author` — Bibliografia completa (40+ campos BibLaTeX)
 - `topic`, `content`, `bib_content` — Contenido academico
 
 **Capa 3 — Templates de curso:**
+
 - `course`, `course_content` — Cursos con contenidos por semana
 - `evaluation_template`, `item`, `evaluation_item` — Evaluaciones con taxonomia Bloom
 - `exercise`, `exercise_option` — Indice de metadatos del banco de ejercicios
 
 **Capa 4 — Instancias:**
+
 - `lecture_instance` — Curso en ciclo/anno concreto
 - `general_project` — Proyecto asociado a un tema principal
 
@@ -368,50 +373,50 @@ UCR-FS0121/
 
 Los macros de ejercicio se definen en `shared/sty/`:
 
-| Macro | Archivo | Uso |
-|-------|---------|-----|
-| `\question{stem}{solution}` | SetCommands.sty | Pregunta con stem y solucion |
-| `\qpart{instruccion}{solucion}` | SetCommands.sty | Parte de pregunta |
-| `\pts{n}` | PartialCommands.sty | Puntos asignados |
-| `\rightoption` | PartialCommands.sty | Marca opcion correcta |
-| `\exa[ch]{num}` | SetCommands.sty | Referencia a ejercicio de libro |
-| `\qfeedback{texto}` | SetExercises.sty | Retroalimentacion (para Moodle) |
-| `\qdiagram{id}` | SetExercises.sty | Referencia a diagrama TikZ |
+| Macro                           | Archivo             | Uso                             |
+| ------------------------------- | ------------------- | ------------------------------- |
+| `\question{stem}{solution}`     | SetCommands.sty     | Pregunta con stem y solucion    |
+| `\qpart{instruccion}{solucion}` | SetCommands.sty     | Parte de pregunta               |
+| `\pts{n}`                       | PartialCommands.sty | Puntos asignados                |
+| `\rightoption`                  | PartialCommands.sty | Marca opcion correcta           |
+| `\exa[ch]{num}`                 | SetCommands.sty     | Referencia a ejercicio de libro |
+| `\qfeedback{texto}`             | SetExercises.sty    | Retroalimentacion (para Moodle) |
+| `\qdiagram{id}`                 | SetExercises.sty    | Referencia a diagrama TikZ      |
 
 ### Normalizacion para Moodle
 
 Los macros personalizados se expanden a LaTeX estandar antes de exportar:
 
-| Original | Expandido |
-|----------|-----------|
-| `\vc{E}` | `\vec{\mathbf{E}}` |
-| `\scrp{enc}` | `_{\mbox{\scriptsize{enc}}}` |
-| `\ncm{2}{H}` | `^{2}\text{H}` |
-| `\pts{5}` | `(5 pts.)` |
-| `\textcolor{red}{texto}` | `texto` |
-| `$x^2$` | `\(x^2\)` |
+| Original                 | Expandido                    |
+| ------------------------ | ---------------------------- |
+| `\vc{E}`                 | `\vec{\mathbf{E}}`           |
+| `\scrp{enc}`             | `_{\mbox{\scriptsize{enc}}}` |
+| `\ncm{2}{H}`             | `^{2}\text{H}`               |
+| `\pts{5}`                | `(5 pts.)`                   |
+| `\textcolor{red}{texto}` | `texto`                      |
+| `$x^2$`                  | `\(x^2\)`                    |
 
 ## Decisiones de arquitectura (ADRs)
 
 Documentadas en `docs/ADR/` (ver [INDEX.md](docs/ADR/INDEX.md)):
 
-| ADR  | Titulo | Estado |
-|------|--------|--------|
-| 0001 | Capa semantica de notas Zettelkasten | Aceptado |
-| 0002 | Markdown como capa canonica de conocimiento | Aceptado |
-| 0003 | Base de datos hibrida (global + local) | Aceptado |
-| 0004 | SQLAlchemy 2.0 como unico ORM | Aceptado |
-| 0005 | DSL de ejercicios extiende macros existentes | Aceptado |
-| 0006 | Pipeline de activos TikZ standalone | Aceptado |
-| 0007 | Modulo de DB compartido con API de repositorio | Aceptado |
-| 0008 | Layout de directorios XDG | Aceptado |
-| 0009 | Frontera del modulo de ejercicios + parsing LaTeX compartido | Aceptado |
-| 0010 | Persistencia: archivo como verdad, DB como indice | Aceptado |
-| 0011 | Parser LaTeX con extraccion por conteo de llaves | Aceptado |
-| 0012 | Exportacion Moodle XML con normalizacion LaTeX | Aceptado |
-| 0013 | Consolidacion: sesiones, desacople, CLI split | Aceptado |
-| 0014 | Implementacion Zettelkasten: macros, modelo Note, workspace init | Aceptado |
-| LZK-0000..0004 | Motor LaTeXZettel (5 ADRs: arquitectura, RPC, Pandoc, refs, DI) | Aceptado |
+| ADR               | Titulo                                                                 | Estado   |
+| ----------------- | ---------------------------------------------------------------------- | -------- |
+| 0001              | Capa semantica de notas Zettelkasten                                   | Aceptado |
+| 0002              | Markdown como capa canonica de conocimiento                            | Aceptado |
+| 0003              | Base de datos hibrida (global + local)                                 | Aceptado |
+| 0004              | SQLAlchemy 2.0 como unico ORM                                          | Aceptado |
+| 0005              | DSL de ejercicios extiende macros existentes                           | Aceptado |
+| 0006              | Pipeline de activos TikZ standalone                                    | Aceptado |
+| 0007              | Modulo de DB compartido con API de repositorio                         | Aceptado |
+| 0008              | Layout de directorios XDG                                              | Aceptado |
+| 0009              | Frontera del modulo de ejercicios + parsing LaTeX compartido           | Aceptado |
+| 0010              | Persistencia: archivo como verdad, DB como indice                      | Aceptado |
+| 0011              | Parser LaTeX con extraccion por conteo de llaves                       | Aceptado |
+| 0012              | Exportacion Moodle XML con normalizacion LaTeX                         | Aceptado |
+| 0013              | Consolidacion: sesiones, desacople, CLI split                          | Aceptado |
+| 0014              | Implementacion Zettelkasten: macros, modelo Note, workspace init       | Aceptado |
+| LZK-0000..0004    | Motor LaTeXZettel (5 ADRs: arquitectura, RPC, Pandoc, refs, DI)        | Aceptado |
 | PRISMA-0000..0004 | PRISMAreview (5 ADRs: arquitectura, router, import, screening, modelo) | Aceptado |
 
 ## Estructura del modulo
