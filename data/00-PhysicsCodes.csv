@@ -1,4 +1,4 @@
-﻿Rama,código,Deby
+Rama,código,Dewey
 Apuntes,00AA,
 Biblioteca,00BB,
 Ejercicios y Ejemplos,00EE,
@@ -7,20 +7,34 @@ Matemáticos,01MM,530-15
 Numéricos,02MM,530-15
 Mecánica Clásica,10MC,531-00
 Newton,11MC,531-00
-Lagange,12MC,531-00
+Lagrange,12MC,531-00
 Hamilton,13MC,531-00
 Ondas,14MC,534-10
-Termodinamica,20TD,536-70
+Acústica,15MC,534-00
+Fluidos,16MC,532-00
+Termodinámica,20TD,536-70
 Estadística,21TD,530-13
 Computacional,22TD,530-0285
-Optica,30MO,535-00
+Estadística Cuántica,23TD,536-71
+Óptica,30MO,535-00
+Óptica Cuántica,31MO,535-15
+Óptica No Lineal,32MO,535-20
 Electromagnetismo,40EM,537-10
+Electrodinámica Clásica,41EM,537-60
 Mecánica Cuántica,50MQ,530-12
+Información Cuántica,51MQ,530-12
+Teoría Cuántica de Campos,52MQ,530-143
 Nuclear,60FN,539-70
+Física de Partículas,61FN,539-72
+Física de Reactores,62FN,621-48
+Detección y Dosimetría,63FN,539-77
 Estado Sólido,70ES,531-20
 Relatividad,80MR,530-11
-Especial,81MR,530-11
-General,82MR,530-11
-Atronomíá,83MR,523-00
-Cosmología,84MR,523-10
+Relatividad Especial,81MR,530-11
+Relatividad General,82MR,530-11
+Ondas Gravitacionales,85MR,530-11
+Astrofísica,86AF,523-00
+Cosmología,87AF,523-10
 Meteorología,90FM,532-00
+Física Médica,91BF,571-40
+Física del Plasma,92FP,530-44

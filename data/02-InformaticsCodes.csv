@@ -1,0 +1,42 @@
+Rama,código,Dewey
+Programación,10PG,005-13
+C++,11PG,005-133
+Python,12PG,005-133
+Paradigmas de programación,13PG,005-13
+LaTeX,14PG,005-133
+Lua,15PG,005-133
+Ciencias de la Computación,20CC,004-00
+Algoritmos,21CC,005-10
+Estructuras de datos,22CC,005-73
+Teoría de la computación,23CC,004-015
+Complejidad computacional,24CC,004-015
+Física Computacional,30CP,530-0285
+Métodos numéricos aplicados,31CP,530-0285
+Simulación Monte Carlo,32CP,519-282
+Análisis de datos,33CP,530-0285
+Sistemas Operativos,40SO,005-43
+Linux,41SO,005-432
+Herramientas CLI,42SO,005-43
+Editores y entornos (Neovim),43SO,005-13
+Bases de Datos,50BD,005-74
+Bases relacionales y SQL,51BD,005-756
+Bases no relacionales,52BD,005-756
+ORM y modelos de datos,53BD,005-74
+Desarrollo de Software,60DS,005-13
+Arquitectura de software,61DS,005-117
+Control de versiones,62DS,005-13
+Testing y calidad,63DS,005-14
+Documentación técnica,64DS,005-13
+Geant4,65DS,539-77
+ROOT,66DS,530-0285
+Inteligencia Artificial,70IA,006-30
+Aprendizaje automático,71IA,006-31
+Redes neuronales,72IA,006-32
+IA aplicada a física,73IA,530-0285
+Infraestructura y Nube,80IN,004-678
+Virtualización,81IN,004-678
+Contenedores,82IN,005-43
+Proxmox,83IN,004-678
+Nube y servicios,84IN,004-678
+Azure,85IN,004-678
+Infraestructura de IA,86IN,006-30
