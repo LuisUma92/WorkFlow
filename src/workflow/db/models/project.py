@@ -16,7 +16,6 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -74,12 +73,6 @@ class GeneralProject(GlobalBase):
         CheckConstraint(
             "year_init >= 0 AND year_init <= 99",
             name="ck_general_project_year_init",
-        ),
-        UniqueConstraint(
-            "main_topic_id",
-            "year_init",
-            "project_initials",
-            name="uq_general_project_area_year_pp",
         ),
     )
 

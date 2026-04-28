@@ -4,6 +4,7 @@ WorkFlow — unified CLI for LaTeX projects, exercises, lectures, and knowledge 
 
 import click
 
+from workflow.db.cli import db
 from workflow.tikz.cli import tikz
 from workflow.validation.cli import validate
 from workflow.exercise.cli import exercise
@@ -19,6 +20,7 @@ def cli():
     """WorkFlow: manage LaTeX projects, exercises, lectures, and knowledge graph."""
 
 
+cli.add_command(db)
 cli.add_command(tikz)
 cli.add_command(validate)
 cli.add_command(exercise)
