@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 import click
+from sqlalchemy.orm import Session
 
+from workflow.db import seed_codes
 from workflow.db.engine import get_engine_from_ctx
 from workflow.db.migrations import itep_0008 as itep_0008_migration
 
@@ -92,3 +95,66 @@ def migrate_itep_0008(ctx: click.Context, backfill_nuclear_physics: bool) -> Non
         )
     ):
         click.echo("  (no changes — already up to date)")
+
+
+def _print_upsert_report(report: seed_codes.UpsertReport) -> None:
+    if report.inserted:
+        click.echo(f"  inserted ({len(report.inserted)}): {', '.join(report.inserted)}")
+    if report.updated:
+        click.echo(f"  updated  ({len(report.updated)}): {', '.join(report.updated)}")
+    if report.unchanged:
+        click.echo(f"  unchanged: {len(report.unchanged)}")
+    if report.skipped:
+        click.echo(f"  skipped ({len(report.skipped)}):")
+        for lineno, reason in report.skipped:
+            click.echo(f"    line {lineno}: {reason}")
+    if not report.changed and not report.skipped:
+        click.echo("  (no changes — already up to date)")
+
+
+@db.command("import-codes")
+@click.option(
+    "--csv",
+    "csv_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Import a single discipline-codes CSV file.",
+)
+@click.option(
+    "--all",
+    "import_all",
+    is_flag=True,
+    default=False,
+    help="Import every DD-*Codes.csv in the bundled data/ directory.",
+)
+@click.option(
+    "--data-dir",
+    "data_dir",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=None,
+    help="Override the directory scanned by --all (defaults to repo data/).",
+)
+@click.pass_context
+def import_codes(
+    ctx: click.Context,
+    csv_path: Path | None,
+    import_all: bool,
+    data_dir: Path | None,
+) -> None:
+    """UPSERT discipline-area codes from CSV into the global database."""
+    if csv_path is None and not import_all:
+        raise click.UsageError("specify --csv PATH or --all.")
+    if csv_path is not None and import_all:
+        raise click.UsageError("--csv and --all are mutually exclusive.")
+
+    engine = get_engine_from_ctx(ctx)
+    with Session(engine) as session:
+        if csv_path is not None:
+            click.echo(f"Importing {csv_path.name}…")
+            report = seed_codes.upsert_from_csv(session, csv_path)
+        else:
+            target = data_dir or seed_codes.default_data_dir()
+            click.echo(f"Importing all *Codes.csv from {target}…")
+            report = seed_codes.upsert_all_csvs(session, target)
+
+    _print_upsert_report(report)

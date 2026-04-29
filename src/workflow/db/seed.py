@@ -6,8 +6,11 @@ Provides INSTITUTIONS_SEED, MAIN_TOPICS_SEED, and seed_reference_data().
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from sqlalchemy.orm import Session
 
+from workflow.db import seed_codes
 from workflow.db.models.academic import Institution, MainTopic
 
 
@@ -55,12 +58,21 @@ MAIN_TOPICS_SEED: list[dict] = [
 ]
 
 
-def seed_reference_data(session: Session) -> None:
-    """Insert institutions and main topics if they do not exist yet."""
+def seed_reference_data(
+    session: Session,
+    *,
+    data_dir: Path | None = None,
+    import_discipline_codes: bool = True,
+) -> None:
+    """Insert institutions, main topics, and discipline-area codes if absent.
+
+    Discipline codes are loaded from ``data/DD-*Codes.csv`` via
+    :func:`workflow.db.seed_codes.upsert_all_csvs` (idempotent UPSERT).
+    """
     for data in INSTITUTIONS_SEED:
-        exists = session.query(Institution).filter_by(
-            short_name=data["short_name"]
-        ).first()
+        exists = (
+            session.query(Institution).filter_by(short_name=data["short_name"]).first()
+        )
         if not exists:
             session.add(Institution(**data))
 
@@ -70,3 +82,8 @@ def seed_reference_data(session: Session) -> None:
             session.add(MainTopic(**data))
 
     session.commit()
+
+    if import_discipline_codes:
+        target = data_dir or seed_codes.default_data_dir()
+        if target.exists():
+            seed_codes.upsert_all_csvs(session, target)
