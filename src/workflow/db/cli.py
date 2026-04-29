@@ -8,7 +8,9 @@ from pathlib import Path
 import click
 from sqlalchemy.orm import Session
 
-from workflow.db import seed_codes
+import json as _json
+
+from workflow.db import seed_codes, taxonomy
 from workflow.db.engine import get_engine_from_ctx
 from workflow.db.migrations import itep_0008 as itep_0008_migration
 
@@ -158,3 +160,52 @@ def import_codes(
             report = seed_codes.upsert_all_csvs(session, target)
 
     _print_upsert_report(report)
+
+
+@db.group("taxonomy")
+def taxonomy_group() -> None:
+    """Read-only access to the discipline taxonomy (ADR ITEP-0009 Part I)."""
+
+
+@taxonomy_group.command("list")
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Emit machine-readable JSON instead of a table.",
+)
+@click.option(
+    "--data-dir",
+    "data_dir",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=None,
+    help="Override the directory scanned for DD-*Codes.csv.",
+)
+def taxonomy_list(as_json: bool, data_dir: Path | None) -> None:
+    """List the registered disciplines and their bundled CSV files."""
+    entries = taxonomy.discover_disciplines(data_dir)
+    if as_json:
+        click.echo(
+            _json.dumps(
+                [
+                    {
+                        "dd": e.dd,
+                        "code_prefix": e.code_prefix,
+                        "name": e.name,
+                        "csv": str(e.csv_path) if e.csv_path else None,
+                        "hobby": e.hobby,
+                    }
+                    for e in entries
+                ],
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return
+    click.echo("DD  Discipline                       Hobby  CSV")
+    click.echo("--  -------------------------------  -----  ---")
+    for e in entries:
+        csv_label = e.csv_path.name if e.csv_path else "(missing)"
+        hobby_flag = "yes" if e.hobby else "no"
+        click.echo(f"{e.code_prefix}  {e.name:<31}  {hobby_flag:<5}  {csv_label}")
