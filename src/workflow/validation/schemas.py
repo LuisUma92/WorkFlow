@@ -1,18 +1,37 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
-from workflow.db.models.academic import _TAXONOMY_LEVELS, _TAXONOMY_DOMAINS
+from sqlalchemy.orm import Session
+
+from workflow.db.models.academic import (
+    DisciplineArea,
+    _TAXONOMY_DOMAINS,
+    _TAXONOMY_LEVELS,
+)
 
 __all__ = [
     "NoteFrontmatter",
     "ExerciseMetadata",
     "validate_note_frontmatter",
     "validate_exercise_metadata",
+    "check_candidate_project_against_db",
+    "CANDIDATE_PROJECT_RE",
 ]
 
+
+CANDIDATE_PROJECT_RE = re.compile(r"^[0-9]{4}[A-Z]{2}-[0-9]{2}[A-Z]{2}$")
+"""Format of an ADR ITEP-0009 forward reference: ``DDTTAA-YYPP``."""
+
 _VALID_NOTE_TYPES = {"permanent", "literature", "fleeting"}
-_VALID_EXERCISE_TYPES = {"multichoice", "shortanswer", "essay", "numerical", "truefalse"}
+_VALID_EXERCISE_TYPES = {
+    "multichoice",
+    "shortanswer",
+    "essay",
+    "numerical",
+    "truefalse",
+}
 _VALID_DIFFICULTIES = {"easy", "medium", "hard"}
 _VALID_TAXONOMY_LEVELS = set(_TAXONOMY_LEVELS)
 _VALID_TAXONOMY_DOMAINS = set(_TAXONOMY_DOMAINS)
@@ -29,6 +48,7 @@ class NoteFrontmatter:
     exercises: tuple[str, ...] = ()
     images: tuple[str, ...] = ()
     type: str = "permanent"
+    candidate_project: str | None = None
 
 
 @dataclass(frozen=True)
@@ -40,6 +60,33 @@ class ExerciseMetadata:
     taxonomy_domain: str
     tags: tuple[str, ...] = ()
     concepts: tuple[str, ...] = ()
+
+
+def _string_list(data: dict, key: str, errors: list[str]) -> list[str]:
+    raw = data.get(key, [])
+    if not isinstance(raw, list):
+        errors.append(f"'{key}' must be a list")
+        return []
+    if not all(isinstance(x, str) for x in raw):
+        errors.append(f"all items in '{key}' must be strings")
+        return []
+    return list(raw)
+
+
+def _validate_candidate_project(data: dict, errors: list[str]) -> str | None:
+    value = data.get("candidate_project", None)
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        errors.append("'candidate_project' must be a string DDTTAA-YYPP")
+        return None
+    if not CANDIDATE_PROJECT_RE.match(value):
+        errors.append(
+            "'candidate_project' must match DDTTAA-YYPP "
+            f"(e.g. '0010MC-26ST'); got '{value}'"
+        )
+        return None
+    return value
 
 
 def validate_note_frontmatter(data: dict) -> tuple[NoteFrontmatter | None, list[str]]:
@@ -57,56 +104,24 @@ def validate_note_frontmatter(data: dict) -> tuple[NoteFrontmatter | None, list[
     if not title or not isinstance(title, str):
         errors.append("'title' is required and must be a non-empty string")
 
-    tags = data.get("tags", [])
-    if not isinstance(tags, list):
-        errors.append("'tags' must be a list")
-        tags = []
-    elif not all(isinstance(t, str) for t in tags):
-        errors.append("all items in 'tags' must be strings")
-        tags = []
+    tags = _string_list(data, "tags", errors)
+    concepts = _string_list(data, "concepts", errors)
+    references = _string_list(data, "references", errors)
+    exercises = _string_list(data, "exercises", errors)
+    images = _string_list(data, "images", errors)
 
     created = data.get("created", None)
     if created is not None and not isinstance(created, str):
         errors.append("'created' must be a string (ISO date) or null")
         created = None
 
-    concepts = data.get("concepts", [])
-    if not isinstance(concepts, list):
-        errors.append("'concepts' must be a list")
-        concepts = []
-    elif not all(isinstance(c, str) for c in concepts):
-        errors.append("all items in 'concepts' must be strings")
-        concepts = []
-
-    references = data.get("references", [])
-    if not isinstance(references, list):
-        errors.append("'references' must be a list")
-        references = []
-    elif not all(isinstance(r, str) for r in references):
-        errors.append("all items in 'references' must be strings")
-        references = []
-
-    exercises = data.get("exercises", [])
-    if not isinstance(exercises, list):
-        errors.append("'exercises' must be a list")
-        exercises = []
-    elif not all(isinstance(e, str) for e in exercises):
-        errors.append("all items in 'exercises' must be strings")
-        exercises = []
-
-    images = data.get("images", [])
-    if not isinstance(images, list):
-        errors.append("'images' must be a list")
-        images = []
-    elif not all(isinstance(i, str) for i in images):
-        errors.append("all items in 'images' must be strings")
-        images = []
-
     note_type = data.get("type", "permanent")
     if note_type not in _VALID_NOTE_TYPES:
         errors.append(
             f"'type' must be one of {sorted(_VALID_NOTE_TYPES)}, got '{note_type}'"
         )
+
+    candidate_project = _validate_candidate_project(data, errors)
 
     if errors:
         return None, errors
@@ -122,6 +137,7 @@ def validate_note_frontmatter(data: dict) -> tuple[NoteFrontmatter | None, list[
             exercises=tuple(exercises),
             images=tuple(images),
             type=note_type,
+            candidate_project=candidate_project,
         ),
         [],
     )
@@ -201,3 +217,29 @@ def validate_exercise_metadata(data: dict) -> tuple[ExerciseMetadata | None, lis
         ),
         [],
     )
+
+
+def check_candidate_project_against_db(
+    candidate_project: str | None,
+    session: Session,
+) -> list[str]:
+    """Return warnings (not errors) for an ADR ITEP-0009 forward reference.
+
+    A ``candidate_project`` is well-formed (validated upstream) but its
+    ``DDTTAA`` portion may name an area that has not been registered in the
+    :class:`DisciplineArea` reference table. The forward-reference field is
+    a *MAY* rule, so missing DDTTAA is reported as a warning, not an error.
+    """
+    if not candidate_project:
+        return []
+    if not CANDIDATE_PROJECT_RE.match(candidate_project):
+        return []  # caller already raised an error
+    area_code = candidate_project.split("-", 1)[0]
+    exists = session.query(DisciplineArea).filter_by(code=area_code).first()
+    if exists is None:
+        return [
+            f"candidate_project '{candidate_project}' references unknown "
+            f"DisciplineArea {area_code!r}; run `workflow db import-codes "
+            "--all` if the area should exist."
+        ]
+    return []
