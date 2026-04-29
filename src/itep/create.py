@@ -13,17 +13,14 @@ from pathlib import Path
 
 import click
 
-from workflow.db.models.bibliography import BibEntry
 from workflow.db.models.academic import (
     Institution as InstitutionModel,
     MainTopic,
-    Topic,
+    DisciplineArea,
     Course,
 )
 from workflow.db.models.project import (
     GeneralProject,
-    GeneralProjectBib,
-    GeneralProjectTopic,
     LectureInstance,
 )
 from workflow.db.engine import get_global_session, init_global_db
@@ -31,6 +28,7 @@ from workflow.db.seed import seed_reference_data
 from itep.defaults import DEF_ABS_PARENT_DIR, DEF_ABS_SRC_DIR
 from itep.ioconfig import save_config
 from itep.utils import ensure_dir
+from itep import naming
 from appfunc.iofunc import gather_input
 from appfunc.options import select_enum_type
 
@@ -173,61 +171,132 @@ def _create_new_course(session, institution):
 # ── Create: general project ───────────────────────────────────────────
 
 
-def create_general(session, parent_dir: Path, src_dir: Path):
-    """Create a general_project backed by a main_topic."""
-    # 1. Select main_topic
-    main_topic = _select_from_db(session, MainTopic, "main topic")
-    if not main_topic:
-        raise click.ClickException("Cannot proceed without a main topic.")
+def _select_discipline_area(session) -> DisciplineArea | None:
+    """Two-step picker: discipline (DD) → area (DDTTAA)."""
+    rows = session.query(DisciplineArea).order_by(DisciplineArea.code).all()
+    if not rows:
+        click.echo("No discipline areas found. Run `workflow db import-codes --all`.")
+        return None
+    by_discipline: dict[int, list[DisciplineArea]] = {}
+    for r in rows:
+        by_discipline.setdefault(r.discipline_num, []).append(r)
+    discipline_options = [f"{dd:02d}" for dd in sorted(by_discipline)]
+    dd_choice = select_enum_type("discipline (DD)", discipline_options)
+    dd = int(dd_choice)
+    area_options = [f"{a.code} - {a.name}" for a in by_discipline[dd]]
+    area_choice = select_enum_type("area (DDTTAA)", area_options)
+    idx = area_options.index(area_choice)
+    return by_discipline[dd][idx]
 
-    # Check uniqueness (1:1)
-    existing = (
-        session.query(GeneralProject).filter_by(main_topic_id=main_topic.id).first()
+
+def _get_or_create_area_main_topic(session, area: DisciplineArea) -> MainTopic:
+    existing = session.query(MainTopic).filter_by(code=area.code).first()
+    if existing is not None:
+        return existing
+    mt = MainTopic(code=area.code, name=area.name, parent_id=None)
+    session.add(mt)
+    session.flush()
+    return mt
+
+
+def _prompt_initials(session, area_id: int, yy: int) -> str:
+    while True:
+        raw = input("Enter project_initials (2 letters A-Z): ").strip()
+        try:
+            pp = naming.validate_pp(raw)
+        except ValueError as e:
+            click.echo(str(e))
+            continue
+        if naming.is_taken(session, area_id, yy, pp):
+            click.echo(f"{pp} is already taken in this area for year {yy:02d}.")
+            continue
+        return pp
+
+
+def create_general(
+    session,
+    parent_dir: Path,
+    src_dir: Path,
+    *,
+    title: str | None = None,
+    year_init: int | None = None,
+    project_initials: str | None = None,
+    area_code: str | None = None,
+):
+    """Create a general_project under DDTTAA-YYPP-title (ADR ITEP-0008)."""
+    # 1. Select discipline area (CSV-backed reference table).
+    if area_code is not None:
+        area_ref = session.query(DisciplineArea).filter_by(code=area_code).first()
+        if area_ref is None:
+            raise click.ClickException(f"Unknown DisciplineArea code: {area_code}")
+    else:
+        area_ref = _select_discipline_area(session)
+    if not area_ref:
+        raise click.ClickException("Cannot proceed without a discipline area.")
+
+    # 2. Get-or-create the area-level MainTopic (parent_id=NULL).
+    area_topic = _get_or_create_area_main_topic(session, area_ref)
+
+    # 3. Year of project initiation.
+    yy = year_init if year_init is not None else date.today().year % 100
+
+    # 4. Project title — free text, validated non-empty.
+    if title is None:
+        while True:
+            title = input("Enter project title: ").strip()
+            if title:
+                break
+            click.echo("Title cannot be empty.")
+
+    # 5. Derive project_initials via priority rules; prompt on collision.
+    if project_initials is not None:
+        pp = naming.validate_pp(project_initials)
+        if naming.is_taken(session, area_topic.id, yy, pp):
+            raise click.ClickException(
+                f"{pp} already taken in {area_topic.code} for year {yy:02d}."
+            )
+    else:
+        cand = naming.derive_project_initials(title, session, area_topic.id, yy)
+        if cand is None:
+            click.echo(
+                "All automatic initials are taken or inapplicable; "
+                "manual entry required."
+            )
+            pp = _prompt_initials(session, area_topic.id, yy)
+        else:
+            pp = cand.value
+            click.echo(f"Derived project_initials={pp} (rule: {cand.rule}).")
+
+    # 6. Create child MainTopic (DDTTAAYYPP).
+    child_code = f"{area_topic.code}{yy:02d}{pp}"
+    child_topic = MainTopic(
+        code=child_code,
+        name=title,
+        parent_id=area_topic.id,
     )
-    if existing:
-        raise click.ClickException(
-            f"A general project already exists for {main_topic.name} "
-            f"(id={existing.id})."
-        )
+    session.add(child_topic)
+    session.flush()
 
-    # 2. Select topics
-    topics = _select_multiple_from_db(session, Topic, "topic")
-
-    # 3. Select books
-    books = _select_multiple_from_db(session, BibEntry, "book")
-
-    # 4. Create project
+    # 7. Create GeneralProject row.
     project = GeneralProject(
-        main_topic_id=main_topic.id,
+        main_topic_id=child_topic.id,
         abs_parent_dir=str(parent_dir),
         abs_src_dir=str(src_dir),
+        year_init=yy,
+        project_initials=pp,
+        title=title,
+        status="active",
     )
     session.add(project)
-    session.flush()  # get project.id
-
-    for topic in topics:
-        session.add(
-            GeneralProjectTopic(
-                general_project_id=project.id,
-                topic_id=topic.id,
-            )
-        )
-    for book in books:
-        session.add(
-            GeneralProjectBib(
-                general_project_id=project.id,
-                bib_entry_id=book.id,
-            )
-        )
     session.commit()
 
-    # 5. Create directories
+    # 8. Create directory tree.
     from itep.models import GeneralProject as GPModel
 
     root_dir = parent_dir / project.root_dir
-    _create_dirs_from_tree(root_dir, GPModel.tree, topics)
+    _create_dirs_from_tree(root_dir, GPModel.tree, [])
 
-    # 6. Write config.yaml
+    # 9. Write config.yaml.
     save_config("general", project.id, root_dir / "config.yaml")
     click.echo(f"General project created: {root_dir}")
     return project

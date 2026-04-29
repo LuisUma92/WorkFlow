@@ -109,10 +109,11 @@ class GeneralProject(GlobalBase):
     @property
     def root_dir(self) -> str:
         if self.year_init or self.project_initials:
+            from itep.naming import slugify_title
+
+            slug = slugify_title(self.title or self.main_topic.name)
             return (
-                f"{self.area.code}-"
-                f"{self.year_init:02d}{self.project_initials}-"
-                f"{self.title or self.main_topic.name}"
+                f"{self.area.code}-{self.year_init:02d}{self.project_initials}-{slug}"
             )
         # Legacy fallback for pre-ITEP-0008 records (no YYPP yet assigned).
         return f"{self.main_topic.code}-{self.main_topic.name}"
