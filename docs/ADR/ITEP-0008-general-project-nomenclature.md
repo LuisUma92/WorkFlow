@@ -1,8 +1,9 @@
 ---
 adr: ITEP-0008
 title: "General project nomenclature: discipline, area, year and project initials"
-status: Accepted
+status: Implemented
 date: 2026-04-21
+implemented_at: 2026-04-28
 authors:
   - Luis Fernando Umaña Castro
 reviewers: []
@@ -388,6 +389,31 @@ No existing rows require data updates at migration time.
 
 ## Change Log
 
-| Date       | Change                                         |
-| ---------- | ---------------------------------------------- |
-| 2026-04-21 | Initial ADR — design phase, pre-implementation |
+| Date       | Change                                                                                |
+| ---------- | ------------------------------------------------------------------------------------- |
+| 2026-04-21 | Initial ADR — design phase, pre-implementation                                        |
+| 2026-04-28 | Implemented across three phases (commits `6964d87`, `f5cf015`, `56bbacd`).            |
+
+## Implementation Notes (2026-04-28)
+
+Shipped in three phases on `master`:
+
+- **Phase A** (`6964d87`) — schema scaffolding: `MainTopic.parent_id` self-FK,
+  `DisciplineArea` reference table, `GeneralProject.{year_init, project_initials,
+  title, status, archived_at}`, `workflow db migrate itep-0008` idempotent
+  one-shot migration with optional Nuclear Physics backfill.
+- **Phase B** (`f5cf015`) — discipline-codes loader: `workflow.db.seed_codes`
+  (`parse_csv`, `upsert_from_csv`, `upsert_all_csvs`, `UpsertReport`),
+  `workflow db import-codes [--csv|--all|--data-dir]` CLI, hooked into
+  `seed_reference_data`. CSV `código` column gives `TTAA`; the `DD` prefix is
+  taken from the filename so `DisciplineArea.code` is the full 6-char `DDTTAA`.
+- **Phase C** (`56bbacd`) — `inittex` flow: `itep.naming` (priority rules
+  `word_initials → word1_prefix → word2_prefix → manual`, `is_taken`,
+  `slugify_title`, `validate_pp`); rewritten `create_general` selects a
+  `DisciplineArea`, gets-or-creates the area-level `MainTopic` (parent_id=NULL),
+  derives `PP` with collision fallback, creates the child `MainTopic`
+  (`DDTTAAYYPP`, 10 chars) and the `GeneralProject` row. `GeneralProject.root_dir`
+  now CamelCase-slugs the title so spaces never reach the filesystem.
+
+Test coverage at completion: 738 tests pass (47 new across the three phases),
+flake8 clean. Smoke against bundled `data/`: 233 codes load idempotently.
