@@ -1,8 +1,9 @@
 ---
 adr: ITEP-0009
 title: "Knowledge lifecycle, discipline taxonomy, and AI agent collaboration conventions"
-status: Propposed
+status: Implemented (partial)
 date: 2026-04-21
+implemented_at: 2026-04-29
 authors:
   - Luis Fernando Umaña Castro
 reviewers: []
@@ -558,3 +559,54 @@ No filesystem changes are required before this ADR takes effect.
 | Date       | Change                                                                                         |
 | ---------- | ---------------------------------------------------------------------------------------------- |
 | 2026-04-21 | Initial ADR — discipline taxonomy, knowledge lifecycle, agent conventions, prompt rules H1–H10 |
+| 2026-04-29 | WorkFlow-side parts implemented (Phases A+B+C). Part III deferred to ~/Documents/01-U.         |
+
+## Implementation Notes (WorkFlow-side, 2026-04-29)
+
+Status flipped to ``Implemented (partial)`` because Parts I–II and the
+``candidate_project`` MAY rule shipped in this repo, while Part III A–H
+(agent conventions + prompt rules H1–H10) is **deferred** to the
+``~/Documents/01-U/.claude/`` workspace and tracked separately.
+
+Plan: ``~/.claude/plans/itep-0009-workflow-side.md``.
+
+Shipped on `master`:
+
+- **Phase A** — `feat(db): discipline taxonomy registry + CLI` (commit
+  on master, post-ITEP-0008): `src/workflow/db/taxonomy.py` exposes
+  ``DISCIPLINES`` (DD → Spanish name), ``HOBBY_DD_THRESHOLD = 4``,
+  ``DisciplineInfo`` and ``discover_disciplines()``. New CLI
+  ``workflow db taxonomy list [--json] [--data-dir PATH]`` joins the
+  registry with bundled CSVs so agents can consume the taxonomy without
+  re-parsing filenames.
+- **Phase B** — `feat(db): maturation signals + propose-maturation CLI`:
+  `src/workflow/db/maturation.py` exposes ``MaturationSignal``,
+  ``evaluate_area`` (queryable subset of Part II criteria —
+  ``bibliographic_accumulation`` with hobby-aware threshold,
+  ``institutional_affiliation``, ``multi_semester_continuity``;
+  ``formal_product`` / ``systematic_review`` / ``collaborative_scope``
+  return ``met=None`` "needs slipbox scan"). New CLI
+  ``workflow project propose-maturation [--json] [--area DDTTAA]``
+  reports per-area status. ``inittex`` now warns when no queryable
+  criterion is met and offers ``--force-no-maturation`` for scripted
+  paths.
+- **Phase C** — `feat(validation): candidate_project frontmatter field`:
+  ``NoteFrontmatter.candidate_project`` is now an optional, regex-
+  validated forward reference. New
+  ``check_candidate_project_against_db()`` returns warnings when the
+  ``DDTTAA`` portion is not yet registered.
+
+Deferred to a follow-up plan in
+``~/.claude/plans/itep-0009-01u-workspace.md``:
+
+- Audit of existing agents (``exam-author``, ``note-curator``,
+  ``prisma-screener``, ``gap-reporter``, ``workflow-runner``) against
+  rules H1–H10.
+- Agent-definition restructure (``## Invariants``,
+  ``## End-of-turn checklist``, ``## Gap-log focus`` sections,
+  explicit ``tools:``, ``model:``, ``memory:`` fields).
+- SKILL document updates (``exam-build``, ``prisma-screen-session``,
+  ``workflow-cli``).
+- Gap-log infrastructure under ``~/Documents/01-U/.claude/gaps/``.
+- Note-curator maturation-suggestion loop consuming
+  ``workflow.db.maturation.evaluate_area``.

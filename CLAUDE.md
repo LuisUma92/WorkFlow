@@ -88,6 +88,7 @@ Defined in `pyproject.toml` under `[project.scripts]`:
 - Graph CLI: `workflow graph orphans|stats|export-dot|export-tikz|clusters|neighbors`
 - Evaluation CLI: `workflow evaluations list|show|add|edit`, `workflow item list|add`, `workflow course list|add` (ADR-0016)
 - PRISMA CLI: `workflow prisma bib list|show`, `workflow prisma keyword list`, `workflow prisma review list` (ADR PRISMA-0005)
+- Taxonomy + maturation CLI: `workflow db taxonomy list [--json]`, `workflow project propose-maturation [--json] [--area DDTTAA]` (ADR ITEP-0009)
 - Shared `get_engine_from_ctx()` in `workflow.db.engine` for all Click commands
 - Project types: `GeneralProject` and `LectureProject` (see `itep/models.py`)
 
@@ -106,7 +107,7 @@ Architecture decisions in `docs/ADR/` (see [INDEX.md](docs/ADR/INDEX.md) for ful
 | ITEP-0006 | Bloom taxonomy enums | Accepted |
 | ITEP-0007 | CRUD manager abstraction | Accepted |
 | ITEP-0008 | General project nomenclature (DDTTAA-YYPP-title) | Implemented |
-| ITEP-0009 | Knowledge lifecycle and AI agent conventions | Accepted |
+| ITEP-0009 | Knowledge lifecycle and AI agent conventions | Implemented (partial) |
 | STY-0000..0011 | LaTeX style file ADRs (12 total) | Accepted |
 | 0001 | Zettelkasten note semantic layer | Accepted |
 | 0002 | Markdown as canonical knowledge layer | Accepted |
