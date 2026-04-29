@@ -29,6 +29,7 @@ from itep.defaults import DEF_ABS_PARENT_DIR, DEF_ABS_SRC_DIR
 from itep.ioconfig import save_config
 from itep.utils import ensure_dir
 from itep import naming
+from workflow.db import maturation
 from appfunc.iofunc import gather_input
 from appfunc.options import select_enum_type
 
@@ -213,6 +214,65 @@ def _prompt_initials(session, area_id: int, yy: int) -> str:
         return pp
 
 
+def _resolve_discipline_area(session, area_code: str | None) -> DisciplineArea:
+    if area_code is not None:
+        area_ref = session.query(DisciplineArea).filter_by(code=area_code).first()
+        if area_ref is None:
+            raise click.ClickException(f"Unknown DisciplineArea code: {area_code}")
+        return area_ref
+    area_ref = _select_discipline_area(session)
+    if not area_ref:
+        raise click.ClickException("Cannot proceed without a discipline area.")
+    return area_ref
+
+
+def _confirm_maturation(session, area_topic: MainTopic) -> None:
+    signals = maturation.evaluate_area(session, area_topic.id)
+    if maturation.is_mature(signals) or not maturation.all_queryable_negative(signals):
+        return
+    click.echo(
+        f"Warning: area {area_topic.code} has no queryable maturation "
+        "signals (ADR ITEP-0009 Part II)."
+    )
+    for s in signals:
+        if s.met is False:
+            click.echo(f"  ✗ {s.criterion}: {s.evidence}")
+    if not click.confirm("Continue anyway?", default=False):
+        raise click.Abort()
+
+
+def _prompt_title() -> str:
+    while True:
+        value = input("Enter project title: ").strip()
+        if value:
+            return value
+        click.echo("Title cannot be empty.")
+
+
+def _resolve_project_initials(
+    session,
+    title: str,
+    area_topic: MainTopic,
+    yy: int,
+    project_initials: str | None,
+) -> str:
+    if project_initials is not None:
+        pp = naming.validate_pp(project_initials)
+        if naming.is_taken(session, area_topic.id, yy, pp):
+            raise click.ClickException(
+                f"{pp} already taken in {area_topic.code} for year {yy:02d}."
+            )
+        return pp
+    cand = naming.derive_project_initials(title, session, area_topic.id, yy)
+    if cand is None:
+        click.echo(
+            "All automatic initials are taken or inapplicable; manual entry required."
+        )
+        return _prompt_initials(session, area_topic.id, yy)
+    click.echo(f"Derived project_initials={cand.value} (rule: {cand.rule}).")
+    return cand.value
+
+
 def create_general(
     session,
     parent_dir: Path,
@@ -222,50 +282,18 @@ def create_general(
     year_init: int | None = None,
     project_initials: str | None = None,
     area_code: str | None = None,
+    force_no_maturation: bool = False,
 ):
     """Create a general_project under DDTTAA-YYPP-title (ADR ITEP-0008)."""
-    # 1. Select discipline area (CSV-backed reference table).
-    if area_code is not None:
-        area_ref = session.query(DisciplineArea).filter_by(code=area_code).first()
-        if area_ref is None:
-            raise click.ClickException(f"Unknown DisciplineArea code: {area_code}")
-    else:
-        area_ref = _select_discipline_area(session)
-    if not area_ref:
-        raise click.ClickException("Cannot proceed without a discipline area.")
-
-    # 2. Get-or-create the area-level MainTopic (parent_id=NULL).
+    area_ref = _resolve_discipline_area(session, area_code)
     area_topic = _get_or_create_area_main_topic(session, area_ref)
+    if not force_no_maturation:
+        _confirm_maturation(session, area_topic)
 
-    # 3. Year of project initiation.
     yy = year_init if year_init is not None else date.today().year % 100
-
-    # 4. Project title — free text, validated non-empty.
     if title is None:
-        while True:
-            title = input("Enter project title: ").strip()
-            if title:
-                break
-            click.echo("Title cannot be empty.")
-
-    # 5. Derive project_initials via priority rules; prompt on collision.
-    if project_initials is not None:
-        pp = naming.validate_pp(project_initials)
-        if naming.is_taken(session, area_topic.id, yy, pp):
-            raise click.ClickException(
-                f"{pp} already taken in {area_topic.code} for year {yy:02d}."
-            )
-    else:
-        cand = naming.derive_project_initials(title, session, area_topic.id, yy)
-        if cand is None:
-            click.echo(
-                "All automatic initials are taken or inapplicable; "
-                "manual entry required."
-            )
-            pp = _prompt_initials(session, area_topic.id, yy)
-        else:
-            pp = cand.value
-            click.echo(f"Derived project_initials={pp} (rule: {cand.rule}).")
+        title = _prompt_title()
+    pp = _resolve_project_initials(session, title, area_topic, yy, project_initials)
 
     # 6. Create child MainTopic (DDTTAAYYPP).
     child_code = f"{area_topic.code}{yy:02d}{pp}"
@@ -365,7 +393,17 @@ def clone_cycle(session, source_id: int, parent_dir: Path = None, src_dir: Path 
     default=None,
     help="Clone an existing lecture instance by ID.",
 )
-def cli(parent_dir, src_dir, clone_id):
+@click.option(
+    "--force-no-maturation",
+    "-f",
+    is_flag=True,
+    default=False,
+    help=(
+        "Skip the ADR ITEP-0009 maturation warning when creating a "
+        "GeneralProject for an area with no queryable signals."
+    ),
+)
+def cli(parent_dir, src_dir, clone_id, force_no_maturation):
     """Create or clone an ITeP project."""
     parent = Path(parent_dir).expanduser() if parent_dir else DEF_ABS_PARENT_DIR
     src = Path(src_dir).expanduser() if src_dir else DEF_ABS_SRC_DIR
@@ -384,7 +422,7 @@ def cli(parent_dir, src_dir, clone_id):
     if choice == "lecture":
         create_lecture(session, parent, src)
     else:
-        create_general(session, parent, src)
+        create_general(session, parent, src, force_no_maturation=force_no_maturation)
 
 
 if __name__ == "__main__":

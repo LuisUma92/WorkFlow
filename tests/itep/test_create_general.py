@@ -47,6 +47,7 @@ def test_create_general_creates_full_hierarchy(session, tmp_path):
         title="Sample Theory",
         year_init=26,
         area_code="0110EP",
+        force_no_maturation=True,
     )
 
     assert proj.year_init == 26
@@ -77,7 +78,13 @@ def test_create_general_falls_through_initials_on_collision(session, tmp_path):
     src.mkdir()
 
     create_general(
-        session, parent, src, title="Sample Theory", year_init=26, area_code="0110EP"
+        session,
+        parent,
+        src,
+        title="Sample Theory",
+        year_init=26,
+        area_code="0110EP",
+        force_no_maturation=True,
     )
     second = create_general(
         session,
@@ -86,6 +93,7 @@ def test_create_general_falls_through_initials_on_collision(session, tmp_path):
         title="Sample Thinking",
         year_init=26,
         area_code="0110EP",
+        force_no_maturation=True,
     )
     # ST is taken → word1_prefix "SA"
     assert second.project_initials == "SA"
@@ -105,6 +113,7 @@ def test_create_general_explicit_pp_collision_raises(session, tmp_path):
         title="Sample Theory",
         year_init=26,
         area_code="0110EP",
+        force_no_maturation=True,
     )
     with pytest.raises(click.ClickException, match="already taken"):
         create_general(
@@ -115,6 +124,7 @@ def test_create_general_explicit_pp_collision_raises(session, tmp_path):
             year_init=26,
             project_initials="ST",
             area_code="0110EP",
+            force_no_maturation=True,
         )
 
 
@@ -131,6 +141,7 @@ def test_create_general_unknown_area_raises(session, tmp_path):
             title="X",
             year_init=26,
             area_code="9999ZZ",
+            force_no_maturation=True,
         )
 
 
@@ -139,7 +150,14 @@ def test_create_general_default_year_is_current(session, tmp_path):
     parent.mkdir()
     src = tmp_path / "src"
     src.mkdir()
-    proj = create_general(session, parent, src, title="Foo Bar", area_code="0110EP")
+    proj = create_general(
+        session,
+        parent,
+        src,
+        title="Foo Bar",
+        area_code="0110EP",
+        force_no_maturation=True,
+    )
     assert proj.year_init == date.today().year % 100
 
 
@@ -150,10 +168,22 @@ def test_create_general_reuses_existing_area_main_topic(session, tmp_path):
     src.mkdir()
 
     create_general(
-        session, parent, src, title="First Project", year_init=26, area_code="0110EP"
+        session,
+        parent,
+        src,
+        title="First Project",
+        year_init=26,
+        area_code="0110EP",
+        force_no_maturation=True,
     )
     create_general(
-        session, parent, src, title="Second Effort", year_init=26, area_code="0110EP"
+        session,
+        parent,
+        src,
+        title="Second Effort",
+        year_init=26,
+        area_code="0110EP",
+        force_no_maturation=True,
     )
     areas = session.query(MainTopic).filter_by(code="0110EP", parent_id=None).all()
     assert len(areas) == 1
