@@ -8,13 +8,18 @@ Descripcion de la arquitectura del sistema WorkFlow, sus modulos, patrones y dec
 src/
   workflow/           # Core del sistema unificado
     db/               # Base de datos (SQLAlchemy 2.0)
+                      #   models/, repos/, seed.py, seed_codes.py,
+                      #   taxonomy.py, maturation.py, schema_version.py,
+                      #   errors.py, migrations/{global,local}/NNNN_*.py
+                      #   (runner forward-only, ver ITEP-0010)
     notes/            # Zettelkasten: workspace init, gestion de notas
     exercise/         # Banco de ejercicios (parser, moodle, generator, selector, service)
     lecture/          # Integracion de cursos (scanner, splitter, linker, eval_builder)
     graph/            # Grafo de conocimiento (dominio, collectors, DOT, TikZ, clustering)
     latex/            # Parsing compartido de LaTeX
     tikz/             # Pipeline de diagramas
-    validation/       # Validacion de frontmatter
+    validation/       # Validacion de frontmatter (incl. candidate_project)
+    project/          # CLI propose-maturation (ITEP-0009)
   itep/               # Scaffolding de proyectos LaTeX
   latexzettel/        # Motor Zettelkasten + servidor JSONL/RPC (24 rutas)
   lectkit/            # Utilidades (cleta)
@@ -199,6 +204,8 @@ Ver [docs/ADR/INDEX.md](../ADR/INDEX.md) para el indice completo con dependencia
 | [0010](../ADR/0010-exercise-persistence-model.md) | Archivo como verdad, DB como indice | El .tex es la fuente de verdad, no la DB |
 | [0012](../ADR/0012-moodle-xml-export-mapping.md) | Normalizacion antes de Moodle | No depende de config MathJax institucional |
 | [ITEP-0002](../ADR/ITEP-0002-four-layer-schema.md) | Esquema de 4 capas | Separacion clara referencia/maestro/template/instancia |
+| [ITEP-0008](../ADR/ITEP-0008-general-project-nomenclature.md) | Nomenclatura `DDTTAA-YYPP-title` + FK catalogo→estado | Estado de `MainTopic` solo puede referenciar `DisciplineArea` reales |
+| [ITEP-0010](../ADR/ITEP-0010-schema-versioning-and-migrations.md) | Migraciones forward-only + `schema_version` + `@with_schema_guard` | Errores de esquema dejan de ser tracebacks; `workflow db migrate` es el unico runner |
 
 ### Decisiones de ejercicios
 

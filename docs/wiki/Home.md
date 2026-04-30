@@ -27,6 +27,13 @@ workflow graph    orphans|stats|export-dot|export-tikz|clusters|neighbors
 workflow tikz     build|list|clean
 workflow validate notes|exercises
 
+# Base de datos global, migraciones y taxonomia (ITEP-0008 / ITEP-0009 / ITEP-0010)
+workflow db migrate           [--base global|local|all] [--to REV] [--dry-run] [--json]
+workflow db migrate status    [--base global|local|all] [--json]
+workflow db import-codes      [--csv PATH | --all] [--data-dir PATH]
+workflow db taxonomy list     [--json] [--data-dir PATH]
+workflow project propose-maturation [--json] [--area DDTTAA]
+
 # Evaluaciones y PRISMA
 workflow evaluations list|show|add|edit
 workflow item         list|add
@@ -36,9 +43,9 @@ workflow prisma keyword list
 workflow prisma review  list
 
 # Utilidades independientes
-inittex    # Crear proyecto LaTeX
-relink     # Recrear symlinks
-cleta      # Limpiar archivos auxiliares TeX
+inittex [--force-no-maturation]   # Crear proyecto LaTeX (general usa DDTTAA-YYPP-title)
+relink                             # Recrear symlinks
+cleta                              # Limpiar archivos auxiliares TeX
 ```
 
 ## Decisiones de arquitectura
@@ -46,6 +53,9 @@ cleta      # Limpiar archivos auxiliares TeX
 Todas las decisiones estan documentadas en [docs/ADR/INDEX.md](../ADR/INDEX.md):
 
 - **ITEP-0000..0007** — Estructura de proyectos, esquema de DB, taxonomia Bloom
+- **ITEP-0008** — Nomenclatura `DDTTAA-YYPP-title` (area + proyecto), `MainTopic.parent_id`, `DisciplineArea` (Implemented)
+- **ITEP-0009** — Ciclo de vida del conocimiento Zettelkasten → ITeP, taxonomia 00–09, primitivas de maturation, `candidate_project` frontmatter (Implemented partial; Parte III en `~/Documents/01-U/.claude/`)
+- **ITEP-0010** — Versionado de esquema + migraciones forward-only (`schema_version`, runner `workflow db migrate`, `@with_schema_guard`); FK `MainTopic.discipline_area_id → DisciplineArea.id` (Accepted)
 - **STY-0000..0011** — Archivos de estilo LaTeX (macros, formatos, colores)
 - **0001..0016** — Sistema Zettelkasten, ejercicios, exportacion Moodle, grafo, evaluaciones
 - **PRISMA-0000..0005** — Revision sistematica, modelo de datos, CLI SQLAlchemy
