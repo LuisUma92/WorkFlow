@@ -160,6 +160,50 @@ Existing `MainTopic` records are unaffected (`parent_id = NULL`). Area-level
 `MainTopic` records also have `parent_id = NULL`; project-level records have
 `parent_id` set to their area's record `id`.
 
+### Catalog vs State: why two tables
+
+`DisciplineArea` and `MainTopic` look similar at the area level but model
+different concerns. Both are required and **MUST** stay separate.
+
+| | `DisciplineArea` (catalog) | `MainTopic` (state) |
+|---|---|---|
+| Origin | CSV files in `data/DD-*Codes.csv` | Created on demand by `inittex` |
+| Scope | Every DDTTAA code that exists in the world (~233 rows) | Areas + projects the user has actually registered |
+| Mutability | Reseedable from CSV at any time | Project-coupled, varies per install |
+| Inbound FKs | none (pure reference data) | `Topic.main_topic_id`, `GeneralProject.main_topic_id`, `MainTopic.parent_id` |
+| Hierarchy | flat | 2-level (area → project) |
+| Code length | always 6 (`DDTTAA`) | 6 (area-level) or 10 (`DDTTAAYYPP`, project-level) |
+
+The split keeps reference-data reseeds (adding or renaming a DDTTAA code in
+CSV) from touching user state, and lets ITEP-0009 maturation logic
+distinguish "available area" from "registered area".
+
+### Catalog FK from state
+
+To prevent `MainTopic` rows from drifting away from the catalog, every
+`MainTopic` record carries a non-null FK to the `DisciplineArea` row that
+defines its area:
+
+```python
+class MainTopic(GlobalBase):
+    ...
+    discipline_area_id: Mapped[int] = mapped_column(
+        ForeignKey("discipline_area.id"), nullable=False
+    )
+    discipline_area: Mapped["DisciplineArea"] = relationship()
+```
+
+- Area-level `MainTopic`: `discipline_area_id` points to the row whose
+  `code` equals `MainTopic.code`.
+- Project-level `MainTopic`: `discipline_area_id` is **inherited from the
+  parent area row** (i.e. equals `parent.discipline_area_id`); the first
+  6 chars of `MainTopic.code` therefore equal the linked
+  `DisciplineArea.code`.
+
+This invariant **MUST** be enforced by `inittex.create_general` on every
+insert. Schema migration owning this FK is `0002_main_topic_discipline_area_fk`
+under ITEP-0010.
+
 ### Project archival
 
 Archival state is managed exclusively through the `GeneralProject` model, not
@@ -198,6 +242,14 @@ the discipline root, and re-run `relink` for the new path.
   recorded in `GeneralProject.status` and `GeneralProject.archived_at`.
 - The `MainTopic` for a project **MUST** have `parent_id` pointing to the
   area-level `MainTopic` for `DDTTAA`.
+- Every `MainTopic` row (area- or project-level) **MUST** carry a non-null
+  `discipline_area_id` FK to a real `DisciplineArea.id`. The first 6
+  characters of `MainTopic.code` **MUST** equal the linked
+  `DisciplineArea.code`. Project-level rows **MUST** inherit
+  `discipline_area_id` from their parent area row.
+- `inittex.create_general` **MUST** validate the catalog link before
+  insert; an unknown `DDTTAA` **MUST** abort project creation with a
+  pointer to `workflow db taxonomy list`.
 
 ### SHOULD
 
@@ -417,3 +469,27 @@ Shipped in three phases on `master`:
 
 Test coverage at completion: 738 tests pass (47 new across the three phases),
 flake8 clean. Smoke against bundled `data/`: 233 codes load idempotently.
+
+## Post-migration data fix-up (Nuclear Physics backfill)
+
+ITEP-0008 introduced `MainTopic.parent_id` and the `DisciplineArea` reference
+table. Schema migration is generic; the Nuclear Physics children that pre-dated
+ITEP-0008 needed area code `0060NP` created and three `GeneralProject` columns
+(`year_init`, `project_initials`, `title`) backfilled before
+`MainTopic.parent_id` could be reassigned.
+
+Originally exposed as a Click flag `workflow db migrate itep-0008
+--backfill-nuclear-physics`. Per ITEP-0010 this single-user data quirk is
+**not** a generic migration step. It is recorded as a one-off SQL script under
+`scripts/one-off/2026-04-itep-0008-nuclear-physics-backfill.sql` and run once
+manually with user confirmation. The flag is dropped when the deprecated
+`workflow db migrate itep-0008` alias is retired (one cycle after ITEP-0010
+ships).
+
+## Migration framework follow-up (ITEP-0010)
+
+The bespoke `workflow db migrate itep-0008` Click subcommand becomes a
+deprecated alias once ITEP-0010 lands. Its body is preserved verbatim as
+`src/workflow/db/migrations/global/0002_itep_0008_general_project_nomenclature.py`
+inside the generic forward-only runner. New schema changes ship as numbered
+migrations under that runner, not as ad-hoc Click subcommands.

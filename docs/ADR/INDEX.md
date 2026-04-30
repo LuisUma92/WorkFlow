@@ -22,6 +22,7 @@ These decisions establish the physical and logical organization of projects.
 | [ITEP-0003](ITEP-0003-config-yaml-as-db-pointer.md) | config.yaml as minimal DB pointer | ITeP | Accepted | ITEP-0001 |
 | [ITEP-0008](ITEP-0008-general-project-nomenclature.md) | General project nomenclature: discipline, area, year and project initials | ITeP | Implemented | ITEP-0000, ITEP-0004 |
 | [ITEP-0009](ITEP-0009-knowledge-lifecycle-and-ai-agents.md) | Knowledge lifecycle, discipline taxonomy, and AI agent collaboration conventions | ITeP | Implemented (partial) | ITEP-0000, ITEP-0008, 0002, 0015 |
+| [ITEP-0010](ITEP-0010-schema-versioning-and-migrations.md) | Schema versioning and forward-only migrations for GlobalBase + LocalBase | ITeP | Accepted | 0003, 0007, ITEP-0001, ITEP-0008 |
 | [0008](0008-xdg-directory-layout.md) | XDG directory layout | Zettelkasten | Accepted | — |
 
 ## Foundation: Database & ORM

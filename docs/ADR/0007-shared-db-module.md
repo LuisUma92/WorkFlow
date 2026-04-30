@@ -99,7 +99,22 @@ No module queries the ORM directly. All go through repository implementations.
 
 ### MAY
 
-- Alembic migrations **MAY be added** in a future phase.
+- Alembic migrations **MAY be added** in a future phase. Superseded by
+  ITEP-0010: schema evolution is handled by a forward-only in-tree runner
+  under `src/workflow/db/migrations/{global,local}/NNNN_*.py`. Alembic
+  remains an option to revisit if the project grows past one developer
+  or ships `LocalBase` to non-developer end users.
+
+### Schema evolution (ITEP-0010)
+
+`init_global_db` and `init_local_db` are extended to: create the
+`schema_version` table, run pending migrations in lexical order, then
+`Base.metadata.create_all` for any net-new tables. CLI surface is
+`workflow db migrate [status] [--base global|local|all] [--to REV]
+[--dry-run] [--json]`. Click commands that open a session **MUST** be
+wrapped with `@with_schema_guard` so `OperationalError` becomes an
+actionable `Run: workflow db migrate` message instead of a traceback.
+See ITEP-0010 for the full contract.
 
 ---
 
