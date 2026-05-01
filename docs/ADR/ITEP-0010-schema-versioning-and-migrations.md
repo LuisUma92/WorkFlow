@@ -1,7 +1,7 @@
 ---
 adr: ITEP-0010
 title: "Schema versioning and forward-only migrations for GlobalBase + LocalBase"
-status: Accepted
+status: Implemented
 date: 2026-04-29
 authors:
   - Luis Umaña

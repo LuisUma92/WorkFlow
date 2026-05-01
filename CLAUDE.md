@@ -108,7 +108,7 @@ Architecture decisions in `docs/ADR/` (see [INDEX.md](docs/ADR/INDEX.md) for ful
 | ITEP-0007 | CRUD manager abstraction | Accepted |
 | ITEP-0008 | General project nomenclature (DDTTAA-YYPP-title) | Implemented |
 | ITEP-0009 | Knowledge lifecycle and AI agent conventions | Implemented (partial) |
-| ITEP-0010 | Schema versioning and forward-only migrations | Accepted |
+| ITEP-0010 | Schema versioning and forward-only migrations | Implemented |
 | STY-0000..0011 | LaTeX style file ADRs (12 total) | Accepted |
 | 0001 | Zettelkasten note semantic layer | Accepted |
 | 0002 | Markdown as canonical knowledge layer | Accepted |
