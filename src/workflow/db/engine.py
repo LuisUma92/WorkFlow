@@ -110,20 +110,34 @@ def _ensure_models_loaded():
 
 
 def init_global_db(engine=None):
-    """Create all GlobalBase tables in the global database."""
+    """Create all GlobalBase tables, then run pending global migrations."""
     _ensure_models_loaded()
     if engine is None:
         engine = get_global_engine()
     GlobalBase.metadata.create_all(engine)
+    _run_baseline_migrations(engine, "global")
     return engine
 
 
 def init_local_db(engine=None, project_root: Path | None = None):
-    """Create all LocalBase tables in a project-local slipbox database."""
+    """Create all LocalBase tables, then run pending local migrations."""
     _ensure_models_loaded()
     if engine is None:
         if project_root is None:
             raise ValueError("Provide either engine or project_root.")
         engine = get_local_engine(project_root)
     LocalBase.metadata.create_all(engine)
+    _run_baseline_migrations(engine, "local")
     return engine
+
+
+def _run_baseline_migrations(engine: Engine, base: str) -> None:
+    """Apply pending migrations for ``base`` (ITEP-0010).
+
+    Imported lazily to avoid a circular import: ``workflow.db.migrations``
+    depends on ``workflow.db.schema_version``, which depends on
+    ``workflow.db.base``.
+    """
+    from workflow.db import migrations as _migrations
+
+    _migrations.upgrade(engine, base)

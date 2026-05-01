@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 import click
@@ -10,19 +9,9 @@ from sqlalchemy.orm import Session
 
 import json as _json
 
-from workflow.db import seed_codes, taxonomy
+from workflow.db import migrations, seed_codes, taxonomy
 from workflow.db.engine import get_engine_from_ctx
-from workflow.db.migrations import itep_0008 as itep_0008_migration
-
-
-_PROJECT_INITIALS_RE = re.compile(r"^[A-Z]{2}$")
-
-
-def _project_initials(value: str) -> str:
-    upper = value.strip().upper()
-    if not _PROJECT_INITIALS_RE.match(upper):
-        raise click.BadParameter("must be exactly two uppercase letters (A-Z).")
-    return upper
+from workflow.db.schema_version import applied_revisions, current_version
 
 
 @click.group("db")
@@ -30,73 +19,125 @@ def db() -> None:
     """Manage the WorkFlow global database (schema, seeds, migrations)."""
 
 
-@db.group("migrate")
-def migrate() -> None:
-    """Apply schema migrations to the global database."""
-
-
-@migrate.command("itep-0008")
+@db.group(
+    "migrate",
+    invoke_without_command=True,
+    help="Apply pending schema migrations (ITEP-0010).",
+)
 @click.option(
-    "--backfill-nuclear-physics",
+    "--base",
+    type=click.Choice(["global", "local", "all"], case_sensitive=False),
+    default="global",
+    show_default=True,
+    help="Which database base to operate on.",
+)
+@click.option(
+    "--to",
+    "to_revision",
+    type=str,
+    default=None,
+    help="Apply migrations up to and including this revision.",
+)
+@click.option(
+    "--dry-run",
     is_flag=True,
     default=False,
-    help=(
-        "Create area MainTopic 0060NP if absent and prompt for the three "
-        "Nuclear Physics children (year_init, project_initials, title)."
-    ),
+    help="Print what would run without modifying the database.",
+)
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Emit machine-readable JSON instead of human text.",
 )
 @click.pass_context
-def migrate_itep_0008(ctx: click.Context, backfill_nuclear_physics: bool) -> None:
-    """Apply ITEP-0008 schema migration (idempotent)."""
+def migrate(
+    ctx: click.Context,
+    base: str,
+    to_revision: str | None,
+    dry_run: bool,
+    as_json: bool,
+) -> None:
+    """Apply pending migrations. With no subcommand, runs the upgrade."""
+    if ctx.invoked_subcommand is not None:
+        ctx.obj = ctx.obj or {}
+        ctx.obj["migrate_base"] = base
+        return
+
     engine = get_engine_from_ctx(ctx)
+    bases = ["global", "local"] if base == "all" else [base]
 
-    backfill: itep_0008_migration.BackfillRequest | None = None
-    if backfill_nuclear_physics:
-        children: list[tuple[str, int, str, str]] = []
-        click.echo(
-            "Provide each child MainTopic code currently representing a "
-            "Nuclear Physics project. Leave the code blank to stop."
-        )
-        while True:
-            code = click.prompt("child code", default="", show_default=False)
-            if not code:
-                break
-            yy = click.prompt("  year_init (YY 0-99)", type=click.IntRange(0, 99))
-            pp = click.prompt(
-                "  project_initials (2 uppercase letters)",
-                value_proc=_project_initials,
+    payload: dict[str, dict] = {}
+    for b in bases:
+        result = migrations.upgrade(engine, b, to=to_revision, dry_run=dry_run)
+        payload[b] = result.to_dict()
+
+    if as_json:
+        if len(payload) == 1:
+            click.echo(
+                _json.dumps(next(iter(payload.values())), ensure_ascii=False, indent=2)
             )
-            title = click.prompt("  title", type=str)
-            children.append((code, yy, pp, title))
-        backfill = itep_0008_migration.BackfillRequest(
-            area_code="0060NP",
-            area_name="Nuclear Physics",
-            children=tuple(children),
-        )
+        else:
+            click.echo(_json.dumps(payload, ensure_ascii=False, indent=2))
+        return
 
-    report = itep_0008_migration.run_migration(engine, backfill=backfill)
+    for b, p in payload.items():
+        prefix = "[dry-run] " if dry_run else ""
+        click.echo(f"{prefix}base={b} head={p['head']}")
+        if p["applied"]:
+            click.echo(f"  applied:  {', '.join(p['applied'])}")
+        if p["skipped"]:
+            click.echo(f"  skipped:  {', '.join(p['skipped'])}")
+        if not p["applied"] and not p["skipped"]:
+            click.echo("  (no migrations discovered)")
 
-    click.echo("ITEP-0008 migration complete.")
-    if report.columns_added:
-        click.echo(f"  columns added:        {', '.join(report.columns_added)}")
-    if report.tables_created:
-        click.echo(f"  tables created:       {', '.join(report.tables_created)}")
-    if report.areas_created:
-        click.echo(f"  areas created:        {', '.join(report.areas_created)}")
-    if report.children_reassigned:
-        click.echo(f"  children reassigned:  {', '.join(report.children_reassigned)}")
-    if report.projects_backfilled:
-        click.echo(f"  projects backfilled:  {', '.join(report.projects_backfilled)}")
-    if not any(
-        (
-            report.columns_added,
-            report.tables_created,
-            report.areas_created,
-            report.children_reassigned,
-            report.projects_backfilled,
-        )
-    ):
-        click.echo("  (no changes — already up to date)")
+
+@migrate.command("status")
+@click.option(
+    "--base",
+    type=click.Choice(["global", "local", "all"], case_sensitive=False),
+    default="global",
+    show_default=True,
+)
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+)
+@click.pass_context
+def migrate_status(ctx: click.Context, base: str, as_json: bool) -> None:
+    """Show current head and applied revisions per base."""
+    engine = get_engine_from_ctx(ctx)
+    bases = ["global", "local"] if base == "all" else [base]
+
+    payload: dict[str, dict] = {}
+    for b in bases:
+        # Ensure schema_version table exists for read-only inspection.
+        from workflow.db.schema_version import model_for
+
+        model_for(b).__table__.create(engine, checkfirst=True)
+        with Session(engine) as s:
+            payload[b] = {
+                "head": current_version(s, b),
+                "applied": applied_revisions(s, b),
+            }
+
+    if as_json:
+        # Single-base query collapses the wrapper for ergonomics.
+        if len(payload) == 1:
+            click.echo(
+                _json.dumps(next(iter(payload.values())), ensure_ascii=False, indent=2)
+            )
+        else:
+            click.echo(_json.dumps(payload, ensure_ascii=False, indent=2))
+        return
+
+    for b, p in payload.items():
+        click.echo(f"base={b} head={p['head']}")
+        if p["applied"]:
+            click.echo(f"  applied: {', '.join(p['applied'])}")
 
 
 def _print_upsert_report(report: seed_codes.UpsertReport) -> None:
