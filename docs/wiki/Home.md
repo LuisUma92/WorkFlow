@@ -31,12 +31,12 @@ workflow validate notes|exercises
 workflow db migrate           [--base global|local|all] [--to REV] [--dry-run] [--json]
 workflow db migrate status    [--base global|local|all] [--json]
 workflow db import-codes      [--csv PATH | --all] [--data-dir PATH]
-workflow db taxonomy list     [--json] [--data-dir PATH]
+workflow db disciplines list  [--json] [--data-dir PATH]
 workflow project propose-maturation [--json] [--area DDTTAA]
 
 # Evaluaciones y PRISMA
 workflow evaluations list|show|add|edit
-workflow item         list|add
+workflow item         list|add|taxonomy
 workflow course       list|add
 workflow prisma bib     list|show
 workflow prisma keyword list

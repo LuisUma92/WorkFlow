@@ -241,6 +241,39 @@ def item_list(
             click.echo(format_item_table(items))
 
 
+@item.command(name="taxonomy")
+@click.option(
+    "--levels",
+    "kind",
+    flag_value="levels",
+    default="levels",
+    help="List Bloom taxonomy levels (default).",
+)
+@click.option(
+    "--domains",
+    "kind",
+    flag_value="domains",
+    help="List Bloom taxonomy domains.",
+)
+@click.option("--json", "as_json", is_flag=True, help="JSON output.")
+@with_schema_guard
+def item_taxonomy(kind: str, as_json: bool) -> None:
+    """List Bloom taxonomy levels or domains (ADR ITEP-0006)."""
+    import json as _json
+
+    values = list(_TAXONOMY_LEVELS) if kind == "levels" else list(_TAXONOMY_DOMAINS)
+    if as_json:
+        click.echo(
+            _json.dumps({"kind": kind, "values": values}, ensure_ascii=False, indent=2)
+        )
+        return
+    header = "Bloom Levels" if kind == "levels" else "Bloom Domains"
+    click.echo(header)
+    click.echo("-" * len(header))
+    for v in values:
+        click.echo(v)
+
+
 @item.command(name="add")
 @click.option("--name", required=True, help="Item name.")
 @click.option(

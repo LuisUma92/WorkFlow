@@ -206,12 +206,12 @@ def import_codes(
     _print_upsert_report(report)
 
 
-@db.group("taxonomy")
-def taxonomy_group() -> None:
-    """Read-only access to the discipline taxonomy (ADR ITEP-0009 Part I)."""
+@db.group("disciplines")
+def disciplines_group() -> None:
+    """Read-only access to the discipline catalog (ADR ITEP-0009 Part I)."""
 
 
-@taxonomy_group.command("list")
+@disciplines_group.command("list")
 @click.option(
     "--json",
     "as_json",
@@ -227,7 +227,7 @@ def taxonomy_group() -> None:
     help="Override the directory scanned for DD-*Codes.csv.",
 )
 @with_schema_guard
-def taxonomy_list(as_json: bool, data_dir: Path | None) -> None:
+def disciplines_list(as_json: bool, data_dir: Path | None) -> None:
     """List the registered disciplines and their bundled CSV files."""
     entries = taxonomy.discover_disciplines(data_dir)
     if as_json:
@@ -254,3 +254,31 @@ def taxonomy_list(as_json: bool, data_dir: Path | None) -> None:
         csv_label = e.csv_path.name if e.csv_path else "(missing)"
         hobby_flag = "yes" if e.hobby else "no"
         click.echo(f"{e.code_prefix}  {e.name:<31}  {hobby_flag:<5}  {csv_label}")
+
+
+# Deprecation alias: `db taxonomy list` → `db disciplines list`.
+# Drop on next CLI breaking-change ADR.
+@db.group("taxonomy", hidden=True)
+def taxonomy_group() -> None:
+    """Deprecated alias for `db disciplines` (ADR ITEP-0009 Part I)."""
+
+
+@taxonomy_group.command("list")
+@click.option("--json", "as_json", is_flag=True, default=False)
+@click.option(
+    "--data-dir",
+    "data_dir",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=None,
+)
+@click.pass_context
+def taxonomy_list_alias(
+    ctx: click.Context, as_json: bool, data_dir: Path | None
+) -> None:
+    """Deprecated: use `workflow db disciplines list`."""
+    click.echo(
+        "[deprecated] `workflow db taxonomy list` → use "
+        "`workflow db disciplines list`.",
+        err=True,
+    )
+    ctx.invoke(disciplines_list, as_json=as_json, data_dir=data_dir)

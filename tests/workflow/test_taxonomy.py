@@ -57,18 +57,18 @@ def test_discover_disciplines_partial_dir(tmp_path):
     assert entries[3].csv_path is not None
 
 
-def test_cli_taxonomy_list_table():
+def test_cli_disciplines_list_table():
     runner = CliRunner()
-    result = runner.invoke(db, ["taxonomy", "list"])
+    result = runner.invoke(db, ["disciplines", "list"])
     assert result.exit_code == 0, result.output
     assert "00" in result.output
     assert "Física" in result.output
     assert "09" in result.output
 
 
-def test_cli_taxonomy_list_json():
+def test_cli_disciplines_list_json():
     runner = CliRunner()
-    result = runner.invoke(db, ["taxonomy", "list", "--json"])
+    result = runner.invoke(db, ["disciplines", "list", "--json"])
     assert result.exit_code == 0, result.output
     parsed = json.loads(result.output)
     assert isinstance(parsed, list)
@@ -82,12 +82,23 @@ def test_cli_taxonomy_list_json():
     assert next(e for e in parsed if e["dd"] == 4)["hobby"] is True
 
 
-def test_cli_taxonomy_list_data_dir_override(tmp_path):
+def test_cli_disciplines_list_data_dir_override(tmp_path):
     runner = CliRunner()
     result = runner.invoke(
         db,
-        ["taxonomy", "list", "--json", "--data-dir", str(tmp_path)],
+        ["disciplines", "list", "--json", "--data-dir", str(tmp_path)],
     )
     assert result.exit_code == 0, result.output
     parsed = json.loads(result.output)
     assert all(e["csv"] is None for e in parsed)
+
+
+def test_cli_taxonomy_list_alias_still_works():
+    """Deprecated `db taxonomy list` forwards to `disciplines list`."""
+    runner = CliRunner()
+    result = runner.invoke(db, ["taxonomy", "list", "--json"])
+    assert result.exit_code == 0, result.output
+    assert "[deprecated]" in result.output
+    json_start = result.output.index("\n[\n") + 1
+    parsed = json.loads(result.output[json_start:])
+    assert isinstance(parsed, list) and len(parsed) == 10

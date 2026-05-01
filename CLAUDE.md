@@ -88,7 +88,7 @@ Defined in `pyproject.toml` under `[project.scripts]`:
 - Graph CLI: `workflow graph orphans|stats|export-dot|export-tikz|clusters|neighbors`
 - Evaluation CLI: `workflow evaluations list|show|add|edit`, `workflow item list|add`, `workflow course list|add` (ADR-0016)
 - PRISMA CLI: `workflow prisma bib list|show`, `workflow prisma keyword list`, `workflow prisma review list` (ADR PRISMA-0005)
-- Taxonomy + maturation CLI: `workflow db taxonomy list [--json]`, `workflow project propose-maturation [--json] [--area DDTTAA]` (ADR ITEP-0009)
+- Disciplines + maturation CLI: `workflow db disciplines list [--json]`, `workflow project propose-maturation [--json] [--area DDTTAA]` (ADR ITEP-0009). Bloom enums: `workflow item taxonomy --levels|--domains [--json]` (ADR ITEP-0006).
 - Shared `get_engine_from_ctx()` in `workflow.db.engine` for all Click commands
 - Project types: `GeneralProject` and `LectureProject` (see `itep/models.py`)
 

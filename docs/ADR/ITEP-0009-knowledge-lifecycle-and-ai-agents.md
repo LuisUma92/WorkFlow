@@ -576,9 +576,12 @@ Shipped on `master`:
   on master, post-ITEP-0008): `src/workflow/db/taxonomy.py` exposes
   ``DISCIPLINES`` (DD → Spanish name), ``HOBBY_DD_THRESHOLD = 4``,
   ``DisciplineInfo`` and ``discover_disciplines()``. New CLI
-  ``workflow db taxonomy list [--json] [--data-dir PATH]`` joins the
-  registry with bundled CSVs so agents can consume the taxonomy without
-  re-parsing filenames.
+  ``workflow db disciplines list [--json] [--data-dir PATH]`` joins the
+  registry with bundled CSVs so agents can consume the catalog without
+  re-parsing filenames. (Original surface was ``workflow db taxonomy
+  list``; renamed to ``disciplines`` to disambiguate from the Bloom
+  taxonomy of ADR ITEP-0006. A hidden ``taxonomy`` alias still
+  forwards with a deprecation notice.)
 - **Phase B** — `feat(db): maturation signals + propose-maturation CLI`:
   `src/workflow/db/maturation.py` exposes ``MaturationSignal``,
   ``evaluate_area`` (queryable subset of Part II criteria —

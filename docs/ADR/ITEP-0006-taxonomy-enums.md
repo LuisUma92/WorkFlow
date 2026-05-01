@@ -78,6 +78,11 @@ El modelo `Item` (capa 3) almacena `taxonomy_level` y `taxonomy_domain` como str
 - `itep/structure.py`: definición de `TaxonomyLevel`, `TaxonomyDomain`, `FriendlyEnumMeta`.
 - `itep/database.py`: tabla `item` con `CheckConstraint`.
 - `itep/manager.py`: `create_item()` convierte enums a valores string.
+- CLI canónica: `workflow item taxonomy --levels|--domains [--json]`
+  expone los valores Bloom para agentes y scripts. La superficie
+  paralela `workflow db disciplines list` (ADR ITEP-0009 Part I) cubre
+  el catálogo de disciplinas DD; los dos no comparten nombre para
+  evitar colisión de "taxonomy".
 
 ---
 

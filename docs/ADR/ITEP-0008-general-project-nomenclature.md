@@ -249,7 +249,7 @@ the discipline root, and re-run `relink` for the new path.
   `discipline_area_id` from their parent area row.
 - `inittex.create_general` **MUST** validate the catalog link before
   insert; an unknown `DDTTAA` **MUST** abort project creation with a
-  pointer to `workflow db taxonomy list`.
+  pointer to `workflow db disciplines list`.
 
 ### SHOULD
 

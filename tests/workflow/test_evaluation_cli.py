@@ -232,6 +232,43 @@ class TestCourseList:
         assert data[0]["code"] == "FI-201"
 
 
+class TestItemTaxonomy:
+    """`workflow item taxonomy` lists Bloom enums (ADR ITEP-0006)."""
+
+    def test_levels_default(self, runner):
+        result = runner.invoke(item, ["taxonomy"])
+        assert result.exit_code == 0, result.output
+        assert "Recordar" in result.output
+        assert "Comprender" in result.output
+        assert "Bloom Levels" in result.output
+
+    def test_levels_explicit_flag(self, runner):
+        result = runner.invoke(item, ["taxonomy", "--levels"])
+        assert result.exit_code == 0
+        assert "Recordar" in result.output
+
+    def test_domains(self, runner):
+        result = runner.invoke(item, ["taxonomy", "--domains"])
+        assert result.exit_code == 0, result.output
+        assert "Información" in result.output
+        assert "Procedimiento Mental" in result.output
+
+    def test_levels_json(self, runner):
+        result = runner.invoke(item, ["taxonomy", "--levels", "--json"])
+        assert result.exit_code == 0, result.output
+        payload = json.loads(result.output)
+        assert payload["kind"] == "levels"
+        assert "Recordar" in payload["values"]
+        assert len(payload["values"]) >= 5
+
+    def test_domains_json(self, runner):
+        result = runner.invoke(item, ["taxonomy", "--domains", "--json"])
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["kind"] == "domains"
+        assert "Información" in payload["values"]
+
+
 # ── P1: Add command tests ────────────────────────────────────────────────
 
 
