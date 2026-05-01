@@ -6,6 +6,7 @@ from pathlib import Path
 
 import click
 
+from workflow.db.errors import with_schema_guard
 from workflow.notes.init import init_workspace
 
 __all__ = ["notes"]
@@ -18,6 +19,7 @@ def notes() -> None:
 
 @notes.command(name="init")
 @click.argument("workspace", type=click.Path(), default=".")
+@with_schema_guard
 def init_cmd(workspace: str) -> None:
     """Initialize a WorkFlow workspace with note directories."""
     workspace_path = Path(workspace).resolve()

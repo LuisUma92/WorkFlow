@@ -8,6 +8,7 @@ import click
 from sqlalchemy.orm import Session
 
 from workflow.db import maturation
+from workflow.db.errors import with_schema_guard
 from workflow.db.engine import get_engine_from_ctx
 from workflow.db.models.academic import MainTopic
 
@@ -35,6 +36,7 @@ def project() -> None:
     help="Only report for the given area DDTTAA code.",
 )
 @click.pass_context
+@with_schema_guard
 def propose_maturation(
     ctx: click.Context,
     as_json: bool,

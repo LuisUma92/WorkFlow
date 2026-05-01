@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 import json as _json
 
 from workflow.db import migrations, seed_codes, taxonomy
+from workflow.db.errors import with_schema_guard
 from workflow.db.engine import get_engine_from_ctx
 from workflow.db.schema_version import applied_revisions, current_version
 
@@ -107,6 +108,7 @@ def migrate(
     default=False,
 )
 @click.pass_context
+@with_schema_guard
 def migrate_status(ctx: click.Context, base: str, as_json: bool) -> None:
     """Show current head and applied revisions per base."""
     engine = get_engine_from_ctx(ctx)
@@ -178,6 +180,7 @@ def _print_upsert_report(report: seed_codes.UpsertReport) -> None:
     help="Override the directory scanned by --all (defaults to repo data/).",
 )
 @click.pass_context
+@with_schema_guard
 def import_codes(
     ctx: click.Context,
     csv_path: Path | None,
@@ -223,6 +226,7 @@ def taxonomy_group() -> None:
     default=None,
     help="Override the directory scanned for DD-*Codes.csv.",
 )
+@with_schema_guard
 def taxonomy_list(as_json: bool, data_dir: Path | None) -> None:
     """List the registered disciplines and their bundled CSV files."""
     entries = taxonomy.discover_disciplines(data_dir)

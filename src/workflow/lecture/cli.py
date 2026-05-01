@@ -12,6 +12,7 @@ from typing import Any
 import click
 from sqlalchemy.orm import Session
 
+from workflow.db.errors import with_schema_guard
 from workflow.lecture.linker import link_lecture_files
 from workflow.lecture.note_splitter import split_notes_file
 from workflow.lecture.scanner import register_notes, scan_lecture_directory
@@ -42,6 +43,7 @@ def lectures() -> None:
     show_default=True,
     help="Project root containing slipbox.db.",
 )
+@with_schema_guard
 def scan(lecture_dir: str, project_root: str) -> None:
     """Scan lecture directory and register .tex files as notes."""
     lecture_path = Path(lecture_dir).resolve()
@@ -84,6 +86,7 @@ def scan(lecture_dir: str, project_root: str) -> None:
     default=False,
     help="Overwrite existing output files.",
 )
+@with_schema_guard
 def split(source_file: str, output_dir: str | None, overwrite: bool) -> None:
     """Split a notes file at %>path markers into separate files."""
     src = Path(source_file).resolve()
@@ -121,6 +124,7 @@ def split(source_file: str, output_dir: str | None, overwrite: bool) -> None:
     show_default=True,
     help="Project root containing slipbox.db.",
 )
+@with_schema_guard
 def link(lecture_dir: str, project_root: str) -> None:
     """Scan lecture files for references and update link tables."""
     lecture_path = Path(lecture_dir).resolve()
@@ -144,21 +148,48 @@ def link(lecture_dir: str, project_root: str) -> None:
 
 
 @lectures.command(name="build-eval")
-@click.option("--taxonomy-level", "-l", multiple=True, required=True,
-              help="Taxonomy level(s) to select exercises for.")
-@click.option("--taxonomy-domain", "-d", multiple=True,
-              help="Taxonomy domain(s) (parallel to --taxonomy-level).")
-@click.option("--count", "-n", type=int, default=5, show_default=True,
-              help="Number of exercises to select per slot.")
-@click.option("--points", "-p", type=float, default=10.0, show_default=True,
-              help="Points per exercise.")
-@click.option("--title", type=str, default="Evaluación", show_default=True,
-              help="Evaluation title.")
-@click.option("--output", "-o", type=click.Path(),
-              help="Output .tex file path.")
-@click.option("--moodle", is_flag=True,
-              help="Also export Moodle XML alongside the output file.")
+@click.option(
+    "--taxonomy-level",
+    "-l",
+    multiple=True,
+    required=True,
+    help="Taxonomy level(s) to select exercises for.",
+)
+@click.option(
+    "--taxonomy-domain",
+    "-d",
+    multiple=True,
+    help="Taxonomy domain(s) (parallel to --taxonomy-level).",
+)
+@click.option(
+    "--count",
+    "-n",
+    type=int,
+    default=5,
+    show_default=True,
+    help="Number of exercises to select per slot.",
+)
+@click.option(
+    "--points",
+    "-p",
+    type=float,
+    default=10.0,
+    show_default=True,
+    help="Points per exercise.",
+)
+@click.option(
+    "--title",
+    type=str,
+    default="Evaluación",
+    show_default=True,
+    help="Evaluation title.",
+)
+@click.option("--output", "-o", type=click.Path(), help="Output .tex file path.")
+@click.option(
+    "--moodle", is_flag=True, help="Also export Moodle XML alongside the output file."
+)
 @click.pass_context
+@with_schema_guard
 def build_eval(
     ctx: click.Context,
     taxonomy_level: tuple,
@@ -184,12 +215,14 @@ def build_eval(
     items = []
     for i, level in enumerate(taxonomy_level):
         domain = taxonomy_domain[i] if i < len(taxonomy_domain) else ""
-        items.append({
-            "taxonomy_level": level,
-            "taxonomy_domain": domain,
-            "total_amount": count,
-            "points_per_item": points,
-        })
+        items.append(
+            {
+                "taxonomy_level": level,
+                "taxonomy_domain": domain,
+                "total_amount": count,
+                "points_per_item": points,
+            }
+        )
 
     spec = build_eval_spec(title, items)
 
@@ -219,6 +252,7 @@ def build_eval(
             if moodle:
                 from workflow.exercise.moodle import exercises_to_quiz_xml
                 from workflow.exercise.parser import parse_exercise
+
                 xml_path = out_path.with_suffix(".xml")
                 parsed = []
                 for slot_exercises in selection.selected.values():

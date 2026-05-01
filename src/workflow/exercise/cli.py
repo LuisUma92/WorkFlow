@@ -13,6 +13,7 @@ import click
 from sqlalchemy.orm import Session
 
 from workflow.db.repos.sqlalchemy import SqlExerciseRepo
+from workflow.db.errors import with_schema_guard
 from workflow.exercise.exam_builder import build_exam
 from workflow.exercise.generator import generate_exercise_file, generate_from_content
 from workflow.exercise.moodle import exercises_to_quiz_xml
@@ -62,6 +63,7 @@ def exercise() -> None:
 
 @exercise.command()
 @click.argument("path", type=click.Path(exists=True))
+@with_schema_guard
 def parse(path: str) -> None:
     """Parse exercise .tex file(s) and show results."""
     target = Path(path)
@@ -120,6 +122,7 @@ def parse(path: str) -> None:
 @click.option("--type", "exercise_type", type=str, default=None, help="Filter by type.")
 @click.option("--limit", type=int, default=100, show_default=True)
 @click.pass_context
+@with_schema_guard
 def list_exercises(
     ctx, status, difficulty, taxonomy_level, exercise_type, limit
 ) -> None:
@@ -155,6 +158,7 @@ def list_exercises(
 @exercise.command()
 @click.argument("path", type=click.Path(exists=True))
 @click.pass_context
+@with_schema_guard
 def sync(ctx, path: str) -> None:
     """Sync exercise .tex files to the database.
 
@@ -184,6 +188,7 @@ def sync(ctx, path: str) -> None:
 @exercise.command()
 @click.option("--yes", is_flag=True, help="Skip confirmation prompt.")
 @click.pass_context
+@with_schema_guard
 def gc(ctx, yes: bool) -> None:
     """Remove orphaned exercise records (missing .tex files)."""
     engine = _get_engine(ctx)
@@ -236,6 +241,7 @@ _DIFFICULTIES = ["easy", "medium", "hard"]
 @click.option("--book", type=str, default=None, help="Book citation key.")
 @click.option("--chapter", type=int, default=None, help="Chapter number.")
 @click.option("--exercise-num", type=int, default=None, help="Exercise number.")
+@with_schema_guard
 def create(
     exercise_id: str,
     output_dir: str,
@@ -294,6 +300,7 @@ def create(
     "--taxonomy-domain", type=str, default="Procedimiento Mental", show_default=True
 )
 @click.option("--tag", multiple=True, help="Tag (repeatable).")
+@with_schema_guard
 def create_range(
     output_dir: str,
     book: str,
@@ -356,6 +363,7 @@ def create_range(
 )
 @click.option("--tag", multiple=True, help="Filter by tag (repeatable).")
 @click.pass_context
+@with_schema_guard
 def export_moodle(
     ctx, path: str, output: str | None, status: str, tag: tuple[str, ...]
 ) -> None:
@@ -435,6 +443,7 @@ def export_moodle(
     help="Output file path. Defaults to stdout.",
 )
 @click.pass_context
+@with_schema_guard
 def build_exam_cmd(
     ctx,
     taxonomy_level: tuple[str, ...],

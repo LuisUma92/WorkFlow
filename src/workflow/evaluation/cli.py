@@ -11,6 +11,7 @@ import click
 from sqlalchemy.orm import Session
 
 from workflow.db.engine import get_engine_from_ctx
+from workflow.db.errors import with_schema_guard
 from workflow.db.repos.sqlalchemy import (
     SqlCourseRepo,
     SqlEvalTemplateRepo,
@@ -55,6 +56,7 @@ def evaluations() -> None:
 @click.option("--full", is_flag=True, help="Show item breakdown per template.")
 @click.option("--json", "as_json", is_flag=True, help="JSON output.")
 @click.pass_context
+@with_schema_guard
 def eval_list(ctx: click.Context, inst: str | None, full: bool, as_json: bool) -> None:
     """List evaluation templates."""
     engine = _get_engine(ctx)
@@ -73,6 +75,7 @@ def eval_list(ctx: click.Context, inst: str | None, full: bool, as_json: bool) -
 @click.argument("template_id", type=int)
 @click.option("--json", "as_json", is_flag=True, help="JSON output.")
 @click.pass_context
+@with_schema_guard
 def eval_show(ctx: click.Context, template_id: int, as_json: bool) -> None:
     """Show a single evaluation template with item breakdown."""
     engine = _get_engine(ctx)
@@ -95,6 +98,7 @@ def eval_show(ctx: click.Context, template_id: int, as_json: bool) -> None:
 @click.option("--name", required=True, help="Template name.")
 @click.option("--description", default="", help="Template description.")
 @click.pass_context
+@with_schema_guard
 def eval_add(ctx: click.Context, inst: str, name: str, description: str) -> None:
     """Create a new evaluation template."""
     engine = _get_engine(ctx)
@@ -117,6 +121,7 @@ def eval_add(ctx: click.Context, inst: str, name: str, description: str) -> None
 @evaluations.group(name="edit")
 @click.argument("template_id", type=int)
 @click.pass_context
+@with_schema_guard
 def eval_edit(ctx: click.Context, template_id: int) -> None:
     """Edit an evaluation template (rename, add/remove items)."""
     ctx.ensure_object(dict)["template_id"] = template_id
@@ -125,6 +130,7 @@ def eval_edit(ctx: click.Context, template_id: int) -> None:
 @eval_edit.command(name="rename")
 @click.option("--name", required=True, help="New template name.")
 @click.pass_context
+@with_schema_guard
 def eval_rename(ctx: click.Context, name: str) -> None:
     """Rename an evaluation template."""
     engine = _get_engine(ctx)
@@ -149,6 +155,7 @@ def eval_rename(ctx: click.Context, name: str) -> None:
 @click.option("--amount", required=True, type=int, help="Number of items.")
 @click.option("--points", required=True, type=int, help="Points per item.")
 @click.pass_context
+@with_schema_guard
 def eval_add_item(ctx: click.Context, item_id: int, amount: int, points: int) -> None:
     """Add a taxonomy item to the template."""
     engine = _get_engine(ctx)
@@ -178,6 +185,7 @@ def eval_add_item(ctx: click.Context, item_id: int, amount: int, points: int) ->
     "--eval-item-id", required=True, type=int, help="EvaluationItem ID to remove."
 )
 @click.pass_context
+@with_schema_guard
 def eval_remove_item(ctx: click.Context, eval_item_id: int) -> None:
     """Remove an item link from the template."""
     engine = _get_engine(ctx)
@@ -213,6 +221,7 @@ def item() -> None:
 @click.option("--level", default=None, help="Filter by taxonomy level.")
 @click.option("--json", "as_json", is_flag=True, help="JSON output.")
 @click.pass_context
+@with_schema_guard
 def item_list(
     ctx: click.Context,
     domain: str | None,
@@ -253,6 +262,7 @@ def item_list(
     help="Item type.",
 )
 @click.pass_context
+@with_schema_guard
 def item_add(
     ctx: click.Context,
     name: str,
@@ -294,6 +304,7 @@ def course() -> None:
 @click.option("--inst", default=None, help="Filter by institution short name.")
 @click.option("--json", "as_json", is_flag=True, help="JSON output.")
 @click.pass_context
+@with_schema_guard
 def course_list(ctx: click.Context, inst: str | None, as_json: bool) -> None:
     """List registered courses."""
     engine = _get_engine(ctx)
@@ -329,6 +340,7 @@ def course_list(ctx: click.Context, inst: str | None, as_json: bool) -> None:
     help="Hours per lecture.",
 )
 @click.pass_context
+@with_schema_guard
 def course_add(
     ctx: click.Context,
     inst: str,

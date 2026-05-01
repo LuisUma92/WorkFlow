@@ -93,4 +93,5 @@ def with_schema_guard(func: F) -> F:
                 raise
             raise click.ClickException(str(translated)) from exc
 
+    wrapper._schema_guarded = True  # type: ignore[attr-defined]
     return wrapper  # type: ignore[return-value]

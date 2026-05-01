@@ -16,6 +16,7 @@ import click
 from sqlalchemy.orm import Session
 
 from workflow.db.engine import get_local_engine, init_global_db
+from workflow.db.errors import with_schema_guard
 from workflow.graph.analysis import compute_stats, find_orphans, neighbors
 from workflow.graph.collectors import build_knowledge_graph
 from workflow.graph.domain import KnowledgeGraph
@@ -61,6 +62,7 @@ def graph() -> None:
     help="Filter orphans by node type.",
 )
 @click.option("--project", type=click.Path(exists=True), default=".")
+@with_schema_guard
 def orphans(node_type: str | None, project: str) -> None:
     """List nodes with no connections."""
     kg = _build_graph(project)
@@ -80,6 +82,7 @@ def orphans(node_type: str | None, project: str) -> None:
 
 @graph.command()
 @click.option("--project", type=click.Path(exists=True), default=".")
+@with_schema_guard
 def stats(project: str) -> None:
     """Show graph summary statistics."""
     kg = _build_graph(project)
@@ -104,6 +107,7 @@ def stats(project: str) -> None:
 @click.option("--project", type=click.Path(exists=True), default=".")
 @click.option("--output", "-o", type=click.Path(), default=None)
 @click.option("--highlight-orphans", is_flag=True)
+@with_schema_guard
 def export_dot_cmd(project: str, output: str | None, highlight_orphans: bool) -> None:
     """Export graph as Graphviz DOT."""
     from workflow.graph.dot_export import graph_to_dot
@@ -125,6 +129,7 @@ def export_dot_cmd(project: str, output: str | None, highlight_orphans: bool) ->
 @click.option("--project", type=click.Path(exists=True), default=".")
 @click.option("--output", "-o", type=click.Path(), default=None)
 @click.option("--standalone/--no-standalone", default=True)
+@with_schema_guard
 def export_tikz_cmd(project: str, output: str | None, standalone: bool) -> None:
     """Export graph as TikZ for LaTeX rendering."""
     from workflow.graph.tikz_export import graph_to_tikz
@@ -144,6 +149,7 @@ def export_tikz_cmd(project: str, output: str | None, standalone: bool) -> None:
 
 @graph.command()
 @click.option("--project", type=click.Path(exists=True), default=".")
+@with_schema_guard
 def clusters(project: str) -> None:
     """Show topic clusters (requires networkx)."""
     from workflow.graph.clustering import detect_communities
@@ -172,6 +178,7 @@ def clusters(project: str) -> None:
 @click.argument("node_id")
 @click.option("--depth", default=1, help="Hop distance.")
 @click.option("--project", type=click.Path(exists=True), default=".")
+@with_schema_guard
 def neighbors_cmd(node_id: str, depth: int, project: str) -> None:
     """Show neighbours of a node."""
     kg = _build_graph(project)

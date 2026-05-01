@@ -13,6 +13,7 @@ import click
 from sqlalchemy.orm import Session
 
 from workflow.db.engine import get_engine_from_ctx
+from workflow.db.errors import with_schema_guard
 from workflow.prisma.formatters import (
     format_bib_detail_json,
     format_bib_detail_table,
@@ -76,6 +77,7 @@ def bib() -> None:
 @click.option("--type", "entry_type", default=None, help="Filter by entry type.")
 @click.option("--json", "as_json", is_flag=True, help="JSON output.")
 @click.pass_context
+@with_schema_guard
 def bib_list(
     ctx: click.Context, year: int | None, entry_type: str | None, as_json: bool
 ) -> None:
@@ -95,6 +97,7 @@ def bib_list(
 @click.argument("bib_id", type=int)
 @click.option("--json", "as_json", is_flag=True, help="JSON output.")
 @click.pass_context
+@with_schema_guard
 def bib_show(ctx: click.Context, bib_id: int, as_json: bool) -> None:
     """Show a single bibliography entry with full detail."""
     engine = get_engine_from_ctx(ctx)
@@ -117,6 +120,7 @@ def bib_show(ctx: click.Context, bib_id: int, as_json: bool) -> None:
 @click.option("--year", type=int, default=None, help="Filter by year.")
 @click.option("--json", "as_json", is_flag=True, help="JSON output.")
 @click.pass_context
+@with_schema_guard
 def bib_search(
     ctx: click.Context,
     title: str | None,
@@ -152,6 +156,7 @@ def bib_search(
 @click.option("--verbose", is_flag=True, help="Print per-entry status.")
 @click.option("--json", "as_json", is_flag=True, help="JSON output.")
 @click.pass_context
+@with_schema_guard
 def bib_import(
     ctx: click.Context,
     path: str,
@@ -194,6 +199,7 @@ def bib_import(
     help="Overwrite --output if it exists.",
 )
 @click.pass_context
+@with_schema_guard
 def bib_export(
     ctx: click.Context,
     keyword_id: int | None,
@@ -236,6 +242,7 @@ def keyword() -> None:
 @keyword.command(name="list")
 @click.option("--json", "as_json", is_flag=True, help="JSON output.")
 @click.pass_context
+@with_schema_guard
 def keyword_list(ctx: click.Context, as_json: bool) -> None:
     """List search keywords."""
     engine = get_engine_from_ctx(ctx)
@@ -252,6 +259,7 @@ def keyword_list(ctx: click.Context, as_json: bool) -> None:
 @keyword.command(name="add")
 @click.option("--text", required=True, help="Keyword text.")
 @click.pass_context
+@with_schema_guard
 def keyword_add(ctx: click.Context, text: str) -> None:
     """Create a new search keyword."""
     engine = get_engine_from_ctx(ctx)
@@ -277,6 +285,7 @@ def tag() -> None:
 @tag.command(name="list")
 @click.option("--json", "as_json", is_flag=True, help="JSON output.")
 @click.pass_context
+@with_schema_guard
 def tag_list(ctx: click.Context, as_json: bool) -> None:
     """List tags."""
     engine = get_engine_from_ctx(ctx)
@@ -293,6 +302,7 @@ def tag_list(ctx: click.Context, as_json: bool) -> None:
 @tag.command(name="add")
 @click.option("--text", required=True, help="Tag text.")
 @click.pass_context
+@with_schema_guard
 def tag_add(ctx: click.Context, text: str) -> None:
     """Create a new tag."""
     engine = get_engine_from_ctx(ctx)
@@ -318,6 +328,7 @@ def rationale() -> None:
 @rationale.command(name="list")
 @click.option("--json", "as_json", is_flag=True, help="JSON output.")
 @click.pass_context
+@with_schema_guard
 def rationale_list(ctx: click.Context, as_json: bool) -> None:
     """List rationale options."""
     engine = get_engine_from_ctx(ctx)
@@ -334,6 +345,7 @@ def rationale_list(ctx: click.Context, as_json: bool) -> None:
 @rationale.command(name="add")
 @click.option("--text", required=True, help="Rationale argument text.")
 @click.pass_context
+@with_schema_guard
 def rationale_add(ctx: click.Context, text: str) -> None:
     """Create a new rationale option."""
     engine = get_engine_from_ctx(ctx)
@@ -366,6 +378,7 @@ def review() -> None:
 )
 @click.option("--json", "as_json", is_flag=True, help="JSON output.")
 @click.pass_context
+@with_schema_guard
 def review_list(
     ctx: click.Context, keyword_id: int, status: str | None, as_json: bool
 ) -> None:
@@ -391,6 +404,7 @@ def review_list(
 @click.option("--exclude", "decision", flag_value="exclude", help="Mark as excluded.")
 @click.option("--rationale", default=None, help="Rationale text.")
 @click.pass_context
+@with_schema_guard
 def review_screen(
     ctx: click.Context,
     bib_id: int,
@@ -433,6 +447,7 @@ def review_screen(
 )
 @click.option("--json", "as_json", is_flag=True, help="JSON output.")
 @click.pass_context
+@with_schema_guard
 def review_stats(ctx: click.Context, keyword_id: int, as_json: bool) -> None:
     """Per-keyword screening counts."""
     engine = get_engine_from_ctx(ctx)
@@ -465,6 +480,7 @@ def checklist() -> None:
 )
 @click.option("--json", "as_json", is_flag=True, help="JSON output.")
 @click.pass_context
+@with_schema_guard
 def checklist_show(ctx: click.Context, keyword_id: int | None, as_json: bool) -> None:
     """Show PRISMA compliance checklist from DB state."""
     engine = get_engine_from_ctx(ctx)
