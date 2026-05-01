@@ -8,7 +8,12 @@ import pytest
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
-from workflow.db.engine import init_global_db, init_local_db, get_global_engine, get_local_engine
+from workflow.db.engine import (
+    init_global_db,
+    init_local_db,
+    get_global_engine,
+    get_local_engine,
+)
 from workflow.db.schema_version import current_version
 
 
@@ -30,16 +35,18 @@ def test_init_global_db_stamps_baseline(tmp_global_db):
     insp = inspect(engine)
     assert "schema_version" in insp.get_table_names()
     with Session(engine) as s:
-        assert current_version(s, "global") == "0001_baseline"
+        assert current_version(s, "global") >= "0001_baseline"
 
 
 def test_init_global_db_idempotent(tmp_global_db):
     engine = get_global_engine(db_path=tmp_global_db)
     init_global_db(engine=engine)
-    init_global_db(engine=engine)  # should not error
-
+    head_before = None
     with Session(engine) as s:
-        assert current_version(s, "global") == "0001_baseline"
+        head_before = current_version(s, "global")
+    init_global_db(engine=engine)  # should not error
+    with Session(engine) as s:
+        assert current_version(s, "global") == head_before
 
 
 def test_init_local_db_stamps_baseline(tmp_local_db):

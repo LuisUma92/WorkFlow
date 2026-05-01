@@ -22,9 +22,31 @@ def session(tmp_path: Path):
     sess.close()
 
 
+def _da(session, code: str, name: str) -> DisciplineArea:
+    existing = session.query(DisciplineArea).filter_by(code=code).first()
+    if existing is not None:
+        return existing
+    da = DisciplineArea(
+        code=code,
+        name=name,
+        discipline_num=int(code[:2]),
+        topic_num=int(code[2:4]),
+        area_initials=code[4:6],
+    )
+    session.add(da)
+    session.commit()
+    return da
+
+
 @pytest.fixture
 def area(session) -> MainTopic:
-    a = MainTopic(name="Nuclear Physics", code="0060NP", parent_id=None)
+    da = _da(session, "0060NP", "Nuclear Physics")
+    a = MainTopic(
+        name="Nuclear Physics",
+        code="0060NP",
+        parent_id=None,
+        discipline_area_id=da.id,
+    )
     session.add(a)
     session.commit()
     return a
@@ -36,6 +58,7 @@ def child(session, area) -> MainTopic:
         name="Scintillating Fibers",
         code="0060NP25SF",
         parent_id=area.id,
+        discipline_area_id=area.discipline_area_id,
     )
     session.add(c)
     session.commit()
@@ -131,8 +154,18 @@ class TestGeneralProjectUniqueness:
         application layer (inittex), not in the DB. Two projects under the
         same area can collide on (yy, pp) without IntegrityError; the CLI is
         responsible for prior-check."""
-        child_a = MainTopic(name="A", code="0060NP25SF", parent_id=area.id)
-        child_b = MainTopic(name="B", code="0060NP25SX", parent_id=area.id)
+        child_a = MainTopic(
+            name="A",
+            code="0060NP25SF",
+            parent_id=area.id,
+            discipline_area_id=area.discipline_area_id,
+        )
+        child_b = MainTopic(
+            name="B",
+            code="0060NP25SX",
+            parent_id=area.id,
+            discipline_area_id=area.discipline_area_id,
+        )
         session.add_all([child_a, child_b])
         session.commit()
         session.add(_project(child_a))

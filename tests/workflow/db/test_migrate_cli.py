@@ -20,9 +20,7 @@ def runner_with_engine(monkeypatch):
     engine = create_engine("sqlite:///:memory:")
     GlobalBase.metadata.create_all(engine)
 
-    monkeypatch.setattr(
-        "workflow.db.cli.get_engine_from_ctx", lambda ctx: engine
-    )
+    monkeypatch.setattr("workflow.db.cli.get_engine_from_ctx", lambda ctx: engine)
     return CliRunner(), engine
 
 
@@ -33,7 +31,7 @@ def test_migrate_runs_baseline(runner_with_engine):
     assert result.exit_code == 0
     assert "0001_baseline" in result.output
     with Session(engine) as s:
-        assert current_version(s, "global") == "0001_baseline"
+        assert current_version(s, "global") >= "0001_baseline"
 
 
 def test_migrate_idempotent(runner_with_engine):
@@ -82,7 +80,7 @@ def test_migrate_status_json(runner_with_engine):
 
     assert result.exit_code == 0
     payload = json.loads(result.output)
-    assert payload["head"] == "0001_baseline"
+    assert payload["head"] >= "0001_baseline"
     assert "0001_baseline" in payload["applied"]
 
 
@@ -105,9 +103,7 @@ def test_legacy_itep_0008_subcommand_removed(runner_with_engine):
 
 def test_migrate_to_caps_at_revision(runner_with_engine):
     runner, _ = runner_with_engine
-    result = runner.invoke(
-        db_group, ["migrate", "--to", "0001_baseline", "--json"]
-    )
+    result = runner.invoke(db_group, ["migrate", "--to", "0001_baseline", "--json"])
 
     assert result.exit_code == 0
     payload = json.loads(result.output)

@@ -95,9 +95,15 @@ def create_main_topic(
     session: Session,
     name: str,
     code: str,
+    discipline_area_id: int,
     ddc_mds: str = "",
 ) -> MainTopic:
-    mt = MainTopic(name=name, code=code, ddc_mds=ddc_mds)
+    mt = MainTopic(
+        name=name,
+        code=code,
+        ddc_mds=ddc_mds,
+        discipline_area_id=discipline_area_id,
+    )
     session.add(mt)
     session.commit()
     return mt

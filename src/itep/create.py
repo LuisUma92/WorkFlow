@@ -194,7 +194,12 @@ def _get_or_create_area_main_topic(session, area: DisciplineArea) -> MainTopic:
     existing = session.query(MainTopic).filter_by(code=area.code).first()
     if existing is not None:
         return existing
-    mt = MainTopic(code=area.code, name=area.name, parent_id=None)
+    mt = MainTopic(
+        code=area.code,
+        name=area.name,
+        parent_id=None,
+        discipline_area_id=area.id,
+    )
     session.add(mt)
     session.flush()
     return mt
@@ -301,6 +306,7 @@ def create_general(
         code=child_code,
         name=title,
         parent_id=area_topic.id,
+        discipline_area_id=area_topic.discipline_area_id,
     )
     session.add(child_topic)
     session.flush()

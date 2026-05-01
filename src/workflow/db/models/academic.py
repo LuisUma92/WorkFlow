@@ -87,6 +87,9 @@ class MainTopic(GlobalBase):
     parent_id: Mapped[int | None] = mapped_column(
         ForeignKey("main_topic.id"), nullable=True, default=None
     )
+    discipline_area_id: Mapped[int] = mapped_column(
+        ForeignKey("discipline_area.id"), nullable=False
+    )
 
     topics: Mapped[list["Topic"]] = relationship(back_populates="main_topic")
     general_project: Mapped["GeneralProject | None"] = relationship(
@@ -97,6 +100,7 @@ class MainTopic(GlobalBase):
         remote_side="MainTopic.id",
     )
     children: Mapped[list["MainTopic"]] = relationship(back_populates="parent")
+    discipline_area: Mapped["DisciplineArea"] = relationship()
 
     def __repr__(self) -> str:
         return f"<MainTopic {self.code} {self.name}>"

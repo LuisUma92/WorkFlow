@@ -17,6 +17,7 @@ from workflow.db.models.academic import (
     Content,
     Course,
     CourseContent,
+    DisciplineArea,
     Institution,
     MainTopic,
     Topic,
@@ -35,8 +36,25 @@ def session():
         yield s
 
 
+def _ensure_discipline_area(session, code: str, name: str) -> DisciplineArea:
+    existing = session.query(DisciplineArea).filter_by(code=code).first()
+    if existing is not None:
+        return existing
+    da = DisciplineArea(
+        code=code,
+        name=name,
+        discipline_num=int(code[:2]),
+        topic_num=int(code[2:4]),
+        area_initials=code[4:6],
+    )
+    session.add(da)
+    session.commit()
+    return da
+
+
 def _make_area(session, code: str = "0010MC", name: str = "Mecánica") -> MainTopic:
-    a = MainTopic(code=code, name=name, parent_id=None)
+    da = _ensure_discipline_area(session, code, name)
+    a = MainTopic(code=code, name=name, parent_id=None, discipline_area_id=da.id)
     session.add(a)
     session.commit()
     return a
@@ -99,7 +117,12 @@ def _attach_course(session, content: Content, code: str) -> Course:
 
 def test_evaluate_area_rejects_non_area(session):
     area = _make_area(session)
-    child = MainTopic(code="0010MC26ST", name="Child", parent_id=area.id)
+    child = MainTopic(
+        code="0010MC26ST",
+        name="Child",
+        parent_id=area.id,
+        discipline_area_id=area.discipline_area_id,
+    )
     session.add(child)
     session.commit()
     with pytest.raises(ValueError, match="not an area"):
@@ -180,7 +203,12 @@ def test_multi_semester_continuity_signal(session):
 
 def test_children_topics_count_toward_bib(session):
     area = _make_area(session)
-    child = MainTopic(code="0010MC26ST", name="Child", parent_id=area.id)
+    child = MainTopic(
+        code="0010MC26ST",
+        name="Child",
+        parent_id=area.id,
+        discipline_area_id=area.discipline_area_id,
+    )
     session.add(child)
     session.flush()
     topic = Topic(main_topic_id=child.id, name="Sub", serial_number=1)
@@ -225,7 +253,15 @@ def test_propose_maturation_empty_db(cli_runner_engine):
 
 def test_propose_maturation_table_and_json(cli_runner_engine):
     with Session(cli_runner_engine) as s:
-        s.add(MainTopic(code="0010MC", name="Mecánica", parent_id=None))
+        da = _ensure_discipline_area(s, "0010MC", "Mecánica")
+        s.add(
+            MainTopic(
+                code="0010MC",
+                name="Mecánica",
+                parent_id=None,
+                discipline_area_id=da.id,
+            )
+        )
         s.commit()
     runner = CliRunner()
     result = runner.invoke(project_cli, ["propose-maturation"])
@@ -243,8 +279,24 @@ def test_propose_maturation_table_and_json(cli_runner_engine):
 
 def test_propose_maturation_area_filter(cli_runner_engine):
     with Session(cli_runner_engine) as s:
-        s.add(MainTopic(code="0010MC", name="A", parent_id=None))
-        s.add(MainTopic(code="0110EP", name="B", parent_id=None))
+        da_a = _ensure_discipline_area(s, "0010MC", "A")
+        da_b = _ensure_discipline_area(s, "0110EP", "B")
+        s.add(
+            MainTopic(
+                code="0010MC",
+                name="A",
+                parent_id=None,
+                discipline_area_id=da_a.id,
+            )
+        )
+        s.add(
+            MainTopic(
+                code="0110EP",
+                name="B",
+                parent_id=None,
+                discipline_area_id=da_b.id,
+            )
+        )
         s.commit()
     runner = CliRunner()
     result = runner.invoke(

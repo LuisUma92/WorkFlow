@@ -1,7 +1,9 @@
 """
 Reference data seed for the WorkFlow global database.
 
-Provides INSTITUTIONS_SEED, MAIN_TOPICS_SEED, and seed_reference_data().
+Provides INSTITUTIONS_SEED and seed_reference_data(). MainTopic rows are
+no longer seeded statically; they are created on-demand by inittex from
+DisciplineArea catalog rows (ADR ITEP-0008, ITEP-0010 amendment 0002).
 """
 
 from __future__ import annotations
@@ -11,7 +13,7 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from workflow.db import seed_codes
-from workflow.db.models.academic import Institution, MainTopic
+from workflow.db.models.academic import Institution
 
 
 INSTITUTIONS_SEED: list[dict] = [
@@ -38,25 +40,6 @@ INSTITUTIONS_SEED: list[dict] = [
     },
 ]
 
-MAIN_TOPICS_SEED: list[dict] = [
-    {"name": "Métodos Matemáticos", "code": "01MM", "ddc_mds": "530.15"},
-    {"name": "Métodos Numéricos", "code": "02MM", "ddc_mds": "530.15"},
-    {"name": "Mecánica Clásica", "code": "10MC", "ddc_mds": "531"},
-    {"name": "Ondas", "code": "14MC", "ddc_mds": "534.1"},
-    {"name": "Termodinamica", "code": "20TD", "ddc_mds": "536.7"},
-    {"name": "Estadística", "code": "21TD", "ddc_mds": "530.13"},
-    {"name": "Física Computacional", "code": "22TD", "ddc_mds": "530.0285"},
-    {"name": "Optica", "code": "30MO", "ddc_mds": "535"},
-    {"name": "Electromagnetismo", "code": "40EM", "ddc_mds": "537.1"},
-    {"name": "Mecánica Cuántica", "code": "50MQ", "ddc_mds": "530.12"},
-    {"name": "Física Nuclear", "code": "60FN", "ddc_mds": "539.7"},
-    {"name": "Estado Sólido", "code": "70ES", "ddc_mds": "531.2"},
-    {"name": "Relatividad", "code": "80MR", "ddc_mds": "530.11"},
-    {"name": "Relatividad Especial", "code": "81MR", "ddc_mds": "530.11"},
-    {"name": "Relatividad General", "code": "82MR", "ddc_mds": "530.11"},
-    {"name": "Meteorología", "code": "90FM", "ddc_mds": "532"},
-]
-
 
 def seed_reference_data(
     session: Session,
@@ -64,10 +47,11 @@ def seed_reference_data(
     data_dir: Path | None = None,
     import_discipline_codes: bool = True,
 ) -> None:
-    """Insert institutions, main topics, and discipline-area codes if absent.
+    """Insert institutions and discipline-area codes if absent.
 
     Discipline codes are loaded from ``data/DD-*Codes.csv`` via
     :func:`workflow.db.seed_codes.upsert_all_csvs` (idempotent UPSERT).
+    MainTopic rows are created on-demand by ``inittex`` (ADR ITEP-0008).
     """
     for data in INSTITUTIONS_SEED:
         exists = (
@@ -75,11 +59,6 @@ def seed_reference_data(
         )
         if not exists:
             session.add(Institution(**data))
-
-    for data in MAIN_TOPICS_SEED:
-        exists = session.query(MainTopic).filter_by(code=data["code"]).first()
-        if not exists:
-            session.add(MainTopic(**data))
 
     session.commit()
 

@@ -1,4 +1,5 @@
 """Tests for workflow.graph.collectors — in-memory DB fixtures."""
+
 from __future__ import annotations
 
 import pytest
@@ -6,7 +7,32 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from workflow.db.base import GlobalBase, LocalBase
-from workflow.db.models.academic import BibContent, Content, Course, CourseContent, MainTopic, Topic, Institution
+from workflow.db.models.academic import (
+    BibContent,
+    Content,
+    Course,
+    CourseContent,
+    DisciplineArea,
+    MainTopic,
+    Topic,
+    Institution,
+)
+
+
+def _da_for(session, code: str, name: str) -> DisciplineArea:
+    """Create a DisciplineArea row that satisfies MainTopic.discipline_area_id."""
+    da = DisciplineArea(
+        code=(code + "XXXXXX")[:6],
+        name=name,
+        discipline_num=0,
+        topic_num=0,
+        area_initials="XX",
+    )
+    session.add(da)
+    session.flush()
+    return da
+
+
 from workflow.db.models.bibliography import BibEntry
 from workflow.db.models.exercises import Exercise
 from workflow.db.models.notes import Citation, Label, Link, Note
@@ -30,6 +56,7 @@ def global_session():
     import workflow.db.models.bibliography  # noqa: F401
     import workflow.db.models.academic  # noqa: F401
     import workflow.db.models.exercises  # noqa: F401
+
     GlobalBase.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     session = Session()
@@ -41,6 +68,7 @@ def global_session():
 def local_session():
     engine = create_engine("sqlite:///:memory:")
     import workflow.db.models.notes  # noqa: F401
+
     LocalBase.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     session = Session()
@@ -137,7 +165,8 @@ def test_collect_exercises_basic(global_session):
 
 
 def test_collect_exercises_with_content_edge(global_session):
-    main_topic = MainTopic(name="Physics", code="PHY")
+    da = _da_for(global_session, "PHY", "Physics")
+    main_topic = MainTopic(name="Physics", code="PHY", discipline_area_id=da.id)
     global_session.add(main_topic)
     global_session.flush()
 
@@ -147,8 +176,11 @@ def test_collect_exercises_with_content_edge(global_session):
 
     content = Content(
         topic_id=topic.id,
-        chapter_number=1, section_number=1,
-        name="Newton Laws", first_page=1, last_page=10,
+        chapter_number=1,
+        section_number=1,
+        name="Newton Laws",
+        first_page=1,
+        last_page=10,
     )
     global_session.add(content)
     global_session.flush()
@@ -200,7 +232,8 @@ def test_collect_academic_empty(global_session):
 
 
 def test_collect_academic_content_topic(global_session):
-    main_topic = MainTopic(name="Math", code="MTH")
+    da = _da_for(global_session, "MTH", "Math")
+    main_topic = MainTopic(name="Math", code="MTH", discipline_area_id=da.id)
     global_session.add(main_topic)
     global_session.flush()
 
@@ -210,8 +243,11 @@ def test_collect_academic_content_topic(global_session):
 
     content = Content(
         topic_id=topic.id,
-        chapter_number=1, section_number=2,
-        name="Derivatives", first_page=50, last_page=75,
+        chapter_number=1,
+        section_number=2,
+        name="Derivatives",
+        first_page=50,
+        last_page=75,
     )
     global_session.add(content)
     global_session.flush()
@@ -228,7 +264,9 @@ def test_collect_academic_content_topic(global_session):
 
 
 def test_collect_academic_course_node(global_session):
-    inst = Institution(short_name="UCR", full_name="University", cycle_weeks=16, cycle_name="Semester")
+    inst = Institution(
+        short_name="UCR", full_name="University", cycle_weeks=16, cycle_name="Semester"
+    )
     global_session.add(inst)
     global_session.flush()
 
@@ -248,7 +286,8 @@ def test_collect_academic_bib_content_edge(global_session):
     global_session.add(bib)
     global_session.flush()
 
-    main_topic = MainTopic(name="Math", code="MTH2")
+    da = _da_for(global_session, "MTH2", "Math2")
+    main_topic = MainTopic(name="Math", code="MTH2", discipline_area_id=da.id)
     global_session.add(main_topic)
     global_session.flush()
 
@@ -258,8 +297,11 @@ def test_collect_academic_bib_content_edge(global_session):
 
     content = Content(
         topic_id=topic.id,
-        chapter_number=2, section_number=1,
-        name="Integration", first_page=80, last_page=110,
+        chapter_number=2,
+        section_number=1,
+        name="Integration",
+        first_page=80,
+        last_page=110,
     )
     global_session.add(content)
     global_session.flush()
@@ -276,7 +318,9 @@ def test_collect_academic_bib_content_edge(global_session):
 
 
 def test_collect_academic_course_content_edge(global_session):
-    inst = Institution(short_name="UFi", full_name="UFide", cycle_weeks=16, cycle_name="Semester")
+    inst = Institution(
+        short_name="UFi", full_name="UFide", cycle_weeks=16, cycle_name="Semester"
+    )
     global_session.add(inst)
     global_session.flush()
 
@@ -284,7 +328,8 @@ def test_collect_academic_course_content_edge(global_session):
     global_session.add(course)
     global_session.flush()
 
-    main_topic = MainTopic(name="Electro", code="ELE")
+    da = _da_for(global_session, "ELE", "Electro")
+    main_topic = MainTopic(name="Electro", code="ELE", discipline_area_id=da.id)
     global_session.add(main_topic)
     global_session.flush()
 
@@ -294,8 +339,11 @@ def test_collect_academic_course_content_edge(global_session):
 
     content = Content(
         topic_id=topic.id,
-        chapter_number=20, section_number=1,
-        name="Coulomb", first_page=400, last_page=420,
+        chapter_number=20,
+        section_number=1,
+        name="Coulomb",
+        first_page=400,
+        last_page=420,
     )
     global_session.add(content)
     global_session.flush()

@@ -7,7 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from workflow.db.base import GlobalBase
-from workflow.db.models.academic import MainTopic
+from workflow.db.models.academic import DisciplineArea, MainTopic
 from workflow.db.models.project import GeneralProject
 from itep import naming
 
@@ -20,8 +20,24 @@ def session():
         yield s
 
 
-def _seed_area(session: Session, code: str = "0110EP", name: str = "Lógica") -> MainTopic:
-    area = MainTopic(name=name, code=code, parent_id=None)
+def _seed_area(
+    session: Session, code: str = "0110EP", name: str = "Lógica"
+) -> MainTopic:
+    da = DisciplineArea(
+        code=code,
+        name=name,
+        discipline_num=int(code[:2]),
+        topic_num=int(code[2:4]),
+        area_initials=code[4:6],
+    )
+    session.add(da)
+    session.flush()
+    area = MainTopic(
+        name=name,
+        code=code,
+        parent_id=None,
+        discipline_area_id=da.id,
+    )
     session.add(area)
     session.commit()
     return area
@@ -31,7 +47,10 @@ def _seed_project(
     session: Session, area: MainTopic, yy: int, pp: str, title: str
 ) -> GeneralProject:
     child = MainTopic(
-        name=title, code=f"{area.code}{yy:02d}{pp}", parent_id=area.id
+        name=title,
+        code=f"{area.code}{yy:02d}{pp}",
+        parent_id=area.id,
+        discipline_area_id=area.discipline_area_id,
     )
     session.add(child)
     session.flush()
