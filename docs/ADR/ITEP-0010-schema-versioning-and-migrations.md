@@ -347,8 +347,8 @@ Backwards-compatible for fresh installs. For the user's live DBs:
 - ADR-0003 (hybrid global/local DB)
 - ITEP-0008 (general-project nomenclature; first real schema migration)
 - `tasks/requests/2026-04-29-evaluations-schema-migration.md`
-- Martin Fowler — *Evolutionary Database Design*
-- Alembic docs — *why we considered and rejected it for now*
+- Martin Fowler — _Evolutionary Database Design_
+- Alembic docs — _why we considered and rejected it for now_
 
 ---
 
@@ -370,7 +370,7 @@ Promotes to **Implemented** when:
 
 ## Change Log
 
-| Date       | Change                                          |
-| ---------- | ----------------------------------------------- |
-| 2026-04-29 | Initial draft (Proposed); awaiting user review.                                                       |
-| 2026-04-29 | Accepted after Phase 0 manual migration; FK migration reordered to ship before description column.    |
+| Date       | Change                                                                                             |
+| ---------- | -------------------------------------------------------------------------------------------------- |
+| 2026-04-29 | Initial draft (Proposed); awaiting user review.                                                    |
+| 2026-04-29 | Accepted after Phase 0 manual migration; FK migration reordered to ship before description column. |
