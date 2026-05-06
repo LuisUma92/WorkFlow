@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from workflow.db.models.academic import (
     DisciplineArea,
+    MainTopic,
     _TAXONOMY_DOMAINS,
     _TAXONOMY_LEVELS,
 )
@@ -17,6 +18,8 @@ __all__ = [
     "validate_note_frontmatter",
     "validate_exercise_metadata",
     "check_candidate_project_against_db",
+    "check_main_topic_against_db",
+    "check_discipline_area_consistency",
     "CANDIDATE_PROJECT_RE",
 ]
 
@@ -252,6 +255,81 @@ def validate_exercise_metadata(data: dict) -> tuple[ExerciseMetadata | None, lis
         ),
         [],
     )
+
+
+def check_main_topic_against_db(
+    main_topic: str | int | None,
+    session: Session,
+    *,
+    strict: bool = False,
+) -> tuple[MainTopic | None, list[str]]:
+    """Resolve ``main_topic`` against the global MainTopic table.
+
+    Returns ``(MainTopic | None, messages)``. Messages are warnings under
+    ``strict=False`` and errors under ``strict=True``; the prefix lets the
+    caller route them to the appropriate channel.
+
+    Resolution order: int id first, then ``MainTopic.code`` slug. An
+    int-shaped string ("42") is tried as id first.
+    """
+    if main_topic is None:
+        return None, []
+
+    candidate_id: int | None = None
+    candidate_slug: str | None = None
+    if isinstance(main_topic, int):
+        candidate_id = main_topic
+    else:
+        try:
+            candidate_id = int(main_topic)
+        except (TypeError, ValueError):
+            candidate_slug = main_topic
+
+    if candidate_id is not None:
+        mt = session.query(MainTopic).filter_by(id=candidate_id).first()
+        if mt is not None:
+            return mt, []
+        if candidate_slug is None and isinstance(main_topic, str):
+            candidate_slug = main_topic
+
+    if candidate_slug is not None:
+        mt = session.query(MainTopic).filter_by(code=candidate_slug).first()
+        if mt is not None:
+            return mt, []
+
+    msg = (
+        f"main_topic {main_topic!r} does not resolve to any MainTopic "
+        "(checked id then code)."
+    )
+    return None, [msg]
+
+
+def check_discipline_area_consistency(
+    main_topic_obj: MainTopic | None,
+    discipline_area: str | None,
+    session: Session,
+) -> list[str]:
+    """Return errors when frontmatter ``discipline_area`` disagrees with the
+    resolved ``MainTopic.discipline_area_id``.
+
+    No-op when either input is missing — the per-key validators handle
+    presence/shape errors upstream.
+    """
+    if main_topic_obj is None or discipline_area is None:
+        return []
+    da = session.query(DisciplineArea).filter_by(code=discipline_area).first()
+    if da is None:
+        return [
+            f"discipline_area {discipline_area!r} not found in "
+            "DisciplineArea reference table."
+        ]
+    if da.id != main_topic_obj.discipline_area_id:
+        return [
+            f"frontmatter inconsistency: main_topic {main_topic_obj.code!r} "
+            f"belongs to discipline_area_id={main_topic_obj.discipline_area_id} "
+            f"but discipline_area={discipline_area!r} resolves to id={da.id}."
+        ]
+    return []
 
 
 def check_candidate_project_against_db(
