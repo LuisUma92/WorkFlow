@@ -8,9 +8,16 @@ import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
-from workflow.db.base import LocalBase
+from workflow.db.base import GlobalBase, LocalBase
+import workflow.db.models.notes  # noqa: F401
+import workflow.db.models.academic  # noqa: F401  # MainTopic FK target for Concept
 from workflow.db.models.notes import Citation, Label, Link, Note
-from workflow.lecture.linker import ExtractedReference, LinkResult, extract_references, link_lecture_files
+from workflow.lecture.linker import (
+    ExtractedReference,
+    LinkResult,
+    extract_references,
+    link_lecture_files,
+)
 
 
 # ── ExtractedReference shape ────────────────────────────────────────────────
@@ -18,7 +25,9 @@ from workflow.lecture.linker import ExtractedReference, LinkResult, extract_refe
 
 def test_extracted_reference_is_frozen() -> None:
     """ExtractedReference is a frozen dataclass."""
-    ref = ExtractedReference(ref_type="cite", key="k", source_file="f.tex", line_number=1)
+    ref = ExtractedReference(
+        ref_type="cite", key="k", source_file="f.tex", line_number=1
+    )
     with pytest.raises((AttributeError, TypeError)):
         ref.key = "other"  # type: ignore[misc]
 
@@ -131,6 +140,7 @@ class TestExtractReferences:
 def local_session():
     """In-memory SQLite session using LocalBase."""
     engine = create_engine("sqlite:///:memory:")
+    GlobalBase.metadata.create_all(engine)
     LocalBase.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     with Session() as session:

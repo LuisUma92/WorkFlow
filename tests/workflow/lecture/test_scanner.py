@@ -8,8 +8,15 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from workflow.db.base import LocalBase
-from workflow.lecture.scanner import ScanResult, generate_note_reference, register_notes, scan_lecture_directory
+from workflow.db.base import GlobalBase, LocalBase
+import workflow.db.models.notes  # noqa: F401
+import workflow.db.models.academic  # noqa: F401  # MainTopic FK target for Concept
+from workflow.lecture.scanner import (
+    ScanResult,
+    generate_note_reference,
+    register_notes,
+    scan_lecture_directory,
+)
 
 
 # ── DB fixture ───────────────────────────────────────────────────────────────
@@ -19,6 +26,7 @@ from workflow.lecture.scanner import ScanResult, generate_note_reference, regist
 def local_session():
     """In-memory SQLite session using LocalBase."""
     engine = create_engine("sqlite:///:memory:")
+    GlobalBase.metadata.create_all(engine)
     LocalBase.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     with Session() as session:
@@ -166,6 +174,7 @@ class TestRegisterNotes:
 
         assert len(result.registered) > 0
         from workflow.db.models.notes import Note
+
         notes = local_session.query(Note).all()
         assert len(notes) == len(result.registered)
 

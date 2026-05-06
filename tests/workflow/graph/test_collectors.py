@@ -68,7 +68,9 @@ def global_session():
 def local_session():
     engine = create_engine("sqlite:///:memory:")
     import workflow.db.models.notes  # noqa: F401
+    import workflow.db.models.academic  # noqa: F401  # MainTopic FK target for Concept
 
+    GlobalBase.metadata.create_all(engine)
     LocalBase.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     session = Session()

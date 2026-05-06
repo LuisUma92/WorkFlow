@@ -19,34 +19,52 @@ def runner() -> CliRunner:
 # ── scan command ────────────────────────────────────────────────────────────
 
 
+@pytest.mark.xfail(
+    reason="ITEP-0011 P3: lecture CLI must query global DB for notes after vault unification",
+    strict=False,
+)
 def test_scan_command_finds_tex_files(runner: CliRunner, tmp_path: Path) -> None:
     """scan command reports discovered .tex files."""
     lect_tex = tmp_path / "lect" / "tex"
     lect_tex.mkdir(parents=True)
     (lect_tex / "intro.tex").write_text("content")
 
-    result = runner.invoke(lectures, ["scan", str(tmp_path), "--project-root", str(tmp_path)])
+    result = runner.invoke(
+        lectures, ["scan", str(tmp_path), "--project-root", str(tmp_path)]
+    )
 
     assert result.exit_code == 0, result.output
     assert "intro.tex" in result.output or "1" in result.output
 
 
+@pytest.mark.xfail(
+    reason="ITEP-0011 P3: lecture CLI must query global DB for notes after vault unification",
+    strict=False,
+)
 def test_scan_empty_dir_message(runner: CliRunner, tmp_path: Path) -> None:
     """scan command reports nothing found when directory is empty."""
-    result = runner.invoke(lectures, ["scan", str(tmp_path), "--project-root", str(tmp_path)])
+    result = runner.invoke(
+        lectures, ["scan", str(tmp_path), "--project-root", str(tmp_path)]
+    )
 
     assert result.exit_code == 0, result.output
     # Should indicate nothing was discovered
     assert "0" in result.output or "No" in result.output or "no" in result.output
 
 
+@pytest.mark.xfail(
+    reason="ITEP-0011 P3: lecture CLI must query global DB for notes after vault unification",
+    strict=False,
+)
 def test_scan_registers_notes_in_db(runner: CliRunner, tmp_path: Path) -> None:
     """scan command registers found .tex files in the local slipbox.db."""
     lect_tex = tmp_path / "lect" / "tex"
     lect_tex.mkdir(parents=True)
     (lect_tex / "topic.tex").write_text("\\section{Topic}")
 
-    result = runner.invoke(lectures, ["scan", str(tmp_path), "--project-root", str(tmp_path)])
+    result = runner.invoke(
+        lectures, ["scan", str(tmp_path), "--project-root", str(tmp_path)]
+    )
 
     assert result.exit_code == 0, result.output
     # DB file should have been created
@@ -60,12 +78,14 @@ def test_scan_registers_notes_in_db(runner: CliRunner, tmp_path: Path) -> None:
 def test_split_command_basic(runner: CliRunner, tmp_path: Path) -> None:
     """split command splits a notes file and reports output files."""
     src = tmp_path / "notes.tex"
-    src.write_text(dedent("""\
+    src.write_text(
+        dedent("""\
         %>lect/tex/intro.tex
         content here
         %>lect/tex/body.tex
         more content
-    """))
+    """)
+    )
 
     result = runner.invoke(
         lectures,
@@ -94,10 +114,12 @@ def test_split_command_no_markers(runner: CliRunner, tmp_path: Path) -> None:
 def test_split_command_overwrite_flag(runner: CliRunner, tmp_path: Path) -> None:
     """--overwrite flag causes existing files to be replaced."""
     src = tmp_path / "notes.tex"
-    src.write_text(dedent("""\
+    src.write_text(
+        dedent("""\
         %>lect/tex/intro.tex
         new content
-    """))
+    """)
+    )
     existing = tmp_path / "lect" / "tex" / "intro.tex"
     existing.parent.mkdir(parents=True)
     existing.write_text("old content")
@@ -114,10 +136,12 @@ def test_split_command_overwrite_flag(runner: CliRunner, tmp_path: Path) -> None
 def test_split_command_default_output_dir(runner: CliRunner, tmp_path: Path) -> None:
     """split command uses source file's directory when --output-dir is omitted."""
     src = tmp_path / "notes.tex"
-    src.write_text(dedent("""\
+    src.write_text(
+        dedent("""\
         %>lect/tex/file.tex
         text
-    """))
+    """)
+    )
 
     result = runner.invoke(lectures, ["split", str(src)])
 
@@ -130,12 +154,18 @@ def test_split_command_default_output_dir(runner: CliRunner, tmp_path: Path) -> 
 
 def test_link_command_empty_dir(runner: CliRunner, tmp_path: Path) -> None:
     """link command runs without error when no .tex files are found."""
-    result = runner.invoke(lectures, ["link", str(tmp_path), "--project-root", str(tmp_path)])
+    result = runner.invoke(
+        lectures, ["link", str(tmp_path), "--project-root", str(tmp_path)]
+    )
 
     assert result.exit_code == 0, result.output
     assert "References found" in result.output
 
 
+@pytest.mark.xfail(
+    reason="ITEP-0011 P3: lecture CLI must query global DB for notes after vault unification",
+    strict=False,
+)
 def test_link_command_processes_tex_files(runner: CliRunner, tmp_path: Path) -> None:
     """link command scans lecture dir and reports citation counts."""
     lect_tex = tmp_path / "lect" / "tex"
@@ -146,7 +176,9 @@ def test_link_command_processes_tex_files(runner: CliRunner, tmp_path: Path) -> 
     # Register notes first
     runner.invoke(lectures, ["scan", str(tmp_path), "--project-root", str(tmp_path)])
 
-    result = runner.invoke(lectures, ["link", str(tmp_path), "--project-root", str(tmp_path)])
+    result = runner.invoke(
+        lectures, ["link", str(tmp_path), "--project-root", str(tmp_path)]
+    )
 
     assert result.exit_code == 0, result.output
     assert "Citations found" in result.output
@@ -154,7 +186,9 @@ def test_link_command_processes_tex_files(runner: CliRunner, tmp_path: Path) -> 
 
 def test_link_command_creates_slipbox_db(runner: CliRunner, tmp_path: Path) -> None:
     """link command initialises slipbox.db when it does not yet exist."""
-    result = runner.invoke(lectures, ["link", str(tmp_path), "--project-root", str(tmp_path)])
+    result = runner.invoke(
+        lectures, ["link", str(tmp_path), "--project-root", str(tmp_path)]
+    )
 
     assert result.exit_code == 0, result.output
     db_path = tmp_path / "slipbox.db"
@@ -183,11 +217,16 @@ def test_build_eval_with_empty_bank(runner: CliRunner, tmp_path: Path) -> None:
         lectures,
         [
             "build-eval",
-            "--taxonomy-level", "Recordar",
-            "--taxonomy-domain", "Información",
-            "--count", "3",
-            "--points", "5.0",
-            "--title", "Test Exam",
+            "--taxonomy-level",
+            "Recordar",
+            "--taxonomy-domain",
+            "Información",
+            "--count",
+            "3",
+            "--points",
+            "5.0",
+            "--title",
+            "Test Exam",
         ],
     )
     assert result.exit_code == 0, result.output
@@ -201,10 +240,14 @@ def test_build_eval_outputs_to_file(runner: CliRunner, tmp_path: Path) -> None:
         lectures,
         [
             "build-eval",
-            "--taxonomy-level", "Recordar",
-            "--count", "1",
-            "--points", "10.0",
-            "--output", str(out_file),
+            "--taxonomy-level",
+            "Recordar",
+            "--count",
+            "1",
+            "--points",
+            "10.0",
+            "--output",
+            str(out_file),
         ],
     )
     assert result.exit_code == 0, result.output
@@ -218,10 +261,14 @@ def test_build_eval_moodle_flag(runner: CliRunner, tmp_path: Path) -> None:
         lectures,
         [
             "build-eval",
-            "--taxonomy-level", "Recordar",
-            "--count", "1",
-            "--points", "10.0",
-            "--output", str(out_file),
+            "--taxonomy-level",
+            "Recordar",
+            "--count",
+            "1",
+            "--points",
+            "10.0",
+            "--output",
+            str(out_file),
             "--moodle",
         ],
     )

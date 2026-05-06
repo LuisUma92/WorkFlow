@@ -29,6 +29,7 @@ from workflow.db.base import GlobalBase
 
 if TYPE_CHECKING:
     from workflow.db.models.bibliography import BibEntry
+    from workflow.db.models.notes import Concept
     from workflow.db.models.project import (
         GeneralProject,
         GeneralProjectTopic,
@@ -101,6 +102,7 @@ class MainTopic(GlobalBase):
     )
     children: Mapped[list["MainTopic"]] = relationship(back_populates="parent")
     discipline_area: Mapped["DisciplineArea"] = relationship()
+    concepts: Mapped[list["Concept"]] = relationship(back_populates="main_topic")
 
     def __repr__(self) -> str:
         return f"<MainTopic {self.code} {self.name}>"

@@ -37,9 +37,11 @@ from workflow.db.models.project import (
 )
 from workflow.db.models.notes import (
     Citation,
+    Concept,
     Label,
     Link,
     Note,
+    NoteConcept,
     NoteTag,
     Tag,
 )
@@ -81,7 +83,9 @@ __all__ = [
     "Citation",
     "Label",
     "Link",
+    "Concept",
     "Note",
+    "NoteConcept",
     "NoteTag",
     "Tag",
     # exercises

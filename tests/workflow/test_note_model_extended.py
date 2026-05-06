@@ -9,8 +9,9 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from workflow.db.base import LocalBase
+from workflow.db.base import GlobalBase, LocalBase
 from workflow.db.models.notes import Note
+import workflow.db.models.academic  # noqa: F401  # MainTopic FK target for Concept
 from workflow.db.repos.sqlalchemy import SqlNoteRepo
 
 
@@ -24,6 +25,7 @@ def _enable_fk(dbapi_conn, _):
 def db_engine():
     engine = create_engine("sqlite:///:memory:")
     event.listen(engine, "connect", _enable_fk)
+    GlobalBase.metadata.create_all(engine)
     LocalBase.metadata.create_all(engine)
     return engine
 
@@ -101,7 +103,10 @@ def test_note_type_values(db_session):
     db_session.commit()
 
     from sqlalchemy import select
-    stmt = select(Note).where(Note.note_type.in_(["permanent", "literature", "fleeting"]))
+
+    stmt = select(Note).where(
+        Note.note_type.in_(["permanent", "literature", "fleeting"])
+    )
     results = list(db_session.scalars(stmt).all())
     assert len(results) == 3
 
