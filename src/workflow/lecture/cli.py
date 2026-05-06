@@ -44,8 +44,8 @@ def scan(lecture_dir: str, project_root: str) -> None:
     ``--project-root`` is retained for forward compatibility with the
     future per-project note layer (ITEP-0011 P5) but is currently ignored.
     """
+    del project_root  # reserved for ITEP-0011 P5 (per-project routing)
     lecture_path = Path(lecture_dir).resolve()
-    _ = Path(project_root).resolve()  # reserved for P5 routing
 
     engine = init_global_db()
 
@@ -129,8 +129,8 @@ def link(lecture_dir: str, project_root: str) -> None:
     ITEP-0011 P3: Link/Citation rows live on GlobalBase. ``--project-root``
     is kept for forward compatibility (P5) but currently ignored.
     """
+    del project_root  # reserved for ITEP-0011 P5
     lecture_path = Path(lecture_dir).resolve()
-    _ = Path(project_root).resolve()
 
     engine = init_global_db()
 

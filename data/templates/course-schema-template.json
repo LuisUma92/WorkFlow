@@ -1,0 +1,89 @@
+{
+  "course": {
+    "name": "NOMBRE_DEL_CURSO",
+    "units": [
+      {
+        "id": "U1",
+        "name": "NOMBRE_UNIDAD_1",
+        "topics": [
+          {
+            "id": "T1",
+            "name": "NOMBRE_TEMA_1",
+            "parts": 2
+          },
+          {
+            "id": "T2",
+            "name": "NOMBRE_TEMA_2"
+          }
+        ]
+      },
+      {
+        "id": "U2",
+        "name": "NOMBRE_UNIDAD_2",
+        "topics": [
+          {
+            "id": "T3",
+            "name": "NOMBRE_TEMA_3"
+          }
+        ]
+      }
+    ]
+  },
+
+  "schedule": [
+    {
+      "week": 1,
+      "coverage": [
+        {
+          "unit": "U1",
+          "topics": [
+            {
+              "id": "T1",
+              "part": 1
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "week": 2,
+      "coverage": [
+        {
+          "unit": "U1",
+          "topics": [
+            {
+              "id": "T1",
+              "part": 2
+            },
+            {
+              "id": "T2"
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "week": 3,
+      "coverage": [
+        {
+          "unit": "U1",
+          "topics": [
+            {
+              "id": "T2"
+            }
+          ]
+        },
+        {
+          "unit": "U2",
+          "topics": [
+            {
+              "id": "T3"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -14,8 +14,23 @@ import shutil
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+import re
 from pathlib import Path
 from typing import Literal
+
+
+_SAFE_PROJECT_NAME_RE = re.compile(r"[^A-Za-z0-9._-]")
+
+
+def _safe_project_name(name: str) -> str:
+    """Reduce ``name`` to filesystem-safe characters for filenames + DB strings.
+
+    Path separators, glob characters, and whitespace become ``_``. Used
+    when ``project_name`` (= ``project_root.name``) is composed into
+    backup filenames or stored in ``Note.filename`` after a collision.
+    """
+    return _SAFE_PROJECT_NAME_RE.sub("_", name) or "project"
+
 
 from sqlalchemy.orm import Session
 
@@ -46,10 +61,18 @@ class UnifyReport:
     tags_migrated: int = 0
     note_tags_migrated: int = 0
     files_moved: int = 0
+    # All references whose original value collided with global state.
+    # Includes both renamed (project-prefix) and skipped (manual) refs.
     collisions: list[str] = field(default_factory=list)
+    # Subset of ``collisions`` that were dropped from migration. CLI exits
+    # non-zero when this is non-empty regardless of strategy.
+    skipped_collisions: list[str] = field(default_factory=list)
     orphans: list[int] = field(default_factory=list)
     backup_path: Path | None = None
     note_id_remap: dict[int, int] = field(default_factory=dict)
+    # Note: label_id_remap stores `-1` placeholders during dry-run because
+    # IDs are not assigned until ``session.flush()``. Treat as informational
+    # in dry-run; real ids only valid after a non-dry-run call.
     label_id_remap: dict[int, int] = field(default_factory=dict)
     tag_id_remap: dict[int, int] = field(default_factory=dict)
     skipped: bool = False
@@ -83,7 +106,7 @@ def unify(
     if not vault_root.is_dir():
         raise FileNotFoundError(f"vault_root not found: {vault_root}")
 
-    project_name = project_root.name
+    project_name = _safe_project_name(project_root.name)
     report = UnifyReport(project_name=project_name, dry_run=dry_run)
 
     pointer = project_root / VAULT_POINTER_FILE
@@ -105,9 +128,7 @@ def unify(
             _write_pointer(pointer, vault_root)
         return report
 
-    existing_refs = {
-        ref for (ref,) in global_session.query(Note.reference).all()
-    }
+    existing_refs = {ref for (ref,) in global_session.query(Note.reference).all()}
     existing_zids = {
         z for (z,) in global_session.query(Note.zettel_id).all() if z is not None
     }
@@ -120,16 +141,16 @@ def unify(
             new_zid is not None and new_zid in existing_zids
         )
         if collided:
+            report.collisions.append(n["reference"])
             if rename_strategy == "abort":
-                report.collisions.append(new_ref)
+                report.skipped_collisions.append(n["reference"])
             elif rename_strategy == "project-prefix":
                 new_ref = f"{project_name}:{new_ref}"
                 if new_zid is not None:
                     new_zid = f"{project_name}:{new_zid}"
                 rename_map[n["id"]] = (new_ref, new_zid)
-                report.collisions.append(n["reference"])
             else:  # manual
-                report.collisions.append(new_ref)
+                report.skipped_collisions.append(n["reference"])
         else:
             rename_map[n["id"]] = (new_ref, new_zid)
 
@@ -147,17 +168,18 @@ def unify(
     new_notes: dict[int, Note] = {}
     for n in notes_to_migrate:
         new_ref, new_zid = rename_map[n["id"]]
-        nt = n["note_type"] if n["note_type"] in NOTE_TYPES else None
+        raw_type = n.get("note_type")
+        nt = raw_type if raw_type in NOTE_TYPES else None
         note = Note(
             filename=_prefix(project_name, n["filename"], existing_refs),
             reference=new_ref,
-            last_build_date_html=n["last_build_date_html"],
-            last_build_date_pdf=n["last_build_date_pdf"],
-            last_edit_date=n["last_edit_date"],
-            created=n["created"],
-            title=n["title"],
+            last_build_date_html=n.get("last_build_date_html"),
+            last_build_date_pdf=n.get("last_build_date_pdf"),
+            last_edit_date=n.get("last_edit_date"),
+            created=n.get("created"),
+            title=n.get("title"),
             note_type=nt,
-            source_format=n["source_format"],
+            source_format=n.get("source_format"),
             zettel_id=new_zid,
         )
         new_notes[n["id"]] = note
@@ -277,29 +299,47 @@ class _LegacyData:
     note_tags: list[dict]
 
 
+_NOTE_COLUMNS = (
+    "id, filename, reference, last_build_date_html, last_build_date_pdf, "
+    "last_edit_date, created, title, note_type, source_format, zettel_id"
+)
+_CITATION_COLUMNS = "id, note_id, citationkey"
+_LABEL_COLUMNS = "id, note_id, label"
+_LINK_COLUMNS = "id, source_id, target_id"
+_TAG_COLUMNS = "id, name"
+_NOTE_TAG_COLUMNS = "note_id, tag_id"
+
+
 def _read_slipbox(slipbox: Path) -> _LegacyData:
     conn = sqlite3.connect(str(slipbox))
     conn.row_factory = sqlite3.Row
     try:
-        notes = [dict(r) for r in conn.execute("SELECT * FROM note")]
-        citations = [dict(r) for r in conn.execute("SELECT * FROM citation")]
-        labels = [dict(r) for r in conn.execute("SELECT * FROM label")]
-        links = [dict(r) for r in conn.execute("SELECT * FROM link")]
-        tags = [dict(r) for r in conn.execute("SELECT * FROM tag")]
-        note_tags = [dict(r) for r in conn.execute("SELECT * FROM note_tag")]
+        notes = [dict(r) for r in conn.execute(f"SELECT {_NOTE_COLUMNS} FROM note")]
+        citations = [
+            dict(r) for r in conn.execute(f"SELECT {_CITATION_COLUMNS} FROM citation")
+        ]
+        labels = [dict(r) for r in conn.execute(f"SELECT {_LABEL_COLUMNS} FROM label")]
+        links = [dict(r) for r in conn.execute(f"SELECT {_LINK_COLUMNS} FROM link")]
+        tags = [dict(r) for r in conn.execute(f"SELECT {_TAG_COLUMNS} FROM tag")]
+        note_tags = [
+            dict(r) for r in conn.execute(f"SELECT {_NOTE_TAG_COLUMNS} FROM note_tag")
+        ]
     finally:
         conn.close()
 
-    for table in (notes,):
-        for row in table:
-            for k in ("last_build_date_html", "last_build_date_pdf",
-                      "last_edit_date", "created"):
-                v = row.get(k)
-                if isinstance(v, str):
-                    try:
-                        row[k] = datetime.fromisoformat(v)
-                    except ValueError:
-                        row[k] = None
+    for row in notes:
+        for k in (
+            "last_build_date_html",
+            "last_build_date_pdf",
+            "last_edit_date",
+            "created",
+        ):
+            v = row.get(k)
+            if isinstance(v, str):
+                try:
+                    row[k] = datetime.fromisoformat(v)
+                except ValueError:
+                    row[k] = None
 
     return _LegacyData(
         notes=notes,

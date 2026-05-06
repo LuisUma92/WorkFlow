@@ -32,7 +32,7 @@ def _build_graph(project: str) -> KnowledgeGraph:
     ``project`` is retained for forward compatibility (P5 ProjectNote)
     but is currently unused — all graph sources live on GlobalBase.
     """
-    _ = Path(project)
+    del project  # reserved for ITEP-0011 P5 routing
     global_engine = init_global_db()
     with Session(global_engine) as gsession:
         return build_knowledge_graph(gsession)

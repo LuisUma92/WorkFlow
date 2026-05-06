@@ -45,7 +45,9 @@ def info_cmd() -> None:
     """Print resolved vault root and structure status."""
     root = resolve_vault_root()
     click.echo(f"vault_root: {root}")
-    click.echo(f"source: {'env ' + ENV_VAULT_ROOT if os.environ.get(ENV_VAULT_ROOT) else 'default'}")
+    click.echo(
+        f"source: {'env ' + ENV_VAULT_ROOT if os.environ.get(ENV_VAULT_ROOT) else 'default'}"
+    )
     click.echo(f"exists: {root.exists()}")
     if root.exists():
         for sub in NOTE_TYPES:
@@ -69,15 +71,24 @@ def validate_cmd(vault_root: Path | None) -> None:
 
 
 @vault.command(name="unify")
-@click.option("--project-root", type=click.Path(path_type=Path, exists=True),
-              required=True, help="Absolute path to the project directory.")
+@click.option(
+    "--project-root",
+    type=click.Path(path_type=Path, exists=True),
+    required=True,
+    help="Absolute path to the project directory.",
+)
 @click.option("--vault-root", type=click.Path(path_type=Path), default=None)
 @click.option("--backup-dir", type=click.Path(path_type=Path), default=None)
-@click.option("--rename-strategy",
-              type=click.Choice(["project-prefix", "abort", "manual"]),
-              default="abort")
-@click.option("--dry-run/--no-dry-run", default=True,
-              help="Default dry-run; pass --no-dry-run to commit.")
+@click.option(
+    "--rename-strategy",
+    type=click.Choice(["project-prefix", "abort", "manual"]),
+    default="abort",
+)
+@click.option(
+    "--dry-run/--no-dry-run",
+    default=True,
+    help="Default dry-run; pass --no-dry-run to commit.",
+)
 @with_schema_guard
 def unify_cmd(
     project_root: Path,
@@ -102,7 +113,8 @@ def unify_cmd(
     with Session() as session:
         try:
             report = unify_logic(
-                project_root, root,
+                project_root,
+                root,
                 backup_dir=bdir,
                 global_session=session,
                 rename_strategy=rename_strategy,  # type: ignore[arg-type]
@@ -115,6 +127,14 @@ def unify_cmd(
             raise click.ClickException(str(exc)) from exc
 
     _print_report(report, dry_run=dry_run)
+
+    if report.skipped_collisions and not dry_run:
+        raise click.ClickException(
+            f"{len(report.skipped_collisions)} collisions skipped under "
+            f"--rename-strategy={rename_strategy}; first: "
+            f"{report.skipped_collisions[0]!r}. Re-run with "
+            "--rename-strategy=project-prefix to migrate them."
+        )
 
 
 def _print_report(report, *, dry_run: bool) -> None:
@@ -131,8 +151,10 @@ def _print_report(report, *, dry_run: bool) -> None:
     click.echo(f"  note_tags: {report.note_tags_migrated}")
     click.echo(f"  files:     {report.files_moved}")
     if report.collisions:
-        click.echo(f"  collisions ({len(report.collisions)}): "
-                   f"{report.collisions[:3]}{'...' if len(report.collisions) > 3 else ''}")
+        click.echo(
+            f"  collisions ({len(report.collisions)}): "
+            f"{report.collisions[:3]}{'...' if len(report.collisions) > 3 else ''}"
+        )
     if report.orphans:
         click.echo(f"  orphan links: {len(report.orphans)}")
     if report.backup_path:

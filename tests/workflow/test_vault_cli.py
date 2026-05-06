@@ -101,11 +101,46 @@ def test_unify_no_dry_run_writes(isolated_global_db, tmp_path):
     result = CliRunner().invoke(
         vault,
         [
-            "unify", "--project-root", str(project),
-            "--backup-dir", str(backup),
+            "unify",
+            "--project-root",
+            str(project),
+            "--backup-dir",
+            str(backup),
             "--no-dry-run",
         ],
     )
     assert result.exit_code == 0, result.output
     assert (project / ".vault_pointer").exists()
     assert any(backup.iterdir())
+
+
+def test_unify_manual_collision_exits_nonzero(isolated_global_db, tmp_path):
+    """Post-review: skipped collisions must surface as a non-zero exit even
+    when --rename-strategy is not 'abort'."""
+    from sqlalchemy.orm import Session
+
+    from workflow.db.engine import init_global_db
+    from workflow.db.models.notes import Note
+
+    project = _make_project_with_note(tmp_path, ref="ref-clash")
+    engine = init_global_db()
+    with Session(engine) as s:
+        s.add(Note(filename="pre.md", reference="ref-clash"))
+        s.commit()
+
+    backup = tmp_path / "backups"
+    result = CliRunner().invoke(
+        vault,
+        [
+            "unify",
+            "--project-root",
+            str(project),
+            "--backup-dir",
+            str(backup),
+            "--rename-strategy",
+            "manual",
+            "--no-dry-run",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "ref-clash" in result.output
