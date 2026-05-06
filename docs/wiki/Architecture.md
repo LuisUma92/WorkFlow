@@ -33,41 +33,42 @@ shared/
     pandoc/           # Pipeline Pandoc (filter.lua, template.tex, preprocess.py)
 ```
 
-## Base de datos hibrida ([ADR-0003](../ADR/0003-hybrid-database.md))
+## Base de datos hibrida ([ADR-0003](../ADR/0003-hybrid-database.md), [ADR ITEP-0011](../ADR/ITEP-0011-vault-unification.md))
 
 Dos bases de datos SQLite con propositos distintos:
 
 ```
-~/.local/share/workflow/workflow.db     ← GlobalBase (datos de referencia)
-<proyecto>/slipbox.db                   ← LocalBase (notas por proyecto)
+~/.local/share/workflow/workflow.db     ← GlobalBase (referencia + vault unificado)
+<proyecto>/slipbox.db                   ← LocalBase (datos por proyecto, post-ITEP-0011)
 ```
 
 ### GlobalBase — workflow.db
 
-Datos que trascienden proyectos individuales:
+Datos que trascienden proyectos individuales (incluye el **vault Zettelkasten unificado** desde ITEP-0011 P1):
 
 ```
-Capa 1: Referencia         institution, main_topic
-Capa 2: Entidades maestras bib_entry, topic, content, bib_content
+Capa 1: Referencia         institution, main_topic, discipline_area
+Capa 2: Entidades maestras bib_entry, topic, content, bib_content, concept
 Capa 3: Templates          course, course_content, evaluation_template,
                            item, evaluation_item, exercise, exercise_option
 Capa 4: Instancias         lecture_instance, general_project
+Capa 5: Vault (ITEP-0011)  note, citation, label, link, tag, note_tag, note_concept
 ```
 
-Ver [ADR ITEP-0002](../ADR/ITEP-0002-four-layer-schema.md) para detalles del esquema.
+`note.main_topic_id` es FK real a `main_topic(id)` ON DELETE SET NULL (Phase B).
+
+Ver [ADR ITEP-0002](../ADR/ITEP-0002-four-layer-schema.md) y [ADR ITEP-0011](../ADR/ITEP-0011-vault-unification.md) para detalles.
 
 ### LocalBase — slipbox.db
 
-Datos especificos de cada proyecto:
+Post-ITEP-0011 P3 las tablas de notas viven en GlobalBase. LocalBase queda como contexto de proyecto:
 
 ```
-note         Archivo registrado con referencia unica
-citation     Citas bibliograficas en notas (\cite{})
-label        Etiquetas definidas en notas (\label{})
-link         Enlaces entre notas (nota → label)
-tag          Sistema de etiquetas M2M
-note_tag     Tabla puente nota ↔ tag
+prisma_decision   Decisiones PRISMA por articulo (P5 — pendiente)
+project_note      Ideas/hipotesis/conexiones por proyecto (P5 — pendiente)
 ```
+
+Las tablas legacy de notas (`note`, `label`, `link`, `citation`, `tag`, `note_tag`) siguen presentes en `slipbox.db` files antiguos hasta ITEP-0011 P4 (drop forward-only). Cada proyecto migrado lleva un `.vault_pointer` marker.
 
 ### Acceso a datos
 

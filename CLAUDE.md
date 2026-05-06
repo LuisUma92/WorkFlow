@@ -53,7 +53,9 @@ Defined in `pyproject.toml` under `[project.scripts]`:
 
 - **`src/workflow/evaluation/`** — Evaluation CLI. `cli.py` (3 Click groups: evaluations, item, course), `service.py` (business logic, validation), `formatters.py` (table + JSON output). Commands: evaluations list|show|add|edit, item list|add, course list|add. Neovim Telescope pickers in nvim-plugin. See ADR-0016.
 
-- **`src/workflow/prisma/`** — PRISMA systematic review CLI. `cli.py` (prisma group: bib, keyword, review subgroups), `service.py` (queries, status constants), `formatters.py` (table + JSON). Commands: prisma bib list|show, keyword list, review list. See ADR PRISMA-0005.
+- **`src/workflow/vault/`** — Vault unification (ITEP-0011). `unify.py` reads legacy per-project `slipbox.db` via raw `sqlite3`, snapshots a backup, detects reference/zettel_id collisions, id-remaps notes/labels/citations/tags/links into GlobalBase, moves `.md` files into `<vault_root>/notes/<type>/`, writes `.vault_pointer` marker. `cli.py`: 3 commands (info, validate, unify). Vault root via `WORKFLOW_VAULT_ROOT` env (default `~/Documents/01-U/0000AA-Vault`).
+
+- **`src/workflow/prisma/`** — PRISMA systematic review CLI. `cli.py` (prisma group: bib, keyword, review subgroups), `service.py` (queries, status constants), `formatters.py` (table + JSON). Commands: prisma bib list|show, keyword list, review list, checklist show, rationale add|list, tag add|list. See ADR PRISMA-0005.
 
 - **`src/itep/`** — Init TeX Project (ITeP). Project scaffolding and management. Uses `workflow.db` for models. Config is `config.yaml` per project (pointer to DB record, see ADR ITEP/0003).
 
@@ -78,7 +80,7 @@ Defined in `pyproject.toml` under `[project.scripts]`:
 - All CLIs use **Click** with groups and commands
 - **SQLAlchemy 2.0** with `Mapped[]` annotations is the single ORM (ADR-0004)
 - Data access goes through **repository Protocol interfaces** (`workflow.db.repos.protocols`)
-- **Hybrid DB**: global for reference data, local per project (ADR-0003)
+- **Hybrid DB**: global for reference data + unified vault notes (ADR-0003, ITEP-0011); local per project for PRISMA decisions + project-scoped notes (ITEP-0011 P5)
 - XDG layout: config in `~/.config/workflow/`, data in `~/.local/share/workflow/` (ADR-0008)
 - Exercise macros: extend existing `\question`, `\qpart`, `\pts` — never replace (ADR-0005)
 - `.tex` files are **truth source** for exercise content; DB stores metadata index only (ADR-0010)
@@ -87,7 +89,9 @@ Defined in `pyproject.toml` under `[project.scripts]`:
 - Lectures CLI: `workflow lectures scan|split|link|build-eval`
 - Graph CLI: `workflow graph orphans|stats|export-dot|export-tikz|clusters|neighbors`
 - Evaluation CLI: `workflow evaluations list|show|add|edit`, `workflow item list|add`, `workflow course list|add` (ADR-0016)
-- PRISMA CLI: `workflow prisma bib list|show`, `workflow prisma keyword list`, `workflow prisma review list` (ADR PRISMA-0005)
+- PRISMA CLI: `workflow prisma bib list|show`, `workflow prisma keyword list`, `workflow prisma review list`, `workflow prisma checklist show`, `workflow prisma rationale add|list`, `workflow prisma tag add|list` (ADR PRISMA-0005)
+- Vault CLI: `workflow vault info|validate|unify` (ITEP-0011). Migrates per-project `slipbox.db` notes into the global vault; idempotent via `.vault_pointer` marker.
+- Validation CLI: `workflow validate notes [--strict-main-topic]` (Phase B / ITEP-0009 Part II) — resolves frontmatter `main_topic` against `MainTopic` and enforces `discipline_area` consistency.
 - Disciplines + maturation CLI: `workflow db disciplines list [--json]`, `workflow project propose-maturation [--json] [--area DDTTAA]` (ADR ITEP-0009). Bloom enums: `workflow item taxonomy --levels|--domains [--json]` (ADR ITEP-0006).
 - Shared `get_engine_from_ctx()` in `workflow.db.engine` for all Click commands
 - Project types: `GeneralProject` and `LectureProject` (see `itep/models.py`)
@@ -109,6 +113,7 @@ Architecture decisions in `docs/ADR/` (see [INDEX.md](docs/ADR/INDEX.md) for ful
 | ITEP-0008 | General project nomenclature (DDTTAA-YYPP-title) | Implemented |
 | ITEP-0009 | Knowledge lifecycle and AI agent conventions | Implemented (partial) |
 | ITEP-0010 | Schema versioning and forward-only migrations | Implemented |
+| ITEP-0011 | Vault unification: notes layer → GlobalBase; per-project `.md` under `<vault_root>` | Accepted (P0–P3 shipped) |
 | STY-0000..0011 | LaTeX style file ADRs (12 total) | Accepted |
 | 0001 | Zettelkasten note semantic layer | Accepted |
 | 0002 | Markdown as canonical knowledge layer | Accepted |
