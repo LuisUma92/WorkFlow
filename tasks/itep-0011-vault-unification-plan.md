@@ -96,7 +96,39 @@ workflow vault unify [--project DDTTAA-YYPP] [--dry-run] [--backup-dir <path>]
 - `test_unify_moves_md_files` — files relocated, originals gone, .vault_pointer present.
 - `test_unify_orphan_link_detection` — Link with missing target → reported, not migrated.
 
-## P3 — Repository switch + Phase-B-unblock gate
+## P3 — Repository switch + Phase-B-unblock gate — **DONE 2026-05-06**
+
+**Shipped:**
+- `4dd837b` — P3.1 lecture/cli.py swaps `_get_local_engine` → `init_global_db()`
+  for `scan` and `link`. `--project-root` retained but unused (P5 hook).
+  4 xfail marks dropped from `tests/workflow/lecture/test_cli.py`;
+  `test_link_command_creates_slipbox_db` retargets to global DB path.
+  Autouse fixture redirects `XDG_DATA_HOME` per test.
+- `67fad69` — P3.2 graph/collectors.py `collect_notes(session)` (renamed
+  param) + `build_knowledge_graph(global_session)` (drop local arg).
+  graph/cli.py `_build_graph` simplified. test_collectors fixture
+  consolidated; `_both_dbs` test renamed `_with_notes`.
+- `15d2f74` — P3.3 latexzettel/infra/orm.py shim retargets to
+  `get_global_engine()` + `init_global_db()`. infra/db.py docstring
+  updated; helpers were already engine-agnostic.
+
+**Deferred from P3 (separate work):**
+- Global config file `~/.config/workflow/config.yaml` + `vault_root` key.
+  No global-config infrastructure exists; `WORKFLOW_VAULT_ROOT` env var
+  covers P2/P3.
+- `src/workflow/notes/discovery.py` vault_root integration — Phase A
+  (`tasks/phaseA-notes-crud-plan.md`) not yet shipped; module absent.
+  Lands with Phase A.
+
+**Suite at P3 close:** 867 pass, 0 xfail (was 4 at P1), 1 pre-existing
+UCR-sty fail unrelated.
+
+**Gate:** Phase B of `tasks/requests/2026-05-04-zettelkasten-main-topic-bundle.md`
+is now unblocked.
+
+---
+
+## P3 (original) — Repository switch + Phase-B-unblock gate — superseded
 
 **Decision (OQ5):** `SqlNoteRepo` locks to a GlobalBase session — no dual-engine support. Project-scoped note queries route through the future `ProjectNoteRepo` (P5) once `project_note` table lands.
 
@@ -169,11 +201,13 @@ workflow prisma decision list|add|edit
 ```
 Session 2026-05-04: P0 + P1 — DONE (P0 accept 2026-05-06, P1 commit c02d788)
 Session 2026-05-06: P2 — DONE (552d009 + bb28549 + d04b157)
-Session N+1:        P3 → Phase B unblocked
-Session N+2:        P4 + P5
-Session N+3:        P6 + P7
+Session 2026-05-06: P3 — DONE (4dd837b + 67fad69 + 15d2f74); Phase B unblocked
+Session N+1:        P4 + P5
+Session N+2:        P6 + P7
 ```
 
 ## Status
-`in-progress` — P0/P1/P2 shipped. **Next: P3** (SqlNoteRepo→global,
-lecture CLI cutover, drop 4 xfail marks, add `vault_root` config key).
+`in-progress` — P0/P1/P2/P3 shipped. **Next: P4 + P5.**
+- P4: drop LocalBase note tables (irreversible); pre-flight aborts if
+  any LocalBase has note rows AND `WORKFLOW_VAULT_MODE != unified`.
+- P5: new LocalBase tables `prisma_decision`, `project_note`.
