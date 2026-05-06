@@ -45,6 +45,13 @@ class Note(GlobalBase):
         comment="Stable Zettelkasten ID (e.g., 20260326-gauss-law)",
     )
 
+    # Phase B — link note to a MainTopic via real FK (post-ITEP-0011 P1).
+    main_topic_id: Mapped[int | None] = mapped_column(
+        ForeignKey("main_topic.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     __table_args__ = (
         CheckConstraint(
             "note_type IN ('permanent', 'literature', 'fleeting') OR note_type IS NULL",
@@ -70,6 +77,9 @@ class Note(GlobalBase):
     )
     tags: Mapped[list[Tag]] = relationship(
         "Tag", secondary="note_tag", back_populates="notes"
+    )
+    main_topic: Mapped["MainTopic | None"] = relationship(
+        "MainTopic", foreign_keys=[main_topic_id]
     )
 
     def __repr__(self) -> str:

@@ -49,6 +49,10 @@ class NoteFrontmatter:
     images: tuple[str, ...] = ()
     type: str = "permanent"
     candidate_project: str | None = None
+    # Phase B (ITEP-0009 Part II) — frontmatter linkage to MainTopic.
+    # main_topic accepts either an int id or a code slug (e.g. "FI0006").
+    main_topic: str | int | None = None
+    discipline_area: str | None = None
 
 
 @dataclass(frozen=True)
@@ -123,6 +127,9 @@ def validate_note_frontmatter(data: dict) -> tuple[NoteFrontmatter | None, list[
 
     candidate_project = _validate_candidate_project(data, errors)
 
+    main_topic = _validate_main_topic(data, errors)
+    discipline_area = _validate_discipline_area(data, errors)
+
     if errors:
         return None, errors
 
@@ -138,9 +145,37 @@ def validate_note_frontmatter(data: dict) -> tuple[NoteFrontmatter | None, list[
             images=tuple(images),
             type=note_type,
             candidate_project=candidate_project,
+            main_topic=main_topic,
+            discipline_area=discipline_area,
         ),
         [],
     )
+
+
+_DDTTAA_RE = re.compile(r"^[A-Z0-9]{6}$")
+
+
+def _validate_main_topic(data: dict, errors: list[str]) -> str | int | None:
+    value = data.get("main_topic")
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (str, int)):
+        errors.append("'main_topic' must be a string slug or integer id")
+        return None
+    return value
+
+
+def _validate_discipline_area(data: dict, errors: list[str]) -> str | None:
+    value = data.get("discipline_area")
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        errors.append("'discipline_area' must be a string DDTTAA code")
+        return None
+    if not _DDTTAA_RE.match(value):
+        errors.append(f"'discipline_area' must be a 6-char DDTTAA code; got '{value}'")
+        return None
+    return value
 
 
 def validate_exercise_metadata(data: dict) -> tuple[ExerciseMetadata | None, list[str]]:
