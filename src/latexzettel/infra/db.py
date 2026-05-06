@@ -13,12 +13,14 @@ API que importan de aquí no necesiten cambios:
   - connect(db) / close(db)     — no-ops (SQLAlchemy gestiona el pool)
   - db_session                  — context manager que envuelve Session de SQLAlchemy
 
-Internamente usa workflow.db.engine para crear el engine/sesión local.
+Internamente usa workflow.db.engine. ITEP-0011 P3: el shim apunta a la
+base de datos GLOBAL (~/.local/share/workflow/workflow.db).
+
 El parámetro `db` que reciben las funciones es el módulo orm de latexzettel
 (latexzettel.infra.orm), que ahora actúa como shim y expone:
-  - db.engine            — SQLAlchemy engine
-  - db.Note              — clase SQLAlchemy Note (de workflow.db.models.notes)
-  - db.create_all_tables() — crea tablas via LocalBase.metadata.create_all
+  - db.get_engine()      — SQLAlchemy engine global
+  - db.Note              — clase SQLAlchemy Note (workflow.db.models.notes)
+  - db.create_all_tables() — crea tablas via GlobalBase.metadata.create_all
 """
 
 from __future__ import annotations
