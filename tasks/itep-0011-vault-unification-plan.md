@@ -30,7 +30,34 @@ pytest --ignore=tests/test_database.py
 # 848 passed, 4 xfailed (P3 placeholders), 1 pre-existing UCR-sty failure unrelated.
 ```
 
-## P2 — `workflow vault unify` command — **NEXT**
+## P2 — `workflow vault unify` command — **DONE 2026-05-06**
+
+**Shipped:**
+- `552d009` — global migration `0005_add_note_tables.py` (slot bumped from
+  0003; 0003/0004 already in use). CREATE TABLE IF NOT EXISTS for all 8
+  note-layer tables; composes with `init_global_db`'s metadata.create_all.
+- `bb28549` — `src/workflow/vault/{__init__,unify}.py`. `unify(project_root,
+  vault_root, *, backup_dir, global_session, rename_strategy, dry_run)`
+  reads legacy slipbox.db via raw sqlite3, snapshots backup, detects
+  reference + zettel_id collisions, applies rename strategy, inserts
+  notes/labels/citations/tags/note_tags/links into GlobalBase with id
+  remap, drops orphan links, moves .md into vault, writes `.vault_pointer`,
+  idempotent. 10 tests (all named cases below).
+- `d04b157` — `src/workflow/vault/cli.py` + main.py wiring. Commands:
+  `vault info`, `vault validate`, `vault unify`. Vault root via
+  `WORKFLOW_VAULT_ROOT` env or default. 5 CLI tests.
+
+**Deferred from P2 → P3:**
+- `vault_root` key in `~/.config/workflow/config.yaml`. P2 uses env-var
+  only. Bundling with P3 SqlNoteRepo session swap keeps config plumbing
+  in one commit.
+
+**Suite at P2 close:** 863 pass (+15), 4 xfail (P3), 1 pre-existing
+UCR-sty fail unrelated.
+
+---
+
+## P2 (original) — `workflow vault unify` command — superseded
 
 **Files:**
 - `src/workflow/vault/cli.py` (new module).
@@ -141,11 +168,12 @@ workflow prisma decision list|add|edit
 
 ```
 Session 2026-05-04: P0 + P1 — DONE (P0 accept 2026-05-06, P1 commit c02d788)
-Session N+1:        P2 (the heavy one — vault unify CLI + 0003 migration)
-Session N+2:        P3 → Phase B unblocked
-Session N+3:        P4 + P5
-Session N+4:        P6 + P7
+Session 2026-05-06: P2 — DONE (552d009 + bb28549 + d04b157)
+Session N+1:        P3 → Phase B unblocked
+Session N+2:        P4 + P5
+Session N+3:        P6 + P7
 ```
 
 ## Status
-`in-progress` — P0 accepted, P1 shipped. **Next: P2.**
+`in-progress` — P0/P1/P2 shipped. **Next: P3** (SqlNoteRepo→global,
+lecture CLI cutover, drop 4 xfail marks, add `vault_root` config key).
