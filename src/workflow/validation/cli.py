@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import click
+from sqlalchemy.orm import Session
 
+from workflow.db.engine import init_global_db
 from workflow.validation.parsers import parse_md_frontmatter, parse_tex_metadata
 from workflow.validation.schemas import (
-    validate_note_frontmatter,
+    check_discipline_area_consistency,
+    check_main_topic_against_db,
     validate_exercise_metadata,
+    validate_note_frontmatter,
 )
 
 
@@ -20,34 +25,69 @@ def validate():
 @validate.command()
 @click.argument("path", type=click.Path(exists=True))
 @click.option("--recursive/--no-recursive", default=True, show_default=True)
-def notes(path: str, recursive: bool) -> None:
+@click.option(
+    "--strict-main-topic",
+    is_flag=True,
+    default=False,
+    help="Treat unknown main_topic slug/id as error (Phase B / ITEP-0009 Part II).",
+)
+def notes(path: str, recursive: bool, strict_main_topic: bool) -> None:
     """Validate YAML frontmatter in Markdown notes."""
     root = Path(path)
-    pattern = "**/*.md" if recursive else "*.md"
     files = sorted(root.rglob("*.md") if recursive else root.glob("*.md"))
 
     total = 0
     valid = 0
     invalid = 0
+    warnings = 0
 
-    for filepath in files:
-        total += 1
-        frontmatter = parse_md_frontmatter(filepath)
+    engine = init_global_db()
+    with Session(engine) as session:
+        for filepath in files:
+            total += 1
+            frontmatter = parse_md_frontmatter(filepath)
 
-        if frontmatter is None:
-            click.echo(f"{filepath}: [SKIP] no frontmatter found")
-            continue
+            if frontmatter is None:
+                click.echo(f"{filepath}: [SKIP] no frontmatter found")
+                continue
 
-        _, errors = validate_note_frontmatter(frontmatter)
-        if errors:
-            invalid += 1
-            click.echo(f"{filepath}:")
-            for err in errors:
-                click.echo(f"  - {err}")
-        else:
-            valid += 1
+            fm, errors = validate_note_frontmatter(frontmatter)
+            file_errors = list(errors)
+            file_warnings: list[str] = []
 
-    click.echo(f"\nSummary: {total} files checked, {valid} valid, {invalid} with errors.")
+            if fm is not None:
+                mt_obj, mt_msgs = check_main_topic_against_db(fm.main_topic, session)
+                if mt_msgs:
+                    if strict_main_topic:
+                        file_errors.extend(mt_msgs)
+                    else:
+                        file_warnings.extend(mt_msgs)
+
+                file_errors.extend(
+                    check_discipline_area_consistency(
+                        mt_obj, fm.discipline_area, session
+                    )
+                )
+
+            if file_errors:
+                invalid += 1
+                click.echo(f"{filepath}:")
+                for err in file_errors:
+                    click.echo(f"  - {err}")
+            else:
+                valid += 1
+            if file_warnings:
+                warnings += 1
+                click.echo(f"{filepath}:")
+                for w in file_warnings:
+                    click.echo(f"  ! {w}")
+
+    click.echo(
+        f"\nSummary: {total} files checked, {valid} valid, "
+        f"{invalid} with errors, {warnings} with warnings."
+    )
+    if invalid:
+        sys.exit(1)
 
 
 @validate.command()
@@ -79,4 +119,6 @@ def exercises(path: str, recursive: bool) -> None:
         else:
             valid += 1
 
-    click.echo(f"\nSummary: {total} files checked, {valid} valid, {invalid} with errors.")
+    click.echo(
+        f"\nSummary: {total} files checked, {valid} valid, {invalid} with errors."
+    )
