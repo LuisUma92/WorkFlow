@@ -16,13 +16,16 @@ def runner() -> CliRunner:
     return CliRunner()
 
 
+@pytest.fixture(autouse=True)
+def _isolated_global_db(tmp_path_factory, monkeypatch):
+    """Redirect appdirs user_data_dir into tmp so tests don't touch real DB."""
+    base = tmp_path_factory.mktemp("xdg")
+    monkeypatch.setenv("XDG_DATA_HOME", str(base))
+
+
 # ── scan command ────────────────────────────────────────────────────────────
 
 
-@pytest.mark.xfail(
-    reason="ITEP-0011 P3: lecture CLI must query global DB for notes after vault unification",
-    strict=False,
-)
 def test_scan_command_finds_tex_files(runner: CliRunner, tmp_path: Path) -> None:
     """scan command reports discovered .tex files."""
     lect_tex = tmp_path / "lect" / "tex"
@@ -37,10 +40,6 @@ def test_scan_command_finds_tex_files(runner: CliRunner, tmp_path: Path) -> None
     assert "intro.tex" in result.output or "1" in result.output
 
 
-@pytest.mark.xfail(
-    reason="ITEP-0011 P3: lecture CLI must query global DB for notes after vault unification",
-    strict=False,
-)
 def test_scan_empty_dir_message(runner: CliRunner, tmp_path: Path) -> None:
     """scan command reports nothing found when directory is empty."""
     result = runner.invoke(
@@ -52,12 +51,8 @@ def test_scan_empty_dir_message(runner: CliRunner, tmp_path: Path) -> None:
     assert "0" in result.output or "No" in result.output or "no" in result.output
 
 
-@pytest.mark.xfail(
-    reason="ITEP-0011 P3: lecture CLI must query global DB for notes after vault unification",
-    strict=False,
-)
 def test_scan_registers_notes_in_db(runner: CliRunner, tmp_path: Path) -> None:
-    """scan command registers found .tex files in the local slipbox.db."""
+    """scan command registers .tex files in the global note layer (ITEP-0011 P3)."""
     lect_tex = tmp_path / "lect" / "tex"
     lect_tex.mkdir(parents=True)
     (lect_tex / "topic.tex").write_text("\\section{Topic}")
@@ -67,9 +62,15 @@ def test_scan_registers_notes_in_db(runner: CliRunner, tmp_path: Path) -> None:
     )
 
     assert result.exit_code == 0, result.output
-    # DB file should have been created
-    db_path = tmp_path / "slipbox.db"
-    assert db_path.exists()
+    # Global DB created via XDG-redirected appdirs path.
+    from sqlalchemy.orm import Session
+    from workflow.db.engine import init_global_db
+    from workflow.db.models.notes import Note
+
+    engine = init_global_db()
+    with Session(engine) as session:
+        notes = session.query(Note).all()
+        assert any("topic.tex" in n.filename for n in notes)
 
 
 # ── split command ────────────────────────────────────────────────────────────
@@ -162,10 +163,6 @@ def test_link_command_empty_dir(runner: CliRunner, tmp_path: Path) -> None:
     assert "References found" in result.output
 
 
-@pytest.mark.xfail(
-    reason="ITEP-0011 P3: lecture CLI must query global DB for notes after vault unification",
-    strict=False,
-)
 def test_link_command_processes_tex_files(runner: CliRunner, tmp_path: Path) -> None:
     """link command scans lecture dir and reports citation counts."""
     lect_tex = tmp_path / "lect" / "tex"
@@ -184,15 +181,16 @@ def test_link_command_processes_tex_files(runner: CliRunner, tmp_path: Path) -> 
     assert "Citations found" in result.output
 
 
-def test_link_command_creates_slipbox_db(runner: CliRunner, tmp_path: Path) -> None:
-    """link command initialises slipbox.db when it does not yet exist."""
+def test_link_command_creates_global_db(runner: CliRunner, tmp_path: Path) -> None:
+    """link command initialises the global note layer (ITEP-0011 P3)."""
     result = runner.invoke(
         lectures, ["link", str(tmp_path), "--project-root", str(tmp_path)]
     )
 
     assert result.exit_code == 0, result.output
-    db_path = tmp_path / "slipbox.db"
-    assert db_path.exists()
+    from workflow.db.engine import _default_global_path
+
+    assert _default_global_path().exists()
 
 
 # ── build-eval command ───────────────────────────────────────────────────────

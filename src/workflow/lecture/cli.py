@@ -7,11 +7,11 @@ Provides: scan, split, link, build-eval.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import click
 from sqlalchemy.orm import Session
 
+from workflow.db.engine import init_global_db
 from workflow.db.errors import with_schema_guard
 from workflow.lecture.linker import link_lecture_files
 from workflow.lecture.note_splitter import split_notes_file
@@ -20,13 +20,6 @@ from workflow.lecture.scanner import register_notes, scan_lecture_directory
 __all__ = ["lectures"]
 
 _MAX_EXERCISE_POOL = 10_000
-
-
-def _get_local_engine(project_root: Path) -> Any:
-    """Initialise and return a local slipbox.db engine."""
-    from workflow.db.engine import init_local_db
-
-    return init_local_db(project_root=project_root)
 
 
 @click.group()
@@ -45,11 +38,16 @@ def lectures() -> None:
 )
 @with_schema_guard
 def scan(lecture_dir: str, project_root: str) -> None:
-    """Scan lecture directory and register .tex files as notes."""
-    lecture_path = Path(lecture_dir).resolve()
-    root_path = Path(project_root).resolve()
+    """Scan lecture directory and register .tex files as notes.
 
-    engine = _get_local_engine(root_path)
+    ITEP-0011 P3: notes register against the GlobalBase note layer.
+    ``--project-root`` is retained for forward compatibility with the
+    future per-project note layer (ITEP-0011 P5) but is currently ignored.
+    """
+    lecture_path = Path(lecture_dir).resolve()
+    _ = Path(project_root).resolve()  # reserved for P5 routing
+
+    engine = init_global_db()
 
     with Session(engine) as session:
         result = register_notes(lecture_path, session)
@@ -126,11 +124,15 @@ def split(source_file: str, output_dir: str | None, overwrite: bool) -> None:
 )
 @with_schema_guard
 def link(lecture_dir: str, project_root: str) -> None:
-    """Scan lecture files for references and update link tables."""
-    lecture_path = Path(lecture_dir).resolve()
-    root_path = Path(project_root).resolve()
+    """Scan lecture files for references and update link tables.
 
-    engine = _get_local_engine(root_path)
+    ITEP-0011 P3: Link/Citation rows live on GlobalBase. ``--project-root``
+    is kept for forward compatibility (P5) but currently ignored.
+    """
+    lecture_path = Path(lecture_dir).resolve()
+    _ = Path(project_root).resolve()
+
+    engine = init_global_db()
 
     with Session(engine) as session:
         tex_files = scan_lecture_directory(lecture_path)
