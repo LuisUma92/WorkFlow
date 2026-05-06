@@ -8,6 +8,7 @@ Commands:
   graph clusters     — show topic clusters (requires networkx)
   graph neighbors    — show neighbours of a node
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -15,7 +16,7 @@ from pathlib import Path
 import click
 from sqlalchemy.orm import Session
 
-from workflow.db.engine import get_local_engine, init_global_db
+from workflow.db.engine import init_global_db
 from workflow.db.errors import with_schema_guard
 from workflow.graph.analysis import compute_stats, find_orphans, neighbors
 from workflow.graph.collectors import build_knowledge_graph
@@ -26,18 +27,15 @@ from workflow.graph.domain import KnowledgeGraph
 
 
 def _build_graph(project: str) -> KnowledgeGraph:
-    """Build knowledge graph from global + optional local DB."""
-    global_engine = init_global_db()
-    project_path = Path(project)
-    local_db = project_path / "slipbox.db"
+    """Build knowledge graph from the global DB (ITEP-0011 P3).
 
+    ``project`` is retained for forward compatibility (P5 ProjectNote)
+    but is currently unused — all graph sources live on GlobalBase.
+    """
+    _ = Path(project)
+    global_engine = init_global_db()
     with Session(global_engine) as gsession:
-        if local_db.exists():
-            local_engine = get_local_engine(project_path)
-            with Session(local_engine) as lsession:
-                return build_knowledge_graph(gsession, lsession)
-        else:
-            return build_knowledge_graph(gsession)
+        return build_knowledge_graph(gsession)
 
 
 # ── CLI group ───────────────────────────────────────────────────────────────
@@ -53,7 +51,8 @@ def graph() -> None:
 
 @graph.command()
 @click.option(
-    "--type", "node_type",
+    "--type",
+    "node_type",
     type=click.Choice(
         ["note", "exercise", "bib_entry", "content", "topic", "course"],
         case_sensitive=False,

@@ -6,6 +6,7 @@ Each collector queries one database (global or local) and returns
 build_knowledge_graph() merges all sources into a single KnowledgeGraph,
 deduplicating nodes by node_id.
 """
+
 from __future__ import annotations
 
 from sqlalchemy.orm import Session
@@ -14,13 +15,16 @@ from sqlalchemy import select
 from workflow.graph.domain import GraphEdge, GraphNode, KnowledgeGraph
 
 
-# ── Notes collector (local slipbox.db) ─────────────────────────────────────
+# ── Notes collector (GlobalBase, ITEP-0011 P3) ─────────────────────────────
 
 
 def collect_notes(
-    local_session: Session,
+    session: Session,
 ) -> tuple[tuple[GraphNode, ...], tuple[GraphEdge, ...]]:
-    """Return Note nodes + Link edges + Citation edges from slipbox.db.
+    """Return Note nodes + Link edges + Citation edges from the global DB.
+
+    ITEP-0011 P3: notes live on GlobalBase. ``session`` is a GlobalBase
+    session.
 
     Notes are identified as "note:{id}".
     Link edges connect source note → target note (resolved via Label).
@@ -28,7 +32,7 @@ def collect_notes(
     """
     from workflow.db.models.notes import Citation, Label, Link, Note
 
-    notes = local_session.scalars(select(Note)).all()
+    notes = session.scalars(select(Note)).all()
     if not notes:
         return (), ()
 
@@ -37,14 +41,12 @@ def collect_notes(
         for n in notes
     ]
 
-    # Build label_id → note_id map for resolving Links
-    labels = local_session.scalars(select(Label)).all()
+    labels = session.scalars(select(Label)).all()
     label_to_note: dict[int, int] = {lbl.id: lbl.note_id for lbl in labels}
 
     edges: list[GraphEdge] = []
 
-    # Link edges: note → note (via label)
-    links = local_session.scalars(select(Link)).all()
+    links = session.scalars(select(Link)).all()
     for lnk in links:
         target_note_id = label_to_note.get(lnk.target_id)
         if target_note_id is not None:
@@ -56,8 +58,7 @@ def collect_notes(
                 )
             )
 
-    # Citation edges: note → bib:<citationkey>
-    citations = local_session.scalars(select(Citation)).all()
+    citations = session.scalars(select(Citation)).all()
     for cit in citations:
         edges.append(
             GraphEdge(
@@ -152,12 +153,18 @@ def collect_academic(
     nodes: list[GraphNode] = []
 
     for c in contents:
-        nodes.append(GraphNode(node_id=f"content:{c.id}", node_type="content", label=c.name))
+        nodes.append(
+            GraphNode(node_id=f"content:{c.id}", node_type="content", label=c.name)
+        )
     for t in topics:
-        nodes.append(GraphNode(node_id=f"topic:{t.id}", node_type="topic", label=t.name))
+        nodes.append(
+            GraphNode(node_id=f"topic:{t.id}", node_type="topic", label=t.name)
+        )
     for course in courses:
         nodes.append(
-            GraphNode(node_id=f"course:{course.id}", node_type="course", label=course.name)
+            GraphNode(
+                node_id=f"course:{course.id}", node_type="course", label=course.name
+            )
         )
 
     edges: list[GraphEdge] = []
@@ -219,25 +226,22 @@ def collect_bibliography(
 
 def build_knowledge_graph(
     global_session: Session,
-    local_session: Session | None = None,
 ) -> KnowledgeGraph:
     """Collect all sources, merge, and deduplicate nodes by node_id.
 
-    local_session is optional — omit when working in a global-only context
-    (e.g. no project slipbox.db is open).
+    ITEP-0011 P3: all sources (notes, exercises, academic, bibliography)
+    live on GlobalBase, so a single session is sufficient.
     """
     all_nodes: list[GraphNode] = []
     all_edges: list[GraphEdge] = []
 
-    # Global collectors
-    for collector in (collect_exercises, collect_academic, collect_bibliography):
+    for collector in (
+        collect_notes,
+        collect_exercises,
+        collect_academic,
+        collect_bibliography,
+    ):
         nodes, edges = collector(global_session)
-        all_nodes.extend(nodes)
-        all_edges.extend(edges)
-
-    # Local collector (optional)
-    if local_session is not None:
-        nodes, edges = collect_notes(local_session)
         all_nodes.extend(nodes)
         all_edges.extend(edges)
 

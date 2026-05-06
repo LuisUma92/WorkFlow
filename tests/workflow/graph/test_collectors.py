@@ -64,35 +64,24 @@ def global_session():
     session.close()
 
 
-@pytest.fixture()
-def local_session():
-    engine = create_engine("sqlite:///:memory:")
-    import workflow.db.models.notes  # noqa: F401
-    import workflow.db.models.academic  # noqa: F401  # MainTopic FK target for Concept
-
-    GlobalBase.metadata.create_all(engine)
-    LocalBase.metadata.create_all(engine)
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    yield session
-    session.close()
+# global_session fixture removed: ITEP-0011 P3 — notes live on GlobalBase.
 
 
 # ── collect_notes ──────────────────────────────────────────────────────────
 
 
-def test_collect_notes_empty_db(local_session):
-    nodes, edges = collect_notes(local_session)
+def test_collect_notes_empty_db(global_session):
+    nodes, edges = collect_notes(global_session)
     assert nodes == ()
     assert edges == ()
 
 
-def test_collect_notes_returns_note_nodes(local_session):
+def test_collect_notes_returns_note_nodes(global_session):
     note = Note(filename="foo.md", reference="foo")
-    local_session.add(note)
-    local_session.flush()
+    global_session.add(note)
+    global_session.flush()
 
-    nodes, edges = collect_notes(local_session)
+    nodes, edges = collect_notes(global_session)
     node_ids = {n.node_id for n in nodes}
     assert f"note:{note.id}" in node_ids
     node = next(n for n in nodes if n.node_id == f"note:{note.id}")
@@ -100,21 +89,21 @@ def test_collect_notes_returns_note_nodes(local_session):
     assert node.label == "foo.md"
 
 
-def test_collect_notes_with_link(local_session):
+def test_collect_notes_with_link(global_session):
     note1 = Note(filename="a.md", reference="a")
     note2 = Note(filename="b.md", reference="b")
-    local_session.add_all([note1, note2])
-    local_session.flush()
+    global_session.add_all([note1, note2])
+    global_session.flush()
 
     label = Label(note_id=note2.id, label="b-section")
-    local_session.add(label)
-    local_session.flush()
+    global_session.add(label)
+    global_session.flush()
 
     link = Link(source_id=note1.id, target_id=label.id)
-    local_session.add(link)
-    local_session.flush()
+    global_session.add(link)
+    global_session.flush()
 
-    nodes, edges = collect_notes(local_session)
+    nodes, edges = collect_notes(global_session)
     node_ids = {n.node_id for n in nodes}
     assert f"note:{note1.id}" in node_ids
     assert f"note:{note2.id}" in node_ids
@@ -125,16 +114,16 @@ def test_collect_notes_with_link(local_session):
     assert link_edges[0].target_id == f"note:{note2.id}"
 
 
-def test_collect_notes_with_citation(local_session):
+def test_collect_notes_with_citation(global_session):
     note = Note(filename="x.md", reference="x")
-    local_session.add(note)
-    local_session.flush()
+    global_session.add(note)
+    global_session.flush()
 
     cit = Citation(note_id=note.id, citationkey="Smith2020")
-    local_session.add(cit)
-    local_session.flush()
+    global_session.add(cit)
+    global_session.flush()
 
-    nodes, edges = collect_notes(local_session)
+    nodes, edges = collect_notes(global_session)
     cit_edges = [e for e in edges if e.edge_type == "citation"]
     assert len(cit_edges) == 1
     assert cit_edges[0].source_id == f"note:{note.id}"
@@ -402,34 +391,35 @@ def test_build_knowledge_graph_global_only(global_session):
     global_session.add(ex)
     global_session.flush()
 
-    graph = build_knowledge_graph(global_session, local_session=None)
+    graph = build_knowledge_graph(global_session)
     assert isinstance(graph, KnowledgeGraph)
     node_ids = graph.node_ids()
     assert "exercise:test-001" in node_ids
     assert f"bib:{bib.id}" in node_ids
 
 
-def test_build_knowledge_graph_both_dbs(global_session, local_session):
+def test_build_knowledge_graph_with_notes(global_session):
+    """ITEP-0011 P3: notes live on GlobalBase alongside bib + exercises."""
     note = Note(filename="my-note.md", reference="my-note")
-    local_session.add(note)
-    local_session.flush()
+    global_session.add(note)
+    global_session.flush()
 
     bib = BibEntry(title="Another Book", year=2022)
     global_session.add(bib)
     global_session.flush()
 
-    graph = build_knowledge_graph(global_session, local_session=local_session)
+    graph = build_knowledge_graph(global_session)
     node_ids = graph.node_ids()
     assert f"note:{note.id}" in node_ids
     assert f"bib:{bib.id}" in node_ids
 
 
-def test_build_knowledge_graph_deduplicates_nodes(global_session, local_session):
+def test_build_knowledge_graph_deduplicates_nodes(global_session):
     """Nodes with same node_id must appear only once."""
     note = Note(filename="dup.md", reference="dup")
-    local_session.add(note)
-    local_session.flush()
+    global_session.add(note)
+    global_session.flush()
 
-    graph = build_knowledge_graph(global_session, local_session=local_session)
+    graph = build_knowledge_graph(global_session)
     ids = [n.node_id for n in graph.nodes]
     assert len(ids) == len(set(ids))
