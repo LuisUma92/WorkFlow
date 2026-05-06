@@ -14,6 +14,7 @@ from workflow.notes.cli import notes
 from workflow.evaluation.cli import evaluations, item, course
 from workflow.prisma.cli import prisma
 from workflow.project.cli import project
+from workflow.vault.cli import vault
 
 
 @click.group("workflow")
@@ -33,6 +34,7 @@ cli.add_command(item)
 cli.add_command(course)
 cli.add_command(prisma)
 cli.add_command(project)
+cli.add_command(vault)
 
 
 if __name__ == "__main__":

@@ -7,3 +7,9 @@ Public API:
 from workflow.vault.unify import UnifyReport, unify
 
 __all__ = ["UnifyReport", "unify"]
+
+
+def _get_cli():
+    from workflow.vault.cli import vault
+
+    return vault
