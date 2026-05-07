@@ -97,11 +97,8 @@ def cmd_show(ctx: click.Context, code: str, as_json: bool) -> None:
             raise click.ClickException(f"Concept {code!r} not found.")
 
         from workflow.db.models.notes import Concept as _Concept
-        child_count = (
-            session.query(_Concept)
-            .filter(_Concept.parent_id == c.id)
-            .count()
-        )
+
+        child_count = session.query(_Concept).filter(_Concept.parent_id == c.id).count()
 
         if as_json:
             click.echo(format_concept_show_json(c, child_count))
@@ -160,9 +157,7 @@ def cmd_add(
         if as_json:
             click.echo(format_concept_json(c))
         else:
-            click.echo(
-                f"Created concept: {c.code!r} — {c.label} (id={c.id})"
-            )
+            click.echo(f"Created concept: {c.code!r} — {c.label} (id={c.id})")
 
 
 # ── tree ──────────────────────────────────────────────────────────────────
@@ -240,9 +235,9 @@ def cmd_rename(ctx: click.Context, old_code: str, new_code: str) -> None:
     engine = _get_engine(ctx)
     with Session(engine) as session:
         try:
-            c = rename_concept(session, old_code, new_code)
+            rename_concept(session, old_code, new_code)
             session.commit()
         except (UnknownCode, DuplicateCode, ConceptError) as exc:
             raise click.ClickException(str(exc))
 
-    click.echo(f"Renamed concept {old_code!r} → {c.code!r}.")
+    click.echo(f"Renamed concept {old_code!r} → {new_code!r}.")
