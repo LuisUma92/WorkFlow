@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 
 import click
@@ -20,6 +19,7 @@ from workflow.notes.service import (
     AmbiguousNoteId,
     NoteNotFound,
     NoteValidationError,
+    _SAFE_ID_RE,
     add_link,
     create_note,
     list_notes,
@@ -30,9 +30,6 @@ from workflow.notes.service import (
 from workflow.validation.schemas import validate_note_frontmatter
 
 __all__ = ["notes"]
-
-# Allowlist regex for note IDs (lessons.md row 14)
-_SAFE_ID_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
 
 
 def _validate_cli_id(note_id: str) -> None:
@@ -60,6 +57,14 @@ def init_cmd(workspace: str) -> None:
         raise click.ClickException(f"Directory does not exist: {workspace_path}")
 
     result = init_workspace(workspace_path)
+
+    # Also create type subdirectories at the workspace root for direct note storage
+    type_subdirs = ("permanent", "literature", "fleeting")
+    for subdir_name in type_subdirs:
+        subdir = workspace_path / subdir_name
+        if not subdir.exists():
+            subdir.mkdir(parents=True, exist_ok=True)
+            click.echo(f"  + {subdir_name}/")
 
     if result.directories_created:
         click.echo("Created:")
@@ -109,7 +114,9 @@ def new_cmd(
     _validate_cli_id(note_id)
 
     tags_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
-    concepts_list = [c.strip() for c in concepts.split(",") if c.strip()] if concepts else []
+    concepts_list = (
+        [c.strip() for c in concepts.split(",") if c.strip()] if concepts else []
+    )
 
     fm_dict: dict = {
         "id": note_id,
@@ -162,8 +169,10 @@ def new_cmd(
 @click.option(
     "--edge-types",
     "edge_types",
-    default="concepts,references,exercises,wikilinks",
-    help="Comma-separated edge types to follow when <note_id> given.",
+    default="wikilinks",
+    help="Comma-separated edge types to follow when <note_id> given. Default: wikilinks. "
+    "Note: concepts/references/exercises are slug keys, not note ids; "
+    "their resolver is deferred to Phase B/ITEP-0012.",
 )
 @click.option(
     "--dir",
@@ -261,8 +270,7 @@ def tag_cmd(
     _validate_cli_id(note_id)
     root = Path(root_dir).resolve()
     try:
-        new_fm = update_tags(root, note_id, add=add_tags, remove=remove_tags)
-        path, _, _ = read_note(root, note_id)
+        path, new_fm = update_tags(root, note_id, add=add_tags, remove=remove_tags)
     except NoteNotFound as exc:
         raise click.ClickException(str(exc))
     except AmbiguousNoteId as exc:
@@ -309,8 +317,9 @@ def link_cmd(
 
     root = Path(root_dir).resolve()
     try:
-        new_fm = add_link(root, note_id, concept=concept, reference=reference, exercise=exercise)
-        path, _, _ = read_note(root, note_id)
+        path, new_fm = add_link(
+            root, note_id, concept=concept, reference=reference, exercise=exercise
+        )
     except NoteNotFound as exc:
         raise click.ClickException(str(exc))
     except AmbiguousNoteId as exc:

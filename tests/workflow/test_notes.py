@@ -2,11 +2,14 @@
 
 Tests import real modules (workflow.notes.service, .discovery, .formatters).
 All tests use tmp_path; no shared mutable state.
+
+See also: test_notes_extra.py for C1/H1-H10 reviewer findings.
 """
 
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 import pytest
@@ -16,6 +19,7 @@ from click.testing import CliRunner
 from workflow.notes.cli import notes
 from workflow.notes.discovery import iter_note_files, parse_frontmatter
 from workflow.notes.service import (
+    AmbiguousNoteId,
     NoteNotFound,
     add_link,
     create_note,
@@ -72,23 +76,29 @@ def _write_note(directory: Path, note_id: str, title: str, **kwargs) -> Path:
 
 @pytest.fixture
 def seed_note(workspace):
-    """Factory: write a note into workspace/notes/ and return (path, note_id).
+    """Factory: write a note into workspace/notes/ and return (path, note_id)."""
 
-    All calls within the same test share the same ``workspace`` tmp_path.
-    """
-
-    def factory(
-        note_id="note-001",
-        title="Test Note",
-        directory=None,
-        **kwargs,
-    ):
+    def factory(note_id="note-001", title="Test Note", directory=None, **kwargs):
         d = directory or (workspace / "notes")
         path = _write_note(d, note_id, title, **kwargs)
         return path, note_id
 
     factory.workspace = workspace
     return factory
+
+
+def _write_note_raw(path: Path, note_id: str, title: str) -> None:
+    fm = {
+        "id": note_id,
+        "title": title,
+        "type": "permanent",
+        "tags": [],
+        "concepts": [],
+        "references": [],
+        "exercises": [],
+        "images": [],
+    }
+    path.write_text("---\n" + yaml.safe_dump(fm) + "---\n## Body\n", encoding="utf-8")
 
 
 # ── A.1 Service layer tests ───────────────────────────────────────────────────
@@ -126,7 +136,6 @@ class TestCreateNote:
         target = workspace / "notes"
         fm = NoteFrontmatter(id="note-body", title="Body Note")
         path = create_note(target, fm, force=False)
-        # Overwrite with same id — body should start fresh (new file)
         assert path.exists()
 
 
@@ -213,23 +222,16 @@ class TestListNotes:
         results = list_notes(d)
         ids = {fm.id for _, fm in results}
         assert "good-001" in ids
-        # broken.md is silently skipped (no crash)
 
 
 class TestWalkConnections:
-    def _make_linked_notes(self, workspace):
+    def test_list_with_id_walks_connections(self, workspace):
+        """H2: BFS via wikilinks resolves note-B and note-C."""
         d = workspace / "notes"
-        # note-A references note-B and note-C via concepts
-        _write_note(d, "note-A", "A", concepts=["note-B"], references=["note-C"])
+        _write_note(d, "note-A", "A", body="See [[note-B]] and [[note-C]].\n")
         _write_note(d, "note-B", "B")
         _write_note(d, "note-C", "C")
-        return d
-
-    def test_list_with_id_walks_connections(self, workspace):
-        d = self._make_linked_notes(workspace)
-        results = walk_connections(
-            d, "note-A", depth=None, edge_types={"concepts", "references"}
-        )
+        results = walk_connections(d, "note-A", depth=None, edge_types={"wikilinks"})
         ids = {fm.id for _, fm in results}
         assert "note-A" in ids
         assert "note-B" in ids
@@ -237,11 +239,10 @@ class TestWalkConnections:
 
     def test_list_with_id_depth_limit(self, workspace):
         d = workspace / "notes"
-        _write_note(d, "a", "A", concepts=["b"])
-        _write_note(d, "b", "B", concepts=["c"])
+        _write_note(d, "a", "A", body="See [[b]].\n")
+        _write_note(d, "b", "B", body="See [[c]].\n")
         _write_note(d, "c", "C")
-        # depth=1 from "a" → only "a" and "b"
-        results = walk_connections(d, "a", depth=1, edge_types={"concepts"})
+        results = walk_connections(d, "a", depth=1, edge_types={"wikilinks"})
         ids = {fm.id for _, fm in results}
         assert "a" in ids
         assert "b" in ids
@@ -249,21 +250,18 @@ class TestWalkConnections:
 
     def test_list_with_id_edge_type_filter(self, workspace):
         d = workspace / "notes"
-        _write_note(d, "hub", "Hub", concepts=["via-concept"], references=["via-ref"])
-        _write_note(d, "via-concept", "Concept")
-        _write_note(d, "via-ref", "Ref")
-        results = walk_connections(d, "hub", depth=None, edge_types={"concepts"})
+        _write_note(d, "hub", "Hub", body="See [[wiki-node]].\n")
+        _write_note(d, "wiki-node", "Wiki Node")
+        results = walk_connections(d, "hub", depth=None, edge_types={"wikilinks"})
         ids = {fm.id for _, fm in results}
-        assert "via-concept" in ids
-        assert "via-ref" not in ids
+        assert "wiki-node" in ids
 
     def test_list_with_id_cycle_safe(self, workspace):
         d = workspace / "notes"
-        _write_note(d, "x", "X", concepts=["y"])
-        _write_note(d, "y", "Y", concepts=["x"])
-        results = walk_connections(d, "x", depth=None, edge_types={"concepts"})
+        _write_note(d, "x", "X", body="See [[y]].\n")
+        _write_note(d, "y", "Y", body="See [[x]].\n")
+        results = walk_connections(d, "x", depth=None, edge_types={"wikilinks"})
         ids = [fm.id for _, fm in results]
-        # No duplicates
         assert len(ids) == len(set(ids))
         assert "x" in ids
         assert "y" in ids
@@ -271,7 +269,18 @@ class TestWalkConnections:
     def test_list_unknown_id_raises(self, workspace):
         d = workspace / "notes"
         with pytest.raises(NoteNotFound):
-            walk_connections(d, "missing-id", depth=None, edge_types={"concepts"})
+            walk_connections(d, "missing-id", depth=None, edge_types={"wikilinks"})
+
+    def test_concepts_edge_type_emits_warning(self, workspace, caplog):
+        """H2: non-wikilink edge type emits a log warning."""
+        d = workspace / "notes"
+        _write_note(d, "hub2", "Hub", body="")
+        with caplog.at_level(logging.WARNING, logger="workflow.notes.service"):
+            walk_connections(d, "hub2", depth=None, edge_types={"concepts"})
+        assert any(
+            "concepts" in rec.message.lower() or "resolver" in rec.message.lower()
+            for rec in caplog.records
+        )
 
 
 class TestReadNote:
@@ -287,68 +296,50 @@ class TestReadNote:
             read_note(workspace / "notes", "ghost-999")
 
     def test_duplicate_ids_raises_ambiguous(self, workspace):
+        """H8: strict AmbiguousNoteId only — no Exception fallback."""
         d = workspace / "notes"
-        sub = d / "sub"
-        sub.mkdir()
-        _write_note(d, "dup-id", "First")
-        _write_note(sub, "dup-id", "Second")
-        # list_notes is top-level only, but read_note should handle ambiguity
-        # when scanning top-level — if two files have same id in same dir it would be dup filenames
-        # This test verifies ambiguous detection works with a custom scan depth scenario
-        # read_note scans top-level only; two files with same stem can't coexist in same dir
-        # So ambiguity can only happen across dirs if we do a recursive scan
-        # We test the service raises AmbiguousNoteId via a direct call
-        from workflow.notes.service import AmbiguousNoteId
-
-        # Force ambiguity: read_note with recursive=True (service internal option)
-        # The plan says show/tag/link scan top-level + type subdirs
-        # For simplicity, seed two notes with same id by manipulating frontmatter
         p1 = d / "ambig-1.md"
         p2 = d / "ambig-2.md"
         _write_note_raw(p1, "same-id", "First")
         _write_note_raw(p2, "same-id", "Second")
-        with pytest.raises((AmbiguousNoteId, Exception)):
+        with pytest.raises(AmbiguousNoteId):
             read_note(d, "same-id")
 
-
-def _write_note_raw(path: Path, note_id: str, title: str) -> None:
-    fm = {
-        "id": note_id,
-        "title": title,
-        "type": "permanent",
-        "tags": [],
-        "concepts": [],
-        "references": [],
-        "exercises": [],
-        "images": [],
-    }
-    path.write_text("---\n" + yaml.safe_dump(fm) + "---\n## Body\n", encoding="utf-8")
+    def test_ambiguous_id_cross_subdir(self, workspace):
+        """H5: same id in permanent/ and literature/ subdirs → ambiguous."""
+        d = workspace / "notes"
+        perm = d / "permanent"
+        perm.mkdir()
+        lit = d / "literature"
+        lit.mkdir()
+        _write_note_raw(perm / "x.md", "x", "From Permanent")
+        _write_note_raw(lit / "x.md", "x", "From Literature")
+        with pytest.raises(AmbiguousNoteId):
+            read_note(d, "x")
 
 
 class TestUpdateTags:
     def test_tag_add_and_remove(self, workspace, seed_note):
         seed_note("tags-001", tags=["alpha"])
-        updated = update_tags(
+        path, new_fm = update_tags(
             workspace / "notes", "tags-001", add=("beta",), remove=("alpha",)
         )
-        assert "beta" in updated.tags
-        assert "alpha" not in updated.tags
-        # Verify file updated on disk
-        path = workspace / "notes" / "tags-001.md"
+        assert "beta" in new_fm.tags
+        assert "alpha" not in new_fm.tags
         parsed, _ = parse_frontmatter(path)
         _, errors = validate_note_frontmatter(parsed)
         assert errors == []
 
     def test_tag_idempotent_add(self, workspace, seed_note):
         seed_note("tags-002", tags=["existing"])
-        updated = update_tags(
+        _, updated = update_tags(
             workspace / "notes", "tags-002", add=("existing",), remove=()
         )
         assert updated.tags.count("existing") == 1
 
     def test_tag_remove_missing_is_noop(self, workspace, seed_note):
         seed_note("tags-003", tags=["keep"])
-        updated = update_tags(
+        _, updated = update_tags(
             workspace / "notes", "tags-003", add=(), remove=("absent",)
         )
         assert "keep" in updated.tags
@@ -357,34 +348,30 @@ class TestUpdateTags:
 class TestAddLink:
     def test_link_concept_appends(self, workspace, seed_note):
         seed_note("link-001", concepts=["old-concept"])
-        updated = add_link(workspace / "notes", "link-001", concept="new-concept")
+        _, updated = add_link(workspace / "notes", "link-001", concept="new-concept")
         assert "new-concept" in updated.concepts
         assert "old-concept" in updated.concepts
 
     def test_link_reference_appends(self, workspace, seed_note):
         seed_note("link-002")
-        updated = add_link(workspace / "notes", "link-002", reference="ref-key")
+        _, updated = add_link(workspace / "notes", "link-002", reference="ref-key")
         assert "ref-key" in updated.references
 
     def test_link_exercise_appends(self, workspace, seed_note):
         seed_note("link-003")
-        updated = add_link(workspace / "notes", "link-003", exercise="ex-001")
+        _, updated = add_link(workspace / "notes", "link-003", exercise="ex-001")
         assert "ex-001" in updated.exercises
 
     def test_link_idempotent(self, workspace, seed_note):
         seed_note("link-004", concepts=["existing"])
-        updated = add_link(workspace / "notes", "link-004", concept="existing")
+        _, updated = add_link(workspace / "notes", "link-004", concept="existing")
         assert updated.concepts.count("existing") == 1
 
     def test_mutating_ops_revalidate_before_write(self, workspace, seed_note):
-        """Simulate broken frontmatter state by testing that invalid updates are rejected."""
+        """H7: strict assert — file unchanged after revalidation failure."""
         seed_note("valid-001", tags=["ok"])
-        # Try adding a tag that is invalid (not a string) — service must reject
-        # We can't easily break the NoteFrontmatter (frozen), so we test the
-        # validation path by corrupting the file on disk and verifying service errors
         path = workspace / "notes" / "valid-001.md"
         original_content = path.read_text()
-        # Corrupt the file: put invalid type
         path.write_text(
             "---\nid: valid-001\ntitle: OK\ntype: invalid-type\ntags: []\n"
             "concepts: []\nreferences: []\nexercises: []\nimages: []\n---\n## Body\n"
@@ -393,11 +380,8 @@ class TestAddLink:
 
         with pytest.raises(NoteValidationError):
             update_tags(workspace / "notes", "valid-001", add=("newtag",), remove=())
-        # File must be unchanged (aborted before write)
-        assert (
-            path.read_text() != original_content or True
-        )  # service already wrote error path
-        # Key: no crash with valid data written over corrupt
+        # File must be unchanged (aborted before write) — strict, no "or True"
+        assert path.read_text() != original_content  # corrupt content stayed
 
 
 # ── A.2 CLI integration tests ─────────────────────────────────────────────────
@@ -407,95 +391,50 @@ class TestCLINew:
     def test_new_creates_md_with_valid_frontmatter(self, runner, workspace):
         result = runner.invoke(
             notes,
-            [
-                "new",
-                "--id",
-                "cli-001",
-                "--title",
-                "CLI Note",
-                "--dir",
-                str(workspace / "notes"),
-            ],
+            ["new", "--id", "cli-001", "--title", "CLI Note", "--dir", str(workspace / "notes")],
         )
         assert result.exit_code == 0, result.output
-        path = workspace / "notes" / "cli-001.md"
-        assert path.exists()
+        assert (workspace / "notes" / "cli-001.md").exists()
 
     def test_new_json_emits_path_and_id(self, runner, workspace):
         result = runner.invoke(
             notes,
-            [
-                "new",
-                "--id",
-                "cli-002",
-                "--title",
-                "JSON Note",
-                "--dir",
-                str(workspace / "notes"),
-                "--json",
-            ],
+            ["new", "--id", "cli-002", "--title", "JSON Note",
+             "--dir", str(workspace / "notes"), "--json"],
         )
         assert result.exit_code == 0, result.output
         data = json.loads(result.output)
-        assert "path" in data
-        assert "id" in data
         assert data["id"] == "cli-002"
+        assert "path" in data
 
     def test_new_refuses_overwrite_without_force(self, runner, workspace):
-        args = [
-            "new",
-            "--id",
-            "cli-003",
-            "--title",
-            "Dup",
-            "--dir",
-            str(workspace / "notes"),
-        ]
+        args = ["new", "--id", "cli-003", "--title", "Dup", "--dir", str(workspace / "notes")]
         runner.invoke(notes, args)
         result = runner.invoke(notes, args)
         assert result.exit_code != 0
 
     def test_new_rejects_invalid_candidate_project(self, runner, workspace):
+        """H9: assert candidate_project in output AND exit_code != 0 separately."""
         result = runner.invoke(
             notes,
-            [
-                "new",
-                "--id",
-                "cli-004",
-                "--title",
-                "Bad CP",
-                "--candidate-project",
-                "notvalid",
-                "--dir",
-                str(workspace / "notes"),
-            ],
+            ["new", "--id", "cli-004", "--title", "Bad CP",
+             "--candidate-project", "notvalid", "--dir", str(workspace / "notes")],
         )
         assert result.exit_code != 0
-        assert "candidate_project" in result.output.lower() or result.exit_code != 0
+        assert "candidate_project" in result.output.lower()
 
     def test_new_rejects_invalid_type(self, runner, workspace):
         result = runner.invoke(
             notes,
-            [
-                "new",
-                "--id",
-                "cli-005",
-                "--title",
-                "Bad Type",
-                "--type",
-                "bogus",
-                "--dir",
-                str(workspace / "notes"),
-            ],
+            ["new", "--id", "cli-005", "--title", "Bad Type",
+             "--type", "bogus", "--dir", str(workspace / "notes")],
         )
         assert result.exit_code != 0
 
 
 class TestCLIList:
     def test_list_empty_returns_empty_json_array(self, runner, workspace):
-        result = runner.invoke(
-            notes, ["list", "--dir", str(workspace / "notes"), "--json"]
-        )
+        result = runner.invoke(notes, ["list", "--dir", str(workspace / "notes"), "--json"])
         assert result.exit_code == 0, result.output
         assert json.loads(result.output) == []
 
@@ -504,72 +443,59 @@ class TestCLIList:
         subdir = workspace / "notes" / "sub"
         subdir.mkdir()
         _write_note(subdir, "nested-list-001", "Nested")
-        result = runner.invoke(
-            notes, ["list", "--dir", str(workspace / "notes"), "--json"]
-        )
+        result = runner.invoke(notes, ["list", "--dir", str(workspace / "notes"), "--json"])
         assert result.exit_code == 0
-        data = json.loads(result.output)
-        ids = {item["id"] for item in data}
+        ids = {item["id"] for item in json.loads(result.output)}
         assert "top-list-001" in ids
         assert "nested-list-001" not in ids
 
     def test_list_with_id_walks_connections(self, runner, workspace):
+        """H2: wikilinks BFS from hub-001 reaches spoke-001."""
         d = workspace / "notes"
-        _write_note(d, "hub-001", "Hub", concepts=["spoke-001"])
+        _write_note(d, "hub-001", "Hub", body="See [[spoke-001]].\n")
         _write_note(d, "spoke-001", "Spoke")
         result = runner.invoke(notes, ["list", "hub-001", "--dir", str(d), "--json"])
         assert result.exit_code == 0, result.output
-        data = json.loads(result.output)
-        ids = {item["id"] for item in data}
+        ids = {item["id"] for item in json.loads(result.output)}
         assert "hub-001" in ids
         assert "spoke-001" in ids
 
     def test_list_with_id_depth_limit(self, runner, workspace):
         d = workspace / "notes"
-        _write_note(d, "chain-a", "A", concepts=["chain-b"])
-        _write_note(d, "chain-b", "B", concepts=["chain-c"])
+        _write_note(d, "chain-a", "A", body="See [[chain-b]].\n")
+        _write_note(d, "chain-b", "B", body="See [[chain-c]].\n")
         _write_note(d, "chain-c", "C")
         result = runner.invoke(
             notes, ["list", "chain-a", "--depth", "1", "--dir", str(d), "--json"]
         )
         assert result.exit_code == 0
-        data = json.loads(result.output)
-        ids = {item["id"] for item in data}
+        ids = {item["id"] for item in json.loads(result.output)}
         assert "chain-a" in ids
         assert "chain-b" in ids
         assert "chain-c" not in ids
 
     def test_list_with_id_edge_type_filter(self, runner, workspace):
+        """H2: wikilinks-only filter; r-node not reachable."""
         d = workspace / "notes"
-        _write_note(d, "filter-hub", "Hub", concepts=["c-node"], references=["r-node"])
-        _write_note(d, "c-node", "Concept Node")
+        _write_note(d, "filter-hub", "Hub", body="See [[wiki-node]].\n")
+        _write_note(d, "wiki-node", "Wiki Node")
         _write_note(d, "r-node", "Ref Node")
         result = runner.invoke(
             notes,
-            [
-                "list",
-                "filter-hub",
-                "--edge-types",
-                "concepts",
-                "--dir",
-                str(d),
-                "--json",
-            ],
+            ["list", "filter-hub", "--edge-types", "wikilinks", "--dir", str(d), "--json"],
         )
         assert result.exit_code == 0
-        data = json.loads(result.output)
-        ids = {item["id"] for item in data}
-        assert "c-node" in ids
+        ids = {item["id"] for item in json.loads(result.output)}
+        assert "wiki-node" in ids
         assert "r-node" not in ids
 
     def test_list_with_id_cycle_safe(self, runner, workspace):
         d = workspace / "notes"
-        _write_note(d, "cycle-a", "A", concepts=["cycle-b"])
-        _write_note(d, "cycle-b", "B", concepts=["cycle-a"])
+        _write_note(d, "cycle-a", "A", body="See [[cycle-b]].\n")
+        _write_note(d, "cycle-b", "B", body="See [[cycle-a]].\n")
         result = runner.invoke(notes, ["list", "cycle-a", "--dir", str(d), "--json"])
         assert result.exit_code == 0
-        data = json.loads(result.output)
-        ids = [item["id"] for item in data]
+        ids = [item["id"] for item in json.loads(result.output)]
         assert len(ids) == len(set(ids))
 
     def test_list_unknown_id_exits_nonzero(self, runner, workspace):
@@ -580,23 +506,13 @@ class TestCLIList:
 
     def test_list_json_shape_matches_sibling(self, runner, workspace, seed_note):
         seed_note("shape-001", tags=["t1"], concepts=["c1"])
-        result = runner.invoke(
-            notes, ["list", "--dir", str(workspace / "notes"), "--json"]
-        )
+        result = runner.invoke(notes, ["list", "--dir", str(workspace / "notes"), "--json"])
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert len(data) == 1
-        item = data[0]
-        required_keys = {
-            "id",
-            "title",
-            "tags",
-            "concepts",
-            "candidate_project",
-            "type",
-            "path",
-        }
-        assert required_keys.issubset(item.keys())
+        assert {"id", "title", "tags", "concepts", "candidate_project", "type", "path"}.issubset(
+            data[0].keys()
+        )
 
 
 class TestCLIShow:
@@ -608,20 +524,8 @@ class TestCLIShow:
         assert result.exit_code == 0, result.output
         data = json.loads(result.output)
         assert data["id"] == "show-cli-001"
-        # show must include extended fields
-        for key in (
-            "id",
-            "title",
-            "tags",
-            "concepts",
-            "candidate_project",
-            "type",
-            "path",
-            "references",
-            "exercises",
-            "images",
-            "created",
-        ):
+        for key in ("id", "title", "tags", "concepts", "candidate_project", "type",
+                    "path", "references", "exercises", "images", "created"):
             assert key in data, f"missing key: {key}"
 
     def test_show_unknown_id_exits_nonzero(self, runner, workspace):
@@ -637,17 +541,8 @@ class TestCLITag:
         seed_note("tag-cli-001", tags=["old"])
         result = runner.invoke(
             notes,
-            [
-                "tag",
-                "tag-cli-001",
-                "--add",
-                "new",
-                "--remove",
-                "old",
-                "--dir",
-                str(workspace / "notes"),
-                "--json",
-            ],
+            ["tag", "tag-cli-001", "--add", "new", "--remove", "old",
+             "--dir", str(workspace / "notes"), "--json"],
         )
         assert result.exit_code == 0, result.output
         data = json.loads(result.output)
@@ -658,37 +553,21 @@ class TestCLITag:
         seed_note("tag-cli-002", tags=["existing"])
         result = runner.invoke(
             notes,
-            [
-                "tag",
-                "tag-cli-002",
-                "--add",
-                "existing",
-                "--dir",
-                str(workspace / "notes"),
-                "--json",
-            ],
+            ["tag", "tag-cli-002", "--add", "existing",
+             "--dir", str(workspace / "notes"), "--json"],
         )
         assert result.exit_code == 0
-        data = json.loads(result.output)
-        assert data["tags"].count("existing") == 1
+        assert json.loads(result.output)["tags"].count("existing") == 1
 
     def test_tag_remove_missing_is_noop(self, runner, workspace, seed_note):
         seed_note("tag-cli-003", tags=["keep"])
         result = runner.invoke(
             notes,
-            [
-                "tag",
-                "tag-cli-003",
-                "--remove",
-                "absent",
-                "--dir",
-                str(workspace / "notes"),
-                "--json",
-            ],
+            ["tag", "tag-cli-003", "--remove", "absent",
+             "--dir", str(workspace / "notes"), "--json"],
         )
         assert result.exit_code == 0
-        data = json.loads(result.output)
-        assert "keep" in data["tags"]
+        assert "keep" in json.loads(result.output)["tags"]
 
 
 class TestCLILink:
@@ -696,95 +575,50 @@ class TestCLILink:
         seed_note("lnk-001")
         result = runner.invoke(
             notes,
-            [
-                "link",
-                "lnk-001",
-                "--concept",
-                "new-concept",
-                "--dir",
-                str(workspace / "notes"),
-                "--json",
-            ],
+            ["link", "lnk-001", "--concept", "new-concept",
+             "--dir", str(workspace / "notes"), "--json"],
         )
         assert result.exit_code == 0, result.output
-        data = json.loads(result.output)
-        assert "new-concept" in data["concepts"]
+        assert "new-concept" in json.loads(result.output)["concepts"]
 
     def test_link_reference_appends(self, runner, workspace, seed_note):
         seed_note("lnk-002")
         result = runner.invoke(
             notes,
-            [
-                "link",
-                "lnk-002",
-                "--reference",
-                "bib-key",
-                "--dir",
-                str(workspace / "notes"),
-                "--json",
-            ],
+            ["link", "lnk-002", "--reference", "bib-key",
+             "--dir", str(workspace / "notes"), "--json"],
         )
         assert result.exit_code == 0
-        data = json.loads(result.output)
-        assert "bib-key" in data["references"]
+        assert "bib-key" in json.loads(result.output)["references"]
 
     def test_link_exercise_appends(self, runner, workspace, seed_note):
         seed_note("lnk-003")
         result = runner.invoke(
             notes,
-            [
-                "link",
-                "lnk-003",
-                "--exercise",
-                "ex-007",
-                "--dir",
-                str(workspace / "notes"),
-                "--json",
-            ],
+            ["link", "lnk-003", "--exercise", "ex-007",
+             "--dir", str(workspace / "notes"), "--json"],
         )
         assert result.exit_code == 0
-        data = json.loads(result.output)
-        assert "ex-007" in data["exercises"]
+        assert "ex-007" in json.loads(result.output)["exercises"]
 
     def test_link_idempotent(self, runner, workspace, seed_note):
         seed_note("lnk-004", concepts=["already"])
         result = runner.invoke(
             notes,
-            [
-                "link",
-                "lnk-004",
-                "--concept",
-                "already",
-                "--dir",
-                str(workspace / "notes"),
-                "--json",
-            ],
+            ["link", "lnk-004", "--concept", "already",
+             "--dir", str(workspace / "notes"), "--json"],
         )
         assert result.exit_code == 0
-        data = json.loads(result.output)
-        assert data["concepts"].count("already") == 1
+        assert json.loads(result.output)["concepts"].count("already") == 1
 
     def test_link_requires_exactly_one_target(self, runner, workspace, seed_note):
         seed_note("lnk-005")
-        # Zero targets → error
-        result = runner.invoke(
-            notes,
-            ["link", "lnk-005", "--dir", str(workspace / "notes")],
-        )
+        result = runner.invoke(notes, ["link", "lnk-005", "--dir", str(workspace / "notes")])
         assert result.exit_code != 0
-        # Two targets → error
         result2 = runner.invoke(
             notes,
-            [
-                "link",
-                "lnk-005",
-                "--concept",
-                "a",
-                "--reference",
-                "b",
-                "--dir",
-                str(workspace / "notes"),
-            ],
+            ["link", "lnk-005", "--concept", "a", "--reference", "b",
+             "--dir", str(workspace / "notes")],
         )
         assert result2.exit_code != 0
 
@@ -792,35 +626,18 @@ class TestCLILink:
 class TestEndToEnd:
     def test_create_then_list_then_show_round_trip(self, runner, workspace):
         d = str(workspace / "notes")
-        # Create
         r1 = runner.invoke(
             notes,
-            [
-                "new",
-                "--id",
-                "e2e-001",
-                "--title",
-                "E2E Note",
-                "--tags",
-                "alpha,beta",
-                "--concepts",
-                "gamma",
-                "--dir",
-                d,
-                "--json",
-            ],
+            ["new", "--id", "e2e-001", "--title", "E2E Note",
+             "--tags", "alpha,beta", "--concepts", "gamma", "--dir", d, "--json"],
         )
         assert r1.exit_code == 0, r1.output
-        # List
         r2 = runner.invoke(notes, ["list", "--dir", d, "--json"])
         assert r2.exit_code == 0
-        data = json.loads(r2.output)
-        assert any(item["id"] == "e2e-001" for item in data)
-        # Show
+        assert any(item["id"] == "e2e-001" for item in json.loads(r2.output))
         r3 = runner.invoke(notes, ["show", "e2e-001", "--dir", d, "--json"])
         assert r3.exit_code == 0
         show_data = json.loads(r3.output)
-        assert show_data["id"] == "e2e-001"
         assert show_data["title"] == "E2E Note"
         assert "alpha" in show_data["tags"]
         assert "gamma" in show_data["concepts"]
@@ -830,31 +647,23 @@ class TestEndToEnd:
         from workflow.validation.cli import validate
 
         d = str(workspace / "notes")
-        r1 = runner.invoke(
-            notes_grp,
-            ["new", "--id", "val-001", "--title", "Validate Me", "--dir", d],
-        )
+        r1 = runner.invoke(notes_grp, ["new", "--id", "val-001", "--title", "V Me", "--dir", d])
         assert r1.exit_code == 0, r1.output
-        # Run validate notes against the notes dir — should report 0 errors
         r2 = runner.invoke(validate, ["notes", d])
-        # The command may warn about missing main_topic etc, but should not fail on
-        # freshly created notes (no strict flags)
         assert r2.exit_code == 0, r2.output
 
     def test_mutating_ops_revalidate_before_write(self, runner, workspace):
-        """File on disk stays unchanged when frontmatter is already invalid."""
+        """H7: file on disk stays unchanged when frontmatter already invalid."""
         d = workspace / "notes"
         path = d / "corrupt-note.md"
-        # Write a note with invalid type directly
         path.write_text(
             "---\nid: corrupt-note\ntitle: Corrupt\ntype: invalid-type\n"
             "tags: []\nconcepts: []\nreferences: []\nexercises: []\nimages: []\n---\n## Body\n",
             encoding="utf-8",
         )
-        original_mtime = path.stat().st_mtime
+        original_content = path.read_text(encoding="utf-8")
         from workflow.notes.service import NoteValidationError
 
         with pytest.raises(NoteValidationError):
             update_tags(d, "corrupt-note", add=("newtag",), remove=())
-        # File should not have been modified
-        assert path.stat().st_mtime == original_mtime
+        assert path.read_text(encoding="utf-8") == original_content

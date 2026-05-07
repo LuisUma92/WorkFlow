@@ -7,8 +7,8 @@ before any disk write (lessons.md row 14, 17, 18).
 from __future__ import annotations
 
 import dataclasses
+import logging
 import re
-import sys
 from collections import deque
 from pathlib import Path
 
@@ -30,10 +30,15 @@ __all__ = [
     "resolve_workspace_root",
 ]
 
-# Allowlist regex for note IDs (lessons.md row 14)
+_log = logging.getLogger(__name__)
+
+# Allowlist regex for note IDs (lessons.md row 14).  Defined once here; cli.py imports it.
 _SAFE_ID_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
 # Regex for [[wikilinks]] in body text
 _WIKILINK_RE = re.compile(r"\[\[([^\]]+)\]\]")
+
+# Known type subdirectories for cross-dir ambiguity detection (H5)
+_TYPE_SUBDIRS = frozenset({"permanent", "literature", "fleeting"})
 
 
 class NoteNotFound(Exception):
@@ -55,6 +60,17 @@ def _validate_id(note_id: str) -> None:
             f"note_id {note_id!r} contains invalid characters. "
             "Use only letters, digits, dots, underscores, hyphens."
         )
+
+
+def _assert_within(child: Path, root: Path) -> None:
+    """Raise ValueError if *child* is not contained within *root* (H1).
+
+    Uses Path.relative_to which is prefix-path-aware, not a string prefix check.
+    """
+    try:
+        child.resolve().relative_to(root.resolve())
+    except ValueError:
+        raise ValueError(f"Path {child} escapes target directory {root}")
 
 
 def _fm_to_yaml(fm: NoteFrontmatter) -> str:
@@ -81,7 +97,11 @@ def _fm_to_yaml(fm: NoteFrontmatter) -> str:
 
 
 def _write_note_file(path: Path, fm: NoteFrontmatter, body: str) -> None:
-    """Write frontmatter + body to path atomically (validate first)."""
+    """Write frontmatter + body to path atomically (validate first).
+
+    ``body`` is written byte-exact — no extra newline is added after the closing
+    fence (H3: body_raw already carries its leading character, e.g. ``\n``).
+    """
     # Re-validate before write
     fm_dict = {
         "id": fm.id,
@@ -103,12 +123,11 @@ def _write_note_file(path: Path, fm: NoteFrontmatter, body: str) -> None:
             f"Frontmatter validation failed before write: {'; '.join(errors)}"
         )
 
-    # Validate path containment (lessons.md row 18)
-    resolved = path.resolve()
-    root = path.parent.resolve()
-    if not str(resolved).startswith(str(root)):
-        raise ValueError(f"Path {path} escapes target directory {root}")
+    # Validate path containment with path-aware check (H1)
+    _assert_within(path, path.parent)
 
+    # H3: body is everything after the closing fence's \n (returned by parse_frontmatter).
+    # Re-add "---\n" so the round-trip is byte-exact: "---\n<yaml>---\n<body>".
     content = "---\n" + _fm_to_yaml(fm) + "---\n" + body
     path.write_text(content, encoding="utf-8")
 
@@ -117,21 +136,27 @@ def create_note(target_dir: Path, fm: NoteFrontmatter, *, force: bool) -> Path:
     """Create a new note file at ``target_dir/<fm.id>.md``.
 
     Raises ``FileExistsError`` if file exists and ``force=False``.
+    Raises ``ValueError`` if ``target_dir`` is a symlink (H1).
     Re-validates frontmatter before write.
     """
     _validate_id(fm.id)
+
+    # H1: reject symlinked target_dir before any fs operation
+    if target_dir.is_symlink():
+        raise ValueError(
+            f"target_dir {target_dir} is a symlink; supply the real directory path."
+        )
+
     target_dir.mkdir(parents=True, exist_ok=True)
     path = target_dir / f"{fm.id}.md"
 
-    # Validate path containment (lessons.md row 18)
-    resolved = path.resolve()
-    if not str(resolved).startswith(str(target_dir.resolve())):
-        raise ValueError(f"Computed path {path} escapes target_dir {target_dir}")
+    # H1: path-aware containment check
+    _assert_within(path, target_dir)
 
     if path.exists() and not force:
         raise FileExistsError(f"Note {fm.id!r} already exists at {path}")
 
-    body = ""
+    body = ""  # empty body; _write_note_file adds the "---\n" separator
     _write_note_file(path, fm, body)
     return path
 
@@ -146,22 +171,19 @@ def list_notes(
 ) -> list[tuple[Path, NoteFrontmatter]]:
     """Return top-level notes in ``root``, optionally filtered.
 
-    Silently skips files whose frontmatter fails to parse (warn to stderr).
+    Silently skips files whose frontmatter fails to parse (logs warning).
     """
     results: list[tuple[Path, NoteFrontmatter]] = []
     for path in iter_note_files(root):
         try:
             fm_dict, _ = parse_frontmatter(path)
         except (ValueError, yaml.YAMLError) as exc:
-            print(f"[WARN] Skipping {path.name}: {exc}", file=sys.stderr)
+            _log.warning("Skipping %s: %s", path.name, exc)
             continue
 
         fm_obj, errors = validate_note_frontmatter(fm_dict)
         if errors or fm_obj is None:
-            print(
-                f"[WARN] Skipping {path.name}: validation errors: {errors}",
-                file=sys.stderr,
-            )
+            _log.warning("Skipping %s: validation errors: %s", path.name, errors)
             continue
 
         # Apply filters
@@ -182,18 +204,33 @@ def list_notes(
     return results
 
 
+def _iter_scan_paths(root: Path) -> list[Path]:
+    """Return all .md paths to scan for id-index building.
+
+    Includes top-level files AND files in known type subdirs (H5).
+    """
+    paths: list[Path] = list(iter_note_files(root))
+    for subdir_name in sorted(_TYPE_SUBDIRS):
+        subdir = root / subdir_name
+        if subdir.is_dir() and not subdir.is_symlink():
+            paths.extend(iter_note_files(subdir))
+    return paths
+
+
 def _build_id_index(
     root: Path, *, skip_invalid: bool = True
 ) -> dict[str, list[tuple[Path, NoteFrontmatter | None, str, dict]]]:
-    """Build id → [(path, fm_or_None, body, raw_dict)] index scanning top-level files.
+    """Build id → [(path, fm_or_None, body, raw_dict)] index.
+
+    Scans top-level files AND known type subdirs (permanent/literature/fleeting)
+    for cross-directory ambiguity detection (H5).
 
     When ``skip_invalid=True`` (default for walk_connections / list_notes),
     entries that fail validation are omitted.
-    When ``skip_invalid=False`` (for read_note), all parseable files are included
-    so that mutation ops can reach the revalidation barrier in _write_note_file.
+    When ``skip_invalid=False`` (for read_note), all parseable files are included.
     """
     index: dict[str, list[tuple[Path, NoteFrontmatter | None, str, dict]]] = {}
-    for path in iter_note_files(root):
+    for path in _iter_scan_paths(root):
         try:
             fm_dict, body = parse_frontmatter(path)
         except (ValueError, yaml.YAMLError):
@@ -201,7 +238,6 @@ def _build_id_index(
         fm_obj, errors = validate_note_frontmatter(fm_dict)
         if skip_invalid and (errors or fm_obj is None):
             continue
-        # Use the raw id from the dict so we can index even invalid-fm files
         note_id = fm_dict.get("id")
         if not note_id or not isinstance(note_id, str):
             continue
@@ -213,8 +249,6 @@ def read_note(root: Path, note_id: str) -> tuple[Path, NoteFrontmatter, str]:
     """Find and return (path, fm, body) for the note with ``note_id``.
 
     Raises ``NoteNotFound`` if absent, ``AmbiguousNoteId`` if duplicate ids.
-    Only returns notes with valid frontmatter (invalid ones are skipped).
-    For mutation ops that need to detect invalid-on-disk state, use _raw_read_note.
     """
     _validate_id(note_id)
     index = _build_id_index(root, skip_invalid=True)
@@ -234,11 +268,7 @@ def read_note(root: Path, note_id: str) -> tuple[Path, NoteFrontmatter, str]:
 def _raw_read_note(
     root: Path, note_id: str
 ) -> tuple[Path, NoteFrontmatter | None, str, dict]:
-    """Like read_note but loads even files with invalid frontmatter.
-
-    Used by mutation ops so that _write_note_file's revalidation can raise
-    NoteValidationError instead of silently skipping corrupted files.
-    """
+    """Like read_note but loads even files with invalid frontmatter."""
     _validate_id(note_id)
     index = _build_id_index(root, skip_invalid=False)
     matches = index.get(note_id, [])
@@ -255,14 +285,22 @@ def _raw_read_note(
 def _collect_neighbours(
     fm: NoteFrontmatter, body: str, edge_types: set[str]
 ) -> list[str]:
-    """Return outgoing neighbour ids from ``fm`` for the given edge types."""
+    """Return outgoing neighbour ids for the given edge types.
+
+    H2: Only ``wikilinks`` resolves to note ids via BFS.
+    ``concepts``, ``references``, ``exercises`` are slugs/keys — a resolver
+    does not exist yet (Phase B / ITEP-0012).  Requesting them emits a warning.
+    """
+    # Warn on unresolvable edge types (H2)
+    unresolvable = edge_types & {"concepts", "references", "exercises"}
+    if unresolvable:
+        _log.warning(
+            "Edge types %s are slug keys, not note ids — no resolver exists yet "
+            "(deferred to Phase B / ITEP-0012). They will not be followed in BFS.",
+            sorted(unresolvable),
+        )
+
     neighbours: list[str] = []
-    if "concepts" in edge_types:
-        neighbours.extend(fm.concepts)
-    if "references" in edge_types:
-        neighbours.extend(fm.references)
-    if "exercises" in edge_types:
-        neighbours.extend(fm.exercises)
     if "wikilinks" in edge_types:
         neighbours.extend(_WIKILINK_RE.findall(body))
     return neighbours
@@ -277,9 +315,10 @@ def walk_connections(
 ) -> list[tuple[Path, NoteFrontmatter]]:
     """BFS walk from ``start_id`` following outgoing edges.
 
-    ``edge_types`` is a subset of ``{'concepts', 'references', 'exercises', 'wikilinks'}``.
-    Cycle-safe via visited set. ``depth=None`` means unlimited.
+    H2: Only ``wikilinks`` edges resolve to note ids.  Other edge types emit a
+    warning.  Default ``edge_types`` should be ``{'wikilinks'}``.
 
+    Cycle-safe via visited set. ``depth=None`` means unlimited.
     Raises ``NoteNotFound`` if ``start_id`` is not found.
     """
     _validate_id(start_id)
@@ -319,16 +358,15 @@ def update_tags(
     *,
     add: tuple[str, ...],
     remove: tuple[str, ...],
-) -> NoteFrontmatter:
+) -> tuple[Path, NoteFrontmatter]:
     """Add and/or remove tags on the note with ``note_id``.
 
-    Idempotent: adding an existing tag is a no-op; removing an absent tag is a no-op.
-    Re-validates before write. Returns the updated ``NoteFrontmatter``.
-    Raises ``NoteValidationError`` if the on-disk frontmatter is already invalid.
+    H4: Returns ``(path, updated_fm)`` — caller must NOT re-read the file.
+    Idempotent. Re-validates before write.
+    Raises ``NoteValidationError`` if on-disk frontmatter is already invalid.
     """
     path, fm, body, raw_dict = _raw_read_note(root, note_id)
 
-    # If frontmatter was already invalid on disk, fail before mutating
     if fm is None:
         _, errors = validate_note_frontmatter(raw_dict)
         raise NoteValidationError(
@@ -345,7 +383,7 @@ def update_tags(
 
     new_fm = dataclasses.replace(fm, tags=tuple(current_tags))
     _write_note_file(path, new_fm, body)
-    return new_fm
+    return path, new_fm
 
 
 def add_link(
@@ -355,12 +393,12 @@ def add_link(
     concept: str | None = None,
     reference: str | None = None,
     exercise: str | None = None,
-) -> NoteFrontmatter:
+) -> tuple[Path, NoteFrontmatter]:
     """Append an entry to one of ``concepts``/``references``/``exercises`` (idempotent).
 
-    Exactly one of concept/reference/exercise must be non-None (caller validates).
-    Re-validates before write. Returns the updated ``NoteFrontmatter``.
-    Raises ``NoteValidationError`` if the on-disk frontmatter is already invalid.
+    H4: Returns ``(path, updated_fm)`` — caller must NOT re-read the file.
+    Re-validates before write.
+    Raises ``NoteValidationError`` if on-disk frontmatter is already invalid.
     """
     path, fm, body, raw_dict = _raw_read_note(root, note_id)
     if fm is None:
@@ -392,21 +430,19 @@ def add_link(
         new_fm = dataclasses.replace(fm, exercises=new_exs)
 
     _write_note_file(path, new_fm, body)
-    return new_fm
+    return path, new_fm
 
 
 def resolve_workspace_root(start: Path) -> Path:
     """Walk up from ``start`` looking for config.yaml or .git.
 
-    Falls back to ``start`` (CWD) with a stderr warning if neither is found.
+    Falls back to ``start`` (CWD) with a log warning if neither is found.
     """
     current = start.resolve()
     for candidate in [current, *current.parents]:
         if (candidate / "config.yaml").exists() or (candidate / ".git").exists():
             return candidate
-    print(
-        f"[WARN] No config.yaml or .git found above {start}; "
-        "using CWD as workspace root.",
-        file=sys.stderr,
+    _log.warning(
+        "No config.yaml or .git found above %s; using CWD as workspace root.", start
     )
     return start
