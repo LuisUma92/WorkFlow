@@ -2,22 +2,31 @@
 local M = {}
 
 function M.setup(prefix, workflow)
-  local opts = { noremap = true, silent = true }
+	local opts = { noremap = true, silent = true }
 
-  vim.keymap.set("n", prefix .. "s", function() workflow.sync_current() end,
-    vim.tbl_extend("force", opts, { desc = "workflow: sync DB" }))
-  vim.keymap.set("n", prefix .. "v", function() workflow.validate_frontmatter() end,
-    vim.tbl_extend("force", opts, { desc = "workflow: validate frontmatter" }))
-  vim.keymap.set("n", prefix .. "p", function() workflow.promote_note() end,
-    vim.tbl_extend("force", opts, { desc = "workflow: promote fleeting → permanent" }))
+	vim.keymap.set("n", prefix .. "sn", function()
+		workflow.sync_current()
+	end, vim.tbl_extend("force", opts, { desc = "workflow: sync DB" }))
+	vim.keymap.set("n", prefix .. "se", function()
+		workflow.sync_current_exercise()
+	end, vim.tbl_extend("force", opts, { desc = "workflow: sync exercise DB" }))
+	vim.keymap.set("n", prefix .. "v", function()
+		workflow.validate_frontmatter()
+	end, vim.tbl_extend("force", opts, { desc = "workflow: validate frontmatter" }))
+	vim.keymap.set("n", prefix .. "p", function()
+		workflow.promote_note()
+	end, vim.tbl_extend("force", opts, { desc = "workflow: promote fleeting → permanent" }))
 
-  -- Snacks pickers (Phase 3)
-  vim.keymap.set("n", prefix .. "te", function() workflow.pick_evaluations() end,
-    vim.tbl_extend("force", opts, { desc = "workflow: pick evaluations" }))
-  vim.keymap.set("n", prefix .. "ti", function() workflow.pick_items() end,
-    vim.tbl_extend("force", opts, { desc = "workflow: pick items" }))
-  vim.keymap.set("n", prefix .. "tc", function() workflow.pick_courses() end,
-    vim.tbl_extend("force", opts, { desc = "workflow: pick courses" }))
+	-- Snacks pickers (Phase 3)
+	vim.keymap.set("n", prefix .. "te", function()
+		workflow.pick_evaluations()
+	end, vim.tbl_extend("force", opts, { desc = "workflow: pick evaluations" }))
+	vim.keymap.set("n", prefix .. "ti", function()
+		workflow.pick_items()
+	end, vim.tbl_extend("force", opts, { desc = "workflow: pick items" }))
+	vim.keymap.set("n", prefix .. "tc", function()
+		workflow.pick_courses()
+	end, vim.tbl_extend("force", opts, { desc = "workflow: pick courses" }))
 end
 
 return M
