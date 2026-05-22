@@ -1,6 +1,8 @@
 ---
-adr: LZK-0004
+id: LZK-0004
 title: "Dependency Injection and ORM Shim: Peewee → SQLAlchemy Migration"
+aliases:
+  - ADR-LZK-0004
 status: Accepted
 date: 2026-03-26
 authors:

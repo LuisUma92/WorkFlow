@@ -1,6 +1,8 @@
 ---
-adr: PRISMA-0002
+id: PRISMA-0002
 title: "Bibliography Import Pipeline: BibTeX Upload to Structured Data"
+aliases:
+  - ADR-PRISMA-0002
 status: Accepted
 date: 2026-03-26
 authors:
@@ -50,17 +52,17 @@ The `.bib` file is parsed using `bibtexparser` library with custom string custom
 
 The custom ORM translation layer handles BibTeX → Django model mapping:
 
-| BibTeX Field | Django Model | Field | Notes |
-|-------------|-------------|-------|-------|
-| `author` | `Author` + `Bib_author` | first_name, last_name, role | Split on ` and `, parse "Last, First" |
-| `title` | `Bib_entries` | title | Strip braces |
-| `year` | `Bib_entries` | year | Parse to int |
-| `journal` | `Bib_entries` | journal | Normalize abbreviations |
-| `doi` | `Bib_entries` | doi | Validate format |
-| `abstract` | `Abstract` | text | Separate model (can be long) |
-| `keywords` | `Keyword` | keyword | Split on `;` or `,` |
-| `url` | `Url_list` | url, url_type | Classify URL type |
-| `isbn`/`issn` | `Isn_list` | isn_type, isn_value | Detect type from format |
+| BibTeX Field  | Django Model            | Field                       | Notes                               |
+| ------------- | ----------------------- | --------------------------- | ----------------------------------- |
+| `author`      | `Author` + `Bib_author` | first_name, last_name, role | Split on `and`, parse "Last, First" |
+| `title`       | `Bib_entries`           | title                       | Strip braces                        |
+| `year`        | `Bib_entries`           | year                        | Parse to int                        |
+| `journal`     | `Bib_entries`           | journal                     | Normalize abbreviations             |
+| `doi`         | `Bib_entries`           | doi                         | Validate format                     |
+| `abstract`    | `Abstract`              | text                        | Separate model (can be long)        |
+| `keywords`    | `Keyword`               | keyword                     | Split on `;` or `,`                 |
+| `url`         | `Url_list`              | url, url_type               | Classify URL type                   |
+| `isbn`/`issn` | `Isn_list`              | isn_type, isn_value         | Detect type from format             |
 
 Multi-value fields (authors, keywords, URLs) are normalized into separate junction tables.
 
@@ -143,6 +145,6 @@ This enables PRISMA flow diagrams showing how many articles came from each sourc
 
 ## Change Log
 
-| Date       | Change      |
-| ---------- | ----------- |
+| Date       | Change                                           |
+| ---------- | ------------------------------------------------ |
 | 2026-03-26 | Initial ADR — documents existing import pipeline |

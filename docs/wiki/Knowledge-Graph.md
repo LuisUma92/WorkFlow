@@ -1,3 +1,16 @@
+---
+id: 
+title: 
+aliases: []
+type: permanent
+created: 
+tags: []
+concepts: []
+references: []
+exercises: []
+images: []
+---
+
 # Knowledge Graph
 
 El grafo de conocimiento unifica datos de ambas bases de datos (global + local) para visualizar y analizar las conexiones entre notas, ejercicios, bibliografia y cursos.

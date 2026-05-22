@@ -1,6 +1,8 @@
 ---
-adr: "0003"
+id: ITEP-0003
 title: "config.yaml como puntero a la base de datos"
+aliases:
+  - ADR-ITEP-0003
 status: Accepted
 date: 2026-03-20
 authors:
@@ -38,7 +40,7 @@ Se necesita un mecanismo para vincular un directorio de proyecto en disco con su
 `config.yaml` se reduce a un puntero con dos campos:
 
 ```yaml
-project_type: lecture   # o "general"
+project_type: lecture # o "general"
 project_id: 42
 ```
 

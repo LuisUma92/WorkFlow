@@ -1,6 +1,8 @@
 ---
-adr: PRISMA-0005
+id: PRISMA-0005
 title: "PRISMA CLI: SQLAlchemy Migration and Unified workflow.db"
+aliases:
+  - ADR-PRISMA-0005
 status: Accepted
 date: 2026-04-09
 authors:
@@ -186,12 +188,12 @@ REVIEW_STATUS_LABELS = {1: "included", 0: "excluded", None: "pending"}
 
 ### Phased Implementation
 
-| Phase | Commands | Focus |
-|-------|----------|-------|
-| P0 | bib list/show, keyword list, review list | Read-only, service layer, --json |
-| P1 | bib search, review screen, keyword/tag/rationale add | Core CRUD, screening workflow |
-| P2 | bib import, stats, export-bib, checklist show | Import pipeline, PRISMA compliance |
-| P3 | Telescope pickers (reuse --json from P0-P2) | Neovim integration |
+| Phase | Commands                                             | Focus                              |
+| ----- | ---------------------------------------------------- | ---------------------------------- |
+| P0    | bib list/show, keyword list, review list             | Read-only, service layer, --json   |
+| P1    | bib search, review screen, keyword/tag/rationale add | Core CRUD, screening workflow      |
+| P2    | bib import, stats, export-bib, checklist show        | Import pipeline, PRISMA compliance |
+| P3    | Telescope pickers (reuse --json from P0-P2)          | Neovim integration                 |
 
 ### Migration from Django
 
@@ -279,8 +281,8 @@ Separate CLI binary instead of `workflow prisma` subgroup.
 
 ## Change Log
 
-| Date       | Change      |
-| ---------- | ----------- |
-| 2026-04-09 | Initial ADR — documents PRISMA P0 CLI migration |
-| 2026-04-18 | P1 delivered: bib search, keyword/tag/rationale add, review screen (50 tests) |
+| Date       | Change                                                                                                                                                                                                                                                                       |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-04-09 | Initial ADR — documents PRISMA P0 CLI migration                                                                                                                                                                                                                              |
+| 2026-04-18 | P1 delivered: bib search, keyword/tag/rationale add, review screen (50 tests)                                                                                                                                                                                                |
 | 2026-04-19 | P2 delivered: bib import / bib export / review stats / checklist show (95 tests). Adds importer.py, exporter.py, ReviewStats + ChecklistItem TypedDicts. Per-entry savepoints, BibTeX-injection sanitization, file-size cap, URL-scheme allowlist, --output overwrite guard. |

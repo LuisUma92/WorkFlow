@@ -1,6 +1,8 @@
 ---
-adr: "0004"
+id: ITEP-0004
 title: "Dos tipos de proyecto: Lecture y General"
+aliases:
+  - ADR-ITEP-0004
 status: Accepted
 date: 2026-03-20
 authors:

@@ -1,6 +1,8 @@
 ---
-adr: "0011"
+id: STY-0011
 title: "SetConstant — Physical constants reference table"
+aliases:
+  - ADR-STY-0011
 status: Accepted
 date: 2025-09-29
 authors:
@@ -14,7 +16,7 @@ decision_scope: component
 supersedes: null
 superseded_by: null
 related_adrs:
-  - "STY-0004"
+  - STY-0004
 ---
 
 ## Context
@@ -33,16 +35,16 @@ value command.
 
 ### Constants defined
 
-| Constant          | Symbol cmd | Value cmd   | SI value                    |
-|-------------------|------------|-------------|-----------------------------|
-| Speed of light    | `\vcs`     | `\cval`     | 299 792 458 m/s             |
-| Planck's constant | `\hps`     | `\hpval`    | 6.626 070 15 × 10⁻³⁴ J·s   |
-| Planck's (eV)     | —          | `\hpvalev`  | 4.135 667 696 × 10⁻¹⁵ eV·s |
-| Reduced Planck    | `\hbs`     | `\hbval`    | 1.054 571 817 × 10⁻³⁴ J·s  |
-| Reduced (eV)      | —          | `\hbvalev`  | 6.582 119 569 × 10⁻¹⁶ eV·s |
-| Elementary charge | `\ecs`     | `\ecval`    | 1.602 176 634 × 10⁻¹⁹ C    |
-| Boltzmann         | `\kbs`     | `\kbval`    | 1.380 649 × 10⁻²³ J/K      |
-| Avogadro          | `\nas`     | `\naval`    | 6.022 140 76 × 10²³ mol⁻¹  |
+| Constant          | Symbol cmd | Value cmd  | SI value                   |
+| ----------------- | ---------- | ---------- | -------------------------- |
+| Speed of light    | `\vcs`     | `\cval`    | 299 792 458 m/s            |
+| Planck's constant | `\hps`     | `\hpval`   | 6.626 070 15 × 10⁻³⁴ J·s   |
+| Planck's (eV)     | —          | `\hpvalev` | 4.135 667 696 × 10⁻¹⁵ eV·s |
+| Reduced Planck    | `\hbs`     | `\hbval`   | 1.054 571 817 × 10⁻³⁴ J·s  |
+| Reduced (eV)      | —          | `\hbvalev` | 6.582 119 569 × 10⁻¹⁶ eV·s |
+| Elementary charge | `\ecs`     | `\ecval`   | 1.602 176 634 × 10⁻¹⁹ C    |
+| Boltzmann         | `\kbs`     | `\kbval`   | 1.380 649 × 10⁻²³ J/K      |
+| Avogadro          | `\nas`     | `\naval`   | 6.022 140 76 × 10²³ mol⁻¹  |
 
 Additional constants are listed in comments (Wien, permeability,
 permittivity, gravitational, electron/proton/neutron mass, Rydberg,

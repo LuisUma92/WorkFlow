@@ -1,6 +1,8 @@
 ---
-adr: "0016"
+id: 0016
 title: "Evaluation CLI: Template, Item, and Course Management"
+aliases:
+  - ADR-0016
 status: Accepted
 date: 2026-04-09
 authors:
@@ -141,12 +143,12 @@ Dual output in `formatters.py`:
 
 ### Phased Implementation
 
-| Phase | Commands | Focus |
-|-------|----------|-------|
-| P0 | list (evaluations, item, course) | Read-only, --json output |
-| P1 | add (evaluations, item) | Creation with validation |
-| P2 | edit (rename, add-item, remove-item), course add | Mutation, ownership validation |
-| P3 | evaluations show, Telescope pickers | Single-item detail, Neovim integration |
+| Phase | Commands                                         | Focus                                  |
+| ----- | ------------------------------------------------ | -------------------------------------- |
+| P0    | list (evaluations, item, course)                 | Read-only, --json output               |
+| P1    | add (evaluations, item)                          | Creation with validation               |
+| P2    | edit (rename, add-item, remove-item), course add | Mutation, ownership validation         |
+| P3    | evaluations show, Telescope pickers              | Single-item detail, Neovim integration |
 
 ---
 
@@ -185,6 +187,6 @@ Dual output in `formatters.py`:
 
 ## Change Log
 
-| Date       | Change      |
-| ---------- | ----------- |
+| Date       | Change                                       |
+| ---------- | -------------------------------------------- |
 | 2026-04-09 | Initial ADR — documents P0-P3 evaluation CLI |

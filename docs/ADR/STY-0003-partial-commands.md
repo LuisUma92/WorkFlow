@@ -1,6 +1,8 @@
 ---
-adr: "0003"
+id: STY-0003
 title: "PartialCommands — Exam scoring and structure"
+aliases:
+  - ADR-STY-0003
 status: Accepted
 date: 2025-09-29
 authors:
@@ -14,8 +16,8 @@ decision_scope: component
 supersedes: null
 superseded_by: null
 related_adrs:
-  - "STY-0000"
-  - "STY-0009"
+  - STY-0000
+  - STY-0009
 ---
 
 ## Context
@@ -38,13 +40,13 @@ are only used in evaluation documents, not in notes or thesis.
 
 ### Scoring commands
 
-| Command                      | Purpose                                  |
-|------------------------------|------------------------------------------|
-| `\pts[add]{n}`               | Print "(n pts.)", optionally accumulate  |
-| `\upt[add]`                  | Print "(1 pt.)", optionally accumulate   |
-| `\uptcu`, `\ptscu{n}`        | "c/u" (each) variants                   |
-| `\consolidatePoints{label}`  | Save section total, write to aux file    |
-| `\ptsdistro`                 | Print point-distribution paragraph       |
+| Command                     | Purpose                                 |
+| --------------------------- | --------------------------------------- |
+| `\pts[add]{n}`              | Print "(n pts.)", optionally accumulate |
+| `\upt[add]`                 | Print "(1 pt.)", optionally accumulate  |
+| `\uptcu`, `\ptscu{n}`       | "c/u" (each) variants                   |
+| `\consolidatePoints{label}` | Save section total, write to aux file   |
+| `\ptsdistro`                | Print point-distribution paragraph      |
 
 ### Metadata
 

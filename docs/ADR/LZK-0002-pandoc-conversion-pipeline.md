@@ -1,6 +1,8 @@
 ---
-adr: LZK-0002
+id: LZK-0002
 title: "Pandoc Conversion Pipeline: Markdown ↔ LaTeX with Wiki-Link Support"
+aliases:
+  - ADR-LZK-0002
 status: Accepted
 date: 2026-03-26
 authors:
@@ -28,6 +30,7 @@ ADR-0002 establishes Markdown as the canonical knowledge format. LaTeX is a deri
 - **LaTeX → Markdown**: For importing existing LaTeX notes into the Markdown-first workflow
 
 Key challenges:
+
 - Wiki-links (`[[note-id]]`) have no LaTeX equivalent — must be converted to `\excref`
 - Theorem environments need special handling
 - Custom macros from `shared/sty/` must survive round-trips
@@ -58,21 +61,25 @@ LaTeX (.tex)
 ### Components
 
 **`pandoc/preprocess.py`** — Pre-processes Markdown before Pandoc:
+
 - Converts `[[note-id]]` wiki-links to `\excref{note-id}` (or `\hyperref[zk:note-id]{note-id}`)
 - Handles `[[note-id|display text]]` with custom display
 - Strips Obsidian-specific syntax that Pandoc doesn't understand
 
 **`pandoc/filter.lua`** — Pandoc Lua filter:
+
 - Converts theorem-like environments (Definition, Theorem, Proof, Example)
 - Handles cross-references and citation formatting
 - Preserves raw LaTeX blocks
 
 **`pandoc/template.tex`** — LaTeX template:
+
 - Includes `texnote.cls` document class
 - Imports preamble from project config
 - Sets up bibliography
 
 **`pandoc/defaults.yaml`** — Pandoc defaults file:
+
 ```yaml
 from: markdown+raw_tex+tex_math_dollars+yaml_metadata_block
 to: latex

@@ -1,6 +1,8 @@
 ---
-adr: "0002"
+id: ITEP-0002
 title: "Esquema de base de datos en 4 capas"
+aliases:
+  - ADR-ITEP-0002
 status: Accepted
 date: 2026-03-20
 authors:
@@ -35,12 +37,12 @@ La base de datos relacional necesita una organización que refleje las dependenc
 
 Organizar los modelos en 4 capas jerárquicas:
 
-| Capa | Nombre | Modelos | Descripción |
-|------|--------|---------|-------------|
-| 1 | Reference data | `Institution`, `MainTopic` | Datos estables, sembrados al inicio |
-| 2 | Master entities | `Author`, `Book`, `BookAuthor`, `Topic`, `Content`, `BookContent` | Entidades reutilizables entre cursos |
-| 3 | Course templates | `Course`, `CourseContent`, `EvaluationTemplate`, `Item`, `EvaluationItem`, `CourseEvaluation` | Estructura académica |
-| 4 | Project instances | `LectureInstance`, `GeneralProject`, `GeneralProjectBook`, `GeneralProjectTopic` | Instancias concretas en filesystem |
+| Capa | Nombre            | Modelos                                                                                       | Descripción                          |
+| ---- | ----------------- | --------------------------------------------------------------------------------------------- | ------------------------------------ |
+| 1    | Reference data    | `Institution`, `MainTopic`                                                                    | Datos estables, sembrados al inicio  |
+| 2    | Master entities   | `Author`, `Book`, `BookAuthor`, `Topic`, `Content`, `BookContent`                             | Entidades reutilizables entre cursos |
+| 3    | Course templates  | `Course`, `CourseContent`, `EvaluationTemplate`, `Item`, `EvaluationItem`, `CourseEvaluation` | Estructura académica                 |
+| 4    | Project instances | `LectureInstance`, `GeneralProject`, `GeneralProjectBook`, `GeneralProjectTopic`              | Instancias concretas en filesystem   |
 
 ---
 

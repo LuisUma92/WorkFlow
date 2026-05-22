@@ -1,6 +1,8 @@
 ---
-adr: "0007"
+id: STY-0007
 title: "VectorPGF — TikZ styles for vector diagrams"
+aliases:
+  - ADR-STY-0007
 status: Accepted
 date: 2026-03-20
 authors:
@@ -15,7 +17,7 @@ decision_scope: component
 supersedes: null
 superseded_by: null
 related_adrs:
-  - "STY-0001"
+  - STY-0001
 ---
 
 ## Context
@@ -32,13 +34,13 @@ leads to visual inconsistency.
 
 ### Styles
 
-| Style          | Description                                |
-|----------------|--------------------------------------------|
-| `Vector`       | Thick line (1.1pt), Stealth arrowhead 16pt |
-| `VectorAngle`  | Thin line (0.8pt), Latex arrowhead 4pt     |
-| `Axis`         | Standard arrow, black, 0.9pt               |
-| `Grids`        | 0.5cm step, very thin, gray!30             |
-| `Proyections`  | Dashed, 1.1pt                              |
+| Style         | Description                                |
+| ------------- | ------------------------------------------ |
+| `Vector`      | Thick line (1.1pt), Stealth arrowhead 16pt |
+| `VectorAngle` | Thin line (0.8pt), Latex arrowhead 4pt     |
+| `Axis`        | Standard arrow, black, 0.9pt               |
+| `Grids`       | 0.5cm step, very thin, gray!30             |
+| `Proyections` | Dashed, 1.1pt                              |
 
 ### Global node defaults
 

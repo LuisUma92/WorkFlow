@@ -1,3 +1,16 @@
+---
+id: 
+title: 
+aliases: []
+type: permanent
+created: 
+tags: []
+concepts: []
+references: []
+exercises: []
+images: []
+---
+
 # Getting Started
 
 Esta guia cubre la instalacion, creacion de tu primer proyecto, y como agregar notas y ejercicios.

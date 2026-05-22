@@ -1,3 +1,16 @@
+---
+id: 
+title: 
+aliases: []
+type: permanent
+created: 
+tags: []
+concepts: []
+references: []
+exercises: []
+images: []
+---
+
 # Architecture
 
 Descripcion de la arquitectura del sistema WorkFlow, sus modulos, patrones y decisiones de diseno.

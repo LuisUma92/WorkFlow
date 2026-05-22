@@ -1,6 +1,8 @@
 ---
-adr: "0008"
+id: STY-0008
 title: "SetProfiles — Author, institution, and course metadata"
+aliases:
+  - ADR-STY-0008
 status: Accepted
 date: 2025-09-29
 authors:
@@ -14,8 +16,8 @@ decision_scope: component
 supersedes: null
 superseded_by: null
 related_adrs:
-  - "STY-0006"
-  - "STY-0009"
+  - STY-0006
+  - STY-0009
 ---
 
 ## Context
@@ -43,12 +45,12 @@ headers, title pages, and exam formatting.
 
 Commands that set `\theuni`, `\theunishort`, `\theschool`, and logos:
 
-| Command    | Institution                         | Short  |
-|------------|-------------------------------------|--------|
-| `\ucr`     | Universidad de Costa Rica           | UCR    |
-| `\efis`    | UCR — Escuela de Física             | UCR    |
-| `\ucimed`  | Universidad de las Ciencias Médicas | UCIMED |
-| `\ufide`   | Universidad Fidélitas               | UFide  |
+| Command   | Institution                         | Short  |
+| --------- | ----------------------------------- | ------ |
+| `\ucr`    | Universidad de Costa Rica           | UCR    |
+| `\efis`   | UCR — Escuela de Física             | UCR    |
+| `\ucimed` | Universidad de las Ciencias Médicas | UCIMED |
+| `\ufide`  | Universidad Fidélitas               | UFide  |
 
 Each command stores the university logo and school logo via `\savebox`.
 

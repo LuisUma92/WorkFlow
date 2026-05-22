@@ -1,6 +1,8 @@
 ---
-adr: "0005"
+id: ITEP-0005
 title: "Configuración LaTeX basada en symlinks"
+aliases:
+  - ADR-ITEP-0005
 status: Accepted
 date: 2026-03-20
 authors:

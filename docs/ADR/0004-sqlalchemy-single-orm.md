@@ -1,6 +1,8 @@
 ---
-adr: 0004
+id: 0004
 title: "SQLAlchemy 2.0 as Single ORM"
+aliases:
+  - ADR-0004
 status: Accepted
 date: 2026-03-25
 authors:

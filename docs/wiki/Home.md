@@ -1,3 +1,16 @@
+---
+id: 
+title: 
+aliases: []
+type: permanent
+created: 
+tags: []
+concepts: []
+references: []
+exercises: []
+images: []
+---
+
 # WorkFlow Wiki
 
 WorkFlow es un toolkit CLI en Python para gestionar proyectos LaTeX y un sistema unificado de Zettelkasten para escritura academica. Integra notas, ejercicios, diagramas TikZ, exportacion a Moodle y un grafo de conocimiento.

@@ -1,6 +1,8 @@
 ---
-adr: "0006"
+id: STY-0006
 title: "Color system — Physics palette and institutional themes"
+aliases:
+  - ADR-STY-0006
 status: Accepted
 date: 2025-09-29
 authors:
@@ -14,8 +16,8 @@ decision_scope: component
 supersedes: null
 superseded_by: null
 related_adrs:
-  - "STY-0005"
-  - "STY-0008"
+  - STY-0005
+  - STY-0008
 ---
 
 ## Context
@@ -33,18 +35,18 @@ Four color files, each loaded contextually:
 
 Maps physical quantities to HTML colors for use in equations and diagrams.
 
-| Color name  | Hex       | Quantity              |
-|-------------|-----------|-----------------------|
-| `Pos`       | `#8D6E63` | Position              |
-| `PosX/Y/Z`  | varies   | Position components   |
-| `Dis`       | `#9C27B0` | Distance              |
-| `Des`       | `#E91E63` | Displacement          |
-| `Vel`       | `#3F51B5` | Velocity              |
-| `Rap`       | `#673AB7` | Speed                 |
-| `Ace`       | `#43A047` | Acceleration          |
-| `Mas`       | `#0000F0` | Mass                  |
-| `Fza`       | `#FF0000` | Force                 |
-| `BlueBG`    | `#015298` | Backgrounds           |
+| Color name | Hex       | Quantity            |
+| ---------- | --------- | ------------------- |
+| `Pos`      | `#8D6E63` | Position            |
+| `PosX/Y/Z` | varies    | Position components |
+| `Dis`      | `#9C27B0` | Distance            |
+| `Des`      | `#E91E63` | Displacement        |
+| `Vel`      | `#3F51B5` | Velocity            |
+| `Rap`      | `#673AB7` | Speed               |
+| `Ace`      | `#43A047` | Acceleration        |
+| `Mas`      | `#0000F0` | Mass                |
+| `Fza`      | `#FF0000` | Force               |
+| `BlueBG`   | `#015298` | Backgrounds         |
 
 ### colors-UCR.sty — Universidad de Costa Rica
 

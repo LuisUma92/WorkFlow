@@ -1,6 +1,8 @@
 ---
-adr: 0008
+id: 0008
 title: "XDG Directory Layout for Shared Data and Configuration"
+aliases:
+  - ADR-0008
 status: Accepted
 date: 2026-03-25
 authors:

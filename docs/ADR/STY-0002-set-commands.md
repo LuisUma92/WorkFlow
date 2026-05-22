@@ -1,6 +1,8 @@
 ---
-adr: "0002"
+id: STY-0002
 title: "SetCommands — Shared macros and directories"
+aliases:
+  - ADR-STY-0002
 status: Accepted
 date: 2025-09-29
 authors:
@@ -14,7 +16,7 @@ decision_scope: component
 supersedes: null
 superseded_by: null
 related_adrs:
-  - "STY-0005"
+  - STY-0005
 ---
 
 ## Context
@@ -50,13 +52,13 @@ with optional chapter prefix.
 
 ### Math shorthand
 
-| Command      | Output                  |
-|--------------|-------------------------|
-| `\vc{x}`     | Bold vector with arrow  |
-| `\vh{x}`     | Bold unit vector (hat)  |
-| `\vm{x}`     | Bold math symbol        |
-| `\scrp{x}`   | Scriptsize text         |
-| `\ala{n}`    | Superscript (text mode) |
+| Command    | Output                  |
+| ---------- | ----------------------- |
+| `\vc{x}`   | Bold vector with arrow  |
+| `\vh{x}`   | Bold unit vector (hat)  |
+| `\vm{x}`   | Bold math symbol        |
+| `\scrp{x}` | Scriptsize text         |
+| `\ala{n}`  | Superscript (text mode) |
 
 ---
 

@@ -1,6 +1,8 @@
 ---
-adr: 0012
+id: 0012
 title: "Moodle XML Export with LaTeX Normalization"
+aliases:
+  - ADR-0012
 status: Accepted
 date: 2026-03-25
 authors:
@@ -24,7 +26,10 @@ related_adrs:
 
 ## Context
 
-Exercises authored in LaTeX need to be exportable to Moodle XML for online assessment. The critical constraint is that **Moodle does not know the custom LaTeX commands** defined in `shared/sty/`:
+Exercises authored in LaTeX need to be exportable to Moodle XML for online
+assessment.
+The critical constraint is that **Moodle does not know the custom LaTeX
+commands** defined in `shared/sty/`:
 
 - `\vc{E}` → `\vec{\symbf{E}}` (custom vector notation)
 - `\scrp{enc}` → `_{\mbox{\scriptsize{enc}}}` (subscript helper)
@@ -32,45 +37,49 @@ Exercises authored in LaTeX need to be exportable to Moodle XML for online asses
 - Colors defined in `SetColors.sty`
 - Any other project-specific macros
 
-Additionally, the user does not control which MathJax libraries or TeX filters are enabled on institutional Moodle instances (UCR, UFide, UCIMED). Relying on MathJax to understand custom commands is not viable.
+Additionally, the user does not control which MathJax libraries or TeX filters
+are enabled on institutional Moodle instances (UCR, UFide, UCIMED).
+Relying on MathJax to understand custom commands is not viable.
 
-**Therefore: LaTeX content must be translated to basic, standard LaTeX before export.** Only standard LaTeX commands that any MathJax installation understands should appear in the exported XML.
+**Therefore:
+LaTeX content must be translated to basic, standard LaTeX before export.**
+Only standard LaTeX commands that any MathJax installation understands should
+appear in the exported XML.
 
 ### Options Considered
 
-**Option A: Raw LaTeX in CDATA with MathJax filter** (original proposal)
-- Pro: Simple, zero conversion
-- Con: Custom macros (`\vc`, `\scrp`, etc.) won't render — **deal-breaker**
-- Con: Assumes institutional MathJax config — not under user's control
-
-**Option B: Full LaTeX-to-HTML conversion (pandoc, make4ht)**
-- Pro: Best visual fidelity
-- Con: Heavy external dependency
-- Con: Fragile for math-heavy content
-
-**Option C: LaTeX normalization + CDATA export (selected)**
-- Pro: Resolves custom macros to standard LaTeX before export
-- Pro: Standard LaTeX works with any MathJax installation
-- Pro: No external dependencies — normalization is a text transform
-- Pro: Preserves math fidelity (all standard LaTeX math renders correctly)
-- Con: Must maintain a normalization map for each custom macro
-- Con: Some formatting (non-math custom macros) may be simplified
+- **Option A: Raw LaTeX in CDATA with MathJax filter** (original proposal)
+  - Pro: Simple, zero conversion
+  - Con: Custom macros (`\vc`, `\scrp`, etc.) won't render — **deal-breaker**
+  - Con: Assumes institutional MathJax config — not under user's control
+- **Option B: Full LaTeX-to-HTML conversion (pandoc, make4ht)**
+  - Pro: Best visual fidelity
+  - Con: Heavy external dependency
+  - Con: Fragile for math-heavy content
+- **Option C: LaTeX normalization + CDATA export (selected)**
+  - Pro: Resolves custom macros to standard LaTeX before export
+  - Pro: Standard LaTeX works with any MathJax installation
+  - Pro: No external dependencies — normalization is a text transform
+  - Pro: Preserves math fidelity (all standard LaTeX math renders correctly)
+  - Con: Must maintain a normalization map for each custom macro
+  - Con: Some formatting (non-math custom macros) may be simplified
 
 ---
 
 ## Decision
 
-**Option C: Normalize custom LaTeX to standard form, then export as CDATA.**
+Chosen: **Option C: Normalize custom LaTeX to standard form, then export as CDATA.**
 
 ### Two-Phase Export Pipeline
 
-```
+```txt
 .tex file → Parse (ADR-0011) → Normalize (expand custom macros) → Moodle XML
 ```
 
 **Phase 1 — Normalization** (`workflow.latex.normalize`):
 
-Expand all custom macros from `shared/sty/` to their standard LaTeX equivalents. The normalization map is derived directly from the `.sty` files:
+Expand all custom macros from `shared/sty/` to their standard LaTeX equivalents.
+The normalization map is derived directly from the `.sty` files:
 
 ```python
 # Auto-derived from SetCommands.sty, PartialCommands.sty, etc.
@@ -87,15 +96,20 @@ MACRO_MAP: dict[str, MacroExpansion] = {
     r"\uptcu": MacroExpansion(args=0, template=r"(1 pt. c/u.)"),
     r"\ptscu": MacroExpansion(args=1, template=r"({0} pts. c/u.)"),
     # Colors — strip color commands, keep content
-    r"\textcolor": MacroExpansion(args=2, template=r"{1}"),  # drop color, keep text
+    r"\textcolor": MacroExpansion(args=2, template=r"{1}"),
+    # drop color, keep text
 }
 ```
 
 The normalization step also:
+
 - Converts math delimiters: `$...$` → `\(...\)`, `$$...$$` → `\[...\]`
-- Strips exercise-structural macros (`\question`, `\qpart`, `\rightoption`, `\consolidatePoints`) — these are already parsed
+- Strips exercise-structural macros
+  (`\question`, `\qpart`, `\rightoption`, `\consolidatePoints`)
+  — these are already parsed
 - Resolves `\symbf` → `\mathbf` (MathJax-compatible)
-- Leaves standard LaTeX commands (`\frac`, `\vec`, `\text`, `\begin{enumerate}`, etc.) unchanged
+- Leaves standard LaTeX commands
+  (`\frac`, `\vec`, `\text`, `\begin{enumerate}`, etc.) unchanged
 
 **Phase 2 — XML Generation** (`workflow.exercise.moodle`):
 
@@ -103,21 +117,22 @@ Use `xml.etree.ElementTree` (stdlib). Content goes into CDATA sections.
 
 ### Mapping Rules
 
-| Source | Moodle XML Target |
-|---|---|
-| `\question` stem (normalized) | `<questiontext format="html"><text><![CDATA[...]]></text></questiontext>` |
+| Source                            | Moodle XML Target                                                               |
+| --------------------------------- | ------------------------------------------------------------------------------- |
+| `\question` stem (normalized)     | `<questiontext format="html"><text><![CDATA[...]]></text></questiontext>`       |
 | `\question` solution (normalized) | `<generalfeedback format="html"><text><![CDATA[...]]></text></generalfeedback>` |
-| `\qpart` instruction (normalized) | `<answer fraction="F"><text><![CDATA[...]]></text></answer>` |
-| `\qpart` solution (normalized) | `<answer>...<feedback><text><![CDATA[...]]></text></feedback></answer>` |
-| `\rightoption` on `\qpart` | Sets `fraction="100"` on the corresponding `<answer>` |
-| `\pts{n}` | `<defaultgrade>n</defaultgrade>` |
-| `\qfeedback{text}` (normalized) | `<generalfeedback>` (overrides solution-based feedback) |
-| Commented YAML tags | `<tags><tag><text>value</text></tag></tags>` |
-| `exercise_id` | `<idnumber>exercise_id</idnumber>` |
+| `\qpart` instruction (normalized) | `<answer fraction="F"><text><![CDATA[...]]></text></answer>`                    |
+| `\qpart` solution (normalized)    | `<answer>...<feedback><text><![CDATA[...]]></text></feedback></answer>`         |
+| `\rightoption` on `\qpart`        | Sets `fraction="100"` on the corresponding `<answer>`                           |
+| `\pts{n}`                         | `<defaultgrade>n</defaultgrade>`                                                |
+| `\qfeedback{text}` (normalized)   | `<generalfeedback>` (overrides solution-based feedback)                         |
+| Commented YAML tags               | `<tags><tag><text>value</text></tag></tags>`                                    |
+| `exercise_id`                     | `<idnumber>exercise_id</idnumber>`                                              |
 
 ### Image Handling
 
 When `has_images` is true (ADR-0010), the exporter must:
+
 1. Resolve image paths relative to the exercise file location
 2. Read image files and base64-encode them
 3. Embed as `<file>` elements in the Moodle XML question
@@ -136,13 +151,13 @@ For TikZ diagrams referenced via `\qdiagram{id}`, the exporter resolves the comp
 
 ### Question Type Mapping
 
-| YAML `type` | Moodle `<question type="...">` | Notes |
-|---|---|---|
-| `multichoice` | `multichoice` | Options from `\qpart` entries; `\rightoption` marks correct |
-| `essay` | `essay` | Stem only; solution as grader guidance |
-| `shortanswer` | `shortanswer` | Solution text becomes expected answer |
-| `numerical` | `numerical` | Solution parsed as number; default tolerance |
-| `truefalse` | `truefalse` | Two options; `\rightoption` marks correct |
+| YAML `type`   | Moodle `<question type="...">` | Notes                                                       |
+| ------------- | ------------------------------ | ----------------------------------------------------------- |
+| `multichoice` | `multichoice`                  | Options from `\qpart` entries; `\rightoption` marks correct |
+| `essay`       | `essay`                        | Stem only; solution as grader guidance                      |
+| `shortanswer` | `shortanswer`                  | Solution text becomes expected answer                       |
+| `numerical`   | `numerical`                    | Solution parsed as number; default tolerance                |
+| `truefalse`   | `truefalse`                    | Two options; `\rightoption` marks correct                   |
 
 ### Output Structure
 
@@ -242,7 +257,7 @@ Note how `\vc{E}` has been normalized to `\vec{\mathbf{E}}` — standard LaTeX t
 
 ## Change Log
 
-| Date       | Change      |
-| ---------- | ----------- |
-| 2026-03-25 | Initial ADR |
+| Date       | Change                                                                                                                                                     |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-03-25 | Initial ADR                                                                                                                                                |
 | 2026-03-25 | Rev 2: Replace raw-CDATA approach with LaTeX normalization pipeline, add image embedding, custom macro expansion map, remove MathJax dependency assumption |

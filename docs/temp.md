@@ -1,3 +1,16 @@
+---
+id: 
+title: 
+aliases: []
+type: permanent
+created: 
+tags: []
+concepts: []
+references: []
+exercises: []
+images: []
+---
+
 # Espacio para diseñar prompts complejas
 
 ## Exercise as module

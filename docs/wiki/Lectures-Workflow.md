@@ -1,3 +1,16 @@
+---
+id: 
+title: 
+aliases: []
+type: permanent
+created: 
+tags: []
+concepts: []
+references: []
+exercises: []
+images: []
+---
+
 # Lectures Workflow
 
 Herramientas para integrar proyectos de cursos con el sistema de notas, referencias cruzadas y el banco de ejercicios.

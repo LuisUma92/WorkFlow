@@ -1,6 +1,8 @@
 ---
-adr: 0006
+id: 0006
 title: "TikZ Standalone Asset Pipeline"
+aliases:
+  - ADR-0006
 status: Accepted
 date: 2026-03-25
 authors:

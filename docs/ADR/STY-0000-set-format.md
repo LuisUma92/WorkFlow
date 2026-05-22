@@ -1,6 +1,8 @@
 ---
-adr: "0000"
+id: STY-0000
 title: "SetFormat — Master package loader"
+aliases:
+  - ADR-STY-0000
 status: Accepted
 date: 2025-09-29
 authors:
@@ -14,9 +16,9 @@ decision_scope: component
 supersedes: null
 superseded_by: null
 related_adrs:
-  - "STY-0003"
-  - "STY-0004"
-  - "STY-0011"
+  - STY-0003
+  - STY-0004
+  - STY-0011
 ---
 
 ## Context
@@ -32,27 +34,27 @@ each document leads to version drift and conflicts.
 A single `.sty` file (`SetFormat.sty`) loads **all** shared packages in a
 deterministic order. Two variants exist:
 
-| File              | Engine   | Use case                |
-|-------------------|----------|-------------------------|
-| `SetFormat.sty`   | LuaLaTeX | Notes, thesis, lectures |
-| `SetFormatP.sty`  | XeLaTeX  | Partial exams (legacy)  |
+| File             | Engine   | Use case                |
+| ---------------- | -------- | ----------------------- |
+| `SetFormat.sty`  | LuaLaTeX | Notes, thesis, lectures |
+| `SetFormatP.sty` | XeLaTeX  | Partial exams (legacy)  |
 
 ### Packages loaded (SetFormat.sty)
 
-| Category       | Key packages                                              |
-|----------------|-----------------------------------------------------------|
-| Language       | `babel` (spanish)                                         |
-| Fonts          | `luaotfload`, `fontspec`, `realscripts`, `unicode-math` (STIX Two) |
-| Math           | `amsmath`, `bm`, `cancel`                                 |
-| Units          | `siunitx`                                                 |
-| Color          | `xcolor` (table option)                                   |
-| Color boxes    | `tcolorbox` (breakable, skins, theorems, xparse, ...)     |
-| Graphics       | `graphicx`, `tikz`, `pgfplots`, `subcaption`, `pdfpages`  |
-| Tables         | `multirow`, `dcolumn`, `booktabs`                         |
-| Bibliography   | `biblatex` (biber backend), `csquotes`                    |
-| Layout         | `multicol`                                                |
-| Hyperlinks     | `hyperref`, `url`                                         |
-| Enumeration    | `enumerate`, `enumitem`                                   |
+| Category     | Key packages                                                       |
+| ------------ | ------------------------------------------------------------------ |
+| Language     | `babel` (spanish)                                                  |
+| Fonts        | `luaotfload`, `fontspec`, `realscripts`, `unicode-math` (STIX Two) |
+| Math         | `amsmath`, `bm`, `cancel`                                          |
+| Units        | `siunitx`                                                          |
+| Color        | `xcolor` (table option)                                            |
+| Color boxes  | `tcolorbox` (breakable, skins, theorems, xparse, ...)              |
+| Graphics     | `graphicx`, `tikz`, `pgfplots`, `subcaption`, `pdfpages`           |
+| Tables       | `multirow`, `dcolumn`, `booktabs`                                  |
+| Bibliography | `biblatex` (biber backend), `csquotes`                             |
+| Layout       | `multicol`                                                         |
+| Hyperlinks   | `hyperref`, `url`                                                  |
+| Enumeration  | `enumerate`, `enumitem`                                            |
 
 ### SetFormatP.sty differences
 

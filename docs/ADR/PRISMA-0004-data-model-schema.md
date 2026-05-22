@@ -1,6 +1,8 @@
 ---
-adr: PRISMA-0004
+id: PRISMA-0004
 title: "PRISMAreview Data Model: 30+ Django Models for Systematic Review"
+aliases:
+  - ADR-PRISMA-0004
 status: Accepted
 date: 2026-03-26
 authors:
@@ -138,15 +140,15 @@ PRISMA2020Checklist
 
 The `Referenced_databases` model tracks articles from:
 
-| Database | Field | Notes |
-|----------|-------|-------|
-| PubMed | PMID | Medical/biomedical |
-| Web of Science | WoS ID | Multidisciplinary |
-| Scopus | Scopus ID | Multidisciplinary |
-| IEEE Xplore | IEEE ID | Engineering/CS |
-| ACS Publications | ACS DOI | Chemistry |
-| APA PsycINFO | PsycINFO ID | Psychology |
-| Google Scholar | — | Broad discovery |
+| Database         | Field       | Notes              |
+| ---------------- | ----------- | ------------------ |
+| PubMed           | PMID        | Medical/biomedical |
+| Web of Science   | WoS ID      | Multidisciplinary  |
+| Scopus           | Scopus ID   | Multidisciplinary  |
+| IEEE Xplore      | IEEE ID     | Engineering/CS     |
+| ACS Publications | ACS DOI     | Chemistry          |
+| APA PsycINFO     | PsycINFO ID | Psychology         |
+| Google Scholar   | —           | Broad discovery    |
 
 ### Duplicate Detection
 
@@ -209,6 +211,6 @@ When a duplicate is detected during import, the existing record is updated with 
 
 ## Change Log
 
-| Date       | Change      |
-| ---------- | ----------- |
+| Date       | Change                                      |
+| ---------- | ------------------------------------------- |
 | 2026-03-26 | Initial ADR — documents existing data model |

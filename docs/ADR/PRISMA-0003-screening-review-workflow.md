@@ -1,6 +1,8 @@
 ---
-adr: PRISMA-0003
+id: PRISMA-0003
 title: "Article Screening and Review Workflow"
+aliases:
+  - ADR-PRISMA-0003
 status: Accepted
 date: 2026-03-26
 authors:
@@ -93,12 +95,12 @@ PRISMA2020Checklist
 
 An article can be in one of these states relative to a keyword:
 
-| State | Reviewed Record | Included |
-|-------|----------------|----------|
-| Unscreened | No record | — |
-| Included | Yes | True |
-| Excluded | Yes | False |
-| Re-review needed | Marked for re-assessment | — |
+| State            | Reviewed Record          | Included |
+| ---------------- | ------------------------ | -------- |
+| Unscreened       | No record                | —        |
+| Included         | Yes                      | True     |
+| Excluded         | Yes                      | False    |
+| Re-review needed | Marked for re-assessment | —        |
 
 ### Rationale System
 
@@ -158,6 +160,6 @@ Custom rationales can be added per review.
 
 ## Change Log
 
-| Date       | Change      |
-| ---------- | ----------- |
+| Date       | Change                                              |
+| ---------- | --------------------------------------------------- |
 | 2026-03-26 | Initial ADR — documents existing screening workflow |

@@ -1,6 +1,8 @@
 ---
-adr: LZK-0001
+id: LZK-0001
 title: "JSONL/NDJSON RPC Server for Editor Integration"
+aliases:
+  - ADR-LZK-0001
 status: Accepted
 date: 2026-03-26
 authors:
@@ -31,6 +33,7 @@ Neovim (and other editors) need programmatic access to the Zettelkasten engine f
 - Wiki-link navigation
 
 A server protocol is needed that:
+
 - Works over stdin/stdout (Neovim's jobstart model)
 - Is stateless (no session management)
 - Supports cancellation (long-running operations)
@@ -58,29 +61,29 @@ Each line is a complete JSON object. The `id` field correlates requests with res
 
 ### Registered Routes (24)
 
-| Category | Method | Handler | Description |
-|----------|--------|---------|-------------|
-| **Handshake** | `initialize` | `handle_initialize` | Set project root, return capabilities |
-| | `cancel` | `handle_cancel` | Cancel a running operation |
-| **Notes** | `note.new` | `handle_new_note` | Create new LaTeX note |
-| | `note.new_md` | `handle_new_md_note` | Create new Markdown note |
-| | `note.list_recent` | `handle_list_recent` | List recently modified notes |
-| | `note.get_recent` | `handle_get_recent` | Get a specific recent note |
-| | `note.rename_file` | `handle_rename_file` | Rename note file |
-| | `note.rename_ref` | `handle_rename_ref` | Change note reference |
-| | `note.remove` | `handle_remove` | Delete a note |
-| **Render** | `render.note` | `handle_render_note` | Render single note to PDF/HTML |
-| | `render.updates` | `handle_render_updates` | Render all changed notes |
-| **Sync** | `sync.synchronize` | `handle_synchronize` | Sync file changes to DB |
-| | `sync.force` | `handle_force_sync` | Force full resync |
-| **Markdown** | `md.sync` | `handle_sync_md` | Sync Markdown notes to DB |
-| | `md.tex_to_md` | `handle_tex_to_md` | Convert LaTeX note to Markdown |
-| **Export** | `export.new_project` | `handle_new_project` | Create export project |
-| | `export.project` | `handle_export_project` | Export notes to project |
-| | `export.draft` | `handle_export_draft` | Export as draft document |
-| **Analysis** | `analysis.unreferenced` | `handle_unreferenced` | Find notes with no references |
-| | `analysis.dedup_citations` | `handle_dedup_citations` | Find duplicate citations |
-| | `analysis.adjacency` | `handle_adjacency` | Build adjacency matrix |
+| Category      | Method                     | Handler                  | Description                           |
+| ------------- | -------------------------- | ------------------------ | ------------------------------------- |
+| **Handshake** | `initialize`               | `handle_initialize`      | Set project root, return capabilities |
+|               | `cancel`                   | `handle_cancel`          | Cancel a running operation            |
+| **Notes**     | `note.new`                 | `handle_new_note`        | Create new LaTeX note                 |
+|               | `note.new_md`              | `handle_new_md_note`     | Create new Markdown note              |
+|               | `note.list_recent`         | `handle_list_recent`     | List recently modified notes          |
+|               | `note.get_recent`          | `handle_get_recent`      | Get a specific recent note            |
+|               | `note.rename_file`         | `handle_rename_file`     | Rename note file                      |
+|               | `note.rename_ref`          | `handle_rename_ref`      | Change note reference                 |
+|               | `note.remove`              | `handle_remove`          | Delete a note                         |
+| **Render**    | `render.note`              | `handle_render_note`     | Render single note to PDF/HTML        |
+|               | `render.updates`           | `handle_render_updates`  | Render all changed notes              |
+| **Sync**      | `sync.synchronize`         | `handle_synchronize`     | Sync file changes to DB               |
+|               | `sync.force`               | `handle_force_sync`      | Force full resync                     |
+| **Markdown**  | `md.sync`                  | `handle_sync_md`         | Sync Markdown notes to DB             |
+|               | `md.tex_to_md`             | `handle_tex_to_md`       | Convert LaTeX note to Markdown        |
+| **Export**    | `export.new_project`       | `handle_new_project`     | Create export project                 |
+|               | `export.project`           | `handle_export_project`  | Export notes to project               |
+|               | `export.draft`             | `handle_export_draft`    | Export as draft document              |
+| **Analysis**  | `analysis.unreferenced`    | `handle_unreferenced`    | Find notes with no references         |
+|               | `analysis.dedup_citations` | `handle_dedup_citations` | Find duplicate citations              |
+|               | `analysis.adjacency`       | `handle_adjacency`       | Build adjacency matrix                |
 
 ### Server Architecture
 

@@ -1,6 +1,8 @@
 ---
-adr: 0000
+id: ITEP-0000
 title: "Project structure"
+aliases:
+  - ADR-ITEP-0000
 status: Accepted
 date: 2025-09-29
 authors:

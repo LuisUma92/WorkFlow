@@ -1,3 +1,16 @@
+---
+id: 
+title: 
+aliases: []
+type: permanent
+created: 
+tags: []
+concepts: []
+references: []
+exercises: []
+images: []
+---
+
 # PRISMA P2 — Import, Stats, Export, Checklist
 
 **Date:** 2026-04-09

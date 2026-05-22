@@ -1,6 +1,8 @@
 ---
-adr: "0009"
+id: STY-0009
 title: "SetHeaders — Page styles per document type"
+aliases:
+  - ADR-STY-0009
 status: Accepted
 date: 2025-09-29
 authors:
@@ -14,9 +16,9 @@ decision_scope: component
 supersedes: null
 superseded_by: null
 related_adrs:
-  - "STY-0001"
-  - "STY-0008"
-  - "STY-0003"
+  - STY-0001
+  - STY-0008
+  - STY-0003
 ---
 
 ## Context
@@ -33,14 +35,14 @@ different info than UCIMED).
 
 ### Page styles
 
-| Style          | Use case        | Header                          | Footer       |
-|----------------|-----------------|---------------------------------|--------------|
-| `homework`     | Homework/notes  | Lecture name (R), author (L)    | Page number  |
-| `pres`         | Front matter    | Empty                           | Roman page   |
-| `plainPres`    | Plain front     | Empty                           | Page number  |
-| `cuerpo`       | Body            | Page number (R odd, L even)     | Empty        |
-| `plainCuerpo`  | Plain body      | Page number (R odd, L even)     | Empty        |
-| `uplain`       | Exams           | Institution-specific (below)    | Exam metadata|
+| Style         | Use case       | Header                       | Footer        |
+| ------------- | -------------- | ---------------------------- | ------------- |
+| `homework`    | Homework/notes | Lecture name (R), author (L) | Page number   |
+| `pres`        | Front matter   | Empty                        | Roman page    |
+| `plainPres`   | Plain front    | Empty                        | Page number   |
+| `cuerpo`      | Body           | Page number (R odd, L even)  | Empty         |
+| `plainCuerpo` | Plain body     | Page number (R odd, L even)  | Empty         |
+| `uplain`      | Exams          | Institution-specific (below) | Exam metadata |
 
 ### Institution-specific exam headers (`uplain`)
 

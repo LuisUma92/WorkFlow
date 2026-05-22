@@ -1,3 +1,16 @@
+---
+id: 
+title: 
+aliases: []
+type: permanent
+created: 
+tags: []
+concepts: []
+references: []
+exercises: []
+images: []
+---
+
 # LaTeX Macros Reference
 
 Referencia de los macros personalizados definidos en `shared/sty/`. Estos archivos se distribuyen via symlinks a cada proyecto.

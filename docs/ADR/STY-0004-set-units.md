@@ -1,6 +1,8 @@
 ---
-adr: "0004"
+id: STY-0004
 title: "SetUnits — SI unit extensions"
+aliases:
+  - ADR-STY-0004
 status: Accepted
 date: 2025-09-29
 authors:
@@ -14,7 +16,7 @@ decision_scope: component
 supersedes: null
 superseded_by: null
 related_adrs:
-  - "STY-0000"
+  - STY-0000
 ---
 
 ## Context
@@ -42,16 +44,16 @@ additional units (barn, angular velocity) and domain-specific shorthands
 
 ### Custom units
 
-| Command             | Definition | Domain               |
-|---------------------|------------|----------------------|
-| `\barn`             | b          | Nuclear physics      |
-| `\fbarn`            | fb         | Particle physics     |
-| `\luminosity`       | cm⁻²s⁻¹   | Particle physics     |
-| `\degC`, `\degF`    | °C, °F     | Temperature          |
-| `\ace`              | m/s²       | Mechanics            |
-| `\vel`              | m/s        | Mechanics            |
-| `\denV/A/L`         | kg/m³²¹   | Density (vol/area/lin) |
-| `\angvel`, `\angace`| rad/s(²)   | Rotational mechanics |
+| Command              | Definition | Domain                 |
+| -------------------- | ---------- | ---------------------- |
+| `\barn`              | b          | Nuclear physics        |
+| `\fbarn`             | fb         | Particle physics       |
+| `\luminosity`        | cm⁻²s⁻¹    | Particle physics       |
+| `\degC`, `\degF`     | °C, °F     | Temperature            |
+| `\ace`               | m/s²       | Mechanics              |
+| `\vel`               | m/s        | Mechanics              |
+| `\denV/A/L`          | kg/m³²¹    | Density (vol/area/lin) |
+| `\angvel`, `\angace` | rad/s(²)   | Rotational mechanics   |
 
 ---
 

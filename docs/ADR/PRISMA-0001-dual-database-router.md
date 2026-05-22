@@ -1,6 +1,8 @@
 ---
-adr: PRISMA-0001
+id: PRISMA-0001
 title: "Dual-Database Router: MariaDB + Shared SQLite"
+aliases:
+  - ADR-PRISMA-0001
 status: Accepted
 date: 2026-03-26
 authors:
@@ -93,16 +95,16 @@ DATABASE_ROUTERS = ["shared_db.router.SharedDbRouter"]
 
 These 8 Django models mirror the SQLAlchemy models in `workflow.db.models.bibliography`:
 
-| Django Model | SQLAlchemy Model | Table | Shared Fields |
-|-------------|-----------------|-------|---------------|
-| `Bib_entries` | `BibEntry` | `bib_entry` | bibkey, title, year, journal, volume, etc. |
-| `Author` | `BibAuthor` | `bib_author` | first_name, last_name |
-| `Bib_author` | — | `bib_entry_author` | bib_entry_id, author_id, role |
-| `Isn_list` | — | `bib_isn` | isn_type, isn_value |
-| `Referenced_databases` | — | `bib_source` | database_name, search_date |
-| `Url_list` | `BibUrl` | `bib_url` | url, url_type |
-| `Abstract` | — | `bib_abstract` | text, language |
-| `Keyword` | — | `bib_keyword` | keyword |
+| Django Model           | SQLAlchemy Model | Table              | Shared Fields                              |
+| ---------------------- | ---------------- | ------------------ | ------------------------------------------ |
+| `Bib_entries`          | `BibEntry`       | `bib_entry`        | bibkey, title, year, journal, volume, etc. |
+| `Author`               | `BibAuthor`      | `bib_author`       | first_name, last_name                      |
+| `Bib_author`           | —                | `bib_entry_author` | bib_entry_id, author_id, role              |
+| `Isn_list`             | —                | `bib_isn`          | isn_type, isn_value                        |
+| `Referenced_databases` | —                | `bib_source`       | database_name, search_date                 |
+| `Url_list`             | `BibUrl`         | `bib_url`          | url, url_type                              |
+| `Abstract`             | —                | `bib_abstract`     | text, language                             |
+| `Keyword`              | —                | `bib_keyword`      | keyword                                    |
 
 ---
 
@@ -160,6 +162,6 @@ These 8 Django models mirror the SQLAlchemy models in `workflow.db.models.biblio
 
 ## Change Log
 
-| Date       | Change      |
-| ---------- | ----------- |
+| Date       | Change                                         |
+| ---------- | ---------------------------------------------- |
 | 2026-03-26 | Initial ADR — documents existing router design |

@@ -1,3 +1,16 @@
+---
+id: 
+title: 
+aliases: []
+type: permanent
+created: 
+tags: []
+concepts: []
+references: []
+exercises: []
+images: []
+---
+
 # PRISMA Systematic Review CLI
 
 Manage bibliography entries, search keywords, and review screening from the command line.

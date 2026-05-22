@@ -1,6 +1,8 @@
 ---
-adr: "0005"
+id: STY-0005
 title: "SetSymbols — Color-coded physics notation"
+aliases:
+  - ADR-STY-0005
 status: Accepted
 date: 2025-09-29
 authors:
@@ -15,8 +17,8 @@ decision_scope: component
 supersedes: null
 superseded_by: null
 related_adrs:
-  - "STY-0006"
-  - "STY-0002"
+  - STY-0006
+  - STY-0002
 ---
 
 ## Context
@@ -34,21 +36,21 @@ Each physical quantity has a vector and scalar variant.
 
 ### Symbol categories
 
-| Quantity         | Color      | Vector      | Scalar    |
-|------------------|------------|-------------|-----------|
-| Position         | `Pos`      | `\vpos`     | `\spos`   |
-| Components x,y,z | `PosX/Y/Z`| —           | `\sposx/y/z` |
-| Unit vectors     | `PosX/Y/Z` | —          | `\uvi/j/k`|
-| Distance         | `Dis`      | —           | `\sdis`   |
-| Displacement     | `Des`      | `\vdes`     | `\sdes`   |
-| Velocity         | `Vel`      | `\vvel`     | `\svel`   |
-| Speed            | `Rap`      | —           | `\srap`   |
-| Acceleration     | `Ace`      | `\vace`     | `\sace`   |
-| Mass             | `Mas`      | —           | `\smas`   |
-| Force            | `Fza`      | `\vfza`     | `\sfza`   |
-| Linear momentum  | `MomL`     | `\vmom`     | `\smom`   |
-| Angular momentum | `MomA`     | `\vmoma`    | `\smoma`  |
-| Energy (E/K/U)   | `Ene/K/U`  | —           | `\sene/k/u` |
+| Quantity         | Color      | Vector   | Scalar       |
+| ---------------- | ---------- | -------- | ------------ |
+| Position         | `Pos`      | `\vpos`  | `\spos`      |
+| Components x,y,z | `PosX/Y/Z` | —        | `\sposx/y/z` |
+| Unit vectors     | `PosX/Y/Z` | —        | `\uvi/j/k`   |
+| Distance         | `Dis`      | —        | `\sdis`      |
+| Displacement     | `Des`      | `\vdes`  | `\sdes`      |
+| Velocity         | `Vel`      | `\vvel`  | `\svel`      |
+| Speed            | `Rap`      | —        | `\srap`      |
+| Acceleration     | `Ace`      | `\vace`  | `\sace`      |
+| Mass             | `Mas`      | —        | `\smas`      |
+| Force            | `Fza`      | `\vfza`  | `\sfza`      |
+| Linear momentum  | `MomL`     | `\vmom`  | `\smom`      |
+| Angular momentum | `MomA`     | `\vmoma` | `\smoma`     |
+| Energy (E/K/U)   | `Ene/K/U`  | —        | `\sene/k/u`  |
 
 ### Helper macro
 

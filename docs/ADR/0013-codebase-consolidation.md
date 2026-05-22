@@ -1,6 +1,8 @@
 ---
-adr: 0013
+id: 0013
 title: "Codebase Consolidation: Session Patterns, Legacy Decoupling, CLI Architecture"
+aliases:
+  - ADR-0013
 status: Accepted
 date: 2026-03-26
 authors:
@@ -78,11 +80,11 @@ with Session(engine) as session:
 
 **Changes**:
 
-| File | Change |
-|------|--------|
-| `exercise/cli.py` | Keep `_get_engine` but use `Session(engine)` consistently (already does) |
-| `lecture/cli.py` | Remove `sessionmaker(bind=engine)` pattern, use `Session(engine)` directly |
-| `graph/cli.py` | No change (reference implementation) |
+| File               | Change                                                                                                                          |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `exercise/cli.py`  | Keep `_get_engine` but use `Session(engine)` consistently (already does)                                                        |
+| `lecture/cli.py`   | Remove `sessionmaker(bind=engine)` pattern, use `Session(engine)` directly                                                      |
+| `graph/cli.py`     | No change (reference implementation)                                                                                            |
 | `itep/defaults.py` | Replace hardcoded `/home/luis/...` with `Path.home() / "Documents/01-U/00-Fisica"` with env var `WORKFLOW_PHYSICS_DIR` override |
 
 ### Batch 2: Decouple Validation from Legacy itep
@@ -159,18 +161,19 @@ def sync(ctx, path):
 
 **Test coverage additions**:
 
-| New test file | Tests for |
-|---------------|-----------|
-| `tests/workflow/test_validation_schemas.py` | `validate_note_frontmatter`, `validate_exercise_metadata` |
-| `tests/workflow/test_validation_parsers.py` | `parse_md_frontmatter`, `parse_tex_metadata` |
-| `tests/workflow/test_tikz_builder.py` | `find_tikz_sources`, `compute_hash`, `build_all` (mock subprocess) |
-| `tests/workflow/test_db_engine.py` | `get_global_engine`, `init_global_db`, `init_local_db` |
+| New test file                               | Tests for                                                          |
+| ------------------------------------------- | ------------------------------------------------------------------ |
+| `tests/workflow/test_validation_schemas.py` | `validate_note_frontmatter`, `validate_exercise_metadata`          |
+| `tests/workflow/test_validation_parsers.py` | `parse_md_frontmatter`, `parse_tex_metadata`                       |
+| `tests/workflow/test_tikz_builder.py`       | `find_tikz_sources`, `compute_hash`, `build_all` (mock subprocess) |
+| `tests/workflow/test_db_engine.py`          | `get_global_engine`, `init_global_db`, `init_local_db`             |
 
 **Fix pre-existing test failures**: Mark `test_manager.py` with `@pytest.mark.xfail(reason="legacy itep manager, pending rewrite")`.
 
 ### Batch 4: Legacy Cleanup
 
 **Lazy latexzettel engine**:
+
 ```python
 # BEFORE (infra/orm.py line 33):
 engine = get_local_engine(project_root=Path("."))  # runs at import time

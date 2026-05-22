@@ -1,6 +1,8 @@
 ---
-adr: 0005
+id: 0005
 title: "Exercise DSL Extends Existing LaTeX Macros"
+aliases:
+  - ADR-0005
 status: Accepted
 date: 2026-03-25
 authors:
@@ -25,11 +27,13 @@ related_adrs:
 A mature exercise macro system already exists in `shared/sty/` and is deployed across UCR, UFide, and UCIMED:
 
 **SetCommands.sty** provides:
+
 - `\question{stem}{solution}` — toggled by `test`/`solutions` booleans
 - `\qpart{points}{solution}` — sub-question with solution toggle
 - `\exa[ch]{num}` — exercise numbering
 
 **PartialCommands.sty** provides:
+
 - `\pts{n}`, `\upt`, `\ptscu`, `\uptcu` — point tracking
 - `\consolidatePoints{label}` — section point totals
 - `\rightoption` — answer key checkmark

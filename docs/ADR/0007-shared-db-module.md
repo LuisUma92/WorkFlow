@@ -1,6 +1,8 @@
 ---
-adr: 0007
+id: 0007
 title: "Shared DB Module with Repository API"
+aliases:
+  - ADR-0007
 status: Accepted
 date: 2026-03-25
 authors:

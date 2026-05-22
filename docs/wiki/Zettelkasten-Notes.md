@@ -1,3 +1,16 @@
+---
+id: 
+title: 
+aliases: []
+type: permanent
+created: 
+tags: []
+concepts: []
+references: []
+exercises: []
+images: []
+---
+
 # Zettelkasten Notes
 
 El sistema de notas Zettelkasten permite gestionar conocimiento en Markdown (Obsidian-compatible) con enlaces cruzados, tipos de nota, y conversion bidireccional a LaTeX.

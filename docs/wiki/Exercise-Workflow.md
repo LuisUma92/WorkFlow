@@ -1,3 +1,16 @@
+---
+id:
+title:
+aliases: []
+type: permanent
+created:
+tags: []
+concepts: []
+references: []
+exercises: []
+images: []
+---
+
 # Exercise Workflow
 
 El banco de ejercicios permite crear, parsear, indexar, seleccionar y exportar ejercicios LaTeX. Los archivos `.tex` son la fuente de verdad — la base de datos almacena solo metadatos e indices ([ADR-0010](../ADR/0010-exercise-persistence-model.md)).
@@ -48,16 +61,16 @@ Cada ejercicio es un archivo `.tex` con metadatos YAML en comentarios:
 
 ### Campos de metadatos YAML
 
-| Campo | Requerido | Valores | Descripcion |
-|-------|-----------|---------|-------------|
-| `id` | Si | string | Identificador unico (ej: `phys-gauss-001`) |
-| `type` | Si | `multichoice`, `essay`, `shortanswer`, `numerical`, `truefalse` | Tipo de pregunta |
-| `difficulty` | Si | `easy`, `medium`, `hard` | Nivel de dificultad |
-| `taxonomy_level` | Si | Bloom (ver abajo) | Nivel taxonomico |
-| `taxonomy_domain` | Si | Bloom (ver abajo) | Dominio taxonomico |
-| `tags` | No | lista | Etiquetas para filtrar |
-| `concepts` | No | lista | IDs de notas relacionadas |
-| `status` | No | `placeholder`, `in_progress`, `complete` | Estado del archivo |
+| Campo             | Requerido | Valores                                                         | Descripcion                                |
+| ----------------- | --------- | --------------------------------------------------------------- | ------------------------------------------ |
+| `id`              | Si        | string                                                          | Identificador unico (ej: `phys-gauss-001`) |
+| `type`            | Si        | `multichoice`, `essay`, `shortanswer`, `numerical`, `truefalse` | Tipo de pregunta                           |
+| `difficulty`      | Si        | `easy`, `medium`, `hard`                                        | Nivel de dificultad                        |
+| `taxonomy_level`  | Si        | Bloom (ver abajo)                                               | Nivel taxonomico                           |
+| `taxonomy_domain` | Si        | Bloom (ver abajo)                                               | Dominio taxonomico                         |
+| `tags`            | No        | lista                                                           | Etiquetas para filtrar                     |
+| `concepts`        | No        | lista                                                           | IDs de notas relacionadas                  |
+| `status`          | No        | `placeholder`, `in_progress`, `complete`                        | Estado del archivo                         |
 
 ### Taxonomia de Bloom ([ADR ITEP-0006](../ADR/ITEP-0006-taxonomy-enums.md))
 
@@ -67,15 +80,15 @@ Cada ejercicio es un archivo `.tex` con metadatos YAML en comentarios:
 
 ### Macros de ejercicio
 
-| Macro | Archivo .sty | Funcion |
-|-------|-------------|---------|
-| `\question{stem}{solution}` | SetCommands | Pregunta principal |
-| `\qpart{instruccion}{solucion}` | SetCommands | Parte/opcion de pregunta |
-| `\pts{n}` | PartialCommands | Asignar puntos |
-| `\rightoption` | PartialCommands | Marcar opcion correcta |
-| `\exa[cap]{num}` | SetCommands | Referencia a ejercicio de libro |
-| `\qfeedback{texto}` | SetExercises | Retroalimentacion (para Moodle) |
-| `\qdiagram{id}` | SetExercises | Referencia a diagrama TikZ |
+| Macro                           | Archivo .sty    | Funcion                         |
+| ------------------------------- | --------------- | ------------------------------- |
+| `\question{stem}{solution}`     | SetCommands     | Pregunta principal              |
+| `\qpart{instruccion}{solucion}` | SetCommands     | Parte/opcion de pregunta        |
+| `\pts{n}`                       | PartialCommands | Asignar puntos                  |
+| `\rightoption`                  | PartialCommands | Marcar opcion correcta          |
+| `\exa[cap]{num}`                | SetCommands     | Referencia a ejercicio de libro |
+| `\qfeedback{texto}`             | SetExercises    | Retroalimentacion (para Moodle) |
+| `\qdiagram{id}`                 | SetExercises    | Referencia a diagrama TikZ      |
 
 Ver [LaTeX Macros](LaTeX-Macros.md) para la referencia completa.
 
@@ -175,13 +188,13 @@ workflow exercise export-moodle 00EE-ExamplesExercises/ \
 
 Antes de exportar, los macros personalizados se expanden a LaTeX estandar:
 
-| Original | Expandido |
-|----------|-----------|
-| `\vc{E}` | `\vec{\mathbf{E}}` |
-| `\scrp{enc}` | `_{\mbox{\scriptsize{enc}}}` |
-| `\pts{5}` | `(5 pts.)` |
-| `$x^2$` | `\(x^2\)` |
-| `\textcolor{red}{texto}` | `texto` |
+| Original                 | Expandido                    |
+| ------------------------ | ---------------------------- |
+| `\vc{E}`                 | `\vec{\mathbf{E}}`           |
+| `\scrp{enc}`             | `_{\mbox{\scriptsize{enc}}}` |
+| `\pts{5}`                | `(5 pts.)`                   |
+| `$x^2$`                  | `\(x^2\)`                    |
+| `\textcolor{red}{texto}` | `texto`                      |
 
 Esto asegura que el XML funcione en **cualquier** Moodle sin depender de MathJax institucional.
 

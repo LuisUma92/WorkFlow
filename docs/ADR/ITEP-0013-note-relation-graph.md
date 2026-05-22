@@ -1,0 +1,514 @@
+---
+id: ITEP-0013
+title: "Note relation graph — directed lineage + associative edges over the unified vault"
+aliases:
+  - ADR-ITEP-0013
+status: Proposed
+date: 2026-05-22
+authors:
+  - Luis Fernando Umaña Castro
+reviewers: []
+tags:
+  - architecture
+  - notes
+  - zettelkasten
+  - graph
+  - traversal
+  - migration
+decision_scope: cross-module
+supersedes: null
+superseded_by: null
+related_adrs:
+  - 0001-zettelkasten-note-semantic-layer
+  - 0002-markdown-canonical
+  - 0010-exercise-persistence-model
+  - LZK-0003-note-reference-system
+  - ITEP-0009-knowledge-lifecycle
+  - ITEP-0010-schema-versioning-and-migrations
+  - ITEP-0011-vault-unification
+---
+
+## Context
+
+The unified vault (ITEP-0011) stores notes as Markdown files with YAML frontmatter,
+canonical on disk, indexed into `GlobalBase`. The only inter-note relation modelled
+today is the **wiki-link**: the `Link` table records `note → label` edges
+(LZK-0003), which resolve Markdown `[[...]]` references through the `Label` table.
+
+This is an *associative* layer only. It expresses "note A mentions a labelled
+anchor in note B" but it does **not** model:
+
+- **provenance** — which note(s) a note evolved out of;
+- **continuation** — which notes carry a line of reasoning forward;
+- **branching** — divergent argumentations growing from one note;
+- **epistemic lineage** — the directed history of a thought.
+
+Without these, the system cannot support resumable exploration, reasoning
+continuation, or lineage tracking — the stated goals for evolving the vault into
+an agentic knowledge graph robust under automated note generation.
+
+A request (`.claude/requests/2026-05-21-resuming.md`) proposed adding:
+
+```yaml
+relations:
+  parent: note-id          # singular provenance
+  next: [note-id, note-id] # plural continuations
+```
+
+plus a later `links:` family (`supports`, `contradicts`, `expands`).
+
+This ADR critically evaluates that proposal and specifies the schema, traversal,
+validation, and migration design. **A decision is required now** because two
+in-flight workstreams (Phase A `notes` CRUD, ITEP-0012 Concept ORM) are actively
+extending the note model; the edge model should be fixed before `notes link`
+grows a relation surface.
+
+> **Path note:** the live vault is `~/01-U/0000AA-Vault/` and the live index
+> DB is `~/01-U/workflow/workflow.db` (confirmed on disk). These diverge from
+> the XDG layout in ADR-0008 and the `~/Documents/01-U` default cited in
+> ITEP-0011 — a pre-existing inconsistency to reconcile separately. It does not
+> affect this ADR's edge model, which is path-agnostic.
+
+---
+
+## Decision Drivers
+
+- **Append-only creation** — automated agents must create a note by writing
+  *one* file, never editing prior notes. This is the dominant driver.
+- **Source-of-truth discipline** — Markdown stays canonical (0002, 0010);
+  SQLite must remain a fully rebuildable derived index.
+- **Expressiveness** — the model must represent merges (synthesis of multiple
+  lines) and branches, not just a linear or strictly-tree history.
+- **Robustness** — invalid/stale references must surface, never crash or
+  silently vanish.
+- **Long-term maintainability over short-term simplicity** (explicit constraint).
+- **Scalability** — tens of thousands of notes, concurrent agent access,
+  future embeddings/RAG.
+- **Zettelkasten spirit** — a branching idea network, not a rigid task pipeline.
+
+---
+
+## Decision
+
+### Summary of evaluation of the proposed model
+
+| Proposed primitive | Verdict | Reason |
+|---|---|---|
+| `parent` singular | **Reject as canonical** | Forbids *merge nodes*. A synthesis note legitimately derives from two or more lines; a reasoning DAG has convergence points. Singular parent collapses the graph to a tree. |
+| `next` plural | **Keep the intent, change the storage** | Branching continuation is correct. But storing `next` in the *parent* file means every new continuation **mutates an old file** — breaks append-only creation, creates write contention and merge conflicts. |
+| directed reasoning graph | **Adopt** | Correct target model. |
+| strict DAG | **Adopt for lineage only** | Lineage must be acyclic. Associative edges (`contradicts`) may cycle and that is meaningful. |
+
+**Core decision:** there is exactly **one canonical, directed, typed edge**,
+stored **once**, in the **frontmatter of the note that the edge originates from**
+(the newer / dependent note). `parent` and `next` are not two stored fields —
+they are the two *directions of one edge*. The forward (`next`) direction is
+**never stored in Markdown**; it is a reverse index materialised only in SQLite.
+
+This inverts the request's proposal (store backward, not forward) and makes the
+parent side **plural** — which is strictly more expressive (merges allowed) at no
+cost.
+
+### Two edge families
+
+| Family | Frontmatter key | `edge_class` | DAG-constrained | Cycles |
+|---|---|---|---|---|
+| **Lineage** (the traversal spine) | `derived_from` | `structural` | yes | forbidden |
+| **Associative** (semantic) | `links` | `associative` | no | allowed |
+
+Both families share one uniform item shape and one SQLite table. The lineage
+family *is* the canonical traversal primitive; associative edges are
+cross-cutting and do not participate in lineage traversal unless explicitly
+requested.
+
+### Canonical YAML schema
+
+```yaml
+# In the frontmatter of note 202605221430 (a refinement of an earlier note)
+relations:
+  derived_from:
+    - id: 202605211200          # zettel_id of the ancestor — REQUIRED, stable
+      type: refines             # continuation|refines|branches|synthesis|rebuttal
+      weight: 0.9               # OPTIONAL — confidence, default unweighted
+      note: "tightened the error bound"   # OPTIONAL — rationale for the edge
+    - id: 202604300900          # second ancestor → this note is a synthesis/merge
+      type: synthesis
+  links:
+    - id: 202604010900
+      type: supports            # supports|contradicts|expands|see_also
+    - id: 202604020900
+      type: contradicts
+entry_point: true               # OPTIONAL — declares an intentional root,
+                                 # suppresses the orphan warning
+```
+
+- `derived_from` and `links` are both **lists of `{id, type, weight?, note?}`**.
+- Absent `relations:` ⇒ the note is a lineage root. Fully backward compatible.
+- `id` is always a **`zettel_id`** (stable string), never a filename, never a
+  DB integer.
+
+### SQLite schema
+
+`note_edge` is a new table. It does **not** replace `Link` (wiki-link
+`note → label` edges stay as-is, LZK-0003). `note_edge` is `note → note`.
+
+```sql
+CREATE TABLE note_edge (
+    id               INTEGER PRIMARY KEY,
+    source_id        INTEGER NOT NULL REFERENCES note(id) ON DELETE CASCADE,
+    target_id        INTEGER          REFERENCES note(id) ON DELETE SET NULL,
+    target_zettel_id TEXT    NOT NULL,   -- always the frontmatter value
+    edge_class       TEXT    NOT NULL,   -- 'structural' | 'associative'
+    relation_type    TEXT    NOT NULL,   -- continuation|refines|branches|synthesis
+                                         -- |rebuttal|supports|contradicts|expands|see_also
+    weight           REAL,               -- nullable
+    rationale        TEXT,               -- nullable; the YAML `note`
+    created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK (edge_class IN ('structural','associative')),
+    CHECK (source_id != target_id),
+    UNIQUE (source_id, target_zettel_id, relation_type)
+);
+
+CREATE INDEX ix_note_edge_source     ON note_edge (source_id, edge_class, relation_type);
+CREATE INDEX ix_note_edge_target     ON note_edge (target_id, edge_class, relation_type);
+CREATE INDEX ix_note_edge_unresolved ON note_edge (target_zettel_id) WHERE target_id IS NULL;
+```
+
+**Edge direction invariant:** `source_id` is *always* the note whose `.md`
+frontmatter declared the edge. For a lineage edge, `source` derives from
+`target`. This makes per-file reindex atomic: `DELETE FROM note_edge WHERE
+source_id = :n` then re-insert from that one file — no cross-file coordination.
+
+**`target_id` resolution:** the frontmatter only carries `target_zettel_id`.
+The reindexer resolves it to `target_id`. An unresolved reference is stored as a
+row with `target_id = NULL` — **never dropped**. `validate notes` reports it.
+
+**Reverse index:** "what evolved from X" =
+`SELECT source_id FROM note_edge WHERE target_id = X AND edge_class='structural'`.
+The `next` direction is this query — no Markdown, no generated reverse files.
+
+### Bidirectional materialization — decision
+
+- Markdown stores the edge **once**, backward (`derived_from`, in the child).
+- SQLite materialises **both directions implicitly** via the two indexes
+  (`ix_note_edge_source`, `ix_note_edge_target`). No second row, no reverse file.
+- This **eliminates the doubly-linked-list desync failure class entirely** —
+  there is no second copy that can drift.
+
+### `next` attributes — decision
+
+| Asked | Decision |
+|---|---|
+| ordering | **No canonical order.** Branches are parallel argumentations. Optional display `rank` MAY be added later; not stored now. |
+| weights / priorities / confidence | **Optional `weight REAL`**, nullable, default unweighted. Enables confidence-weighted traversal; agents populate lazily. |
+| timestamps | **`created_at` on the edge.** Cheap; enables "latest continuation". |
+| reasoning classification | **Modelled as `relation_type`**, not a sub-field. The classification *is* the edge type (`refines`, `branches`, `synthesis`, `rebuttal`). |
+
+### Traversal strategies (pseudocode)
+
+All traversals are **bounded**: `visited` set (cycle/DAG safety), `max_depth`,
+and a `node_budget` (context-window awareness). Lineage traversal filters
+`edge_class='structural'`.
+
+```text
+# Resumable exploration — bounded forward BFS over lineage
+function resume_exploration(start_zid, max_depth, node_budget):
+    frontier = queue([(start_zid, 0)])
+    visited  = {start_zid}
+    result   = []
+    while frontier and len(result) < node_budget:
+        (zid, depth) = frontier.pop_left()
+        result.append(zid)
+        if depth >= max_depth: continue
+        for child in db.forward_lineage(zid):        # WHERE target = zid, structural
+            if child not in visited:
+                visited.add(child)
+                frontier.push((child, depth + 1))
+    return result            # breadth-first wavefront of continuations
+
+# Epistemic lineage — DFS backward to roots
+function trace_lineage(zid, visited=set()):
+    if zid in visited: return []        # guards a malformed cycle defensively
+    visited.add(zid)
+    parents = db.backward_lineage(zid)  # WHERE source = zid, structural
+    if not parents: return [[zid]]      # reached a root
+    paths = []
+    for p in parents:
+        for path in trace_lineage(p, visited):
+            paths.append(path + [zid])
+    return paths                        # all ancestral paths (a DAG ⇒ may be many)
+
+# Confidence-weighted best-first — heuristic / semantic-ranked traversal
+function weighted_explore(start_zid, node_budget, score):
+    # score(zid, edge) MAY combine edge.weight, recency, embedding similarity
+    heap = max_heap([(score(start_zid, None), start_zid)])
+    visited = set(); result = []
+    while heap and len(result) < node_budget:
+        (_, zid) = heap.pop_max()
+        if zid in visited: continue
+        visited.add(zid); result.append(zid)
+        for (child, edge) in db.forward_lineage_edges(zid):
+            if child not in visited:
+                heap.push((score(child, edge), child))
+    return result            # ranked continuation, context-window-aware
+```
+
+- **BFS** — default for "show me where this thought can resume."
+- **DFS-to-root** — `trace_lineage` for provenance / lineage audit.
+- **Best-first** — agent traversal; `score` plugs in `weight`, recency, or
+  (future) embedding cosine similarity for semantic ranking.
+- **Context-window-aware** — every traversal takes a `node_budget`; the caller
+  sizes it to the model's remaining context.
+
+### Filesystem vs database vs hybrid — decision
+
+**Hybrid, with a sharpened contract.** Markdown is the source of truth for
+edges *and* content; SQLite is a **pure derived index — disposable and
+rebuildable**. The new law extends 0002/0010 to edges:
+
+> No lineage or associative edge exists *only* in SQLite. Every edge is
+> reconstructable by re-reading frontmatter. The sole DB-only artefacts are the
+> computed reverse direction (an index, not a row) and `target_id=NULL`
+> unresolved-edge bookkeeping.
+
+`workflow notes reindex` MUST be able to drop and rebuild `note_edge` entirely
+from the `.md` corpus.
+
+---
+
+## Architectural Rules
+
+### MUST
+
+- Edge references in frontmatter **MUST** use `zettel_id`, never filename or DB
+  integer id.
+- Every graph-participating note **MUST** have a non-null, unique `zettel_id`.
+- A lineage edge **MUST** be stored exactly once, in the `derived_from` of the
+  *originating* (newer) note. The `next`/forward direction **MUST NOT** appear
+  in any Markdown file.
+- The lineage subgraph (`edge_class='structural'`) **MUST** remain acyclic.
+  Validation **MUST** reject a frontmatter change that introduces a lineage
+  cycle.
+- An unresolved edge target **MUST** be persisted (`target_id=NULL`), never
+  silently dropped.
+- `note_edge` **MUST** be fully rebuildable from frontmatter by `reindex`.
+- Per-file reindex **MUST** be atomic: delete-by-`source_id` then re-insert.
+
+### SHOULD
+
+- New continuation notes **SHOULD** be created append-only — one new file, no
+  edit of any ancestor.
+- `validate notes --graph` **SHOULD** run in CI and report unresolved edges,
+  orphans, self-edges, and duplicate edges as warnings.
+- Intentional lineage roots **SHOULD** be marked `entry_point: true` to suppress
+  the orphan warning.
+- SQLite **SHOULD** run in WAL mode for concurrent agent access.
+
+### MAY
+
+- An edge **MAY** carry `weight` and a free-text `rationale`.
+- Traversal callers **MAY** supply a `score` function for heuristic/semantic
+  ranking.
+- A future `note_embedding` table **MAY** be added for semantic similarity;
+  the edge graph and embeddings compose (graph = lineage, embeddings =
+  similarity) and are independent.
+- A heuristic pass **MAY** *propose* `derives` edges from existing wiki-links,
+  but **MUST NOT** auto-create them — lineage stays human/agent-curated.
+
+---
+
+## Implementation Notes
+
+- ORM model `NoteEdge` → `src/workflow/db/models/notes.py` (next to `Note`,
+  `Link`, `Concept`).
+- Migration → new `GlobalBase` slot, forward-only (ITEP-0010). Adds `note_edge`
+  + indexes only. No change to `note`, `link`, `label`.
+- Frontmatter schema → extend `NoteFrontmatter` in
+  `src/workflow/validation/schemas.py`: optional `relations` block parsed into
+  typed edge dataclasses; mirror the `concepts:` validation pattern.
+- Reindex → `src/workflow/notes/` reindexer: per-file
+  `DELETE … WHERE source_id=:n` + insert; resolve `target_zettel_id → target_id`
+  by `Note.zettel_id` lookup; record misses as `target_id=NULL`.
+- Validators → add `check_graph_against_db` alongside
+  `check_main_topic_against_db` / `check_concepts_against_db`. Cycle detection
+  via recursive CTE:
+
+  ```sql
+  WITH RECURSIVE anc(n) AS (
+      SELECT target_id FROM note_edge
+        WHERE source_id = :start AND edge_class='structural'
+      UNION
+      SELECT e.target_id FROM note_edge e JOIN anc ON e.source_id = anc.n
+        WHERE e.edge_class='structural'
+  )
+  SELECT 1 FROM anc WHERE n = :start;   -- non-empty ⇒ cycle
+  ```
+
+- CLI surface (later ADR/plan, out of scope here): `notes link --relation`,
+  `graph trace`, `graph resume`, extend `graph orphans`.
+- Reuse: `graph/` already has BFS/component analysis (`analysis.py`) and DOT
+  export — lineage edges get a distinct edge style there.
+
+---
+
+## Impact on AI Coding Agents
+
+- To continue a line of reasoning, an agent **creates one new note** whose
+  `derived_from` points at the ancestor(s). It **does not** edit the ancestor.
+- Agents **MUST** write `zettel_id` references, resolved against the vault, not
+  guessed filenames.
+- Agents **MUST NOT** introduce a lineage cycle; before adding `derived_from`,
+  check the target is not a descendant (`validate notes --graph` enforces this,
+  but agents should pre-check).
+- Agents querying the graph **MUST** pass a `node_budget` sized to remaining
+  context — never traverse unbounded.
+- Agents **MUST NOT** write to `note_edge` directly; the table is derived.
+  Mutate frontmatter, then `reindex`.
+- Consult ITEP-0009 (knowledge lifecycle) and ITEP-0011 (vault) before bulk
+  note generation.
+
+---
+
+## Consequences
+
+### Benefits
+
+- Branching, merging reasoning graph — supports synthesis nodes a tree cannot.
+- Append-only creation — no write contention, no merge conflicts on ancestors;
+  ideal for automated generation and concurrent agents.
+- The doubly-linked-list desync failure class is **structurally impossible** —
+  the edge has no second stored copy.
+- One uniform edge table for lineage *and* semantic links — no parallel
+  subsystems.
+- SQLite stays a disposable cache — `reindex` is the single recovery path.
+- Bounded traversals are context-window-safe by construction.
+
+### Costs
+
+- A new table, migration, ORM model, frontmatter schema, validator, reindex
+  path — upfront design and code effort.
+- Forward (`next`) lineage is *only* a DB query — a vault inspected with plain
+  Markdown tooling shows provenance but not continuations. Acceptable: the DB
+  is the traversal layer by design.
+- Cycle validation adds a recursive CTE to the validate path.
+
+---
+
+## Alternatives Considered
+
+### Alternative A — store `parent` (singular) + `next` (plural), as proposed
+
+Each note stores a single `parent` and a list of `next`.
+
+**Advantages:** forward traversal readable directly from Markdown; matches the
+request's intuition.
+
+**Disadvantages:** singular `parent` forbids merge/synthesis nodes; storing
+`next` in the parent mutates old files on every continuation (breaks
+append-only, causes contention); the edge is stored **twice** (parent's `next`
+and child's `parent`) — a guaranteed desync source. **Rejected.**
+
+### Alternative B — store the edge forward only (`next` in the parent)
+
+Single copy, but in the parent.
+
+**Advantages:** no duplication; forward traversal readable from Markdown.
+
+**Disadvantages:** still mutates the ancestor on every new continuation —
+violates the append-only driver. **Rejected.**
+
+### Alternative C — separate tables for lineage vs semantic links
+
+A `lineage_edge` table and a distinct `semantic_link` table.
+
+**Advantages:** narrower per-table schema.
+
+**Disadvantages:** two near-identical subsystems, two reindex paths, two
+validators; `edge_class` discriminator on one table is simpler and keeps
+traversal code uniform. **Rejected.**
+
+### Alternative D — graph-only in SQLite, frontmatter carries no edges
+
+Edges authored via CLI, stored only in the DB.
+
+**Advantages:** no frontmatter parsing.
+
+**Disadvantages:** violates Markdown-as-canonical (0002, 0010); the vault is no
+longer self-describing; loses git-diffable provenance. **Rejected.**
+
+---
+
+## Failure Mode Analysis
+
+| Failure | Handling |
+|---|---|
+| **Lineage cycle** | Validation error (recursive CTE). Frontmatter change rejected. The only edge problem treated as an error, not a warning. |
+| **Associative cycle** (`A contradicts B`, `B contradicts A`) | Allowed and meaningful. Not flagged. |
+| **Orphan note** | Warning, not error. A note with no structural edges that is not `entry_point: true`. Distinguishes intentional roots from dangling notes. |
+| **Invalid / stale reference** | Edge persisted with `target_id=NULL`; `validate notes --graph` reports it. Never crashes, never dropped. |
+| **Ambiguous traversal** | Bounded by `visited` + `max_depth` + `node_budget`; a DAG yields multiple ancestral paths — `trace_lineage` returns all, caller chooses. |
+| **Graph explosion** | `node_budget` caps every traversal; best-first prioritises under the cap. |
+| **Recursive traversal cost** | Indexed recursive CTEs; `(source_id,…)` and `(target_id,…)` indexes keep each hop O(log n). |
+| **Markdown ↔ SQLite desync** | SQLite is derived; `fm_hash` per note drives incremental reindex; `reindex` fully rebuilds. No edge lives only in the DB. |
+| **Renamed file** | Edges key on `zettel_id`, not filename — rename is transparent. |
+| **Rebuilt DB / integer-id churn** | Edges key on `zettel_id`; integer `id`s are re-resolved on reindex. |
+| **Concurrent agent writes** | Per-file Markdown creation = low contention; SQLite WAL; reindex is idempotent and per-file atomic. |
+
+---
+
+## Scalability Notes
+
+- SQLite handles 10k–100k notes and edges comfortably with the three indexes.
+- Concurrent agents: WAL mode; Markdown creation is append-only per file.
+- Automated generation: append-only model is the enabling property here.
+- Visualization: `graph export-dot` / `export-tikz` extend to render lineage
+  edges distinctly from associative/wiki edges.
+- Semantic embeddings + RAG: a future `note_embedding` table is orthogonal —
+  lineage graph answers "how did this thought evolve," embeddings answer "what
+  is similar." Best-first traversal's `score` hook is the integration point.
+
+---
+
+## Compatibility / Migration
+
+Backward compatible. Notes without a `relations:` block are valid lineage roots.
+No existing data is rewritten; `Link` (wiki-links) is untouched.
+
+```
+Phase 0  Migration: add note_edge table + 3 indexes (GlobalBase, forward-only).
+Phase 1  Frontmatter schema: optional `relations.derived_from` / `relations.links`.
+Phase 2  Reindex: build note_edge from frontmatter; record unresolved as NULL.
+Phase 3  Validator: `validate notes --graph` (cycles, orphans, unresolved).
+Phase 4  CLI: `notes link --relation`, `graph trace|resume`, extend `orphans`.
+```
+
+No backfill of sequential data is required (none exists). Wiki-links are **not**
+auto-promoted to lineage edges — lineage is curated. Each phase is independently
+shippable behind the optional frontmatter field.
+
+---
+
+## References
+
+- Niklas Luhmann — Zettelkasten method (branching note networks)
+- ADR 0002 — Markdown as canonical knowledge layer
+- ADR 0010 — File as truth, DB as index
+- ADR LZK-0003 — Note reference system (wiki-links, IDs)
+- ADR ITEP-0009 — Knowledge lifecycle and AI agent conventions
+- ADR ITEP-0011 — Vault unification
+- SQLite — recursive common table expressions; WAL mode
+
+---
+
+## Status
+
+**Proposed.** Analysis and schema design only. No code is written by this ADR.
+Awaiting review before any implementation phase begins.
+
+---
+
+## Change Log
+
+| Date       | Change                                              |
+| ---------- | --------------------------------------------------- |
+| 2026-05-22 | Initial ADR — directed note relation graph design   |

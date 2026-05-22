@@ -1,6 +1,8 @@
 ---
-adr: ITEP-0011
+id: ITEP-0011
 title: "Vault unification — single global Markdown corpus, Note table relocates to GlobalBase"
+aliases:
+  - ADR-ITEP-0011
 status: Accepted
 date: 2026-05-04
 accepted_date: 2026-05-06
@@ -25,7 +27,7 @@ related_adrs:
   - ITEP-0009-knowledge-lifecycle
   - ITEP-0010-schema-versioning-and-migrations
 ---
-
+ 
 ## Context
 
 The current architecture splits `Note` rows into per-project LocalBase
@@ -81,7 +83,7 @@ under a single configurable vault root, default
 
 4. **Introduce LocalBase-only tables** (P5):
    - `prisma_decision (id, article_id, phase, motive, reviewer_id,
-     decided_at)` — supersedes the implicit decision rows currently in
+decided_at)` — supersedes the implicit decision rows currently in
      PRISMA web app.
    - `project_note (id, global_note_id, project_id, kind, body, created_at)`
      where `kind ∈ {idea, hypothesis, connection}` and `global_note_id`
@@ -90,7 +92,7 @@ under a single configurable vault root, default
 
 5. **Phase B FK becomes real.** After ITEP-0011 P3 lands, Phase B's
    `ALTER TABLE note ADD COLUMN main_topic_id INTEGER REFERENCES
-   main_topic(id) ON DELETE SET NULL` is enforceable and filed under
+main_topic(id) ON DELETE SET NULL` is enforceable and filed under
    `migrations/global/`.
 
 6. **Backwards compatibility.** Existing slipbox.db files are not deleted
@@ -131,7 +133,7 @@ under a single configurable vault root, default
   resolution. The current `infra/orm.py` shim assumes LocalBase. Update
   needed.
 - Two CLI commands (`workflow notes ...` and forthcoming `workflow
-  project-note ...`) sit at adjacent surfaces; risk of UX confusion.
+project-note ...`) sit at adjacent surfaces; risk of UX confusion.
   Mitigation: clear `--help` text and `workflow notes --help` cross-link.
 - `0000AA-Vault` does not yet exist on disk; user must `mkdir` it (or
   `workflow vault init`) before running `vault unify`.
@@ -146,16 +148,16 @@ under a single configurable vault root, default
 
 ## Migration plan (forward-only)
 
-| Phase | Action | Status | Reversibility |
-|---|---|---|---|
-| P0 | Draft this ADR; user review; Status → Accepted | **Done** 2026-05-06 | n/a |
-| P1 | Add `note`, `label`, `link`, `citation`, `tag`, `note_tag`, `concept`, `note_concept` to GlobalBase models (parallel; LocalBase note tables not yet dropped — old slipbox.db files keep them until P4) | **Done** commit `c02d788` | reversible |
-| P2 | Implement `workflow vault unify` + author migration `migrations/global/0003_add_note_tables.py`. Dry-run + backup mandatory; idempotent. Tests cover: empty slipbox, slipbox with N notes, id collision, orphan detection | next | reversible |
-| P3 | Switch `SqlNoteRepo` to GlobalBase session (locked, OQ5). CLI commands route writes to vault. Remove the 4 `xfail` marks on lecture CLI tests added in P1. Tests + integration green | pending | reversible (flag-gated) |
-| P4 | Forward-only LocalBase migration: drop `note`, `label`, `link`, `citation`, `tag`, `note_tag` tables. Bumps LocalBase schema version | pending | irreversible (manual restore from backup only) |
-| P5 | Add LocalBase tables `prisma_decision`, `project_note`. Migrate PRISMA web-app data into `prisma_decision` | pending | reversible |
-| P6 | Update `latexzettel` RPC server, nvim-plugin, lectkit to use vault root + GlobalBase notes | pending | reversible |
-| P7 | ADR flip → Implemented; CLAUDE.md update; close ITEP-0011 | pending | n/a |
+| Phase | Action                                                                                                                                                                                                                    | Status                    | Reversibility                                  |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ---------------------------------------------- |
+| P0    | Draft this ADR; user review; Status → Accepted                                                                                                                                                                            | **Done** 2026-05-06       | n/a                                            |
+| P1    | Add `note`, `label`, `link`, `citation`, `tag`, `note_tag`, `concept`, `note_concept` to GlobalBase models (parallel; LocalBase note tables not yet dropped — old slipbox.db files keep them until P4)                    | **Done** commit `c02d788` | reversible                                     |
+| P2    | Implement `workflow vault unify` + author migration `migrations/global/0003_add_note_tables.py`. Dry-run + backup mandatory; idempotent. Tests cover: empty slipbox, slipbox with N notes, id collision, orphan detection | next                      | reversible                                     |
+| P3    | Switch `SqlNoteRepo` to GlobalBase session (locked, OQ5). CLI commands route writes to vault. Remove the 4 `xfail` marks on lecture CLI tests added in P1. Tests + integration green                                      | pending                   | reversible (flag-gated)                        |
+| P4    | Forward-only LocalBase migration: drop `note`, `label`, `link`, `citation`, `tag`, `note_tag` tables. Bumps LocalBase schema version                                                                                      | pending                   | irreversible (manual restore from backup only) |
+| P5    | Add LocalBase tables `prisma_decision`, `project_note`. Migrate PRISMA web-app data into `prisma_decision`                                                                                                                | pending                   | reversible                                     |
+| P6    | Update `latexzettel` RPC server, nvim-plugin, lectkit to use vault root + GlobalBase notes                                                                                                                                | pending                   | reversible                                     |
+| P7    | ADR flip → Implemented; CLAUDE.md update; close ITEP-0011                                                                                                                                                                 | pending                   | n/a                                            |
 
 P3 is the gate for Phase B of the bundle request to start.
 
@@ -165,7 +167,7 @@ P3 is the gate for Phase B of the bundle request to start.
   `workflow vault unify --project <DDTTAA-YYPP>`.
 - **OQ2 → Accepted:** `vault unify` reports id collisions and refuses
   to proceed without explicit `--rename-strategy {project-prefix,
-  abort, manual}`. Default: `abort`.
+abort, manual}`. Default: `abort`.
 - **OQ3 → Accepted (out of scope):** vault-as-git is the user's call;
   not enforced by ITEP-0011.
 - **OQ4 → Accepted:** `project_note.kind` is a Python `Enum`

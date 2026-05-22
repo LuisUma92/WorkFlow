@@ -1,6 +1,8 @@
 ---
-adr: "0006"
+id: ITEP-0006
 title: "Taxonomía de Bloom para evaluaciones"
+aliases:
+  - ADR-ITEP-0006
 status: Accepted
 date: 2026-03-20
 authors:

@@ -1,6 +1,8 @@
 ---
-adr: 0001
+id: 0001
 title: "Zettelkasten Note Semantic Layer in LaTeX"
+aliases:
+  - ADR-0001
 status: Superseded
 date: 2026-03-24
 authors:
@@ -121,7 +123,7 @@ No immediate migration required. Applies incrementally to new notes. Existing co
 
 ## Change Log
 
-| Date       | Change                                          |
-| ---------- | ----------------------------------------------- |
-| 2026-03-24 | Initial ADR                                     |
+| Date       | Change                                                                                  |
+| ---------- | --------------------------------------------------------------------------------------- |
+| 2026-03-24 | Initial ADR                                                                             |
 | 2026-03-25 | Narrowed scope to note layer only; TikZ and exercises moved to separate ADRs. Accepted. |

@@ -1,6 +1,8 @@
 ---
-adr: PRISMA-0000
+id: PRISMA-0000
 title: "PRISMAreview Systematic Review Architecture"
+aliases:
+  - ADR-PRISMA-0000
 status: Accepted
 date: 2026-03-26
 authors:
@@ -53,12 +55,13 @@ PRISMAreview (Django)
 
 ### Dual-Database Design
 
-| Database | Engine | Purpose | Access |
-|----------|--------|---------|--------|
-| `prisma` (default) | MariaDB | Review metadata: keywords, rationales, tags, inclusion decisions | Read/Write |
-| `shared` | SQLite (workflow.db) | Bibliography: articles, authors, ISBNs, URLs, abstracts | Read-only |
+| Database           | Engine               | Purpose                                                          | Access     |
+| ------------------ | -------------------- | ---------------------------------------------------------------- | ---------- |
+| `prisma` (default) | MariaDB              | Review metadata: keywords, rationales, tags, inclusion decisions | Read/Write |
+| `shared`           | SQLite (workflow.db) | Bibliography: articles, authors, ISBNs, URLs, abstracts          | Read-only  |
 
 The separation ensures:
+
 - WorkFlow CLI tools can write bibliography data without Django dependency
 - PRISMAreview can read bibliography without owning the data
 - Review metadata stays in MariaDB (Django's native backend)
@@ -66,6 +69,7 @@ The separation ensures:
 ### Key Components
 
 **Bibliography Import Pipeline** (`addbib/`):
+
 1. User uploads `.bib` file via web form
 2. `bibtexparser` parses BibTeX entries
 3. Entries stored in Django session for confirmation
@@ -73,6 +77,7 @@ The separation ensures:
 5. Real-time progress via Django Channels (`InMemoryChannelLayer`)
 
 **Review Workflow** (`review/`):
+
 1. Select keyword to screen articles against
 2. Iterate through matching articles showing title + abstract
 3. User marks inclusion/exclusion with rationale
@@ -80,6 +85,7 @@ The separation ensures:
 5. Progress tracked in `Reviewed` model
 
 **Custom ORM Layer** (`prismadb/ppORM.py`):
+
 - Translates BibTeX field names to Django model fields
 - Handles multi-value fields (authors, keywords, URLs)
 - Manages database-source tracking (which search engine found each article)
@@ -135,6 +141,6 @@ The separation ensures:
 
 ## Change Log
 
-| Date       | Change      |
-| ---------- | ----------- |
+| Date       | Change                                  |
+| ---------- | --------------------------------------- |
 | 2026-03-26 | Initial ADR — documents existing system |

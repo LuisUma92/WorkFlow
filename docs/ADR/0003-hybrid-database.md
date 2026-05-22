@@ -1,6 +1,8 @@
 ---
-adr: 0003
+id: 0003
 title: "Hybrid Database Architecture (Global + Local)"
+aliases:
+  - ADR-0003
 status: Accepted
 date: 2026-03-25
 authors:

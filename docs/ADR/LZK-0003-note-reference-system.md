@@ -1,6 +1,8 @@
 ---
-adr: LZK-0003
+id: LZK-0003
 title: "Note Reference System: IDs, Cross-References, and Regex Patterns"
+aliases:
+  - ADR-LZK-0003
 status: Accepted
 date: 2026-03-26
 authors:
@@ -45,11 +47,13 @@ YYYYMMDD-topic-subtopic
 ```
 
 Examples:
+
 - `20260326-gauss-law`
 - `20260320-classical-mechanics-lagrangian`
 - `lit-serway2019` (literature notes use `lit-` prefix)
 
 The reference is stored in `Note.reference` and used as the stable identifier across formats:
+
 - LaTeX: `\excref{20260326-gauss-law}` or `\exhyperref[20260326-gauss-law]{Gauss's Law}`
 - Markdown: `[[20260326-gauss-law]]` or `[[20260326-gauss-law|Gauss's Law]]`
 
@@ -57,18 +61,18 @@ The reference is stored in `Note.reference` and used as the stable identifier ac
 
 10+ compiled patterns for reference extraction:
 
-| Pattern | Matches | Used By |
-|---------|---------|---------|
-| `EXCREF_RE` | `\excref{id}` and `\excref[label]{id}` | LaTeX cross-references |
-| `EXHYPERREF_RE` | `\exhyperref[id]{text}` | LaTeX hyperlinked references |
-| `LABEL_RE` | `\label{name}` | LaTeX label definitions |
-| `REF_RE` | `\ref{name}`, `\eqref{name}` | LaTeX reference usage |
-| `CITE_RE` | `\cite{key}`, `\cite{k1,k2}` | BibTeX citations |
-| `WIKILINK_RE` | `[[id]]`, `[[id\|text]]` | Markdown wiki-links |
-| `INPUT_RE` | `\input{path}` | File inclusion tracking |
-| `INCLUDE_RE` | `\include{path}` | File inclusion tracking |
-| `SECTION_RE` | `\section{title}`, `\subsection{...}` | Document structure |
-| `NOTE_FILENAME_RE` | `YYYYMMDD-*.tex` or `YYYYMMDD-*.md` | Note file detection |
+| Pattern            | Matches                                | Used By                      |
+| ------------------ | -------------------------------------- | ---------------------------- |
+| `EXCREF_RE`        | `\excref{id}` and `\excref[label]{id}` | LaTeX cross-references       |
+| `EXHYPERREF_RE`    | `\exhyperref[id]{text}`                | LaTeX hyperlinked references |
+| `LABEL_RE`         | `\label{name}`                         | LaTeX label definitions      |
+| `REF_RE`           | `\ref{name}`, `\eqref{name}`           | LaTeX reference usage        |
+| `CITE_RE`          | `\cite{key}`, `\cite{k1,k2}`           | BibTeX citations             |
+| `WIKILINK_RE`      | `[[id]]`, `[[id\|text]]`               | Markdown wiki-links          |
+| `INPUT_RE`         | `\input{path}`                         | File inclusion tracking      |
+| `INCLUDE_RE`       | `\include{path}`                       | File inclusion tracking      |
+| `SECTION_RE`       | `\section{title}`, `\subsection{...}`  | Document structure           |
+| `NOTE_FILENAME_RE` | `YYYYMMDD-*.tex` or `YYYYMMDD-*.md`    | Note file detection          |
 
 ### Reference Resolution
 

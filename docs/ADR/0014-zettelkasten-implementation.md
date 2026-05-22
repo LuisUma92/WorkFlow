@@ -1,5 +1,5 @@
 ---
-adr: 0014
+id: 0014
 title: "Zettelkasten Implementation: Macros, Note Model, Workspace Init"
 status: Accepted
 date: 2026-03-26
@@ -34,7 +34,7 @@ related_adrs:
 
 ## Context
 
-ADR-0001 (Zettelkasten semantic layer) and ADR-0002 (Markdown as canonical knowledge) were accepted but not fully implemented. A gap analysis against the LZK-* ADRs reveals:
+ADR-0001 (Zettelkasten semantic layer) and ADR-0002 (Markdown as canonical knowledge) were accepted but not fully implemented. A gap analysis against the LZK-\* ADRs reveals:
 
 ### What exists and works (per LZK-0000..0004)
 
@@ -92,6 +92,7 @@ Create `shared/latex/sty/SetZettelkasten.sty`:
 ```
 
 **Key decision**: `\zlink` is defined as `\let\zlink\excref`, not a new implementation. This means:
+
 - All existing `\excref` references continue working
 - The Pandoc preprocessor (LZK-0002) already converts `[[id]]` → `\excref{id}`, which now equals `\zlink{id}`
 - The regex library (LZK-0003) already extracts `\excref` — no new patterns needed
@@ -113,6 +114,7 @@ zettel_id: Mapped[str | None] = mapped_column(String(100), nullable=True, unique
 ```
 
 Extend `NoteRepo` protocol:
+
 ```python
 def find_by_zettel_id(self, zettel_id: str) -> Note | None: ...
 def find_by_type(self, note_type: str) -> list[Note]: ...
@@ -132,15 +134,17 @@ with db_session(db) as session:
 ```
 
 Files to port:
-| File | Peewee calls | Lines changed |
-|------|-------------|---------------|
-| `api/notes.py` | 8 | ~30 |
-| `api/sync.py` | 10 | ~40 |
-| `api/markdown.py` | 7 | ~30 |
-| `api/analysis.py` | 5 | ~20 |
-| `api/workflows.py` | 5 | ~20 |
+
+| File               | Peewee calls | Lines changed |
+| ------------------ | ------------ | ------------- |
+| `api/notes.py`     | 8            | ~30           |
+| `api/sync.py`      | 10           | ~40           |
+| `api/markdown.py`  | 7            | ~30           |
+| `api/analysis.py`  | 5            | ~20           |
+| `api/workflows.py` | 5            | ~20           |
 
 After porting, the full latexzettel system (CLI, server, API) becomes functional against SQLAlchemy. This restores:
+
 - `sync_md()` — Markdown note sync
 - `tex_to_md()` — LaTeX → Markdown conversion
 - `force_synchronize()` — full DB resync
@@ -155,6 +159,7 @@ workflow init ~/Documents/01-U/
 ```
 
 Creates:
+
 ```
 ~/Documents/01-U/
   .workflow/config.yaml              # Workspace marker
@@ -210,6 +215,8 @@ Creates `10MC-ClassicalMechanics/notes/lit-serway2019.md`:
 ---
 id: lit-serway2019
 title: "Physics for Scientists and Engineers — Serway"
+aliases:
+  - ADR-lit-serway2019
 type: literature
 bibkey: serway2019
 created: 2026-03-26
@@ -267,28 +274,28 @@ The `bibkey` field connects to `bib_entry.bibkey` in the global DB. PRISMAreview
 
 ### What to reuse (not rebuild)
 
-| Existing | Reuse for |
-|----------|-----------|
-| `\excref{id}` (texnote.cls) | `\zlink` via alias |
-| `infra/regexes.py` (10+ patterns) | Reference extraction in notes |
-| `pandoc/preprocess.py` | Wiki-link → LaTeX conversion |
-| `pandoc/filter.lua` | Theorem environment handling |
-| `infra/db.py:db_session()` | Session management for rehabilitated API |
-| `workflow.lecture.scanner` | Pattern for note scanning |
-| `workflow.lecture.linker` | Pattern for reference linking |
-| `workflow.validation.schemas.NoteFrontmatter` | Frontmatter validation |
-| PRISMA SharedDbRouter (PRISMA-0001) | Literature note → bib_entry linkage |
+| Existing                                      | Reuse for                                |
+| --------------------------------------------- | ---------------------------------------- |
+| `\excref{id}` (texnote.cls)                   | `\zlink` via alias                       |
+| `infra/regexes.py` (10+ patterns)             | Reference extraction in notes            |
+| `pandoc/preprocess.py`                        | Wiki-link → LaTeX conversion             |
+| `pandoc/filter.lua`                           | Theorem environment handling             |
+| `infra/db.py:db_session()`                    | Session management for rehabilitated API |
+| `workflow.lecture.scanner`                    | Pattern for note scanning                |
+| `workflow.lecture.linker`                     | Pattern for reference linking            |
+| `workflow.validation.schemas.NoteFrontmatter` | Frontmatter validation                   |
+| PRISMA SharedDbRouter (PRISMA-0001)           | Literature note → bib_entry linkage      |
 
 ### Effort estimate
 
-| Phase | New files | Modified files | Lines |
-|-------|-----------|---------------|-------|
-| 7a | 1 (.sty) | 0 | ~20 |
-| 7b | 0 | 2 (notes.py, protocols.py) | ~30 |
-| 7c | 0 | 5 (latexzettel API) | ~170 |
-| 7d | 3 (cli.py, init.py, templates) | 2 (main.py, models.py) | ~250 |
-| 7e | 1 (lit template) | 1 (cli.py) | ~50 |
-| **Total** | **5** | **10** | **~520** |
+| Phase     | New files                      | Modified files             | Lines    |
+| --------- | ------------------------------ | -------------------------- | -------- |
+| 7a        | 1 (.sty)                       | 0                          | ~20      |
+| 7b        | 0                              | 2 (notes.py, protocols.py) | ~30      |
+| 7c        | 0                              | 5 (latexzettel API)        | ~170     |
+| 7d        | 3 (cli.py, init.py, templates) | 2 (main.py, models.py)     | ~250     |
+| 7e        | 1 (lit template)               | 1 (cli.py)                 | ~50      |
+| **Total** | **5**                          | **10**                     | **~520** |
 
 ---
 
@@ -346,13 +353,13 @@ Create a new `workflow.notes` module with its own scanner, linker, converter.
 
 ## Status
 
-**Accepted** — revision 2 (incorporates LZK-* ADR analysis, changes strategy from replacement to rehabilitation)
+**Accepted** — revision 2 (incorporates LZK-\* ADR analysis, changes strategy from replacement to rehabilitation)
 
 ---
 
 ## Change Log
 
-| Date       | Change      |
-| ---------- | ----------- |
-| 2026-03-26 | Initial ADR (v1) — proposed workflow.notes replacement |
-| 2026-03-26 | Revision 2 — changed to rehabilitation strategy after LZK-* ADR review |
+| Date       | Change                                                                  |
+| ---------- | ----------------------------------------------------------------------- |
+| 2026-03-26 | Initial ADR (v1) — proposed workflow.notes replacement                  |
+| 2026-03-26 | Revision 2 — changed to rehabilitation strategy after LZK-\* ADR review |

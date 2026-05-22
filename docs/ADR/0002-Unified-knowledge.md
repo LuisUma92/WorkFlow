@@ -1,6 +1,8 @@
 ---
-adr: 0002
+id: 0002
 title: "Markdown as Canonical Knowledge Layer"
+aliases:
+  - ADR-0002
 status: Accepted
 date: 2026-03-24
 authors:
@@ -112,7 +114,7 @@ No breaking changes to ADR-0001. Existing LaTeX notes can be progressively migra
 
 ## Change Log
 
-| Date       | Change                                        |
-| ---------- | --------------------------------------------- |
-| 2026-03-24 | Initial ADR (broad scope)                     |
+| Date       | Change                                                                                                |
+| ---------- | ----------------------------------------------------------------------------------------------------- |
+| 2026-03-24 | Initial ADR (broad scope)                                                                             |
 | 2026-03-25 | Narrowed to Markdown knowledge layer only. Exercises, TikZ, DB, ORM moved to separate ADRs. Accepted. |

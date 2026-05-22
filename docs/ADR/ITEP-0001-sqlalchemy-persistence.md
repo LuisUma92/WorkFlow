@@ -1,6 +1,8 @@
 ---
-adr: "0001"
+id: ITEP-0001
 title: "Migración de dataclasses a SQLAlchemy ORM"
+aliases:
+  - ADR-ITEP-0001
 status: Accepted
 date: 2026-03-20
 authors:

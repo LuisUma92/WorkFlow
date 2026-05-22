@@ -1,3 +1,16 @@
+---
+id:
+title:
+aliases: []
+type: permanent
+created:
+tags: []
+concepts: []
+references: []
+exercises: []
+images: []
+---
+
 # Consolidated Architecture Plan: Unified Knowledge System
 
 **Date**: 2026-03-24 | **Author**: Architect Agent (revised with ITEP/lectkit integration)
@@ -9,12 +22,12 @@
 
 Before planning, these are the four systems already in the repo and what each owns:
 
-| System | ORM | DB | Owns |
-|--------|-----|----|------|
-| **itep** | SQLAlchemy 2.0 | SQLite (`~/.config/itep/itep.db`) | Institution, Course, EvaluationTemplate, Item (Bloom taxonomy), Book, Author, Topic, Content, LectureInstance, GeneralProject |
-| **latexzettel** | Peewee | SQLite (`slipbox.db` per project) | Note, Citation, Label, Link, Tag — plus JSONL server + Neovim client |
-| **PRISMAreview** | Django ORM | MariaDB (`prisma`) | Bib_entries (40+ BibLaTeX fields), Author, Abstract, PRISMA2020Checklist, Reviewed, Keyword |
-| **lectkit** | None | None | cleta (cleanup), nofi (note splitting), crete (exercise file generation from book JSON) |
+| System           | ORM            | DB                                | Owns                                                                                                                          |
+| ---------------- | -------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| **itep**         | SQLAlchemy 2.0 | SQLite (`~/.config/itep/itep.db`) | Institution, Course, EvaluationTemplate, Item (Bloom taxonomy), Book, Author, Topic, Content, LectureInstance, GeneralProject |
+| **latexzettel**  | Peewee         | SQLite (`slipbox.db` per project) | Note, Citation, Label, Link, Tag — plus JSONL server + Neovim client                                                          |
+| **PRISMAreview** | Django ORM     | MariaDB (`prisma`)                | Bib_entries (40+ BibLaTeX fields), Author, Abstract, PRISMA2020Checklist, Reviewed, Keyword                                   |
+| **lectkit**      | None           | None                              | cleta (cleanup), nofi (note splitting), crete (exercise file generation from book JSON)                                       |
 
 **Key observation**: ITEP's schema is the most mature and already models the academic domain (institutions, courses, books, topics, taxonomy, evaluations). It is the natural backbone for the unified system. latexzettel provides the Zettelkasten engine. PRISMAreview provides the bibliography richness. lectkit provides utilities that should wire into the unified CLI.
 
@@ -31,6 +44,7 @@ Fix CRITICAL/HIGH issues from the review before any feature work.
 **0c. Deduplicate `RenderFormat`.** Keep only in `domain/types.py`. Remove from `domain/models.py`. Update all imports.
 
 **0d. Hygiene pass.**
+
 - Remove all `contentReference[oaicite:*]` strings (~15 occurrences in infra/ and domain/)
 - Remove `print("hola")` from `cli/main.py:79`
 - Rename `infra/plataform.py` -> `infra/platform.py`
@@ -46,6 +60,7 @@ Fix CRITICAL/HIGH issues from the review before any feature work.
 ### Decision: Adopt SQLAlchemy (already used by itep) as the single ORM for all systems
 
 **Rationale:**
+
 - ITEP already uses SQLAlchemy 2.0 with modern `Mapped[]` annotations, a 4-layer schema, and FK enforcement. It is the most mature DB code in the repo.
 - latexzettel uses Peewee — a different ORM for no architectural reason. Migration to SQLAlchemy eliminates a dependency and unifies the stack.
 - PRISMAreview uses Django ORM + MariaDB — acceptable for the web UI, but the bibliography data should be extractable to SQLite for local-first use.
@@ -54,25 +69,30 @@ Fix CRITICAL/HIGH issues from the review before any feature work.
 ### Steps:
 
 **1a. Migrate latexzettel from Peewee to SQLAlchemy.**
+
 - Rewrite `infra/orm.py`: Note, Citation, Label, Link, Tag, NoteTag using SQLAlchemy `Mapped[]` style (matching itep's conventions).
 - Update `infra/db.py`: replace Peewee-specific connect/close/schema_exists with SQLAlchemy engine/session pattern (reuse itep's `get_engine`/`get_session` helpers).
 - Update all API modules that reference `db.Note.select()` etc. to use SQLAlchemy queries.
 - Preserve the `DbModule` protocol contract so the server and CLI don't need major changes.
 
 **1b. Promote bibliography into the shared schema.**
+
 - Add bibliography tables to ITEP's `database.py` (or a new `src/shared/bibliography.py`): `BibEntry`, `BibAuthor`, `BibKeyword`, `BibUrl`, `BibAbstract`. Schema derived from PRISMAreview's Bib_entries (the most complete).
 - ITEP's existing `Book` and `Author` become the canonical book/author tables. BibEntry references Book where applicable (journal articles don't have a Book FK).
 - Write a one-time migration script that reads PRISMAreview's MariaDB and imports into the unified SQLite.
 
 **1c. Cross-reference notes and bibliography.**
+
 - latexzettel's Citation model gets a FK to the new BibEntry table (replacing the current bare `citationkey` string).
 - This enables queries like "which notes cite this paper?" and "which papers are cited by notes in topic X?"
 
 **1d. Wire `crete` (lectkit) into the shared DB.**
+
 - Currently `crete` reads book metadata from a JSON file (`books.json`). Replace this with queries to ITEP's `Book`/`Content` tables, which already store chapter/section/page/exercise ranges.
 - This eliminates the duplicate book metadata in JSON and makes `crete` consistent with `inittex`.
 
 ### Key decision needed from user:
+
 **PRISMAreview web UI**: Keep Django for the review workflow (reading/screening papers), but have it read bibliography from the shared SQLite via a Django database router? Or sunset the web UI and move PRISMA review to CLI? **Recommendation**: Keep Django for now — the review UI is valuable for screening papers. Add a DB router to point `prismadb` at the shared SQLite for bibliography reads.
 
 ---
@@ -80,11 +100,13 @@ Fix CRITICAL/HIGH issues from the review before any feature work.
 ## Phase 2: TikZ Asset Pipeline (Complexity: Medium, 1-2 sessions)
 
 ### Context from existing systems:
+
 - ITEP's `LectureProject` already has `lect/svg/` and `lect/img/` directories in its tree template.
 - ITEP's `GeneralProject` has `img/` with symlinks to a central image directory.
 - latexzettel has `render` and `processes.py` infrastructure for running pdflatex/make4ht.
 
 ### Steps:
+
 1. Define `assets/tikz/` directory convention per ADR-0002. Each `.tex` is a `\documentclass[tikz]{standalone}` file.
 2. Add a `tikz` CLI command group to the unified CLI:
    - `tikz build` — find all `assets/tikz/*.tex`, compile to PDF via `latexmk -pdf`, convert to SVG via `dvisvgm` or `pdf2svg`.
@@ -109,6 +131,7 @@ Fix CRITICAL/HIGH issues from the review before any feature work.
 ## Phase 4: Exercise DSL and Parser (Complexity: High, 3-4 sessions)
 
 ### Context from existing systems:
+
 - `crete` (lectkit) already generates exercise `.tex` files with `\exe[ch]{idx}` macros and `\cite{book}` references. Its template system is functional but minimal.
 - ITEP's `EvaluationTemplate` + `Item` + `EvaluationItem` already model exam structure, point allocation, and Bloom's taxonomy levels.
 - ITEP's `CourseContent` maps Content (chapter/section/page/exercise ranges) to Course weeks.
@@ -116,6 +139,7 @@ Fix CRITICAL/HIGH issues from the review before any feature work.
 ### Steps:
 
 **4a. Define LaTeX exercise macros** in a `.sty` file (extend or replace crete's `\exe` macro):
+
 - `\qstem{...}` — question stem
 - `\qoption[correct]{...}` — answer option (flag marks correct)
 - `\qgeneralfeedback{...}` — general feedback
@@ -125,23 +149,27 @@ Fix CRITICAL/HIGH issues from the review before any feature work.
 - Keep macros parseable by regex AND compilable by LaTeX.
 
 **4b. Build the parser** in `src/latexzettel/api/exercises.py`:
+
 - Parse `.tex` exercise files: extract commented YAML metadata + macro content into `Exercise` domain objects.
 - Map `Exercise.taxonomy_level` and `Exercise.taxonomy_domain` to ITEP's enums.
 - Store parsed exercises in the unified DB (new `Exercise` table, FK to Content/Topic).
 
 **4c. Evolve `crete`**:
+
 - `crete` currently generates exercise skeletons from book JSON. Upgrade it to:
   1. Read from ITEP's DB (Book + Content tables) instead of JSON
   2. Generate exercise files using the new DSL macros (not just `\exe`)
   3. Register generated exercises in the unified DB
 
 **4d. Add exercise CLI commands**:
+
 - `exercise parse` — validate structure of all exercise files
 - `exercise list` — index by tag/concept/difficulty/taxonomy
 - `exercise export-moodle` — generate Moodle XML from `Exercise` objects (use `xml.etree.ElementTree`)
 - `exercise build-exam` — assemble an exam from ITEP's `EvaluationTemplate` + selected exercises
 
 **4e. Connect exercises to evaluations**:
+
 - ITEP's `EvaluationItem` says "exam X needs N items of type Y at taxonomy level Z". The exercise bank provides the pool. `exercise build-exam` selects from the pool to satisfy the template.
 
 ---
@@ -149,6 +177,7 @@ Fix CRITICAL/HIGH issues from the review before any feature work.
 ## Phase 5: Lectures Integration (Complexity: Medium, 2 sessions)
 
 ### Context from existing systems:
+
 - ITEP already manages `~/Documents/01-U/00-Fisica/00AA-Lectures` via `LectureInstance` (course_id, year, cycle, first_monday, directory paths).
 - `inittex` scaffolds lecture project directories with symlinks to central resources.
 - `relink` recreates symlinks from config.yaml.
@@ -157,19 +186,23 @@ Fix CRITICAL/HIGH issues from the review before any feature work.
 ### Steps:
 
 **5a. Bridge ITEP's LectureInstance to latexzettel's note system.**
+
 - Each lecture `.tex` file inside `lect/tex/` should be indexable as a latexzettel Note (registered in slipbox.db/unified DB).
 - Add a `lectures scan` command that discovers `.tex` files in lecture instances and optionally registers them as notes with auto-generated frontmatter.
 
 **5b. Bidirectional linking between lectures and Zettelkasten.**
+
 - Lecture notes reference Zettelkasten notes via `\excref` / `\zlink` macros.
 - `lectures link` command: scan lecture files for references, update the Link table in the DB.
 - This closes the loop: knowledge graph includes lecture-to-note edges.
 
 **5c. Evaluation integration.**
+
 - `lectures build-eval` command: given a LectureInstance + EvaluationTemplate, select exercises from the bank (Phase 4), assemble exam PDF, export to Moodle XML.
 - Uses ITEP's `CourseEvaluation` (which maps evaluation to course week) + the exercise bank.
 
 **5d. `nofi` integration.**
+
 - `nofi` (note splitting with `%>path` / `%>END` markers) is useful during lecture prep. Wire it into the unified CLI and have it auto-register split files as notes in the DB.
 
 ---

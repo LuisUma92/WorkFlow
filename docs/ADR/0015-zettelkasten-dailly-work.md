@@ -1,6 +1,8 @@
 ---
-adr: 0015
+id: 0015
 title: "Zettelkasten System Refactor"
+aliases:
+  - ADR-0015
 status: Accepted
 date: 2026-04-05
 authors:
@@ -30,11 +32,9 @@ Approaches considered and rejected:
 - TikZ mindmaps as primary system — visual tool, not semantic storage
 - LaTeX file as source of truth - complicate macro layer to manage interconnectivity.
 
-
 ---
 
 ## Decision
-
 
 1. **Notes as first-class entities** — each note uses a dedicated yaml header to with a stable unique ID, title, and optional metadata. The note content is writing in the markdown file.
 
@@ -51,7 +51,6 @@ Approaches considered and rejected:
 7. **Exercises stem and solution** - lives as LaTeX file on its own vault `0000EE-ExamplesExercises`. Exists a translation pipeline into Moodle xml that can be initialize by the user. ,
 
 8. **Mathematical demonstrations** - Are the examples, needs macro specific to this use case.
-
 
 ---
 
@@ -71,7 +70,6 @@ Approaches considered and rejected:
 - A centralized registry of notes **SHOULD be maintained** (via CLI/DB).
 - Metadata **SHOULD include references to Examples, Exercises and Images if applicable**.
 - Project main document **SHOULD include all images referenced in the metadata of a note**.
-
 
 ### MAY
 
@@ -137,6 +135,6 @@ No immediate migration required. Applies incrementally to new notes. Existing co
 
 ## Change Log
 
-| Date       | Change                                          |
-| ---------- | ----------------------------------------------- |
-| 2026-04-05 | Initial ADR                                     |
+| Date       | Change      |
+| ---------- | ----------- |
+| 2026-04-05 | Initial ADR |

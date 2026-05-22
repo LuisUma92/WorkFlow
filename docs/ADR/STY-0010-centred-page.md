@@ -1,6 +1,8 @@
 ---
-adr: "0010"
+id: STY-0010
 title: "CentredPage — Full-page centered content command"
+aliases:
+  - ADR-STY-0010
 status: Accepted
 date: 2026-03-20
 authors:
@@ -14,9 +16,9 @@ decision_scope: component
 supersedes: null
 superseded_by: null
 related_adrs:
-  - "STY-0000"
-  - "STY-0001"
-  - "STY-0002"
+  - STY-0000
+  - STY-0001
+  - STY-0002
 ---
 
 ## Context
@@ -56,12 +58,12 @@ not absolute positioning.
 \NewDocumentCommand{\CentredPage}{s O{} m o}{...}
 ```
 
-| Arg | Spec | Meaning |
-|-----|------|---------|
-| `*` | `s` | Star variant: keeps current page style |
-| `[keys]` | `O{}` | Optional l3keys configuration |
-| `{primary}` | `m` | Mandatory primary content |
-| `[secondary]` | `o` | Optional secondary content |
+| Arg           | Spec  | Meaning                                |
+| ------------- | ----- | -------------------------------------- |
+| `*`           | `s`   | Star variant: keeps current page style |
+| `[keys]`      | `O{}` | Optional l3keys configuration          |
+| `{primary}`   | `m`   | Mandatory primary content              |
+| `[secondary]` | `o`   | Optional secondary content             |
 
 Default behavior (no star): applies `\thispagestyle{empty}`.
 
@@ -97,17 +99,17 @@ leak to footnotes or other elements.
 
 ### l3keys configuration
 
-| Key | Type | Default |
-|-----|------|---------|
-| `primary-color` | color | `black` |
-| `secondary-color` | color | `gray` |
-| `primary-font` | font cmd | `\bfseries\Large` |
-| `secondary-font` | font cmd | `\normalfont\large` |
-| `line-spread` | real | `1.0` (via `\linespread`) |
-| `block-sep` | dimension | `1em` |
-| `content-width` | dimension | `\textwidth` |
-| `v-offset` | dimension | `0pt` (positive = upward) |
-| `align` | choice | `centering` |
+| Key               | Type      | Default                   |
+| ----------------- | --------- | ------------------------- |
+| `primary-color`   | color     | `black`                   |
+| `secondary-color` | color     | `gray`                    |
+| `primary-font`    | font cmd  | `\bfseries\Large`         |
+| `secondary-font`  | font cmd  | `\normalfont\large`       |
+| `line-spread`     | real      | `1.0` (via `\linespread`) |
+| `block-sep`       | dimension | `1em`                     |
+| `content-width`   | dimension | `\textwidth`              |
+| `v-offset`        | dimension | `0pt` (positive = upward) |
+| `align`           | choice    | `centering`               |
 
 Alignment accepts: `centering` (default), `raggedright`, `raggedleft`.
 
@@ -236,7 +238,7 @@ No migration required — this is a new command with no predecessor.
 
 ## Change Log
 
-| Date       | Change          |
-| ---------- | --------------- |
+| Date       | Change                                       |
+| ---------- | -------------------------------------------- |
 | 2026-03-20 | Initial version                              |
 | 2026-03-22 | Clarify v-offset, color isolation, host file |

@@ -1,6 +1,8 @@
 ---
-adr: ITEP-0008
+id: ITEP-0008
 title: "General project nomenclature: discipline, area, year and project initials"
+aliases:
+  - ADR-ITEP-0008
 status: Implemented
 date: 2026-04-21
 implemented_at: 2026-04-28
@@ -165,14 +167,14 @@ Existing `MainTopic` records are unaffected (`parent_id = NULL`). Area-level
 `DisciplineArea` and `MainTopic` look similar at the area level but model
 different concerns. Both are required and **MUST** stay separate.
 
-| | `DisciplineArea` (catalog) | `MainTopic` (state) |
-|---|---|---|
-| Origin | CSV files in `data/DD-*Codes.csv` | Created on demand by `inittex` |
-| Scope | Every DDTTAA code that exists in the world (~233 rows) | Areas + projects the user has actually registered |
-| Mutability | Reseedable from CSV at any time | Project-coupled, varies per install |
-| Inbound FKs | none (pure reference data) | `Topic.main_topic_id`, `GeneralProject.main_topic_id`, `MainTopic.parent_id` |
-| Hierarchy | flat | 2-level (area → project) |
-| Code length | always 6 (`DDTTAA`) | 6 (area-level) or 10 (`DDTTAAYYPP`, project-level) |
+|             | `DisciplineArea` (catalog)                             | `MainTopic` (state)                                                          |
+| ----------- | ------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| Origin      | CSV files in `data/DD-*Codes.csv`                      | Created on demand by `inittex`                                               |
+| Scope       | Every DDTTAA code that exists in the world (~233 rows) | Areas + projects the user has actually registered                            |
+| Mutability  | Reseedable from CSV at any time                        | Project-coupled, varies per install                                          |
+| Inbound FKs | none (pure reference data)                             | `Topic.main_topic_id`, `GeneralProject.main_topic_id`, `MainTopic.parent_id` |
+| Hierarchy   | flat                                                   | 2-level (area → project)                                                     |
+| Code length | always 6 (`DDTTAA`)                                    | 6 (area-level) or 10 (`DDTTAAYYPP`, project-level)                           |
 
 The split keeps reference-data reseeds (adding or renaming a DDTTAA code in
 CSV) from touching user state, and lets ITEP-0009 maturation logic
@@ -441,10 +443,10 @@ No existing rows require data updates at migration time.
 
 ## Change Log
 
-| Date       | Change                                                                                |
-| ---------- | ------------------------------------------------------------------------------------- |
-| 2026-04-21 | Initial ADR — design phase, pre-implementation                                        |
-| 2026-04-28 | Implemented across three phases (commits `6964d87`, `f5cf015`, `56bbacd`).            |
+| Date       | Change                                                                     |
+| ---------- | -------------------------------------------------------------------------- |
+| 2026-04-21 | Initial ADR — design phase, pre-implementation                             |
+| 2026-04-28 | Implemented across three phases (commits `6964d87`, `f5cf015`, `56bbacd`). |
 
 ## Implementation Notes (2026-04-28)
 
@@ -452,7 +454,7 @@ Shipped in three phases on `master`:
 
 - **Phase A** (`6964d87`) — schema scaffolding: `MainTopic.parent_id` self-FK,
   `DisciplineArea` reference table, `GeneralProject.{year_init, project_initials,
-  title, status, archived_at}`, `workflow db migrate itep-0008` idempotent
+title, status, archived_at}`, `workflow db migrate itep-0008` idempotent
   one-shot migration with optional Nuclear Physics backfill.
 - **Phase B** (`f5cf015`) — discipline-codes loader: `workflow.db.seed_codes`
   (`parse_csv`, `upsert_from_csv`, `upsert_all_csvs`, `UpsertReport`),

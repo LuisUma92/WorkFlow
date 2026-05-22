@@ -1,6 +1,8 @@
 ---
-adr: "0007"
+id: ITEP-0007
 title: "Capa CRUD centralizada en manager.py"
+aliases:
+  - ADR-ITEP-0007
 status: Accepted
 date: 2026-03-20
 authors:

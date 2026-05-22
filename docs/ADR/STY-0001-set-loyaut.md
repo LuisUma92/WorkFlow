@@ -1,6 +1,8 @@
 ---
-adr: "0001"
+id: STY-0001
 title: "SetLoyaut — Page geometry and spacing"
+aliases:
+  - ADR-STY-0001
 status: Accepted
 date: 2025-09-29
 authors:
@@ -14,7 +16,7 @@ decision_scope: component
 supersedes: null
 superseded_by: null
 related_adrs:
-  - "STY-0011"
+  - STY-0011
 ---
 
 ## Context
@@ -91,7 +93,7 @@ Two layout files:
 
 ## Change Log
 
-| Date       | Change                           |
-| ---------- | -------------------------------- |
-| 2025-09-29 | Initial version (SetLoyaut.sty)  |
-| 2026-03-20 | StandAlone variant added         |
+| Date       | Change                          |
+| ---------- | ------------------------------- |
+| 2025-09-29 | Initial version (SetLoyaut.sty) |
+| 2026-03-20 | StandAlone variant added        |

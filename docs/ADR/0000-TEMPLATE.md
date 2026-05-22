@@ -1,6 +1,8 @@
 ---
-adr: XXXX
+id: XXXX
 title: "<Short descriptive title>"
+aliases:
+  - ADR-XXXX
 status: Proposed | Accepted | Superseded | Deprecated
 date: YYYY-MM-DD
 authors:

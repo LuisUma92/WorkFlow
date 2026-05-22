@@ -1,6 +1,8 @@
 ---
-adr: LZK-0000
+id: LZK-0000
 title: "LaTeXZettel Engine Architecture: 7-Layer Note Management System"
+aliases:
+  - ADR-LZK-0000
 status: Accepted
 date: 2026-03-26
 authors:
@@ -62,15 +64,15 @@ A clean architecture separates these concerns to enable both CLI usage and edito
 
 ### Components
 
-| Layer | Files | Responsibility |
-|-------|-------|----------------|
-| **CLI** | `cli/main.py` | 5 Click command groups: notes, render, sync, export, analysis |
-| **Server** | `server/main.py`, `server/routers.py` | JSONL RPC server with 24 routes, cancel token support |
-| **API** | `api/notes.py`, `api/render.py`, `api/sync.py`, `api/markdown.py`, `api/export.py`, `api/analysis.py`, `api/workflows.py` | Pure business logic, accepts `db` module as parameter |
-| **Domain** | `domain/types.py`, `domain/models.py`, `domain/errors.py`, `domain/templates.py` | Protocol-based contracts (`DbModule`, `FileFinder`, `NoteRecord`) |
-| **Infra** | `infra/orm.py`, `infra/db.py`, `infra/regexes.py`, `infra/fs.py`, `infra/platform.py`, `infra/processes.py` | Database access, file operations, regex patterns, LaTeX compilation |
-| **Config** | `config/settings.py`, `config/defaults.py` | Layered config: defaults → project config → user overrides |
-| **Util** | `util/text.py`, `util/io.py`, `util/time.py`, `util/fs.py`, `util/templates.py` | Pure utility functions |
+| Layer      | Files                                                                                                                     | Responsibility                                                      |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| **CLI**    | `cli/main.py`                                                                                                             | 5 Click command groups: notes, render, sync, export, analysis       |
+| **Server** | `server/main.py`, `server/routers.py`                                                                                     | JSONL RPC server with 24 routes, cancel token support               |
+| **API**    | `api/notes.py`, `api/render.py`, `api/sync.py`, `api/markdown.py`, `api/export.py`, `api/analysis.py`, `api/workflows.py` | Pure business logic, accepts `db` module as parameter               |
+| **Domain** | `domain/types.py`, `domain/models.py`, `domain/errors.py`, `domain/templates.py`                                          | Protocol-based contracts (`DbModule`, `FileFinder`, `NoteRecord`)   |
+| **Infra**  | `infra/orm.py`, `infra/db.py`, `infra/regexes.py`, `infra/fs.py`, `infra/platform.py`, `infra/processes.py`               | Database access, file operations, regex patterns, LaTeX compilation |
+| **Config** | `config/settings.py`, `config/defaults.py`                                                                                | Layered config: defaults → project config → user overrides          |
+| **Util**   | `util/text.py`, `util/io.py`, `util/time.py`, `util/fs.py`, `util/templates.py`                                           | Pure utility functions                                              |
 
 ### Dependency Injection
 
@@ -82,6 +84,7 @@ def create_note(db, reference: str, filename: str, ...) -> NoteRecord:
 ```
 
 This enables:
+
 - Testing with mock databases
 - Swapping ORM implementations (Peewee → SQLAlchemy via shim)
 - Library reuse outside CLI/Server context
