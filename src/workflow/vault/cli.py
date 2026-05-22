@@ -17,22 +17,18 @@ from sqlalchemy.orm import sessionmaker
 
 from workflow.db.engine import init_global_db
 from workflow.db.errors import with_schema_guard
+from workflow.vault.paths import (
+    DEFAULT_VAULT_ROOT,
+    ENV_VAULT_ROOT,
+    resolve_vault_root,
+)
 from workflow.vault.unify import (
     NOTE_TYPES,
     VAULT_POINTER_FILE,
     unify as unify_logic,
 )
 
-__all__ = ["vault", "resolve_vault_root"]
-
-DEFAULT_VAULT_ROOT = Path.home() / "Documents" / "01-U" / "0000AA-Vault"
-ENV_VAULT_ROOT = "WORKFLOW_VAULT_ROOT"
-
-
-def resolve_vault_root() -> Path:
-    """Resolve vault root from env, fall back to ITEP-0011 default."""
-    raw = os.environ.get(ENV_VAULT_ROOT)
-    return Path(raw).expanduser().resolve() if raw else DEFAULT_VAULT_ROOT
+__all__ = ["vault", "resolve_vault_root", "DEFAULT_VAULT_ROOT", "ENV_VAULT_ROOT"]
 
 
 @click.group()

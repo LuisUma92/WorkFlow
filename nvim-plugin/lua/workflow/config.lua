@@ -18,7 +18,22 @@ function M.resolve(opts)
   if not config.workspace_dir then
     config.workspace_dir = M.detect_workspace()
   end
+  config.vault_root = M.resolve_vault_root(config)
   return config
+end
+
+-- Resolve the unified vault root (ITEP-0011).
+-- WORKFLOW_VAULT_ROOT env var wins (absolute path); otherwise fall back to
+-- <workspace_dir>/<vault_dir>. Returns nil if neither is available.
+function M.resolve_vault_root(config)
+  local env = vim.env.WORKFLOW_VAULT_ROOT
+  if env and env ~= "" then
+    return vim.fn.expand(env)
+  end
+  if config.workspace_dir then
+    return vim.fn.expand(config.workspace_dir) .. "/" .. config.vault_dir
+  end
+  return nil
 end
 
 function M.detect_workspace()

@@ -139,7 +139,7 @@ class SqlContentRepo:
 
 
 class SqlNoteRepo:
-    """Implements NoteRepo against a project's slipbox.db."""
+    """Implements NoteRepo against the global workflow.db (GlobalBase)."""
 
     def __init__(self, session: Session) -> None:
         self._session = session
@@ -183,7 +183,7 @@ class SqlNoteRepo:
 
 
 class SqlLinkRepo:
-    """Implements LinkRepo against a project's slipbox.db."""
+    """Implements LinkRepo against the global workflow.db (GlobalBase)."""
 
     def __init__(self, session: Session) -> None:
         self._session = session
@@ -207,7 +207,7 @@ class SqlLinkRepo:
 
 
 class SqlTagRepo:
-    """Implements TagRepo against a project's slipbox.db."""
+    """Implements TagRepo against the global workflow.db (GlobalBase)."""
 
     def __init__(self, session: Session) -> None:
         self._session = session

@@ -1,7 +1,7 @@
 """Lecture reference extractor and linker — Phase 5b.
 
 Scans lecture .tex files for cross-references and citations, then updates
-the Citation, Label, and Link tables in the local slipbox.db.
+the Citation, Label, and Link tables in the global workflow.db (GlobalBase).
 
 Design:
 - extract_references() is pure (no I/O, no DB): takes raw text, returns list
@@ -299,7 +299,7 @@ def link_lecture_files(tex_files: list[Path], session: Session) -> LinkResult:
     tex_files:
         Absolute paths to .tex files to process.
     session:
-        SQLAlchemy session connected to a local slipbox.db.
+        SQLAlchemy session connected to the global workflow.db.
 
     Returns
     -------

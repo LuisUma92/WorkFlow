@@ -1,5 +1,5 @@
 """
-SQLAlchemy 2.0 models for per-project slipbox.db (GlobalBase).
+SQLAlchemy 2.0 models for the unified note layer in workflow.db (GlobalBase).
 
 Ported from src/latexzettel/infra/orm.py (Peewee) to SQLAlchemy Mapped[] style.
 

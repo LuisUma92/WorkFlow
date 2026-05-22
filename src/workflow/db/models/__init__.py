@@ -83,7 +83,7 @@ __all__ = [
     "GeneralProject",
     "GeneralProjectBib",
     "GeneralProjectTopic",
-    # notes (LocalBase / slipbox.db)
+    # notes (GlobalBase / workflow.db — ITEP-0011)
     "Citation",
     "Label",
     "Link",

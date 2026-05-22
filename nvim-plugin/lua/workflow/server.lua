@@ -62,13 +62,15 @@ end
 
 --- Sync notes in the vault
 function M.sync(config)
-	if not config.workspace_dir then
-		vim.notify("No workspace configured", vim.log.levels.WARN, { title = "workflow" })
+	if not config.vault_root then
+		vim.notify("No vault root configured", vim.log.levels.WARN, { title = "workflow" })
 		return
 	end
-	local vault = vim.fn.expand(config.workspace_dir) .. "/" .. config.vault_dir
+	local vault = vim.fn.expand(config.vault_root)
+	-- --project-root is reserved/ignored by the CLI (ITEP-0011 P5); notes
+	-- register against GlobalBase, so the vault root is the only argument.
 	M.run_cli(
-		{ "lectures", "scan", vault, "--project-root", vim.fn.expand(config.workspace_dir) },
+		{ "lectures", "scan", vault },
 		config,
 		function(ok, output)
 			if ok then

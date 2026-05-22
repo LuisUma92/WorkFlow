@@ -1,7 +1,7 @@
 """Lecture directory scanner — Phase 5a.
 
 Discovers .tex files in a LectureInstance's directory structure and
-registers them as Notes in the local slipbox.db.
+registers them as Notes in the global workflow.db (GlobalBase, ITEP-0011).
 """
 
 from __future__ import annotations
@@ -67,7 +67,7 @@ def register_notes(
 ) -> ScanResult:
     """Scan lecture_dir and register discovered .tex files as Notes.
 
-    Uses the provided SQLAlchemy session against a local slipbox.db.
+    Uses the provided SQLAlchemy session against the global workflow.db.
     Returns a ScanResult with counts for reporting.
     """
     from workflow.db.models.notes import Note

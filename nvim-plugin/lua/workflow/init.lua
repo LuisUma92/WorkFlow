@@ -46,13 +46,12 @@ function M.promote_note()
 		return
 	end
 
-	if not M._config or not M._config.workspace_dir then
-		vim.notify("No workspace configured", vim.log.levels.WARN, { title = "workflow" })
+	if not M._config or not M._config.vault_root then
+		vim.notify("No vault root configured", vim.log.levels.WARN, { title = "workflow" })
 		return
 	end
 
-	local workspace = vim.fn.expand(M._config.workspace_dir)
-	local vault = workspace .. "/" .. M._config.vault_dir
+	local vault = vim.fn.expand(M._config.vault_root)
 	local inbox = vault .. "/inbox"
 
 	-- Check if file is in inbox

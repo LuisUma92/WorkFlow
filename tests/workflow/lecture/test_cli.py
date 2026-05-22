@@ -134,8 +134,13 @@ def test_split_command_overwrite_flag(runner: CliRunner, tmp_path: Path) -> None
     assert "new content" in existing.read_text()
 
 
-def test_split_command_default_output_dir(runner: CliRunner, tmp_path: Path) -> None:
-    """split command uses source file's directory when --output-dir is omitted."""
+def test_split_command_default_output_dir(
+    runner: CliRunner, tmp_path: Path, monkeypatch
+) -> None:
+    """split defaults output to <vault_root>/notes/permanent/ (ITEP-0011 P6)."""
+    vault = tmp_path / "vault"
+    monkeypatch.setenv("WORKFLOW_VAULT_ROOT", str(vault))
+
     src = tmp_path / "notes.tex"
     src.write_text(
         dedent("""\
@@ -147,7 +152,9 @@ def test_split_command_default_output_dir(runner: CliRunner, tmp_path: Path) -> 
     result = runner.invoke(lectures, ["split", str(src)])
 
     assert result.exit_code == 0, result.output
-    assert (tmp_path / "lect" / "tex" / "file.tex").exists()
+    assert (vault / "notes" / "permanent" / "lect" / "tex" / "file.tex").exists()
+    # source directory is NOT used as the default output target
+    assert not (tmp_path / "lect" / "tex" / "file.tex").exists()
 
 
 # ── link command ─────────────────────────────────────────────────────────────

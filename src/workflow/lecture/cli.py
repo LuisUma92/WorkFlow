@@ -16,6 +16,7 @@ from workflow.db.errors import with_schema_guard
 from workflow.lecture.linker import link_lecture_files
 from workflow.lecture.note_splitter import split_notes_file
 from workflow.lecture.scanner import register_notes, scan_lecture_directory
+from workflow.vault.paths import resolve_vault_root
 
 __all__ = ["lectures"]
 
@@ -34,7 +35,7 @@ def lectures() -> None:
     type=click.Path(exists=True, file_okay=False),
     default=".",
     show_default=True,
-    help="Project root containing slipbox.db.",
+    help="Reserved for ITEP-0011 P5 per-project routing; currently ignored.",
 )
 @with_schema_guard
 def scan(lecture_dir: str, project_root: str) -> None:
@@ -76,7 +77,8 @@ def scan(lecture_dir: str, project_root: str) -> None:
     "-d",
     type=click.Path(file_okay=False),
     default=None,
-    help="Directory to write split files into (default: source file's directory).",
+    help="Directory to write split files into "
+    "(default: <vault_root>/notes/permanent/).",
 )
 @click.option(
     "--overwrite",
@@ -88,7 +90,10 @@ def scan(lecture_dir: str, project_root: str) -> None:
 def split(source_file: str, output_dir: str | None, overwrite: bool) -> None:
     """Split a notes file at %>path markers into separate files."""
     src = Path(source_file).resolve()
-    out = Path(output_dir).resolve() if output_dir else src.parent
+    if output_dir:
+        out = Path(output_dir).resolve()
+    else:
+        out = (resolve_vault_root() / "notes" / "permanent").resolve()
 
     result = split_notes_file(src, out, overwrite=overwrite)
 
@@ -120,7 +125,7 @@ def split(source_file: str, output_dir: str | None, overwrite: bool) -> None:
     type=click.Path(exists=True, file_okay=False),
     default=".",
     show_default=True,
-    help="Project root containing slipbox.db.",
+    help="Reserved for ITEP-0011 P5 per-project routing; currently ignored.",
 )
 @with_schema_guard
 def link(lecture_dir: str, project_root: str) -> None:
