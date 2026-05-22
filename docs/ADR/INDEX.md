@@ -77,7 +77,9 @@ These ADRs document the custom LaTeX packages in `shared/sty/`.
 | ---------------------------------------- | -------------------------------------------------------- | ------------ | ------------------ | ---------- |
 | [0001](0001-Zettelkasten-system.md)      | Zettelkasten note semantic layer                         | Zettelkasten | Superseded by 0015 | —          |
 | [0002](0002-Unified-knowledge.md)        | Markdown as canonical knowledge layer                    | Zettelkasten | Accepted           | 0001       |
-| [0015](0015-zettelkasten-dailly-work.md) | Zettelkasten daily work: notes, demos, images, exercises | Zettelkasten | Accepted           | 0001, 0002 |
+| [0015](0015-zettelkasten-dailly-work.md) | Zettelkasten daily work: notes, demos, images, exercises | Zettelkasten | Accepted | 0001, 0002 |
+| [ITEP-0012](ITEP-0012-concept-orm.md)   | Concept ORM surface: taxonomy tree, `concepts:` resolver, `--strict-concepts` validator | ITeP | Accepted | ITEP-0002, ITEP-0006, ITEP-0009, ITEP-0011 |
+| [ITEP-0013](ITEP-0013-note-relation-graph.md) | Note relation graph: directed lineage + associative edges, DAG traversal, `note_edge` table | ITeP | Proposed | 0002, 0010, LZK-0003, ITEP-0009, ITEP-0011 |
 
 ## Exercise System
 

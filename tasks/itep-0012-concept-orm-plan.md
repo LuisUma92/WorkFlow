@@ -1,5 +1,15 @@
 # Implementation Plan: ITEP-0012 — Concept ORM Surface
 
+**Status: DONE** — all 4 workstreams shipped (2026-05-22).
+- ✅ ITEP-0012.1: `service.py` + ADR (TDD) — `22a1267`
+- ✅ ITEP-0012.2: CLI `list|show|add|tree|rm|rename` + formatters — `addd929`
+- ✅ ITEP-0012.3: `check_concepts_against_db` + `--strict-concepts` — `610c2af` / `f6e57b8`
+- ✅ ITEP-0012.4: CLAUDE.md + INDEX.md + plan status lockdown
+
+Cross-ref: `notes link --concept CODE` (Phase A deferred) **MUST** reuse `concept.service.resolve_concepts`.
+
+---
+
 ## Overview
 Expose the already-shipped `Concept` + `NoteConcept` ORM models (GlobalBase, see `src/workflow/db/models/notes.py:192-223` and migration `src/workflow/db/migrations/global/0005_add_note_tables.py:82-99`) through a new `workflow concept` Click group, a frontmatter `concepts:` resolver, and a `validate notes --strict-concepts` validator. No schema/migration work expected (audit in [UNCLEAR] Q5). Unblocks Phase B.5.
 
@@ -259,4 +269,11 @@ workflow validate notes --strict-concepts <path>
 - **Migration slots**: PB took `global/0006`. ITEP-0012 needs slot `global/0007` only if Q5 audit surfaces a missing index. P5 takes `local/0004`. No collisions.
 
 ## Status
-`pending`
+`DONE` — all workstreams shipped (2026-05-22), review passes cleared, ready for merge.
+
+### Commit log
+- `22a1267` — ITEP-0012.1: service + TDD tests (15 tests, all green)
+- `addd929` — ITEP-0012.2: CLI surface (list|show|add|tree|rm|rename, 6 subcommands, 18 tests)
+- `610c2af` — ITEP-0012.3: validator + `--strict-concepts` (10 tests)
+- `f6e57b8` — ITEP-0012.3 (follow-up): typo fixes in validator
+- `${THIS_COMMIT}` — ITEP-0012.4: docs lockdown (CLAUDE.md, INDEX.md, plan status=done)
