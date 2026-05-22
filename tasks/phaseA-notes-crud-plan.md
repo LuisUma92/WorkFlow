@@ -225,4 +225,21 @@ workflow validate notes  # existing command should pass
 - `src/workflow/evaluation/formatters.py` — JSON/table formatter pair.
 
 ## Status
-`pending` — plan only, no code. Awaiting answers to 4 [UNCLEAR] items, then RED tests first.
+`done` — A.1 + A.2 shipped; 4-reviewer audit + fix pass shipped (`3057e87`).
+Suite: 978 pass.
+
+## Deferred follow-ups (Linux-only priority — defer until first non-Linux user lands)
+
+### CRLF frontmatter fence round-trip
+**Scope:** `discovery.parse_frontmatter` + `service._write_note_file`.
+**Current behaviour:** body bytes after closing fence preserved byte-exact;
+fence area (opening `---`, YAML block, closing `---`, post-fence newline) is
+re-emitted with `\n` line endings regardless of input EOL. `yaml.safe_dump`
+never emits `\r\n`.
+**Symptom on CRLF input:** mixed line endings post-mutation (frontmatter LF,
+body CRLF). `git diff` whitespace churn on every `tag`/`link`. Functionally OK.
+**Fix when needed:** detect input EOL at parse (`_detect_eol(text) -> "\n" | "\r\n"`),
+re-emit fences and post-fence separator using detected EOL. ~10 LOC + 1 test
+(`test_crlf_frontmatter_round_trip`).
+**Trigger:** first vault note authored on Windows (CRLF throughout). Today
+the vault is 100% Linux-authored (LF) — UCIMED-CI0006 migration confirmed.
