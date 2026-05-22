@@ -1,0 +1,307 @@
+"""workflow.notes.sync — bulk sync .md vault files into DB (Note/Label/Link rows).
+
+File is truth; DB is index. Mirrors the lecture linker pattern.
+"""
+from __future__ import annotations
+
+import os
+import re
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+
+import yaml
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from workflow.db.models.notes import Label, Link, Note
+from workflow.notes.linker_ops import upsert_label, upsert_link
+from workflow.notes.wikilinks import (
+    WIKILINK_NOTE_LABEL_RE,
+    WIKILINK_NOTE_LABEL_TEXT_RE,
+    WIKILINK_NOTE_RE,
+    WIKILINK_NOTE_TEXT_RE,
+)
+
+# Allowlist for anchor values: only safe slug characters (no path separators)
+_ANCHOR_RE = re.compile(r"^[A-Za-z0-9._:-]+$")
+
+
+@dataclass
+class SyncReport:
+    notes_scanned: int = 0
+    labels_registered: int = 0
+    links_created: int = 0
+    orphans_dropped: int = 0
+
+
+def _parse_md(path: Path) -> tuple[dict[str, object], str] | None:
+    """Parse frontmatter + body from a .md file.
+
+    Returns (frontmatter_dict, body_str) or None if frontmatter is missing/invalid.
+    """
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+
+    if not text.startswith("---"):
+        return None
+
+    end = text.find("\n---", 3)
+    if end == -1:
+        return None
+
+    fm_raw = text[3:end].strip()
+    body = text[end + 4:]
+
+    try:
+        fm = yaml.safe_load(fm_raw) or {}
+    except yaml.YAMLError:
+        return None
+
+    if not isinstance(fm, dict):
+        return None
+
+    return fm, body
+
+
+def _extract_wikilinks(body: str) -> list[tuple[str, str | None]]:
+    """Return (note_ref, anchor_or_None) pairs from all wikilinks in body.
+
+    Most-specific patterns matched first to avoid double-counting overlapping spans.
+    """
+    results: list[tuple[str, str | None]] = []
+    consumed: set[tuple[int, int]] = set()
+
+    def _add(
+        matches: re.Iterator[re.Match[str]],
+        note_group: int,
+        anchor_group: int | None,
+    ) -> None:
+        for m in matches:
+            span = m.span()
+            if span in consumed:
+                continue
+            consumed.add(span)
+            note_ref = m.group(note_group).strip()
+            anchor = m.group(anchor_group).strip() if anchor_group else None
+            results.append((note_ref, anchor))
+
+    _add(WIKILINK_NOTE_LABEL_TEXT_RE.finditer(body), 1, 2)
+    _add(WIKILINK_NOTE_LABEL_RE.finditer(body), 1, 2)
+    _add(WIKILINK_NOTE_TEXT_RE.finditer(body), 1, None)
+    _add(WIKILINK_NOTE_RE.finditer(body), 1, None)
+
+    return results
+
+
+def _upsert_note_row(
+    session: Session, filename: str, fm: dict[str, object]
+) -> Note:
+    """Upsert a Note row; returns the persisted Note with a valid id."""
+    reference = fm["reference"]
+    title = fm.get("title") or None
+    note_type = fm.get("note_type") or None
+    now = datetime.now(tz=timezone.utc)
+
+    existing = session.scalars(
+        select(Note).where(Note.filename == filename)
+    ).first()
+
+    if existing is None:
+        existing = session.scalars(
+            select(Note).where(Note.reference == reference)
+        ).first()
+
+    if existing is None:
+        note = Note(
+            filename=filename,
+            reference=reference,
+            title=title,
+            note_type=note_type,
+            last_edit_date=now,
+            source_format="md",
+        )
+        session.add(note)
+    else:
+        existing.filename = filename
+        existing.title = title
+        existing.note_type = note_type
+        existing.last_edit_date = now
+        note = existing
+
+    session.flush()
+    return note
+
+
+def _upsert_note_labels(
+    session: Session, note: Note, anchors: list[str]
+) -> int:
+    """Upsert synthetic __note__ label + frontmatter anchors. Returns new label count."""
+    valid_anchors = ["__note__"] + [a for a in anchors if _ANCHOR_RE.match(a)]
+
+    # Bulk-fetch existing labels to avoid N+1
+    existing_labels = set(
+        session.scalars(
+            select(Label.label).where(
+                Label.note_id == note.id,
+                Label.label.in_(valid_anchors),
+            )
+        ).all()
+    )
+
+    created = 0
+    for anchor in valid_anchors:
+        if anchor not in existing_labels:
+            upsert_label(session, note.id, anchor)
+            created += 1
+
+    if created:
+        session.flush()
+
+    return created
+
+
+def _upsert_note_links(session: Session, note: Note, body: str) -> int:
+    """Upsert Link rows for all wikilinks in body. Returns new link count."""
+    created = 0
+    for target_ref, anchor in _extract_wikilinks(body):
+        target_note = session.scalars(
+            select(Note).where(Note.reference == target_ref)
+        ).first()
+        if target_note is None:
+            continue
+
+        label_name = anchor if (anchor and _ANCHOR_RE.match(anchor)) else "__note__"
+
+        target_label = session.scalars(
+            select(Label).where(
+                Label.note_id == target_note.id,
+                Label.label == label_name,
+            )
+        ).first()
+        if target_label is None:
+            upsert_label(session, target_note.id, label_name)
+            session.flush()
+            target_label = session.scalars(
+                select(Label).where(
+                    Label.note_id == target_note.id,
+                    Label.label == label_name,
+                )
+            ).first()
+
+        if target_label is None:
+            continue
+
+        if upsert_link(session, note.id, target_label.id):
+            created += 1
+
+    if created:
+        session.flush()
+
+    return created
+
+
+def _drop_orphan_links(
+    session: Session,
+    scope_prefix: str,
+    current_filenames: set[str],
+) -> int:
+    """Delete Link rows whose source Note file is no longer on disk. Returns count."""
+    # Scope prefix must end with separator to avoid matching sibling directories
+    prefix_with_sep = scope_prefix.rstrip(os.sep) + os.sep
+
+    all_notes = session.scalars(
+        select(Note).where(Note.filename.startswith(prefix_with_sep))
+    ).all()
+
+    orphan_ids = [n.id for n in all_notes if n.filename not in current_filenames]
+    if not orphan_ids:
+        return 0
+
+    orphan_links = session.scalars(
+        select(Link).where(Link.source_id.in_(orphan_ids))
+    ).all()
+
+    for lnk in orphan_links:
+        session.delete(lnk)
+
+    if orphan_links:
+        session.flush()
+
+    return len(orphan_links)
+
+
+def sync_vault(
+    vault_root: Path,
+    session: Session,
+    *,
+    dry_run: bool = False,
+    project_filter: str | None = None,
+) -> SyncReport:
+    """Scan vault_root/**/*.md, parse frontmatter + wikilinks, upsert Note/Label/Link rows.
+
+    File-as-truth, DB-as-index. Idempotent.
+    """
+    report = SyncReport()
+
+    # Resolve vault_root to prevent symlink escape in scope checks
+    vault_root_resolved = vault_root.resolve()
+
+    if project_filter:
+        scan_root = (vault_root / project_filter).resolve()
+        if not scan_root.is_relative_to(vault_root_resolved):
+            raise ValueError(
+                f"project_filter escapes vault_root: {project_filter!r}"
+            )
+    else:
+        scan_root = vault_root_resolved
+
+    scope_prefix = str(scan_root)
+
+    # Discover .md files — filter symlinks that escape vault_root
+    md_paths = [
+        p for p in scan_root.rglob("*.md")
+        if p.resolve().is_relative_to(vault_root_resolved)
+    ]
+    current_filenames: set[str] = {str(p) for p in md_paths}
+
+    # Pass 1: upsert Note + Label rows
+    note_bodies: list[tuple[Note, str]] = []
+
+    for md_path in md_paths:
+        parsed = _parse_md(md_path)
+        if parsed is None:
+            continue
+
+        fm, body = parsed
+        reference = fm.get("reference")
+        if not reference or not isinstance(reference, str):
+            continue
+
+        anchors: list[str] = list(fm.get("anchors") or [])
+
+        if dry_run:
+            report.notes_scanned += 1
+            report.labels_registered += 1  # __note__
+            report.labels_registered += sum(1 for a in anchors if _ANCHOR_RE.match(a))
+            continue
+
+        note = _upsert_note_row(session, str(md_path), {**fm, "reference": reference})
+        report.notes_scanned += 1
+        report.labels_registered += _upsert_note_labels(session, note, anchors)
+        note_bodies.append((note, body))
+
+    # Pass 2: upsert Link rows
+    if not dry_run:
+        for note, body in note_bodies:
+            report.links_created += _upsert_note_links(session, note, body)
+
+    # Pass 3: orphan Link cleanup
+    if not dry_run:
+        report.orphans_dropped += _drop_orphan_links(
+            session, scope_prefix, current_filenames
+        )
+
+    return report

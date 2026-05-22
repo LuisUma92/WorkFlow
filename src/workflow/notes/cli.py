@@ -284,6 +284,34 @@ def tag_cmd(
         click.echo(format_note_table(path, new_fm))
 
 
+@notes.command(name="sync")
+@click.option("--dry-run", is_flag=True, default=False, help="Report changes without writing.")
+@click.option("--project", "project_filter", default=None, help="Restrict to project subtree.")
+@click.pass_context
+@with_schema_guard
+def sync_cmd(ctx: click.Context, dry_run: bool, project_filter: str | None) -> None:
+    """Sync notes vault: upsert Note/Label/Link rows from .md files."""
+    from sqlalchemy.orm import Session
+
+    from workflow.db.engine import get_engine_from_ctx
+    from workflow.notes.sync import sync_vault
+    from workflow.vault.paths import resolve_vault_root
+
+    engine = get_engine_from_ctx(ctx)
+    vault_root = resolve_vault_root()
+    with Session(engine) as session:
+        report = sync_vault(vault_root, session, dry_run=dry_run, project_filter=project_filter)
+        if not dry_run:
+            session.commit()
+    suffix = " (dry run)" if dry_run else ""
+    click.echo(
+        f"Sync complete{suffix}: {report.notes_scanned} notes scanned, "
+        f"{report.labels_registered} labels registered, "
+        f"{report.links_created} links created, "
+        f"{report.orphans_dropped} orphans dropped."
+    )
+
+
 @notes.command(name="link")
 @click.argument("note_id")
 @click.option("--concept", "concept", default=None)
