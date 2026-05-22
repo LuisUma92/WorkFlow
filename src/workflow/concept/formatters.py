@@ -12,8 +12,9 @@ from typing import Any
 from workflow.db.models.notes import Concept
 
 __all__ = [
-    "format_concept_table",
     "format_concept_json",
+    "format_concept_show_json",
+    "format_concept_show_table",
     "format_concepts_list_table",
     "format_concepts_list_json",
     "format_tree_ascii",
@@ -84,8 +85,7 @@ def format_concepts_list_table(concepts: list[Concept]) -> str:
         parent_code = c.parent.code if c.parent else ""
         mt_code = c.main_topic.code if c.main_topic else "?"
         lines.append(
-            f"  {c.id:4d}  {c.code:32s}  {c.label:40s}  "
-            f"{mt_code:8s}  {parent_code}"
+            f"  {c.id:4d}  {c.code:32s}  {c.label:40s}  {mt_code:8s}  {parent_code}"
         )
     return "\n".join(lines)
 

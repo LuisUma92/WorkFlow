@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from workflow.db.engine import init_global_db
 from workflow.validation.parsers import parse_md_frontmatter, parse_tex_metadata
 from workflow.validation.schemas import (
+    check_concepts_against_db,
     check_discipline_area_consistency,
     check_main_topic_against_db,
     validate_exercise_metadata,
@@ -31,7 +32,15 @@ def validate():
     default=False,
     help="Treat unknown main_topic slug/id as error (Phase B / ITEP-0009 Part II).",
 )
-def notes(path: str, recursive: bool, strict_main_topic: bool) -> None:
+@click.option(
+    "--strict-concepts",
+    is_flag=True,
+    default=False,
+    help="Treat unknown concept codes / main_topic mismatches as errors (ITEP-0012).",
+)
+def notes(
+    path: str, recursive: bool, strict_main_topic: bool, strict_concepts: bool
+) -> None:
     """Validate YAML frontmatter in Markdown notes."""
     root = Path(path)
     files = sorted(root.rglob("*.md") if recursive else root.glob("*.md"))
@@ -68,6 +77,15 @@ def notes(path: str, recursive: bool, strict_main_topic: bool) -> None:
                         mt_obj, fm.discipline_area, session
                     )
                 )
+
+                concept_issues = check_concepts_against_db(
+                    fm, session, strict=strict_concepts
+                )
+                for issue in concept_issues:
+                    if issue["severity"] == "error":
+                        file_errors.append(issue["message"])
+                    else:
+                        file_warnings.append(issue["message"])
 
             if file_errors:
                 invalid += 1

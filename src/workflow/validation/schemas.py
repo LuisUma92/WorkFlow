@@ -20,6 +20,7 @@ __all__ = [
     "check_candidate_project_against_db",
     "check_main_topic_against_db",
     "check_discipline_area_consistency",
+    "check_concepts_against_db",
     "CANDIDATE_PROJECT_RE",
 ]
 
@@ -356,3 +357,53 @@ def check_candidate_project_against_db(
             "--all` if the area should exist."
         ]
     return []
+
+
+def check_concepts_against_db(
+    fm: "NoteFrontmatter",
+    session: Session,
+    *,
+    strict: bool = False,
+) -> list[dict[str, str]]:
+    """Validate frontmatter ``concepts`` codes against the global Concept table.
+
+    Returns a list of issue dicts: ``{"severity": "warning"|"error", "message": str}``.
+
+    Resolution:
+    - Each code in ``fm.concepts`` is looked up by ``Concept.code``.
+    - Unknown codes produce a warning (lenient) or error (strict).
+    - When ``fm.main_topic`` resolves to a ``MainTopic``, each found concept's
+      ``main_topic_id`` is compared.  A mismatch produces an issue at the same
+      severity level as an unknown code.
+    - When ``fm.main_topic`` is None the mt-mismatch check is skipped silently.
+    - Empty ``concepts`` list returns ``[]`` immediately (no DB hits).
+
+    Mirrors ``check_main_topic_against_db`` strict-vs-lenient pattern (PB.2).
+    """
+    from workflow.concept.service import resolve_concepts
+
+    if not fm.concepts:
+        return []
+
+    found, issues = resolve_concepts(list(fm.concepts), session, strict=strict)
+
+    # mt-mismatch: only when note has a resolvable main_topic
+    if fm.main_topic is not None and found:
+        note_mt, _ = check_main_topic_against_db(fm.main_topic, session)
+        if note_mt is not None:
+            for concept in found:
+                if concept.main_topic_id != note_mt.id:
+                    severity = "error" if strict else "warning"
+                    issues.append(
+                        {
+                            "severity": severity,
+                            "message": (
+                                f"concept {concept.code!r} belongs to "
+                                f"main_topic_id={concept.main_topic_id} "
+                                f"({concept.main_topic.code if concept.main_topic else '?'})"
+                                f" but note declares main_topic={note_mt.code!r}."
+                            ),
+                        }
+                    )
+
+    return issues
