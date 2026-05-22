@@ -14,7 +14,7 @@ API que importan de aquí no necesiten cambios:
   - db_session                  — context manager que envuelve Session de SQLAlchemy
 
 Internamente usa workflow.db.engine. ITEP-0011 P3: el shim apunta a la
-base de datos GLOBAL (~/.local/share/workflow/workflow.db).
+base de datos GLOBAL ($WORKFLOW_DATA_DIR/workflow.db, default ~/01-U/workflow/workflow.db).
 
 El parámetro `db` que reciben las funciones es el módulo orm de latexzettel
 (latexzettel.infra.orm), que ahora actúa como shim y expone:

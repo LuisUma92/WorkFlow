@@ -2,6 +2,7 @@
 
 Provides pure functions that CLI commands delegate to.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -15,6 +16,7 @@ from sqlalchemy.orm import Session
 from workflow.db.models.exercises import Exercise, ExerciseOption
 from workflow.db.repos.sqlalchemy import SqlExerciseRepo
 from workflow.exercise.parser import parse_exercise
+from workflow.prisma.service import get_bib_entry_by_bibkey
 
 if TYPE_CHECKING:
     from workflow.exercise.domain import ParsedExercise
@@ -81,12 +83,19 @@ def sync_exercises(
             continue
 
         current_hash = file_hash(filepath)
-
+        resolved_path = str(filepath.resolve())
         existing = repo.get_by_exercise_id(ex.metadata.id)
-
-        if existing is not None and existing.file_hash == current_hash:
-            unchanged_count += 1
-            continue
+        if existing is not None:
+            # Conditions to test
+            content_unchanged = existing.file_hash == current_hash
+            path_changed = existing.source_path != resolved_path
+            if content_unchanged and not path_changed:
+                unchanged_count += 1
+                continue
+        bib_entry_id = None
+        if ex.book_cite is not None:
+            bib = get_bib_entry_by_bibkey(session, ex.book_cite)
+            bib_entry_id = bib.id if bib is not None else None
 
         tags_json = json.dumps(ex.metadata.tags) if ex.metadata.tags else None
         concepts_json = (
@@ -95,7 +104,7 @@ def sync_exercises(
 
         exercise_record = Exercise(
             exercise_id=ex.metadata.id,
-            source_path=str(filepath.resolve()),
+            source_path=resolved_path,
             file_hash=current_hash,
             status=ex.status,
             type=ex.metadata.type,
@@ -109,6 +118,7 @@ def sync_exercises(
             image_refs=json.dumps(list(ex.image_refs)) if ex.image_refs else None,
             diagram_id=ex.diagram_id,
             option_count=len(ex.options),
+            book_id=bib_entry_id,
         )
 
         result_record = repo.upsert(exercise_record)

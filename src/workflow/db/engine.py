@@ -1,16 +1,16 @@
 """
 Engine and session factories for the WorkFlow dual-database architecture.
 
-Global DB: ~/.local/share/workflow/workflow.db   (via appdirs)
+Global DB: $WORKFLOW_DATA_DIR/workflow.db  (default: ~/01-U/workflow/workflow.db)
 Local DB:  <project_root>/slipbox.db
 """
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import click
-from appdirs import user_data_dir
 from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -50,7 +50,7 @@ def _enable_fk_pragma(dbapi_conn, _connection_record):
 
 
 def _default_global_path() -> Path:
-    data_dir = Path(user_data_dir("workflow", "LuisUmana"))
+    data_dir = Path(os.environ.get("WORKFLOW_DATA_DIR", "~/01-U/workflow")).expanduser()
     return data_dir / "workflow.db"
 
 

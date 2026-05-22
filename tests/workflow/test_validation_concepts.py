@@ -139,8 +139,14 @@ def runner() -> CliRunner:
 
 @pytest.fixture(autouse=True)
 def _isolated_global_db(tmp_path_factory, monkeypatch):
-    base = tmp_path_factory.mktemp("xdg_val_concepts")
-    monkeypatch.setenv("XDG_DATA_HOME", str(base))
+    """Redirect the global DB to a throwaway dir for every test.
+
+    The engine resolves its path from ``WORKFLOW_DATA_DIR`` (see
+    ``engine._default_global_path``), not ``XDG_DATA_HOME`` — setting the wrong
+    var lets ``init_global_db()`` hit the real ``~/01-U/workflow/workflow.db``.
+    """
+    base = tmp_path_factory.mktemp("val_concepts_db")
+    monkeypatch.setenv("WORKFLOW_DATA_DIR", str(base))
 
 
 def _seed_global():

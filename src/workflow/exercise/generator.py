@@ -43,6 +43,15 @@ def _build_tags_yaml(tags: list[str] | None) -> str:
     return f"[{items}]"
 
 
+def _render_exercices_id(
+    book_cite: str,
+    chapter: int,
+    section: str,
+    num: int,
+) -> str:
+    return f"{book_cite}-C{chapter:02d}S{section[:2]}P{num:03d}"
+
+
 def _render_template(
     exercise_id: str,
     *,
@@ -60,10 +69,10 @@ def _render_template(
 
     # Build the \ifthenelse body
     if chapter is not None and exercise_num is not None:
-        cite_comment = f" % \\cite{{{book_cite}}}" if book_cite else ""
+        cite_comment = f" \\cite{{{book_cite}}}" if book_cite else ""
         exa_line = f"  \\exa[{chapter}]{{{exercise_num}}}{cite_comment}"
     else:
-        exa_line = "  % (no book reference)"
+        exa_line = " \\exa{} % (no book reference)"
 
     lines = [
         "% ---",
@@ -75,13 +84,24 @@ def _render_template(
         f"% tags: {tags_str}",
         "% status: placeholder",
         "% ---",
+        r"\ifthenelse{\boolean{test}}{}{",
         r"\ifthenelse{\boolean{main}}{",
         exa_line,
-        "}{",
-        "}",
+        r"}{ \exa{} }}",
         r"\question{",
-        "  ...",
+        "  .",
+        r"  \begin{enumerate}[a)]",
+        r"    \qpart{.}{}",
+        r"  \end{enumerate}",
         "}{",
+        r"  % \paragraph{Solución:}",
+        r"  % \ptsdistro",
+        r"  % \begin{enumerate}[a)]",
+        r"  %   \item .",
+        r"  %   \begin{enumerate}",
+        r"  %     \item . \upt",
+        r"  %    \end{enumerate}",
+        r"  % \end{enumerate}",
         "}",
         "",
     ]
@@ -90,15 +110,16 @@ def _render_template(
 
 def generate_exercise_file(
     output_dir: Path,
-    exercise_id: str,
     *,
     exercise_type: str = "essay",
     difficulty: str = "medium",
     taxonomy_level: str = "Usar-Aplicar",
     taxonomy_domain: str = "Procedimiento Mental",
+    exercise_id: str | None = None,
     tags: list[str] | None = None,
     book_cite: str | None = None,
     chapter: int | None = None,
+    section: str | None = None,
     exercise_num: int | None = None,
 ) -> GeneratedExercise:
     """Generate a single exercise placeholder .tex file.
@@ -111,6 +132,18 @@ def generate_exercise_file(
 
     If file already exists, returns created=False without overwriting.
     """
+    if not exercise_id:
+        if None in (book_cite, chapter, section, exercise_num):
+            raise ValueError(
+                "book_cite, chapter, section and exercise_num are required "
+                "when exercise_id is not provided"
+            )
+        exercise_id = _render_exercices_id(
+            book_cite,
+            chapter,
+            section,
+            exercise_num,
+        )
     _validate_safe_id(exercise_id, "exercise_id")
     file_path = output_dir / f"{exercise_id}.tex"
 
@@ -141,6 +174,7 @@ def generate_from_content(
     output_dir: Path,
     book_cite: str,
     chapter: int,
+    section: str,
     first_exercise: int,
     last_exercise: int,
     *,
@@ -152,17 +186,17 @@ def generate_from_content(
 ) -> list[GeneratedExercise]:
     """Generate exercise files for a range of exercises from a book chapter.
 
-    Creates files named {book_cite}-ch{chapter:02d}-{num:03d}.tex
+    Creates files named {book_cite}-C{chapter:02d}S{section[:2]}P{num:03d}.tex
     for each exercise in [first_exercise, last_exercise] (inclusive).
     """
     _validate_safe_id(book_cite, "book_cite")
     results: list[GeneratedExercise] = []
 
     for num in range(first_exercise, last_exercise + 1):
-        exercise_id = f"{book_cite}-ch{chapter:02d}-{num:03d}"
+        exercise_id = _render_exercices_id(book_cite, chapter, section, num)
         result = generate_exercise_file(
             output_dir,
-            exercise_id,
+            exercise_id=exercise_id,
             exercise_type=exercise_type,
             difficulty=difficulty,
             taxonomy_level=taxonomy_level,

@@ -172,6 +172,17 @@ def search_bib_entries(
     return list(session.scalars(stmt).all())
 
 
+def get_bib_entry_by_bibkey(
+    session: Session,
+    bibkey: str,
+) -> BibEntry | None:
+    stmt = (
+        select(BibEntry).options(*_bib_entry_options()).where(BibEntry.bibkey == bibkey)
+    )
+
+    return session.scalar(stmt)
+
+
 # ── Keyword CRUD ─────────────────────────────────────────────────────────
 
 

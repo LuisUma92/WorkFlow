@@ -40,6 +40,7 @@ class ParsedExercise:
     diagram_id: str | None = None  # from \qdiagram if present
     image_refs: tuple[str, ...] = ()  # paths from \includegraphics, \inputsvg
     exercise_number: tuple[int | None, int] | None = None  # (chapter, num) from \exa
+    book_cite: str | None = None  # bibkey from \cite
 
 
 @dataclass(frozen=True)

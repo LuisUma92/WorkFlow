@@ -95,6 +95,7 @@ class _Annotations(TypedDict):
     diagram_id: str | None
     image_refs: list[str]
     exercise_number: tuple[int | None, int] | None
+    book_cite: str | None
 
 
 def _extract_annotations(text: str, stem_raw: str) -> _Annotations:
@@ -126,6 +127,11 @@ def _extract_annotations(text: str, stem_raw: str) -> _Annotations:
         except ValueError:
             pass
     result["exercise_number"] = exercise_number
+
+    book_cite = extract_macro_args(text, "cite", 1)
+    result["book_cite"] = (
+        book_cite[0].args[0] if book_cite and book_cite[0].args[0] else None
+    )
 
     return result
 
@@ -227,6 +233,7 @@ def parse_exercise(text: str, source_path: str = "") -> ParseResult:
         diagram_id=ann["diagram_id"],
         image_refs=tuple(ann["image_refs"]),
         exercise_number=ann["exercise_number"],
+        book_cite=ann["book_cite"],
     )
 
     return ParseResult(

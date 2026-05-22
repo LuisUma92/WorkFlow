@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from workflow.db.repos.sqlalchemy import SqlExerciseRepo
 from workflow.db.errors import with_schema_guard
+from workflow.prisma.service import get_bib_entry_by_bibkey
 from workflow.exercise.exam_builder import build_exam
 from workflow.exercise.generator import generate_exercise_file, generate_from_content
 from workflow.exercise.moodle import exercises_to_quiz_xml
@@ -54,6 +55,41 @@ def _find_tex_files(path: Path) -> list[Path]:
             f"Too many .tex files ({len(files)}); limit is {_MAX_FILES}."
         )
     return files
+
+
+def _sync_files(engine, files: list[Path]) -> None:
+    with Session(engine) as session:
+        result, messages = sync_exercises(session, files)
+
+    for msg in messages:
+        click.echo(msg)
+
+    click.echo(
+        f"\nSync complete: {result.new} new, "
+        f"{result.updated} updated, "
+        f"{result.unchanged} unchanged, "
+        f"{result.skipped} skipped."
+    )
+
+
+def _test_bib_entry_existence(
+    engine,
+    bibkey: str | None,
+) -> BibEntry | None:
+    """Validate that a bibliography entry exists."""
+
+    if bibkey is None:
+        return None
+
+    with Session(engine) as session:
+        entry = get_bib_entry_by_bibkey(session, bibkey)
+
+    if entry is None:
+        raise click.ClickException(
+            f"Bibliography entry not found for bibkey '{bibkey}'."
+        )
+
+    return entry
 
 
 @click.group()
@@ -173,16 +209,7 @@ def sync(ctx, path: str) -> None:
         click.echo("No .tex files found.")
         return
 
-    with Session(engine) as session:
-        result, messages = sync_exercises(session, files)
-
-    for msg in messages:
-        click.echo(msg)
-
-    click.echo(
-        f"\nSync complete: {result.new} new, {result.updated} updated, "
-        f"{result.unchanged} unchanged, {result.skipped} skipped."
-    )
+    _sync_files(engine, files)
 
 
 @exercise.command()
@@ -218,7 +245,6 @@ _DIFFICULTIES = ["easy", "medium", "hard"]
 
 
 @exercise.command()
-@click.argument("exercise-id")
 @click.option("--output-dir", "-d", type=click.Path(), required=True)
 @click.option(
     "--type",
@@ -240,15 +266,21 @@ _DIFFICULTIES = ["easy", "medium", "hard"]
 @click.option("--tag", multiple=True, help="Tag (repeatable).")
 @click.option("--book", type=str, default=None, help="Book citation key.")
 @click.option("--chapter", type=int, default=None, help="Chapter number.")
+@click.option(
+    "--section",
+    type=str,
+    default="00",
+    help="Section code: 01, A0, D0",
+)
 @click.option("--exercise-num", type=int, default=None, help="Exercise number.")
 @with_schema_guard
 def create(
-    exercise_id: str,
     output_dir: str,
     exercise_type: str,
     difficulty: str,
     taxonomy_level: str,
     taxonomy_domain: str,
+    section: str,
     tag: tuple[str, ...],
     book: str | None,
     chapter: int | None,
@@ -256,9 +288,13 @@ def create(
 ) -> None:
     """Create a new exercise placeholder .tex file."""
     out = Path(output_dir)
+    engine = _get_engine(click.get_current_context())
+
+    if book is not None:
+        _test_bib_entry_existence(engine, book)
+
     result = generate_exercise_file(
         out,
-        exercise_id,
         exercise_type=exercise_type,
         difficulty=difficulty,
         taxonomy_level=taxonomy_level,
@@ -266,10 +302,13 @@ def create(
         tags=list(tag) if tag else None,
         book_cite=book,
         chapter=chapter,
+        section=section,
         exercise_num=exercise_num,
     )
     if result.created:
         click.echo(f"Created: {result.file_path}")
+        engine = _get_engine(click.get_current_context())
+        _sync_files(engine, [result.file_path])
     else:
         click.echo(f"Skipped (already exists): {result.file_path}")
 
@@ -278,6 +317,12 @@ def create(
 @click.option("--output-dir", "-d", type=click.Path(), required=True)
 @click.option("--book", type=str, required=True, help="Book citation key.")
 @click.option("--chapter", type=int, required=True, help="Chapter number.")
+@click.option(
+    "--section",
+    type=str,
+    required=True,
+    help="Section code: 01, A0, D0",
+)
 @click.option("--first", type=int, required=True, help="First exercise number.")
 @click.option(
     "--last", type=int, required=True, help="Last exercise number (inclusive)."
@@ -295,9 +340,17 @@ def create(
     default="medium",
     show_default=True,
 )
-@click.option("--taxonomy-level", type=str, default="Usar-Aplicar", show_default=True)
 @click.option(
-    "--taxonomy-domain", type=str, default="Procedimiento Mental", show_default=True
+    "--taxonomy-level",
+    type=str,
+    default="Usar-Aplicar",
+    show_default=True,
+)
+@click.option(
+    "--taxonomy-domain",
+    type=str,
+    default="Procedimiento Mental",
+    show_default=True,
 )
 @click.option("--tag", multiple=True, help="Tag (repeatable).")
 @with_schema_guard
@@ -305,6 +358,7 @@ def create_range(
     output_dir: str,
     book: str,
     chapter: int,
+    section: str,
     first: int,
     last: int,
     exercise_type: str,
@@ -322,6 +376,7 @@ def create_range(
         out,
         book,
         chapter=chapter,
+        section=section,
         first_exercise=first,
         last_exercise=last,
         tags=list(tag) if tag else None,
@@ -338,6 +393,8 @@ def create_range(
         click.echo(f"  [created] {r.file_path.name}")
     for r in skipped:
         click.echo(f"  [skipped] {r.file_path.name}")
+    engine = _get_engine(click.get_current_context())
+    _sync_files(engine, [p.file_path for p in results])
 
     click.echo(
         f"\nDone: {len(created)} created, {len(skipped)} skipped "

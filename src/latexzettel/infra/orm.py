@@ -4,7 +4,7 @@ Shim de compatibilidad: re-exporta desde workflow.db (SQLAlchemy).
 
 ITEP-0011 P3: el shim ahora apunta a la base de datos GLOBAL — las
 tablas de notas (Note, Citation, Label, Link, Tag, NoteTag) viven en
-``~/.local/share/workflow/workflow.db`` (GlobalBase), no en un
+``$WORKFLOW_DATA_DIR/workflow.db`` (default ``~/01-U/workflow/workflow.db``, GlobalBase), no en un
 ``slipbox.db`` por proyecto.
 
 Interfaz expuesta:
@@ -32,7 +32,7 @@ from workflow.db.models.notes import (  # noqa: F401
 def get_engine():
     """Lazily create and cache the GLOBAL DB engine (ITEP-0011 P3).
 
-    Engine points at ~/.local/share/workflow/workflow.db. Use
+    Engine points at $WORKFLOW_DATA_DIR/workflow.db (default ~/01-U/workflow/workflow.db). Use
     get_engine.cache_clear() to reset for tests.
     """
     return get_global_engine()
