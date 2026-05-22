@@ -3,9 +3,10 @@ id: ITEP-0011
 title: "Vault unification — single global Markdown corpus, Note table relocates to GlobalBase"
 aliases:
   - ADR-ITEP-0011
-status: Accepted
+status: Implemented
 date: 2026-05-04
 accepted_date: 2026-05-06
+implemented_date: 2026-05-22
 authors:
   - Luis Umaña
 reviewers:

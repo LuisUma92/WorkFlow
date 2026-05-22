@@ -1,6 +1,6 @@
 # ITEP-0011 — Vault Unification: Implementation Plan
 
-**Companion ADR:** `docs/ADR/ITEP-0011-vault-unification.md` (Status: **Accepted** 2026-05-06)
+**Companion ADR:** `docs/ADR/ITEP-0011-vault-unification.md` (Status: **Implemented** 2026-05-22)
 **Blocks:** Phase B of `tasks/requests/2026-05-04-zettelkasten-main-topic-bundle.md`
 **Vault root (default):** `~/Documents/01-U/0000AA-Vault/` (XDG-configurable)
 
@@ -207,7 +207,5 @@ Session N+2:        P6 + P7
 ```
 
 ## Status
-`in-progress` — P0/P1/P2/P3 shipped. **Next: P4 + P5.**
-- P4: drop LocalBase note tables (irreversible); pre-flight aborts if
-  any LocalBase has note rows AND `WORKFLOW_VAULT_MODE != unified`.
-- P5: new LocalBase tables `prisma_decision`, `project_note`.
+`done` — P0–P7 shipped (2026-05-22). P4 (drop LocalBase note tables) deferred;
+requires explicit user confirmation before execution (irreversible).
