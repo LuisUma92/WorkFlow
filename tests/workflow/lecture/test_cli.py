@@ -157,6 +157,27 @@ def test_split_command_default_output_dir(
     assert not (tmp_path / "lect" / "tex" / "file.tex").exists()
 
 
+def test_split_command_default_output_dir_fallback(
+    runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """split fallback: when WORKFLOW_VAULT_ROOT unset, resolve_vault_root() is used."""
+    monkeypatch.delenv("WORKFLOW_VAULT_ROOT", raising=False)
+    fallback = tmp_path / "fallback_vault"
+    monkeypatch.setattr(
+        "workflow.vault.paths.DEFAULT_VAULT_ROOT", fallback
+    )
+    src = tmp_path / "notes.tex"
+    src.write_text(
+        dedent("""\
+        %>lect/out.tex
+        content
+    """)
+    )
+    result = runner.invoke(lectures, ["split", str(src)])
+    assert result.exit_code == 0, result.output
+    assert (fallback / "notes" / "permanent" / "lect" / "out.tex").exists()
+
+
 # ── link command ─────────────────────────────────────────────────────────────
 
 

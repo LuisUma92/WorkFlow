@@ -6,6 +6,7 @@ at ``%>path`` markers into multiple files.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -82,7 +83,7 @@ def split_notes_file(
     def _flush(rel_path: str, section_lines: list[str]) -> None:
         """Write accumulated section_lines to output_dir/rel_path."""
         target = (output_dir / rel_path).resolve()
-        if not str(target).startswith(str(output_dir.resolve())):
+        if not str(target).startswith(str(output_dir.resolve()) + os.sep):
             warnings.append(f"Path traversal blocked: {rel_path}")
             return
         line_count = len(section_lines)

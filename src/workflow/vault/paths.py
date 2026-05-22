@@ -18,5 +18,5 @@ ENV_VAULT_ROOT = "WORKFLOW_VAULT_ROOT"
 
 def resolve_vault_root() -> Path:
     """Resolve vault root from env, fall back to ITEP-0011 default."""
-    raw = os.environ.get(ENV_VAULT_ROOT)
+    raw = (os.environ.get(ENV_VAULT_ROOT) or "").strip()
     return Path(raw).expanduser().resolve() if raw else DEFAULT_VAULT_ROOT
