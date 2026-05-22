@@ -49,6 +49,10 @@ from workflow.db.models.exercises import (
     Exercise,
     ExerciseOption,
 )
+from workflow.db.models.project_layer import (
+    ProjectNote,
+    PrismaDecision,
+)
 
 __all__ = [
     # bibliography
@@ -91,4 +95,7 @@ __all__ = [
     # exercises
     "Exercise",
     "ExerciseOption",
+    # project layer (LocalBase)
+    "ProjectNote",
+    "PrismaDecision",
 ]
