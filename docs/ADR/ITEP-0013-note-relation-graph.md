@@ -3,8 +3,9 @@ id: ITEP-0013
 title: "Note relation graph — directed lineage + associative edges over the unified vault"
 aliases:
   - ADR-ITEP-0013
-status: Proposed
+status: Accepted
 date: 2026-05-22
+implemented_date: null
 authors:
   - Luis Fernando Umaña Castro
 reviewers: []
@@ -35,7 +36,7 @@ canonical on disk, indexed into `GlobalBase`. The only inter-note relation model
 today is the **wiki-link**: the `Link` table records `note → label` edges
 (LZK-0003), which resolve Markdown `[[...]]` references through the `Label` table.
 
-This is an *associative* layer only. It expresses "note A mentions a labelled
+This is an _associative_ layer only. It expresses "note A mentions a labelled
 anchor in note B" but it does **not** model:
 
 - **provenance** — which note(s) a note evolved out of;
@@ -51,7 +52,7 @@ A request (`.claude/requests/2026-05-21-resuming.md`) proposed adding:
 
 ```yaml
 relations:
-  parent: note-id          # singular provenance
+  parent: note-id # singular provenance
   next: [note-id, note-id] # plural continuations
 ```
 
@@ -74,7 +75,7 @@ grows a relation surface.
 ## Decision Drivers
 
 - **Append-only creation** — automated agents must create a note by writing
-  *one* file, never editing prior notes. This is the dominant driver.
+  _one_ file, never editing prior notes. This is the dominant driver.
 - **Source-of-truth discipline** — Markdown stays canonical (0002, 0010);
   SQLite must remain a fully rebuildable derived index.
 - **Expressiveness** — the model must represent merges (synthesis of multiple
@@ -92,17 +93,25 @@ grows a relation surface.
 
 ### Summary of evaluation of the proposed model
 
-| Proposed primitive | Verdict | Reason |
-|---|---|---|
-| `parent` singular | **Reject as canonical** | Forbids *merge nodes*. A synthesis note legitimately derives from two or more lines; a reasoning DAG has convergence points. Singular parent collapses the graph to a tree. |
-| `next` plural | **Keep the intent, change the storage** | Branching continuation is correct. But storing `next` in the *parent* file means every new continuation **mutates an old file** — breaks append-only creation, creates write contention and merge conflicts. |
-| directed reasoning graph | **Adopt** | Correct target model. |
-| strict DAG | **Adopt for lineage only** | Lineage must be acyclic. Associative edges (`contradicts`) may cycle and that is meaningful. |
+| Proposed primitive       | Verdict                    | Reason                                                              |
+| ------------------------ | -------------------------- | ------------------------------------------------------------------- |
+| `parent` singular        | **Reject as canonical**    | Forbids _merge nodes_.                                              |
+|                          |                            | A synthesis note legitimately derives from two or more lines;       |
+|                          |                            | a reasoning DAG has convergence points.                             |
+|                          |                            | Singular parent collapses the graph to a tree.                      |
+| `next` plural            | **Keep the intent,**       | Branching continuation is correct.                                  |
+|                          | **change the storage**     | But storing `next` in the _parent_ file means                       |
+|                          |                            | every new continuation **mutates an old file**                      |
+|                          |                            | — breaks append-only creation,                                      |
+|                          |                            | creates write contention and merge conflicts.                       |
+| directed reasoning graph | **Adopt**                  | Correct target model.                                               |
+| strict DAG               | **Adopt for lineage only** | Lineage must be acyclic.                                            |
+|                          |                            | Associative edges (`contradicts`) may cycle and that is meaningful. |
 
 **Core decision:** there is exactly **one canonical, directed, typed edge**,
 stored **once**, in the **frontmatter of the note that the edge originates from**
 (the newer / dependent note). `parent` and `next` are not two stored fields —
-they are the two *directions of one edge*. The forward (`next`) direction is
+they are the two _directions of one edge_. The forward (`next`) direction is
 **never stored in Markdown**; it is a reverse index materialised only in SQLite.
 
 This inverts the request's proposal (store backward, not forward) and makes the
@@ -111,13 +120,14 @@ cost.
 
 ### Two edge families
 
-| Family | Frontmatter key | `edge_class` | DAG-constrained | Cycles |
-|---|---|---|---|---|
-| **Lineage** (the traversal spine) | `derived_from` | `structural` | yes | forbidden |
-| **Associative** (semantic) | `links` | `associative` | no | allowed |
+| Family                     | Frontmatter key | `edge_class`  | DAG-constrained | Cycles    |
+| -------------------------- | --------------- | ------------- | --------------- | --------- |
+| **Lineage**                | `derived_from`  | `structural`  | yes             | forbidden |
+| (the traversal spine)      |                 |               |                 |           |
+| **Associative** (semantic) | `links`         | `associative` | no              | allowed   |
 
 Both families share one uniform item shape and one SQLite table. The lineage
-family *is* the canonical traversal primitive; associative edges are
+family _is_ the canonical traversal primitive; associative edges are
 cross-cutting and do not participate in lineage traversal unless explicitly
 requested.
 
@@ -144,19 +154,20 @@ with the `latexzettel` shim (LZK-0004 will eventually remove it).
 # In the frontmatter of note 202605221430 (a refinement of an earlier note)
 relations:
   derived_from:
-    - id: 202605211200          # zettel_id of the ancestor — REQUIRED, stable
-      type: refines             # continuation|refines|branches|synthesis|rebuttal
-      weight: 0.9               # OPTIONAL — confidence, default unweighted
-      note: "tightened the error bound"   # OPTIONAL — rationale for the edge
-    - id: 202604300900          # second ancestor → this note is a synthesis/merge
+    - id: 202605211200 # zettel_id of the ancestor — REQUIRED, stable
+      type: refines # continuation|refines|branches|synthesis|rebuttal
+      weight: 0.9 # OPTIONAL — confidence, default unweighted
+      note: "tightened the error bound" # OPTIONAL — rationale for the edge
+    - id: 202604300900 # second ancestor → this note is a synthesis/merge
       type: synthesis
   links:
     - id: 202604010900
-      type: supports            # supports|contradicts|expands|see_also
+      type: supports # supports|contradicts|expands|see_also
     - id: 202604020900
       type: contradicts
-entry_point: true               # OPTIONAL — declares an intentional root,
-                                 # suppresses the orphan warning
+entry_point:
+  true # OPTIONAL — declares an intentional root,
+  # suppresses the orphan warning
 ```
 
 - `derived_from` and `links` are both **lists of `{id, type, weight?, note?}`**.
@@ -191,7 +202,7 @@ CREATE INDEX ix_note_edge_target     ON note_edge (target_id, edge_class, relati
 CREATE INDEX ix_note_edge_unresolved ON note_edge (target_zettel_id) WHERE target_id IS NULL;
 ```
 
-**Edge direction invariant:** `source_id` is *always* the note whose `.md`
+**Edge direction invariant:** `source_id` is _always_ the note whose `.md`
 frontmatter declared the edge. For a lineage edge, `source` derives from
 `target`. This makes per-file reindex atomic: `DELETE FROM note_edge WHERE
 source_id = :n` then re-insert from that one file — no cross-file coordination.
@@ -214,12 +225,12 @@ The `next` direction is this query — no Markdown, no generated reverse files.
 
 ### `next` attributes — decision
 
-| Asked | Decision |
-|---|---|
-| ordering | **No canonical order.** Branches are parallel argumentations. Optional display `rank` MAY be added later; not stored now. |
-| weights / priorities / confidence | **Optional `weight REAL`**, nullable, default unweighted. Enables confidence-weighted traversal; agents populate lazily. |
-| timestamps | **`created_at` on the edge.** Cheap; enables "latest continuation". |
-| reasoning classification | **Modelled as `relation_type`**, not a sub-field. The classification *is* the edge type (`refines`, `branches`, `synthesis`, `rebuttal`). |
+| Asked                             | Decision                                                                                                                                  |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| ordering                          | **No canonical order.** Branches are parallel argumentations. Optional display `rank` MAY be added later; not stored now.                 |
+| weights / priorities / confidence | **Optional `weight REAL`**, nullable, default unweighted. Enables confidence-weighted traversal; agents populate lazily.                  |
+| timestamps                        | **`created_at` on the edge.** Cheap; enables "latest continuation".                                                                       |
+| reasoning classification          | **Modelled as `relation_type`**, not a sub-field. The classification _is_ the edge type (`refines`, `branches`, `synthesis`, `rebuttal`). |
 
 ### Traversal strategies (pseudocode)
 
@@ -280,10 +291,10 @@ function weighted_explore(start_zid, node_budget, score):
 ### Filesystem vs database vs hybrid — decision
 
 **Hybrid, with a sharpened contract.** Markdown is the source of truth for
-edges *and* content; SQLite is a **pure derived index — disposable and
+edges _and_ content; SQLite is a **pure derived index — disposable and
 rebuildable**. The new law extends 0002/0010 to edges:
 
-> No lineage or associative edge exists *only* in SQLite. Every edge is
+> No lineage or associative edge exists _only_ in SQLite. Every edge is
 > reconstructable by re-reading frontmatter. The sole DB-only artefacts are the
 > computed reverse direction (an index, not a row) and `target_id=NULL`
 > unresolved-edge bookkeeping.
@@ -303,7 +314,7 @@ incremental upsert + orphan cleanup.
   integer id.
 - Every graph-participating note **MUST** have a non-null, unique `zettel_id`.
 - A lineage edge **MUST** be stored exactly once, in the `derived_from` of the
-  *originating* (newer) note. The `next`/forward direction **MUST NOT** appear
+  _originating_ (newer) note. The `next`/forward direction **MUST NOT** appear
   in any Markdown file.
 - The lineage subgraph (`edge_class='structural'`) **MUST** remain acyclic.
   Validation **MUST** reject a frontmatter change that introduces a lineage
@@ -312,6 +323,12 @@ incremental upsert + orphan cleanup.
   silently dropped.
 - `note_edge` **MUST** be fully rebuildable from frontmatter by `sync --rebuild-edges`.
 - Per-file sync **MUST** be atomic: delete-by-`source_id` then re-insert.
+- Every closed-set value in the edge model (`edge_class`, `relation_type`)
+  **MUST** be exposed via a stable CLI introspection endpoint
+  (`workflow notes enums --json` or equivalent, per ITEP-0015) so editors and
+  pre-commit hooks build pickers and validators from a single source of truth.
+  Hard-coding the enum lists in the editor plugin or in validators is
+  forbidden — the runtime CLI is authoritative.
 
 ### SHOULD
 
@@ -331,7 +348,7 @@ incremental upsert + orphan cleanup.
 - A future `note_embedding` table **MAY** be added for semantic similarity;
   the edge graph and embeddings compose (graph = lineage, embeddings =
   similarity) and are independent.
-- A heuristic pass **MAY** *propose* `derives` edges from existing wiki-links,
+- A heuristic pass **MAY** _propose_ `derives` edges from existing wiki-links,
   but **MUST NOT** auto-create them — lineage stays human/agent-curated.
 
 ---
@@ -341,7 +358,7 @@ incremental upsert + orphan cleanup.
 - ORM model `NoteEdge` → `src/workflow/db/models/notes.py` (next to `Note`,
   `Link`, `Concept`).
 - Migration → new `GlobalBase` slot, forward-only (ITEP-0010). Adds `note_edge`
-  + indexes only. No change to `note`, `link`, `label`.
+  - indexes only. No change to `note`, `link`, `label`.
 - Frontmatter schema → extend `NoteFrontmatter` in
   `src/workflow/validation/schemas.py`: optional `relations` block parsed into
   typed edge dataclasses; mirror the `concepts:` validation pattern.
@@ -351,7 +368,7 @@ incremental upsert + orphan cleanup.
   re-insert (a different pattern than Phase 1's upsert for labels/links — edge
   authority is per-file scope, so full per-file replacement is correct).
 - **Shared upsert** → add `upsert_note_edge(session, source_id, target_zettel_id,
-  edge_class, relation_type, weight, rationale) -> bool` to
+edge_class, relation_type, weight, rationale) -> bool` to
   `src/workflow/notes/linker_ops.py` (extends the public upsert API established
   in Phase 1).
 - **Reporting** → extend `SyncReport` with `edges_created: int = 0` and
@@ -380,21 +397,90 @@ incremental upsert + orphan cleanup.
 
 ---
 
+## Impact on Human Authors (primary use case)
+
+The note graph is designed for direct human authoring first. Agentic generation
+is a secondary consumer that reuses the same primitives — agents earn no
+special-cased CLI or schema surface.
+
+### Authoring ergonomics required
+
+To make `derived_from:` and `links:` blocks practical to write by hand, the
+toolkit must surface every closed-set value and every existing identifier as a
+discoverable, picker-friendly list. The targeted surface is the editor (Neovim
+via `nvim-plugin/workflow`, Snacks pickers); but CLI users get the same data
+through `--json` output.
+
+| Field | Picker source |
+|---|---|
+| `derived_from[].id`, `links[].id` | existing notes in vault (zettel_id + title) |
+| `derived_from[].type` (structural) | `continuation` \| `refines` \| `branches` \| `synthesis` \| `rebuttal` |
+| `links[].type` (associative) | `supports` \| `contradicts` \| `expands` \| `see_also` |
+| `edge_class` (implicit per block) | `structural` (derived_from) \| `associative` (links) |
+| `references[]` (separate field, ADR-0001) | `bib_entry.bibkey` rows |
+| `concepts[]` | `concept.code` rows (ITEP-0012) |
+
+### Validation surface
+
+Editor-side validation should flag, in-buffer:
+
+- Unknown `id` references in `derived_from:` or `links:` — both target notes
+  not in the vault and malformed identifier strings.
+- Invalid `relation_type` values (typos against the closed set).
+- Lineage cycles introduced by a newly added `derived_from:` entry
+  (best-effort pre-check; authoritative check still runs in
+  `validate notes --graph`).
+
+These checks **MUST** be available outside the editor too — via
+`workflow validate notes --graph` — so CI and pre-commit hooks share the
+same validation.
+
+### Why human-first
+
+Direct authoring of the graph by humans is the foundational use case. Every
+operation an automated agent performs is a subset of what a human can do
+manually with the editor pickers. By optimizing for the human authoring
+experience, the toolkit:
+
+- Stays usable without any AI in the loop (offline, on-network failure, etc.)
+- Makes the graph self-documenting (a human's hand-written lineage is the
+  spec for any future automated generator)
+- Avoids accumulating an "agent-only" surface that drifts from the human one
+- Keeps the source of truth (Markdown files) editable in any text editor
+
+The detailed design of editor tooling (CLI introspection contract, picker
+keymaps, in-buffer validation, auto-fill) is the scope of **ITEP-0015**
+(separate ADR). This ADR only establishes the principle and the primitives.
+
+---
+
 ## Impact on AI Coding Agents
 
-- To continue a line of reasoning, an agent **creates one new note** whose
-  `derived_from` points at the ancestor(s). It **does not** edit the ancestor.
-- Agents **MUST** write `zettel_id` references, resolved against the vault, not
-  guessed filenames.
-- Agents **MUST NOT** introduce a lineage cycle; before adding `derived_from`,
-  check the target is not a descendant (`validate notes --graph` enforces this,
-  but agents should pre-check).
-- Agents querying the graph **MUST** pass a `node_budget` sized to remaining
-  context — never traverse unbounded.
-- Agents **MUST NOT** write to `note_edge` directly; the table is derived.
-  Mutate frontmatter, then run `notes sync` (or `notes sync --rebuild-edges` for a full rebuild).
-- Consult ITEP-0009 (knowledge lifecycle) and ITEP-0011 (vault) before bulk
-  note generation.
+Agentic note generation is a secondary use case. Agents reuse the same
+primitives as human authors — there is no agent-specific CLI, schema, or
+edge type.
+
+When an agent extends a line of reasoning:
+- It **creates one new note** with `derived_from:` pointing at the
+  ancestor(s); it does NOT edit the ancestor (append-only invariant from
+  Decision Drivers).
+- It **discovers valid `relation_type` values via the same CLI introspection
+  endpoint humans use** (`workflow notes enums --json`); enum values are not
+  hard-coded in agent prompts.
+- It **resolves target identifiers via `workflow notes list --json`**, the
+  same source the Neovim picker reads. Speculative or guessed identifiers
+  are forbidden — the agent must verify the target exists before writing
+  the frontmatter.
+- It **MUST NOT** introduce a lineage cycle; pre-check the target is not a
+  descendant before adding `derived_from:`. The authoritative cycle check
+  runs in `validate notes --graph`.
+- It **MUST NOT** write to `note_edge` directly; the table is derived.
+  Mutate Markdown frontmatter, then `notes sync`.
+- It **MUST** pass a `node_budget` matched to remaining context on every
+  traversal.
+
+Consult ITEP-0009 (knowledge lifecycle) and ITEP-0011 (vault) before bulk
+note generation.
 
 ---
 
@@ -407,7 +493,7 @@ incremental upsert + orphan cleanup.
   ideal for automated generation and concurrent agents.
 - The doubly-linked-list desync failure class is **structurally impossible** —
   the edge has no second stored copy.
-- One uniform edge table for lineage *and* semantic links — no parallel
+- One uniform edge table for lineage _and_ semantic links — no parallel
   subsystems.
 - SQLite stays a disposable cache — `sync --rebuild-edges` is the single recovery path.
 - Bounded traversals are context-window-safe by construction.
@@ -416,7 +502,7 @@ incremental upsert + orphan cleanup.
 
 - A new table, migration, ORM model, frontmatter schema, validator, reindex
   path — upfront design and code effort.
-- Forward (`next`) lineage is *only* a DB query — a vault inspected with plain
+- Forward (`next`) lineage is _only_ a DB query — a vault inspected with plain
   Markdown tooling shows provenance but not continuations. Acceptable: the DB
   is the traversal layer by design.
 - Cycle validation adds a recursive CTE to the validate path.
@@ -469,19 +555,38 @@ longer self-describing; loses git-diffable provenance. **Rejected.**
 
 ## Failure Mode Analysis
 
-| Failure | Handling |
-|---|---|
-| **Lineage cycle** | Validation error (recursive CTE). Frontmatter change rejected. The only edge problem treated as an error, not a warning. |
-| **Associative cycle** (`A contradicts B`, `B contradicts A`) | Allowed and meaningful. Not flagged. |
-| **Orphan note** | Warning, not error. A note with no structural edges that is not `entry_point: true`. Distinguishes intentional roots from dangling notes. |
-| **Invalid / stale reference** | Edge persisted with `target_id=NULL`; `validate notes --graph` reports it. Never crashes, never dropped. |
-| **Ambiguous traversal** | Bounded by `visited` + `max_depth` + `node_budget`; a DAG yields multiple ancestral paths — `trace_lineage` returns all, caller chooses. |
-| **Graph explosion** | `node_budget` caps every traversal; best-first prioritises under the cap. |
-| **Recursive traversal cost** | Indexed recursive CTEs; `(source_id,…)` and `(target_id,…)` indexes keep each hop O(log n). |
-| **Markdown ↔ SQLite desync** | SQLite is derived; `sync --rebuild-edges` fully rebuilds. No edge lives only in the DB. Incremental change detection (per-note frontmatter/body hashing) is **out of scope for this ADR** — see ITEP-0014 (proposed) for incremental sync. |
-| **Renamed file** | Edges key on `zettel_id`, not filename — rename is transparent. |
-| **Rebuilt DB / integer-id churn** | Edges key on `zettel_id`; integer `id`s are re-resolved on reindex. |
-| **Concurrent agent writes** | Per-file Markdown creation = low contention; SQLite WAL; reindex is idempotent and per-file atomic. |
+| Failure                                | Handling                                                        |
+| -------------------------------------- | --------------------------------------------------------------- |
+| **Lineage cycle**                      | Validation error (recursive CTE). Frontmatter change rejected.  |
+|                                        | The only edge problem treated as an error, not a warning.       |
+| **Associative cycle**                  | Allowed and meaningful. Not flagged.                            |
+| (`A contradicts B`, `B contradicts A`) |                                                                 |
+| **Orphan note**                        | Warning, not error. A note with no structural                   |
+|                                        | edges that is not `entry_point: true`.                          |
+|                                        | Distinguishes intentional roots from dangling notes.            |
+| **Invalid / stale reference**          | Edge persisted with `target_id=NULL`;                           |
+|                                        | `validate notes --graph` reports it.                            |
+|                                        | Never crashes, never dropped.                                   |
+| **Ambiguous traversal**                | Bounded by `visited` + `max_depth` + `node_budget`;             |
+|                                        | a DAG yields multiple ancestral paths —                         |
+|                                        | `trace_lineage` returns all, caller chooses.                    |
+| **Graph explosion**                    | `node_budget` caps every traversal;                             |
+|                                        | best-first prioritises under the cap.                           |
+| **Recursive traversal cost**           | Indexed recursive CTEs;                                         |
+|                                        | `(source_id,…)` and `(target_id,…)`                             |
+|                                        | indexes keep each hop O(log n).                                 |
+| **Markdown ↔ SQLite desync**           | SQLite is derived;                                              |
+|                                        | `sync --rebuild-edges` fully rebuilds.                          |
+|                                        | No edge lives only in the DB.                                   |
+|                                        | Incremental change detection                                    |
+|                                        | (per-note frontmatter/body hashing)                             |
+|                                        | is **out of scope for this ADR**                                |
+|                                        | — see ITEP-0014 (proposed) for incremental sync.                |
+| **Renamed file**                       | Edges key on `zettel_id`, not filename — rename is transparent. |
+| **Rebuilt DB / integer-id churn**      | Edges key on `zettel_id`;                                       |
+|                                        | integer `id`s are re-resolved on reindex.                       |
+| **Concurrent agent writes**            | Per-file Markdown creation = low contention;                    |
+|                                        | SQLite WAL; reindex is idempotent and per-file atomic.          |
 
 ---
 
@@ -531,15 +636,17 @@ shippable behind the optional frontmatter field.
 
 ## Status
 
-**Proposed.** Analysis and schema design only. No code is written by this ADR.
-Awaiting review before any implementation phase begins.
-Revision applied 2026-05-22 to align with Phase 1 v1.4.0/v1.4.1 reality. **Status unchanged — still Proposed.** Awaiting user acceptance to flip to Accepted and begin P2.1.
+**Accepted** (2026-05-22). Implementation begins with P2.1 (NoteEdge model
++ migration). Human-first authoring tooling — CLI introspection, Neovim
+pickers, in-buffer validation — is the scope of ITEP-0015, drafted in
+parallel with this acceptance.
 
 ---
 
 ## Change Log
 
-| Date       | Change                                              |
-| ---------- | --------------------------------------------------- |
-| 2026-05-22 | Initial ADR — directed note relation graph design   |
+| Date       | Change                                                                                                                                                                                                                                                                          |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-22 | Initial ADR — directed note relation graph design                                                                                                                                                                                                                               |
 | 2026-05-22 | Revision pre-approval: align identifier with `id:` frontmatter (Phase 1 P1.5 hotfix dependency); rename `notes reindex` → `notes sync --rebuild-edges`; concretize entry point in `sync.py`+`linker_ops.py`; scope `fm_hash` out (defer to ITEP-0014). Status remains Proposed. |
+| 2026-05-22 | Human-first reframing: added "Impact on Human Authors" primary section; new architectural rule requiring CLI introspection of closed-set values; "Impact on AI Coding Agents" reframed as secondary consumer reusing human primitives; ITEP-0015 (editor tooling) drafted in parallel as scope-spinoff. Status: Proposed → **Accepted**. |
