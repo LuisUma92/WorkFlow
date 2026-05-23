@@ -71,6 +71,23 @@ validation schema — never from a hand-maintained list.
 A test gate compares the CLI output to the ORM CHECK definitions to catch drift
 between the two.
 
+The endpoint also exposes the canonical zettel_id format:
+
+```json
+{
+  "zettel_id_format": {
+    "library": "nanoid",
+    "alphabet": "A-Za-z0-9_-",
+    "default_length": 12,
+    "min_length": 8,
+    "max_length": 21,
+    "validation_regex": "^[A-Za-z0-9_-]{8,21}$",
+    "filename_convention": "<zettel_id>-<slug>.md",
+    "alias_template": ["<zettel_id>-<slug>", "<slug>", "<zettel_id>"]
+  }
+}
+```
+
 ### B. Listing endpoints
 
 | Picker target | Backing CLI command | Status |
@@ -118,6 +135,34 @@ keymap pastes the output at cursor. YAML snippet expansions for `derived_from:`
 and `links:` blocks are provided via the existing plugin; snippet ownership
 (Lua-inline vs LuaSnip) is an open question deferred to implementation.
 
+### F. Filename + alias convention (Obsidian compatibility)
+
+Note files are named `<zettel_id>-<slug>.md` (e.g., `K3f5G7HEy_q2-gauss-law.md`).
+This format is Obsidian-compatible: Obsidian resolves `[[...]]` against the
+filename (minus `.md`) and against any value in the YAML `aliases:` list.
+
+`workflow notes new` auto-populates `aliases:` with three forms for robust
+wiki-link resolution:
+
+```yaml
+id: K3f5G7HEy_q2
+title: Gauss's Law
+aliases:
+  - K3f5G7HEy_q2-gauss-law   # full filename
+  - gauss-law                  # slug only (matches Obsidian's "shortest unique" default)
+  - K3f5G7HEy_q2               # NanoID only (used by agents/tooling)
+```
+
+`notes sync` resolves wiki-links in this order:
+1. `Note.zettel_id == target` (canonical)
+2. `Note.alias == target` (Obsidian compat via alias index)
+3. `Note.reference == target` (legacy `latexzettel` column)
+
+Storing aliases requires a small schema addition (`note_alias` table with
+`note_id` FK + `alias TEXT UNIQUE`). This is in-scope for the editor tooling
+ADR because it directly enables the picker + author ergonomics, even though
+the table itself is a `notes sync` concern.
+
 ## Architectural Rules (MUST)
 
 - `workflow notes enums` output MUST be derived from the same source as the ORM
@@ -132,12 +177,18 @@ and `links:` blocks are provided via the existing plugin; snippet ownership
 
 ## Open Questions (defer to implementation phase)
 
-1. **LSP vs ad-hoc diagnostics** — Should validation surface via a real LSP server
-   (generalizes to VS Code/Helix) or stay with `:WorkflowValidate` + Snacks?
-   An LSP approach adds significant infrastructure.
-2. **`zettel_id` format authority** — Canonical format (`YYYYMMDDHHMM-slug` or
-   other?) must be locked before `new-id` auto-generation and validation regex
-   can be implemented.
+1. ~~LSP vs ad-hoc diagnostics~~ — **RESOLVED 2026-05-22**: LSP is rejected for this
+   domain. Industry pattern for knowledge-graph tools (Obsidian, Logseq,
+   Org-roam, Foam, Dendron) is in-process or daemon-based completion, never
+   LSP. Mature on-demand picker + on-save validation pattern is correct;
+   no per-keystroke DB roundtrips. Multi-editor portability when needed
+   goes via the existing LZK-0001 JSONL/NDJSON RPC server, not LSP.
+2. ~~`zettel_id` format authority~~ — **RESOLVED 2026-05-22**: NanoID format
+   locked. Alphabet `A-Za-z0-9_-`, default length 12, allowed range 8–21
+   chars. Regex `^[A-Za-z0-9_-]{8,21}$`. Library: PyPI `nanoid`. Filename
+   convention `<zettel_id>-<slug>.md`. Aliases auto-populated for Obsidian
+   compatibility. Legacy Obsidian IDs (`YYYYMMDD-slug` style) match the
+   regex and continue to validate — no migration required.
 3. **Pre-commit hook semantics** — Should editor diagnostics and
    `workflow validate notes --graph` share exit-code conventions?
 4. **Multi-vault picker scope** — Single active vault or all known vaults?
@@ -185,3 +236,4 @@ for ITEP-0013 Phase 2.3, or as a parallel sub-track once P2.1 lands.
 | Date       | Change                                                                          |
 | ---------- | ------------------------------------------------------------------------------- |
 | 2026-05-22 | Initial draft — editor-first authoring tooling for the note graph. Spinoff from ITEP-0013 human-first reframing. |
+| 2026-05-22 | Locked decisions: NanoID format (alphabet `A-Za-z0-9_-`, len 8–21, default 12); filename convention `<id>-<slug>.md` with auto-populated aliases for Obsidian compatibility; LSP rejected for this domain (multi-editor via LZK-0001 RPC server instead). Open Questions Q1 and Q2 resolved. |

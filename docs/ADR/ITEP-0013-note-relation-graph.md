@@ -148,6 +148,14 @@ No new identifier is introduced. `Note.zettel_id` becomes the single canonical
 key for edge resolution; `Note.reference` is kept for backward compatibility
 with the `latexzettel` shim (LZK-0004 will eventually remove it).
 
+The `zettel_id` format is locked to **NanoID** per ITEP-0015: alphabet
+`A-Za-z0-9_-`, length 8–21 (default 12), regex `^[A-Za-z0-9_-]{8,21}$`.
+Legacy Obsidian-style identifiers (`YYYYMMDD-slug`) match this regex and
+continue to validate — no migration burden. New notes via
+`workflow notes new` generate a fresh NanoID via the `nanoid` library and
+use the filename convention `<zettel_id>-<slug>.md` with auto-populated
+`aliases:` for wiki-link robustness.
+
 ### Canonical YAML schema
 
 ```yaml
@@ -185,7 +193,7 @@ CREATE TABLE note_edge (
     id               INTEGER PRIMARY KEY,
     source_id        INTEGER NOT NULL REFERENCES note(id) ON DELETE CASCADE,
     target_id        INTEGER          REFERENCES note(id) ON DELETE SET NULL,
-    target_zettel_id TEXT    NOT NULL,   -- always the frontmatter value
+    target_zettel_id TEXT    NOT NULL,   -- frontmatter `id:` value; format: ^[A-Za-z0-9_-]{8,21}$ (NanoID, ITEP-0015)
     edge_class       TEXT    NOT NULL,   -- 'structural' | 'associative'
     relation_type    TEXT    NOT NULL,   -- continuation|refines|branches|synthesis
                                          -- |rebuttal|supports|contradicts|expands|see_also
@@ -650,3 +658,4 @@ parallel with this acceptance.
 | 2026-05-22 | Initial ADR — directed note relation graph design                                                                                                                                                                                                                               |
 | 2026-05-22 | Revision pre-approval: align identifier with `id:` frontmatter (Phase 1 P1.5 hotfix dependency); rename `notes reindex` → `notes sync --rebuild-edges`; concretize entry point in `sync.py`+`linker_ops.py`; scope `fm_hash` out (defer to ITEP-0014). Status remains Proposed. |
 | 2026-05-22 | Human-first reframing: added "Impact on Human Authors" primary section; new architectural rule requiring CLI introspection of closed-set values; "Impact on AI Coding Agents" reframed as secondary consumer reusing human primitives; ITEP-0015 (editor tooling) drafted in parallel as scope-spinoff. Status: Proposed → **Accepted**. |
+| 2026-05-22 | Locked `zettel_id` format (NanoID per ITEP-0015): regex `^[A-Za-z0-9_-]{8,21}$` enforced on `target_zettel_id` column. Filename convention and alias resolution covered by ITEP-0015 (data model unchanged by this lock; only the validation regex is added). |
