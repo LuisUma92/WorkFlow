@@ -62,14 +62,6 @@ def init_cmd(workspace: str) -> None:
 
     result = init_workspace(workspace_path)
 
-    # Also create type subdirectories at the workspace root for direct note storage
-    type_subdirs = ("permanent", "literature", "fleeting")
-    for subdir_name in type_subdirs:
-        subdir = workspace_path / subdir_name
-        if not subdir.exists():
-            subdir.mkdir(parents=True, exist_ok=True)
-            click.echo(f"  + {subdir_name}/")
-
     if result.directories_created:
         click.echo("Created:")
         for d in result.directories_created:

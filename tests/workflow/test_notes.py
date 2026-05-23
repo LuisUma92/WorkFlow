@@ -172,7 +172,8 @@ class TestListNotes:
         result = list_notes(workspace / "notes")
         assert result == []
 
-    def test_list_no_id_top_level_only(self, workspace, seed_note):
+    def test_list_recursive_includes_subdirs(self, workspace, seed_note):
+        """list_notes now recurses — notes in subdirs must be discovered."""
         seed_note("top-001")
         subdir = workspace / "notes" / "subdir"
         subdir.mkdir()
@@ -180,7 +181,7 @@ class TestListNotes:
         results = list_notes(workspace / "notes")
         ids = {fm.id for _, fm in results}
         assert "top-001" in ids
-        assert "nested-001" not in ids
+        assert "nested-001" in ids
 
     def test_list_filters_by_tag(self, workspace, seed_note):
         seed_note("tag-001", tags=["physics"])
@@ -438,7 +439,8 @@ class TestCLIList:
         assert result.exit_code == 0, result.output
         assert json.loads(result.output) == []
 
-    def test_list_no_id_top_level_only(self, runner, workspace, seed_note):
+    def test_list_recursive_includes_subdirs(self, runner, workspace, seed_note):
+        """notes list now recurses — notes in subdirs must appear in JSON output."""
         seed_note("top-list-001")
         subdir = workspace / "notes" / "sub"
         subdir.mkdir()
@@ -447,7 +449,7 @@ class TestCLIList:
         assert result.exit_code == 0
         ids = {item["id"] for item in json.loads(result.output)}
         assert "top-list-001" in ids
-        assert "nested-list-001" not in ids
+        assert "nested-list-001" in ids
 
     def test_list_with_id_walks_connections(self, runner, workspace):
         """H2: wikilinks BFS from hub-001 reaches spoke-001."""

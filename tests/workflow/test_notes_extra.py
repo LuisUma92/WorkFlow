@@ -242,11 +242,35 @@ class TestSmoke:
             assert cmd in output, f"missing command '{cmd}' in --help"
 
     def test_init_cmd_creates_dirs(self, runner, tmp_path):
-        """H10: notes init creates permanent/, literature/, fleeting/."""
+        """notes init creates the vault, inbox/, and templates/ — Obsidian-flat layout."""
         result = runner.invoke(notes, ["init", str(tmp_path)])
         assert result.exit_code == 0, result.output
+        # Inbox + templates are created under the vault; typed-subdirs are NOT.
+        vault = tmp_path / "0000AA-Vault"
+        assert vault.is_dir(), "vault dir not created"
+        assert (vault / "inbox").is_dir(), "missing inbox/"
+        assert (vault / "templates").is_dir(), "missing templates/"
         for subdir in ("permanent", "literature", "fleeting"):
-            assert (tmp_path / subdir).is_dir(), f"missing subdir: {subdir}"
+            assert not (tmp_path / subdir).exists(), (
+                f"typed subdir {subdir!r} should not be created — type lives in frontmatter"
+            )
+
+    def test_notes_in_subdir_are_discoverable(self, runner, workspace):
+        """Notes in any subdir (e.g. inbox/) must be visible to list/show — fix for vault layout drift."""
+        d = workspace / "notes"
+        inbox = d / "inbox"
+        inbox.mkdir()
+        _write_note_raw(inbox / "inbox-001.md", "inbox-001", "Inbox Note")
+
+        # list should find it
+        list_result = runner.invoke(notes, ["list", "--dir", str(d)])
+        assert list_result.exit_code == 0
+        assert "inbox-001" in list_result.output
+
+        # show should find it
+        show_result = runner.invoke(notes, ["show", "inbox-001", "--dir", str(d)])
+        assert show_result.exit_code == 0
+        assert "Inbox Note" in show_result.output
 
     def test_list_table_output_basic(self, runner, workspace):
         """H10: list without --json shows id and title."""

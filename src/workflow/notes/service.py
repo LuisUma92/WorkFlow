@@ -14,7 +14,7 @@ from pathlib import Path
 
 import yaml
 
-from workflow.notes.discovery import iter_note_files, parse_frontmatter
+from workflow.notes.discovery import iter_note_files, parse_frontmatter, walk_note_files
 from workflow.validation.schemas import NoteFrontmatter, validate_note_frontmatter
 
 __all__ = [
@@ -36,9 +36,6 @@ _log = logging.getLogger(__name__)
 _SAFE_ID_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
 # Regex for [[wikilinks]] in body text
 _WIKILINK_RE = re.compile(r"\[\[([^\]]+)\]\]")
-
-# Known type subdirectories for cross-dir ambiguity detection (H5)
-_TYPE_SUBDIRS = frozenset({"permanent", "literature", "fleeting"})
 
 
 class NoteNotFound(Exception):
@@ -169,12 +166,12 @@ def list_notes(
     candidate_project: str | None = None,
     note_type: str | None = None,
 ) -> list[tuple[Path, NoteFrontmatter]]:
-    """Return top-level notes in ``root``, optionally filtered.
+    """Return all notes under ``root`` recursively, optionally filtered.
 
     Silently skips files whose frontmatter fails to parse (logs warning).
     """
     results: list[tuple[Path, NoteFrontmatter]] = []
-    for path in iter_note_files(root):
+    for path in walk_note_files(root):
         try:
             fm_dict, _ = parse_frontmatter(path)
         except (ValueError, yaml.YAMLError) as exc:
@@ -205,16 +202,8 @@ def list_notes(
 
 
 def _iter_scan_paths(root: Path) -> list[Path]:
-    """Return all .md paths to scan for id-index building.
-
-    Includes top-level files AND files in known type subdirs (H5).
-    """
-    paths: list[Path] = list(iter_note_files(root))
-    for subdir_name in sorted(_TYPE_SUBDIRS):
-        subdir = root / subdir_name
-        if subdir.is_dir() and not subdir.is_symlink():
-            paths.extend(iter_note_files(subdir))
-    return paths
+    """Return all .md paths to scan for id-index building (recursive)."""
+    return list(walk_note_files(root))
 
 
 def _build_id_index(
