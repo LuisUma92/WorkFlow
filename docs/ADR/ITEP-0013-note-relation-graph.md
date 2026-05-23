@@ -121,6 +121,23 @@ family *is* the canonical traversal primitive; associative edges are
 cross-cutting and do not participate in lineage traversal unless explicitly
 requested.
 
+### Identifier alignment with Phase 1
+
+The `zettel_id` referenced throughout this ADR is the **`id:`** field of note
+frontmatter — the canonical Zettelkasten identifier already established by note
+templates (`workflow notes init`), the validation schema, and the notes service.
+At the SQL level this maps to `Note.zettel_id`.
+
+Phase 1 `notes sync` (v1.4.0) initially read a non-conventional `reference:`
+field; the P1.5 hotfix (v1.4.1) aligns sync to read `id:` and populate both
+`Note.zettel_id` and the legacy `Note.reference` column with the same value.
+This ADR depends on that alignment — `note_edge.target_zettel_id` resolves
+against `Note.zettel_id`.
+
+No new identifier is introduced. `Note.zettel_id` becomes the single canonical
+key for edge resolution; `Note.reference` is kept for backward compatibility
+with the `latexzettel` shim (LZK-0004 will eventually remove it).
+
 ### Canonical YAML schema
 
 ```yaml
@@ -271,8 +288,10 @@ rebuildable**. The new law extends 0002/0010 to edges:
 > computed reverse direction (an index, not a row) and `target_id=NULL`
 > unresolved-edge bookkeeping.
 
-`workflow notes reindex` MUST be able to drop and rebuild `note_edge` entirely
-from the `.md` corpus.
+`workflow notes sync --rebuild-edges` MUST be able to drop and rebuild `note_edge` entirely
+from the `.md` corpus. The flag drops all `note_edge` rows in scope (or globally if no
+`--project`) then runs the full edge re-import pass. Default sync (without the flag) does
+incremental upsert + orphan cleanup.
 
 ---
 
@@ -291,8 +310,8 @@ from the `.md` corpus.
   cycle.
 - An unresolved edge target **MUST** be persisted (`target_id=NULL`), never
   silently dropped.
-- `note_edge` **MUST** be fully rebuildable from frontmatter by `reindex`.
-- Per-file reindex **MUST** be atomic: delete-by-`source_id` then re-insert.
+- `note_edge` **MUST** be fully rebuildable from frontmatter by `sync --rebuild-edges`.
+- Per-file sync **MUST** be atomic: delete-by-`source_id` then re-insert.
 
 ### SHOULD
 
@@ -326,9 +345,19 @@ from the `.md` corpus.
 - Frontmatter schema → extend `NoteFrontmatter` in
   `src/workflow/validation/schemas.py`: optional `relations` block parsed into
   typed edge dataclasses; mirror the `concepts:` validation pattern.
-- Reindex → `src/workflow/notes/` reindexer: per-file
-  `DELETE … WHERE source_id=:n` + insert; resolve `target_zettel_id → target_id`
-  by `Note.zettel_id` lookup; record misses as `target_id=NULL`.
+- **Entry point** → extend `src/workflow/notes/sync.py::sync_vault()` with a
+  4th pass that parses `relations:` from frontmatter and upserts `note_edge`
+  rows. Per-file atomicity: `DELETE FROM note_edge WHERE source_id = :n` then
+  re-insert (a different pattern than Phase 1's upsert for labels/links — edge
+  authority is per-file scope, so full per-file replacement is correct).
+- **Shared upsert** → add `upsert_note_edge(session, source_id, target_zettel_id,
+  edge_class, relation_type, weight, rationale) -> bool` to
+  `src/workflow/notes/linker_ops.py` (extends the public upsert API established
+  in Phase 1).
+- **Reporting** → extend `SyncReport` with `edges_created: int = 0` and
+  `edges_unresolved: int = 0` fields. CLI output adds two columns.
+- **Resolution** → `target_zettel_id` resolved against `Note.zettel_id` lookup.
+  Unresolved entries persisted with `target_id = NULL` per Failure Mode Analysis.
 - Validators → add `check_graph_against_db` alongside
   `check_main_topic_against_db` / `check_concepts_against_db`. Cycle detection
   via recursive CTE:
@@ -363,7 +392,7 @@ from the `.md` corpus.
 - Agents querying the graph **MUST** pass a `node_budget` sized to remaining
   context — never traverse unbounded.
 - Agents **MUST NOT** write to `note_edge` directly; the table is derived.
-  Mutate frontmatter, then `reindex`.
+  Mutate frontmatter, then run `notes sync` (or `notes sync --rebuild-edges` for a full rebuild).
 - Consult ITEP-0009 (knowledge lifecycle) and ITEP-0011 (vault) before bulk
   note generation.
 
@@ -380,7 +409,7 @@ from the `.md` corpus.
   the edge has no second stored copy.
 - One uniform edge table for lineage *and* semantic links — no parallel
   subsystems.
-- SQLite stays a disposable cache — `reindex` is the single recovery path.
+- SQLite stays a disposable cache — `sync --rebuild-edges` is the single recovery path.
 - Bounded traversals are context-window-safe by construction.
 
 ### Costs
@@ -449,7 +478,7 @@ longer self-describing; loses git-diffable provenance. **Rejected.**
 | **Ambiguous traversal** | Bounded by `visited` + `max_depth` + `node_budget`; a DAG yields multiple ancestral paths — `trace_lineage` returns all, caller chooses. |
 | **Graph explosion** | `node_budget` caps every traversal; best-first prioritises under the cap. |
 | **Recursive traversal cost** | Indexed recursive CTEs; `(source_id,…)` and `(target_id,…)` indexes keep each hop O(log n). |
-| **Markdown ↔ SQLite desync** | SQLite is derived; `fm_hash` per note drives incremental reindex; `reindex` fully rebuilds. No edge lives only in the DB. |
+| **Markdown ↔ SQLite desync** | SQLite is derived; `sync --rebuild-edges` fully rebuilds. No edge lives only in the DB. Incremental change detection (per-note frontmatter/body hashing) is **out of scope for this ADR** — see ITEP-0014 (proposed) for incremental sync. |
 | **Renamed file** | Edges key on `zettel_id`, not filename — rename is transparent. |
 | **Rebuilt DB / integer-id churn** | Edges key on `zettel_id`; integer `id`s are re-resolved on reindex. |
 | **Concurrent agent writes** | Per-file Markdown creation = low contention; SQLite WAL; reindex is idempotent and per-file atomic. |
@@ -504,6 +533,7 @@ shippable behind the optional frontmatter field.
 
 **Proposed.** Analysis and schema design only. No code is written by this ADR.
 Awaiting review before any implementation phase begins.
+Revision applied 2026-05-22 to align with Phase 1 v1.4.0/v1.4.1 reality. **Status unchanged — still Proposed.** Awaiting user acceptance to flip to Accepted and begin P2.1.
 
 ---
 
@@ -512,3 +542,4 @@ Awaiting review before any implementation phase begins.
 | Date       | Change                                              |
 | ---------- | --------------------------------------------------- |
 | 2026-05-22 | Initial ADR — directed note relation graph design   |
+| 2026-05-22 | Revision pre-approval: align identifier with `id:` frontmatter (Phase 1 P1.5 hotfix dependency); rename `notes reindex` → `notes sync --rebuild-edges`; concretize entry point in `sync.py`+`linker_ops.py`; scope `fm_hash` out (defer to ITEP-0014). Status remains Proposed. |
