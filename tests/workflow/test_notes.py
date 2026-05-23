@@ -349,23 +349,23 @@ class TestUpdateTags:
 class TestAddLink:
     def test_link_concept_appends(self, workspace, seed_note):
         seed_note("link-001", concepts=["old-concept"])
-        _, updated = add_link(workspace / "notes", "link-001", concept="new-concept")
+        _, updated, _ = add_link(workspace / "notes", "link-001", concept="new-concept")
         assert "new-concept" in updated.concepts
         assert "old-concept" in updated.concepts
 
     def test_link_reference_appends(self, workspace, seed_note):
         seed_note("link-002")
-        _, updated = add_link(workspace / "notes", "link-002", reference="ref-key")
+        _, updated, _ = add_link(workspace / "notes", "link-002", reference="ref-key")
         assert "ref-key" in updated.references
 
     def test_link_exercise_appends(self, workspace, seed_note):
         seed_note("link-003")
-        _, updated = add_link(workspace / "notes", "link-003", exercise="ex-001")
+        _, updated, _ = add_link(workspace / "notes", "link-003", exercise="ex-001")
         assert "ex-001" in updated.exercises
 
     def test_link_idempotent(self, workspace, seed_note):
         seed_note("link-004", concepts=["existing"])
-        _, updated = add_link(workspace / "notes", "link-004", concept="existing")
+        _, updated, _ = add_link(workspace / "notes", "link-004", concept="existing")
         assert updated.concepts.count("existing") == 1
 
     def test_mutating_ops_revalidate_before_write(self, workspace, seed_note):
@@ -573,12 +573,42 @@ class TestCLITag:
 
 
 class TestCLILink:
+    @staticmethod
+    def _engine_with_note_and_concept(note_id: str, concept_code: str):
+        """Return an in-memory GlobalBase engine with a Note row + Concept row."""
+        from sqlalchemy import create_engine as _ce
+        from sqlalchemy.orm import Session as _S
+        import workflow.db.models.bibliography  # noqa: F401
+        import workflow.db.models.academic  # noqa: F401
+        import workflow.db.models.project  # noqa: F401
+        import workflow.db.models.notes  # noqa: F401
+        import workflow.db.models.exercises  # noqa: F401
+        from workflow.db.base import GlobalBase as _GB
+        from workflow.db.models.notes import Concept as _C, Note as _Note
+        from workflow.db.models.academic import DisciplineArea as _DA, MainTopic as _MT
+
+        eng = _ce("sqlite:///:memory:")
+        _GB.metadata.create_all(eng)
+        with _S(eng) as s:
+            da = _DA(code="XX0001", name="X", discipline_num=1, topic_num=1, area_initials="XX")
+            s.add(da)
+            s.flush()
+            mt = _MT(code="XX0001", name="X Topic", discipline_area_id=da.id)
+            s.add(mt)
+            s.flush()
+            s.add(_C(code=concept_code, label=concept_code, main_topic_id=mt.id))
+            s.add(_Note(filename=f"{note_id}.md", reference=note_id, zettel_id=note_id))
+            s.commit()
+        return eng
+
     def test_link_concept_appends(self, runner, workspace, seed_note):
         seed_note("lnk-001")
+        eng = self._engine_with_note_and_concept("lnk-001", "new-concept")
         result = runner.invoke(
             notes,
             ["link", "lnk-001", "--concept", "new-concept",
              "--dir", str(workspace / "notes"), "--json"],
+            obj={"engine": eng},
         )
         assert result.exit_code == 0, result.output
         assert "new-concept" in json.loads(result.output)["concepts"]
@@ -605,10 +635,12 @@ class TestCLILink:
 
     def test_link_idempotent(self, runner, workspace, seed_note):
         seed_note("lnk-004", concepts=["already"])
+        eng = self._engine_with_note_and_concept("lnk-004", "already")
         result = runner.invoke(
             notes,
             ["link", "lnk-004", "--concept", "already",
              "--dir", str(workspace / "notes"), "--json"],
+            obj={"engine": eng},
         )
         assert result.exit_code == 0
         assert json.loads(result.output)["concepts"].count("already") == 1

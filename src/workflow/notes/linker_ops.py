@@ -79,6 +79,42 @@ def upsert_note_edge(
     return False
 
 
+def upsert_note_concept(session: Session, *, note_id: int, concept_id: int) -> bool:
+    """Insert a NoteConcept row if it does not already exist.
+
+    Returns True if a new row was inserted, False if it already existed.
+    Uses SELECT-then-INSERT (mirrors upsert_label / upsert_link semantics).
+    """
+    from workflow.db.models.notes import NoteConcept
+
+    existing = session.scalars(
+        select(NoteConcept).where(
+            NoteConcept.note_id == note_id,
+            NoteConcept.concept_id == concept_id,
+        )
+    ).first()
+    if existing is None:
+        session.add(NoteConcept(note_id=note_id, concept_id=concept_id))
+        return True
+    return False
+
+
+def delete_note_concept(session: Session, *, note_id: int, concept_id: int) -> bool:
+    """Delete a NoteConcept row if it exists. Returns True if deleted."""
+    from workflow.db.models.notes import NoteConcept
+
+    existing = session.scalars(
+        select(NoteConcept).where(
+            NoteConcept.note_id == note_id,
+            NoteConcept.concept_id == concept_id,
+        )
+    ).first()
+    if existing is not None:
+        session.delete(existing)
+        return True
+    return False
+
+
 def upsert_citation(session: Session, note_id: int, citationkey: str) -> bool:
     """Insert a Citation if it does not already exist. Returns True if created."""
     from workflow.db.models.notes import Citation

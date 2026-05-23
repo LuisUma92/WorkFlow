@@ -460,16 +460,28 @@ def edges_resolve_cmd(ctx: click.Context, dry_run: bool, as_json: bool) -> None:
     default=".",
 )
 @click.option("--json", "as_json", is_flag=True)
+@click.option("--remove", "remove", is_flag=True, default=False,
+              help="Remove the link instead of adding it.")
+@click.option("--strict", "strict", is_flag=True, default=False,
+              help="Treat unknown concept codes as errors.")
+@click.pass_context
 @with_schema_guard
 def link_cmd(
+    ctx: click.Context,
     note_id: str,
     concept: str | None,
     reference: str | None,
     exercise: str | None,
     root_dir: str,
     as_json: bool,
+    remove: bool,
+    strict: bool,
 ) -> None:
-    """Append a concept, reference, or exercise link to a note."""
+    """Append (or remove) a concept, reference, or exercise link to a note."""
+    from sqlalchemy.orm import Session
+
+    from workflow.db.engine import get_engine_from_ctx
+
     _validate_cli_id(note_id)
 
     # Mutex: exactly one of --concept/--reference/--exercise required
@@ -480,16 +492,24 @@ def link_cmd(
         )
 
     root = Path(root_dir).resolve()
+    engine = get_engine_from_ctx(ctx)
     try:
-        path, new_fm = add_link(
-            root, note_id, concept=concept, reference=reference, exercise=exercise
-        )
+        with Session(engine) as session:
+            path, new_fm, issues = add_link(
+                root, note_id,
+                concept=concept, reference=reference, exercise=exercise,
+                session=session, strict=strict, remove=remove,
+            )
+            session.commit()
     except NoteNotFound as exc:
         raise click.ClickException(str(exc))
     except AmbiguousNoteId as exc:
         raise click.ClickException("ambiguous id: " + str(exc))
     except NoteValidationError as exc:
         raise click.ClickException(str(exc))
+
+    for issue in issues:
+        click.echo(f"Warning: {issue['message']}", err=True)
 
     if as_json:
         click.echo(format_note_json(path, new_fm))
