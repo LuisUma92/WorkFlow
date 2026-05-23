@@ -117,6 +117,40 @@ function M.pick_prisma_reviews(opts)
 	require("workflow.picker.prisma_reviews").pick(opts)
 end
 
+-- Notes module (ITEP-0011/0012/0013)
+
+function M.sync_notes(opts)
+	require("workflow.notes").sync(opts)
+end
+
+function M.show_note(id, opts)
+	require("workflow.notes").show(id, opts)
+end
+
+function M.tag_note(id, add, remove, opts)
+	require("workflow.notes").tag(id, add, remove, opts)
+end
+
+function M.link_note(id, kind, value, opts)
+	require("workflow.notes").link(id, kind, value, opts)
+end
+
+function M.new_note(id, title, opts)
+	require("workflow.notes").new(id, title, opts)
+end
+
+function M.pick_notes(opts)
+	require("workflow.picker.notes").pick(opts)
+end
+
+function M.pick_edges(opts)
+	require("workflow.picker.edges").pick(opts)
+end
+
+function M.edges_check(opts)
+	require("workflow.notes").edges_check(opts)
+end
+
 -- Statusline component
 function M.statusline()
 	return require("workflow.statusline").component()
