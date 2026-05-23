@@ -66,9 +66,26 @@ Capa 3: Templates          course, course_content, evaluation_template,
                            item, evaluation_item, exercise, exercise_option
 Capa 4: Instancias         lecture_instance, general_project
 Capa 5: Vault (ITEP-0011)  note, citation, label, link, tag, note_tag, note_concept
+Capa 6: Relaciones (ITEP-0013) note_edge
 ```
 
 `note.main_topic_id` es FK real a `main_topic(id)` ON DELETE SET NULL (Phase B).
+
+**`note_edge`** (ITEP-0013, migration `0007_add_note_edges`): relaciones entre notas del vault.
+
+| Columna | Tipo | Notas |
+|---------|------|-------|
+| `id` | INTEGER PK | |
+| `source_id` | FK→note.id | NOT NULL, ON DELETE CASCADE |
+| `target_id` | FK→note.id | nullable, ON DELETE SET NULL |
+| `target_zettel_id` | String(21) | NOT NULL, referencia estable |
+| `edge_class` | String(16) | CHECK in (`structural`, `associative`) |
+| `relation_type` | String(24) | CHECK in 9 valores: `continuation, refines, branches, synthesis, rebuttal, supports, contradicts, expands, see_also` |
+| `weight` | Float | default 1.0 |
+| `rationale` | Text | nullable |
+| `created_at` | DateTime | server_default `CURRENT_TIMESTAMP` |
+
+Constraint: `UNIQUE (source_id, target_zettel_id, relation_type)`. Indexes en source, target, y unresolved (target_id IS NULL).
 
 Ver [ADR ITEP-0002](../ADR/ITEP-0002-four-layer-schema.md) y [ADR ITEP-0011](../ADR/ITEP-0011-vault-unification.md) para detalles.
 
@@ -136,6 +153,20 @@ Utilidades de parsing reutilizadas por `exercise`, `lecture`, y `tikz`:
 | `linker.py` | Extraer `\cite`, `\ref`, `\label`, crear Citation/Link en DB |
 | `eval_builder.py` | Puente EvaluationTemplate → ExerciseSlot |
 | `cli.py` | 4 comandos Click |
+
+### workflow.notes — Zettelkasten: gestion de notas ([ADR ITEP-0013](../ADR/ITEP-0013-note-relation-graph.md))
+
+| Archivo | Responsabilidad |
+|---------|----------------|
+| `sync.py` | `notes sync` — 4 pasadas (upsert note, labels, links, edges); `SyncReport.edges_created` |
+| `linker_ops.py` | `upsert_note_edge()` — insert-or-skip, espejo de `upsert_link` |
+| `edges.py` | `RelationEntry` + `parse_relations_frontmatter()` — lee bloque `relations:` del frontmatter |
+| `edges_service.py` | `list_edges()`, `get_edge()` — helpers de consulta |
+| `dag.py` | `detect_structural_cycles()` — DFS iterativo sobre subgrafo estructural |
+| `resolve.py` | `ResolveReport`, `resolve_edge_targets()` — resuelve `target_zettel_id` → FK `target_id` |
+| `cli.py` | Subgrupo `workflow notes edges list|show|check|resolve` (+ comandos previos) |
+
+La sincronizacion parsea el bloque `relations:` (Pass 4) y llama `upsert_note_edge()`. `target_zettel_id` se valida contra `^[A-Za-z0-9_-]{8,21}$`; pesos no finitos se normalizan a 1.0.
 
 ### workflow.graph — Grafo de conocimiento
 
@@ -221,6 +252,15 @@ Ver [docs/ADR/INDEX.md](../ADR/INDEX.md) para el indice completo con dependencia
 | [ITEP-0008](../ADR/ITEP-0008-general-project-nomenclature.md) | Nomenclatura `DDTTAA-YYPP-title` + FK catalogo→estado | Estado de `MainTopic` solo puede referenciar `DisciplineArea` reales |
 | [ITEP-0010](../ADR/ITEP-0010-schema-versioning-and-migrations.md) | Migraciones forward-only + `schema_version` + `@with_schema_guard` | Errores de esquema dejan de ser tracebacks; `workflow db migrate` es el unico runner |
 
+### Decisiones de notas y Zettelkasten
+
+| ADR | Decision | Estado |
+|-----|----------|--------|
+| [ITEP-0011](../ADR/ITEP-0011-vault-unification.md) | Vault unificado en GlobalBase | Implemented |
+| [ITEP-0013](../ADR/ITEP-0013-note-relation-graph.md) | Grafo de relaciones entre notas (`note_edge`, `relations:` frontmatter, DAG cycle detection) | Implemented (2026-05-23) |
+| [ITEP-0014](../ADR/ITEP-0014-fm-hash-incremental-sync.md) | fm_hash para sync incremental | Proposed (deferred) |
+| [ITEP-0015](../ADR/ITEP-0015-editor-first-authoring.md) | Editor-first authoring: NanoID `^[A-Za-z0-9_-]{8,21}$`, filename `<id>-<slug>.md`, LSP rechazado | Proposed |
+
 ### Decisiones de ejercicios
 
 | ADR | Decision |
@@ -233,7 +273,7 @@ Ver [docs/ADR/INDEX.md](../ADR/INDEX.md) para el indice completo con dependencia
 
 ## Tests
 
-411 tests organizados por modulo:
+1127 tests organizados por modulo (0 fallos; `pytest --ignore=tests/test_database.py`):
 
 ```
 tests/workflow/
@@ -244,6 +284,7 @@ tests/workflow/
                   test_eval_builder, test_cli
   graph/          test_domain, test_collectors, test_analysis,
                   test_dot_export, test_tikz_export, test_clustering, test_cli
+  notes/          test_note_edge_model, test_edges
   test_exercise_models, test_exercise_repo
 ```
 

@@ -41,16 +41,29 @@ Los proyectos legacy con `slipbox.db` propios se migran via `workflow vault unif
 | **literature** | Notas sobre lecturas y articulos | `lit-serway2019.md` |
 | **fleeting** | Ideas rapidas, pendientes de procesar | `fleeting-campo-electrico.md` |
 
+### Identificadores de nota (ITEP-0015)
+
+El `zettel_id` es un **NanoID** con las siguientes reglas:
+
+- Regex: `^[A-Za-z0-9_-]{8,21}$`, longitud default 12.
+- Libreria PyPI: `nanoid`.
+- **Nombre de archivo**: `<zettel_id>-<slug>.md` (compatible con Obsidian).
+- `workflow notes new` auto-popula `aliases: [<id>-<slug>, <slug>, <id>]`.
+- Resolucion de wikilinks: `zettel_id` → `alias` → `reference` (legacy).
+
+Ejemplo de nombre de archivo: `VTr3k8pLmnQ4-gauss-law.md`.
+
 ### Formato de nota
 
 ```markdown
 ---
-id: 20260326-gauss-law
+id: VTr3k8pLmnQ4
 title: "Ley de Gauss"
 type: permanent
 created: 2026-03-26
 tags: [physics, electrostatics]
 concepts: []
+aliases: [VTr3k8pLmnQ4-gauss-law, gauss-law, VTr3k8pLmnQ4]
 ---
 
 ## Resumen
@@ -138,11 +151,13 @@ workflow notes sync --project 0001AA-proj1
    - `title:`, `type:` → metadatos de la nota
    - `anchors:` → lista de anclas de sección → filas `Label` en la DB
    - `references:` → lista de bibkeys → filas `Citation` en la DB (ej: `[serway2019, griffiths2017]`)
+   - `relations:` → lista de relaciones entre notas → filas `NoteEdge` en la DB (ver sección siguiente)
 3. **Upserta** filas `Note` (por `zettel_id`) y `Label` (una sintética `__note__` por nota + las de `anchors:`)
 4. **Registra citas**: procesa `references:` → filas `Citation` vinculadas a la nota
 5. **Parsea wikilinks** del cuerpo: `[[ref]]`, `[[ref#anchor]]`, `[[ref|texto]]`, `[[ref#anchor|texto]]` → filas `Link`
-6. **Limpia huerfanos**: elimina filas `Link` cuyo archivo fuente ya no existe en disco
-7. Reporta: `N notes scanned, M labels registered, K links created, C citations registered, J orphans dropped`
+6. **Registra relaciones** (Pass 4): procesa `relations:` → llama `upsert_note_edge()` (idempotente) → filas `NoteEdge`
+7. **Limpia huerfanos**: elimina filas `Link` cuyo archivo fuente ya no existe en disco
+8. Reporta: `N notes scanned, M labels registered, K links created, C citations registered, J orphans dropped, E edges created`
 
 ### Cuándo ejecutar
 
@@ -163,6 +178,54 @@ Antes de:
 - Las anclas de frontmatter se validan con `^[A-Za-z0-9._:-]+$` — se rechazan valores como `../../etc/passwd`
 - `--project` valida que el subdirectorio esté contenido dentro del vault
 - Los symlinks que apunten fuera del vault son ignorados
+
+---
+
+## Relaciones entre notas (ITEP-0013)
+
+### Bloque `relations:` en frontmatter
+
+Las notas pueden declarar relaciones tipadas hacia otras notas mediante un bloque `relations:` en su frontmatter YAML:
+
+```yaml
+---
+id: VTr3k8pLmnQ4
+title: ...
+relations:
+  - target: Ab9Xk2mPqR7w      # NanoID del destino, ^[A-Za-z0-9_-]{8,21}$
+    class: structural          # o associative
+    type: refines              # continuation | refines | branches | synthesis | rebuttal | supports | contradicts | expands | see_also
+    weight: 1.0                # opcional, default 1.0; valores no-finitos → 1.0
+    rationale: optional one-line text
+---
+```
+
+`workflow notes sync` parsea este bloque en Pass 4 y persiste cada entrada como una fila `NoteEdge` (tabla `note_edge`, migración `0007_add_note_edges`). La operacion es idempotente (insert-or-skip).
+
+Clases de arista:
+
+| `class` | Uso |
+|---------|-----|
+| `structural` | Dependencia conceptual directa; participa en la deteccion de ciclos DAG |
+| `associative` | Enlace tematico libre; no participa en ciclos |
+
+### workflow notes edges — Consulta y mantenimiento
+
+```bash
+# Listar aristas (filtros opcionales)
+workflow notes edges list [--source ZETTEL_ID] [--edge-class structural|associative] [--relation-type TYPE] [--json]
+
+# Mostrar detalle de una arista
+workflow notes edges show EDGE_ID [--json]
+
+# Verificar ciclos en el subgrafo estructural (exit 1 si hay ciclos)
+workflow notes edges check [--json]
+
+# Resolver target_zettel_id → FK target_id (ejecutar despues de sync)
+workflow notes edges resolve [--dry-run] [--json]
+```
+
+Todos los comandos aceptan `--json`. `edges check` sale con codigo 1 si detecta ciclos en el subgrafo `structural`.
 
 ---
 
@@ -353,3 +416,5 @@ Si en el futuro se requiere independencia de obsidian.nvim, se podria agregar `w
 - [LZK-0000](../ADR/LZK-0000-zettelkasten-engine-architecture.md) — Arquitectura del motor
 - [LZK-0002](../ADR/LZK-0002-pandoc-conversion-pipeline.md) — Pipeline Pandoc
 - [LZK-0003](../ADR/LZK-0003-note-reference-system.md) — Sistema de referencias
+- [ITEP-0013](../ADR/ITEP-0013-note-relation-graph.md) — Grafo de relaciones: NoteEdge model, `relations:` frontmatter, `notes edges` CLI (Implemented)
+- [ITEP-0015](../ADR/ITEP-0015-editor-first-authoring.md) — NanoID como zettel_id; filename `<id>-<slug>.md`; LSP rechazado (Proposed)

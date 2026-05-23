@@ -41,7 +41,7 @@ Verifica la instalacion:
 workflow --help
 ```
 
-Deberias ver los 5 grupos de comandos: `exercise`, `graph`, `lectures`, `tikz`, `validate`.
+Deberias ver los 6 grupos de comandos: `exercise`, `graph`, `lectures`, `notes`, `tikz`, `validate`.
 
 ## Estructura del sistema
 
@@ -213,6 +213,9 @@ workflow graph stats --project /ruta/al/proyecto/
 
 # Encontrar notas huerfanas (sin conexiones)
 workflow graph orphans --project /ruta/al/proyecto/
+
+# Ver relaciones entre notas (declaradas en frontmatter relations:)
+workflow notes edges list [--source ZETTEL_ID] [--edge-class structural|associative]
 ```
 
 ---

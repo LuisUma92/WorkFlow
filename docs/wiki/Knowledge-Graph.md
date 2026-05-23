@@ -21,10 +21,13 @@ El grafo de conocimiento unifica datos de ambas bases de datos (global + local) 
 |--------|--------------|-------------|----------------|
 | Notas | Local (slipbox.db) | `note` | `link` (nota → nota via Label) |
 | Citas | Local (slipbox.db) | — | `citation` (nota → bib_entry) |
+| Relaciones de notas | Global (workflow.db) | — | `note_edge:structural`, `note_edge:associative` |
 | Ejercicios | Global (workflow.db) | `exercise` | `exercise_content`, `exercise_book` |
 | Contenidos | Global (workflow.db) | `content`, `topic` | `bib_content`, `course_content` |
 | Bibliografia | Global (workflow.db) | `bib_entry` | — |
 | Cursos | Global (workflow.db) | `course` | — |
+
+Las aristas `note_edge:structural` y `note_edge:associative` provienen de la tabla `note_edge` (ITEP-0013). El campo `GraphEdge.label` contiene el `relation_type` de la arista (ej. `"refines"`, `"see_also"`). Solo se incluyen aristas con `target_id` resuelto; para resolver referencias pendientes usar `workflow notes edges resolve`. Los comandos `graph stats`, `graph export-dot` y `graph export-tikz` incorporan estas aristas automaticamente sin flag adicional.
 
 ## Comandos
 
@@ -55,6 +58,8 @@ Edges by type:
   exercise_book: 26
   bib_content: 8
   course_content: 2
+  note_edge:structural: 14
+  note_edge:associative: 31
 ```
 
 ### orphans — Nodos sin conexiones
