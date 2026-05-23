@@ -425,6 +425,37 @@ def edges_check_cmd(ctx: click.Context, as_json: bool) -> None:
         raise click.exceptions.Exit(1)
 
 
+@edges_group.command(name="resolve")
+@click.option("--dry-run", is_flag=True, default=False)
+@click.option("--json", "as_json", is_flag=True)
+@click.pass_context
+@with_schema_guard
+def edges_resolve_cmd(ctx: click.Context, dry_run: bool, as_json: bool) -> None:
+    """Resolve unresolved edge targets (target_zettel_id → target_id FK)."""
+    from sqlalchemy.orm import Session
+
+    from workflow.db.engine import get_engine_from_ctx
+    from workflow.notes.resolve import resolve_edge_targets
+
+    engine = get_engine_from_ctx(ctx)
+    with Session(engine) as session:
+        report = resolve_edge_targets(session, dry_run=dry_run)
+        if not dry_run:
+            session.commit()
+
+    if as_json:
+        click.echo(json.dumps(
+            {"resolved": report.resolved, "unresolved": report.unresolved, "dry_run": dry_run},
+            ensure_ascii=False,
+        ))
+    else:
+        suffix = " (dry run)" if dry_run else ""
+        click.echo(
+            f"Resolution complete{suffix}: {report.resolved} resolved, "
+            f"{report.unresolved} unresolved."
+        )
+
+
 @notes.command(name="link")
 @click.argument("note_id")
 @click.option("--concept", "concept", default=None)
