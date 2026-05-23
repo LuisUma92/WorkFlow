@@ -3,7 +3,7 @@ id: LZK-0004
 title: "Dependency Injection and ORM Shim: Peewee → SQLAlchemy Migration"
 aliases:
   - ADR-LZK-0004
-status: Accepted
+status: Implemented (2026-05-23)
 date: 2026-03-26
 authors:
   - Luis Fernando Umaña Castro
@@ -152,7 +152,21 @@ The shim successfully bridges Peewee → SQLAlchemy. The API layer functions cor
 
 ## Status
 
-**Accepted** — documents existing shim and DI pattern
+**Implemented (2026-05-23)** — shim removed; migration complete
+
+---
+
+## Retrospective
+
+The shim served its intended purpose: it let the seven `latexzettel/api/` modules continue working unchanged while the underlying ORM switched from Peewee to SQLAlchemy 2.0. Once that bridge was stable, the shim became the last Peewee-era artifact in the codebase.
+
+Removal was completed in v1.6.0 across three commits (f5ca75f, 887e337, 67b9f06):
+
+- `infra/orm.py` deleted (~55 LOC)
+- `db` parameter threading removed from the RPC server and `ServerContext` (~30 LOC)
+- API modules now import `Note, Citation, Label, Link, Tag, NoteTag` directly from `workflow.db.models.notes`
+
+Net effect: simpler call graph, zero extra indirection, `ctx.db` gone from the RPC context. All 1146 tests pass.
 
 ---
 
@@ -161,3 +175,4 @@ The shim successfully bridges Peewee → SQLAlchemy. The API layer functions cor
 | Date       | Change      |
 | ---------- | ----------- |
 | 2026-03-26 | Initial ADR |
+| 2026-05-23 | Shim removed in v1.6.0; status → Implemented |

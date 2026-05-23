@@ -135,7 +135,7 @@ Architecture decisions in `docs/ADR/` (see [INDEX.md](docs/ADR/INDEX.md) for ful
 | LZK-0001 | JSONL/NDJSON RPC server for Neovim (24 routes) | Accepted |
 | LZK-0002 | Pandoc pipeline: Markdown ↔ LaTeX with wiki-links | Accepted |
 | LZK-0003 | Note reference system: IDs, regex, cross-refs | Accepted |
-| LZK-0004 | Dependency injection and Peewee → SQLAlchemy shim | Accepted |
+| LZK-0004 | Dependency injection and Peewee → SQLAlchemy shim | Implemented |
 | PRISMA-0000 | Systematic review architecture (Django, dual-DB) | Accepted |
 | PRISMA-0001 | Dual-database router: MariaDB + shared SQLite | Accepted |
 | PRISMA-0002 | Bibliography import pipeline (BibTeX → structured data) | Accepted |
