@@ -55,6 +55,9 @@ def upsert_note_edge(
     """
     from workflow.db.models.notes import NoteEdge
 
+    # Key matches uq_note_edge_src_tgt_rel (source_id, target_zettel_id, relation_type).
+    # edge_class is intentionally excluded: structural/associative type sets are disjoint,
+    # so relation_type alone is unambiguous.
     existing = session.scalars(
         select(NoteEdge).where(
             NoteEdge.source_id == source_id,

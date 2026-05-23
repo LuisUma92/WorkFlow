@@ -14,8 +14,9 @@ import yaml
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from workflow.db.models.notes import Label, Link, Note
-from workflow.notes.linker_ops import upsert_label, upsert_link
+from workflow.db.models.notes import Label, Link, Note, NoteEdge
+from workflow.notes.edges import parse_relations_frontmatter
+from workflow.notes.linker_ops import upsert_label, upsert_link, upsert_note_edge
 from workflow.notes.wikilinks import (
     WIKILINK_NOTE_LABEL_RE,
     WIKILINK_NOTE_LABEL_TEXT_RE,
@@ -34,6 +35,7 @@ class SyncReport:
     links_created: int = 0
     citations_registered: int = 0
     orphans_dropped: int = 0
+    edges_created: int = 0
 
 
 def _parse_md(path: Path) -> tuple[dict[str, object], str] | None:
@@ -237,6 +239,37 @@ def _upsert_note_links(session: Session, note: Note, body: str) -> int:
     return created
 
 
+def _upsert_note_edges(session: Session, note: Note, fm: dict) -> int:
+    """Upsert NoteEdge rows from relations: frontmatter block. Returns new edge count."""
+    entries = parse_relations_frontmatter(fm)
+    if not entries:
+        return 0
+
+    created = 0
+    for entry in entries:
+        # Resolve target zettel_id → DB id if the note is already synced
+        target_note = session.scalars(
+            select(Note).where(Note.zettel_id == entry.target_zettel_id)
+        ).first()
+        target_id = target_note.id if target_note else None
+
+        if upsert_note_edge(
+            session,
+            source_id=note.id,
+            target_zettel_id=entry.target_zettel_id,
+            edge_class=entry.edge_class,
+            relation_type=entry.relation_type,
+            target_id=target_id,
+            weight=entry.weight,
+            rationale=entry.rationale,
+        ):
+            created += 1
+
+    if created:
+        session.flush()
+    return created
+
+
 def _drop_orphan_links(
     session: Session,
     scope_prefix: str,
@@ -302,7 +335,7 @@ def sync_vault(
     current_filenames: set[str] = {str(p) for p in md_paths}
 
     # Pass 1: upsert Note + Label rows
-    note_bodies: list[tuple[Note, str]] = []
+    note_data: list[tuple[Note, str, dict]] = []  # (note, body, fm_raw)
 
     for md_path in md_paths:
         parsed = _parse_md(md_path)
@@ -325,17 +358,18 @@ def sync_vault(
             report.labels_registered += 1  # __note__
             report.labels_registered += sum(1 for a in anchors if _ANCHOR_RE.match(a))
             report.citations_registered += len(bibkeys)
+            report.edges_created += len(parse_relations_frontmatter(fm))
             continue
 
         note = _upsert_note_row(session, str(md_path), {**fm, "id": zettel_id})
         report.notes_scanned += 1
         report.labels_registered += _upsert_note_labels(session, note, anchors)
         report.citations_registered += _upsert_note_citations(session, note, bibkeys)
-        note_bodies.append((note, body))
+        note_data.append((note, body, fm))
 
     # Pass 2: upsert Link rows
     if not dry_run:
-        for note, body in note_bodies:
+        for note, body, _fm in note_data:
             report.links_created += _upsert_note_links(session, note, body)
 
     # Pass 3: orphan Link cleanup
@@ -343,5 +377,10 @@ def sync_vault(
         report.orphans_dropped += _drop_orphan_links(
             session, scope_prefix, current_filenames
         )
+
+    # Pass 4: upsert NoteEdge rows from relations: frontmatter
+    if not dry_run:
+        for note, _body, fm in note_data:
+            report.edges_created += _upsert_note_edges(session, note, fm)
 
     return report
