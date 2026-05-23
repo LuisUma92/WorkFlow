@@ -17,13 +17,21 @@ El sistema de notas Zettelkasten permite gestionar conocimiento en Markdown (Obs
 
 ## Conceptos clave
 
-### Cada proyecto = un vault
+### Vault unificado (ITEP-0011)
 
-Cada directorio `MainTopic` (10MC-ClassicalMechanics, 40EM-Electromagnetism, etc.) funciona como:
-- Un **GeneralProject** de ITeP (salida LaTeX: papers, compilaciones)
-- Un **vault Zettelkasten** (notas Markdown que alimentan los documentos)
+Todas las notas viven en el vault global bajo `WORKFLOW_VAULT_ROOT` (default `~/01-U/0000AA-Vault/`):
 
-Las notas viven en `{proyecto}/notes/` y se registran en `{proyecto}/slipbox.db`.
+```
+<vault_root>/
+├── notes/
+│   ├── permanent/      ← notas permanentes
+│   ├── literature/     ← notas de literatura
+│   └── fleeting/       ← notas efimeras
+└── .vault_pointer      ← marcador de vault unificado
+```
+
+La base de datos global (`WORKFLOW_DATA_DIR/workflow.db`) indexa todas las notas.  
+Los proyectos legacy con `slipbox.db` propios se migran via `workflow vault unify`.
 
 ### Tipos de nota
 
@@ -102,6 +110,57 @@ Esto crea:
 **Idempotente**: seguro de ejecutar multiples veces. Solo crea lo que falta.
 
 **Directorios especiales** (`00AA-`, `00BB-`, `00EE-`, `00II-`, `00ZZ-`) se saltan — no son proyectos de notas.
+
+---
+
+## workflow notes sync — Sincronizar vault con la DB
+
+`workflow notes sync` escanea todos los archivos `.md` del vault y actualiza las tablas `Note`, `Label` y `Link` en la DB global. Implementa el principio **file-as-truth, DB-as-index** (ADR-0001).
+
+### Uso
+
+```bash
+# Sincronizar todo el vault
+workflow notes sync
+
+# Ver qué cambiaria sin escribir nada
+workflow notes sync --dry-run
+
+# Restringir a un subdirectorio del vault
+workflow notes sync --project 0001AA-proj1
+```
+
+### Qué hace
+
+1. **Descubre** todos los `.md` bajo `WORKFLOW_VAULT_ROOT` (o el subdir del `--project`)
+2. **Parsea** el frontmatter YAML de cada archivo:
+   - `reference:` → identificador único de la nota (requerido)
+   - `title:`, `note_type:` → metadatos de la nota
+   - `anchors:` → lista de anclas de sección → filas `Label` en la DB
+3. **Upserta** filas `Note` (por `reference`) y `Label` (una sintética `__note__` por nota + las de `anchors:`)
+4. **Parsea wikilinks** del cuerpo: `[[ref]]`, `[[ref#anchor]]`, `[[ref|texto]]`, `[[ref#anchor|texto]]` → filas `Link`
+5. **Limpia huerfanos**: elimina filas `Link` cuyo archivo fuente ya no existe en disco
+6. Reporta: `N notes scanned, M labels registered, K links created, J orphans dropped`
+
+### Cuándo ejecutar
+
+```
+Despues de:
+- Crear o editar notas .md
+- Cambiar frontmatter (anchors, reference, title)
+- Agregar wiki-links [[...]] en el cuerpo
+- Mover o renombrar archivos
+
+Antes de:
+- workflow graph stats / export-dot  (usa las filas Link)
+- workflow validate notes            (usa filas Note)
+```
+
+### Seguridad
+
+- Las anclas de frontmatter se validan con `^[A-Za-z0-9._:-]+$` — se rechazan valores como `../../etc/passwd`
+- `--project` valida que el subdirectorio esté contenido dentro del vault
+- Los symlinks que apunten fuera del vault son ignorados
 
 ---
 
@@ -264,8 +323,9 @@ Si en el futuro se requiere independencia de obsidian.nvim, se podria agregar `w
 2. Procesar fleeting    →  <prefix>p: promote a raiz del vault, type → permanent
 3. Leer un articulo     →  Crear nota literature con bibkey
 4. Escribir/editar      →  Agregar wiki-links [[id]] a otras notas
-5. Registrar en DB      →  workflow lectures scan proyecto/ --project-root proyecto/
-6. Construir enlaces    →  workflow lectures link proyecto/ --project-root proyecto/
+5. Registrar en DB      →  workflow notes sync          (para notas .md del vault)
+                           workflow lectures scan/link   (para notas .tex de cursos)
+6. Construir grafo      →  workflow graph stats --project proyecto/
 7. Compilar a LaTeX     →  Pipeline Pandoc (futuro: workflow notes convert)
 8. Verificar grafo      →  workflow graph stats --project proyecto/
 ```
@@ -285,7 +345,7 @@ Si en el futuro se requiere independencia de obsidian.nvim, se podria agregar `w
 
 ## ADRs relacionados
 
-- [ADR-0001](../ADR/0001-Zettelkasten-system.md) — Capa semantica de notas
+- [ADR-0001](../ADR/0001-Zettelkasten-system.md) — Capa semantica: file-as-truth, DB-as-index (`notes sync`)
 - [ADR-0002](../ADR/0002-Unified-knowledge.md) — Markdown como capa canonica
 - [ADR-0014](../ADR/0014-zettelkasten-implementation.md) — Implementacion: macros, modelo, workspace init
 - [LZK-0000](../ADR/LZK-0000-zettelkasten-engine-architecture.md) — Arquitectura del motor

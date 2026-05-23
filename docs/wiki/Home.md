@@ -33,7 +33,7 @@ WorkFlow es un toolkit CLI en Python para gestionar proyectos LaTeX y un sistema
 
 ```bash
 # Comandos principales
-workflow notes    init
+workflow notes    init | new | list | show | tag | link | sync
 workflow exercise parse|list|sync|gc|export-moodle|create|create-range|build-exam
 workflow lectures scan|split|link|build-eval
 workflow graph    orphans|stats|export-dot|export-tikz|clusters|neighbors
