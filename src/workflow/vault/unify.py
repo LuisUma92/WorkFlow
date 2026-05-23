@@ -2,7 +2,10 @@
 
 Migrates a per-project ``slipbox.db`` (LocalBase note layer, pre-P1) into
 the unified GlobalBase note layer, moves the project's ``.md`` notes into
-``<vault_root>/notes/<note_type>/``, and writes a ``.vault_pointer`` marker.
+``<vault_root>/notes/``, and writes a ``.vault_pointer`` marker.
+
+Note type (permanent/literature/fleeting) is preserved in frontmatter only;
+files are no longer sorted into typed subdirectories.
 
 The reader uses raw ``sqlite3`` against the legacy slipbox so this module
 does not depend on the (now-removed) LocalBase note ORM.
@@ -381,13 +384,8 @@ def _move_md_files(
     if not notes_dir.is_dir():
         return 0
     moved = 0
-    by_filename: dict[str, str] = {}
-    for note in new_notes.values():
-        nt = note.note_type if note.note_type in NOTE_TYPES else DEFAULT_NOTE_TYPE
-        by_filename[note.filename.split("/")[-1]] = nt
+    target_dir = vault_root / "notes"
     for md in notes_dir.rglob("*.md"):
-        nt = by_filename.get(md.stem) or by_filename.get(md.name) or DEFAULT_NOTE_TYPE
-        target_dir = vault_root / "notes" / nt
         target = target_dir / md.name
         if dry_run:
             moved += 1

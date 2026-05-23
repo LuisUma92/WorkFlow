@@ -13,8 +13,8 @@ from workflow.vault.cli import vault
 
 def _make_vault(tmp_path: Path) -> Path:
     root = tmp_path / "vault"
-    for sub in ("permanent", "literature", "fleeting"):
-        (root / "notes" / sub).mkdir(parents=True)
+    (root / "inbox").mkdir(parents=True)
+    (root / "templates").mkdir(parents=True)
     return root
 
 
@@ -64,7 +64,8 @@ def test_info(monkeypatch, tmp_path):
     result = CliRunner().invoke(vault, ["info"])
     assert result.exit_code == 0, result.output
     assert "vault_root" in result.output
-    assert "permanent" in result.output
+    assert "inbox" in result.output
+    assert "templates" in result.output
 
 
 def test_validate_ok(monkeypatch, tmp_path):
@@ -77,11 +78,11 @@ def test_validate_ok(monkeypatch, tmp_path):
 
 def test_validate_missing(monkeypatch, tmp_path):
     root = tmp_path / "vault"
-    (root / "notes" / "permanent").mkdir(parents=True)
+    (root / "inbox").mkdir(parents=True)
     monkeypatch.setenv("WORKFLOW_VAULT_ROOT", str(root))
     result = CliRunner().invoke(vault, ["validate"])
     assert result.exit_code != 0
-    assert "literature" in result.output
+    assert "templates" in result.output
 
 
 def test_unify_dry_run(isolated_global_db, tmp_path):

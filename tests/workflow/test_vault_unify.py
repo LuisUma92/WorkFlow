@@ -32,8 +32,9 @@ def global_session():
 @pytest.fixture()
 def vault_root(tmp_path: Path) -> Path:
     root = tmp_path / "vault"
-    for sub in ("permanent", "literature", "fleeting"):
-        (root / "notes" / sub).mkdir(parents=True)
+    (root / "notes").mkdir(parents=True)
+    (root / "inbox").mkdir(parents=True)
+    (root / "templates").mkdir(parents=True)
     return root
 
 
@@ -365,7 +366,7 @@ def test_unify_moves_md_files(tmp_path, vault_root, backup_dir, global_session):
     )
     global_session.commit()
     assert report.files_moved == 1
-    assert (vault_root / "notes" / "literature" / "n1.md").exists()
+    assert (vault_root / "notes" / "n1.md").exists()
     assert not (project / "notes" / "n1.md").exists()
     assert (project / VAULT_POINTER_FILE).exists()
 
@@ -455,7 +456,7 @@ def test_unify_md_target_already_exists(
     tmp_path, vault_root, backup_dir, global_session
 ):
     """Pre-existing target file → incoming file gets a project-prefixed name."""
-    (vault_root / "notes" / "permanent" / "n1.md").write_text("existing")
+    (vault_root / "notes" / "n1.md").write_text("existing")
     project = _make_project(
         tmp_path,
         notes=[
@@ -471,8 +472,8 @@ def test_unify_md_target_already_exists(
         dry_run=False,
     )
     assert report.files_moved == 1
-    assert (vault_root / "notes" / "permanent" / "n1.md").read_text() == "existing"
-    moved = list((vault_root / "notes" / "permanent").glob("*-n1.md"))
+    assert (vault_root / "notes" / "n1.md").read_text() == "existing"
+    moved = list((vault_root / "notes").glob("*-n1.md"))
     assert len(moved) == 1
     assert moved[0].read_text() == "# new"
 

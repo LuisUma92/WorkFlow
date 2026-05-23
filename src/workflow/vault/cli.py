@@ -22,8 +22,8 @@ from workflow.vault.paths import (
     ENV_VAULT_ROOT,
     resolve_vault_root,
 )
+from workflow.notes.discovery import walk_note_files
 from workflow.vault.unify import (
-    NOTE_TYPES,
     VAULT_POINTER_FILE,
     unify as unify_logic,
 )
@@ -46,22 +46,25 @@ def info_cmd() -> None:
     )
     click.echo(f"exists: {root.exists()}")
     if root.exists():
-        for sub in NOTE_TYPES:
-            d = root / "notes" / sub
-            click.echo(f"  notes/{sub}: {'OK' if d.is_dir() else 'MISSING'}")
+        for sub in ("inbox", "templates"):
+            d = root / sub
+            click.echo(f"  {sub}: {'OK' if d.is_dir() else 'MISSING'}")
+        md_count = sum(1 for _ in walk_note_files(root))
+        click.echo(f"  notes (.md): {md_count}")
 
 
 @vault.command(name="validate")
 @click.option("--vault-root", type=click.Path(path_type=Path), default=None)
 def validate_cmd(vault_root: Path | None) -> None:
-    """Verify vault structure (notes/{permanent,literature,fleeting})."""
+    """Verify vault structure (inbox/, templates/)."""
     root = vault_root.resolve() if vault_root else resolve_vault_root()
     if not root.is_dir():
         raise click.ClickException(f"vault_root not found: {root}")
-    missing = [s for s in NOTE_TYPES if not (root / "notes" / s).is_dir()]
+    required = ("inbox", "templates")
+    missing = [s for s in required if not (root / s).is_dir()]
     if missing:
         raise click.ClickException(
-            f"missing subdirs in {root}/notes: {', '.join(missing)}"
+            f"missing dirs in {root}: {', '.join(missing)}"
         )
     click.echo(f"OK — {root}")
 
