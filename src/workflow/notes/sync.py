@@ -32,6 +32,7 @@ class SyncReport:
     notes_scanned: int = 0
     labels_registered: int = 0
     links_created: int = 0
+    citations_registered: int = 0
     orphans_dropped: int = 0
 
 
@@ -100,9 +101,9 @@ def _upsert_note_row(
     session: Session, filename: str, fm: dict[str, object]
 ) -> Note:
     """Upsert a Note row; returns the persisted Note with a valid id."""
-    reference = fm["reference"]
+    id_value = fm["id"]  # canonical zettel identifier (frontmatter `id:`)
     title = fm.get("title") or None
-    note_type = fm.get("note_type") or None
+    note_type = fm.get("type") or None
     now = datetime.now(tz=timezone.utc)
 
     existing = session.scalars(
@@ -111,13 +112,14 @@ def _upsert_note_row(
 
     if existing is None:
         existing = session.scalars(
-            select(Note).where(Note.reference == reference)
+            select(Note).where(Note.zettel_id == id_value)
         ).first()
 
     if existing is None:
         note = Note(
             filename=filename,
-            reference=reference,
+            reference=id_value,   # legacy column — keep in sync with zettel_id
+            zettel_id=id_value,
             title=title,
             note_type=note_type,
             last_edit_date=now,
@@ -126,6 +128,8 @@ def _upsert_note_row(
         session.add(note)
     else:
         existing.filename = filename
+        existing.reference = id_value
+        existing.zettel_id = id_value
         existing.title = title
         existing.note_type = note_type
         existing.last_edit_date = now
@@ -163,13 +167,43 @@ def _upsert_note_labels(
     return created
 
 
+def _upsert_note_citations(session: Session, note: Note, bibkeys: list[str]) -> int:
+    """Upsert Citation rows from frontmatter `references:` list. Returns new count."""
+    from workflow.db.models.notes import Citation
+    from workflow.notes.linker_ops import upsert_citation
+
+    existing = set(session.scalars(
+        select(Citation.citationkey).where(
+            Citation.note_id == note.id,
+            Citation.citationkey.in_(bibkeys),
+        )
+    ).all())
+
+    created = 0
+    for key in bibkeys:
+        if not isinstance(key, str) or not key.strip():
+            continue
+        if key not in existing:
+            upsert_citation(session, note.id, key)
+            created += 1
+
+    if created:
+        session.flush()
+    return created
+
+
 def _upsert_note_links(session: Session, note: Note, body: str) -> int:
     """Upsert Link rows for all wikilinks in body. Returns new link count."""
     created = 0
     for target_ref, anchor in _extract_wikilinks(body):
+        # Match by zettel_id first (canonical), fall back to legacy reference column
         target_note = session.scalars(
-            select(Note).where(Note.reference == target_ref)
+            select(Note).where(Note.zettel_id == target_ref)
         ).first()
+        if target_note is None:
+            target_note = session.scalars(
+                select(Note).where(Note.reference == target_ref)
+            ).first()
         if target_note is None:
             continue
 
@@ -276,21 +310,27 @@ def sync_vault(
             continue
 
         fm, body = parsed
-        reference = fm.get("reference")
-        if not reference or not isinstance(reference, str):
+        zettel_id = fm.get("id")
+        if not zettel_id or not isinstance(zettel_id, str):
             continue
 
         anchors: list[str] = list(fm.get("anchors") or [])
+        bibkeys: list[str] = [
+            k for k in (fm.get("references") or [])
+            if isinstance(k, str) and k.strip()
+        ]
 
         if dry_run:
             report.notes_scanned += 1
             report.labels_registered += 1  # __note__
             report.labels_registered += sum(1 for a in anchors if _ANCHOR_RE.match(a))
+            report.citations_registered += len(bibkeys)
             continue
 
-        note = _upsert_note_row(session, str(md_path), {**fm, "reference": reference})
+        note = _upsert_note_row(session, str(md_path), {**fm, "id": zettel_id})
         report.notes_scanned += 1
         report.labels_registered += _upsert_note_labels(session, note, anchors)
+        report.citations_registered += _upsert_note_citations(session, note, bibkeys)
         note_bodies.append((note, body))
 
     # Pass 2: upsert Link rows

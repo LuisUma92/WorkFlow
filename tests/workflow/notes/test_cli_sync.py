@@ -20,7 +20,7 @@ def test_cli_sync_dry_run_exits_zero(tmp_path, monkeypatch):
 
     note = vault / "note.md"
     note.write_text(
-        "---\nreference: cli-test-note\ntitle: CLI Test\nnote_type: permanent\n---\nHello.\n",
+        "---\nid: cli-test-note\ntitle: CLI Test\ntype: permanent\n---\nHello.\n",
         encoding="utf-8",
     )
 

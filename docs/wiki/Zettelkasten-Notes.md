@@ -134,13 +134,15 @@ workflow notes sync --project 0001AA-proj1
 
 1. **Descubre** todos los `.md` bajo `WORKFLOW_VAULT_ROOT` (o el subdir del `--project`)
 2. **Parsea** el frontmatter YAML de cada archivo:
-   - `reference:` → identificador único de la nota (requerido)
-   - `title:`, `note_type:` → metadatos de la nota
+   - `id:` → identificador único de la nota / zettel_id (requerido)
+   - `title:`, `type:` → metadatos de la nota
    - `anchors:` → lista de anclas de sección → filas `Label` en la DB
-3. **Upserta** filas `Note` (por `reference`) y `Label` (una sintética `__note__` por nota + las de `anchors:`)
-4. **Parsea wikilinks** del cuerpo: `[[ref]]`, `[[ref#anchor]]`, `[[ref|texto]]`, `[[ref#anchor|texto]]` → filas `Link`
-5. **Limpia huerfanos**: elimina filas `Link` cuyo archivo fuente ya no existe en disco
-6. Reporta: `N notes scanned, M labels registered, K links created, J orphans dropped`
+   - `references:` → lista de bibkeys → filas `Citation` en la DB (ej: `[serway2019, griffiths2017]`)
+3. **Upserta** filas `Note` (por `zettel_id`) y `Label` (una sintética `__note__` por nota + las de `anchors:`)
+4. **Registra citas**: procesa `references:` → filas `Citation` vinculadas a la nota
+5. **Parsea wikilinks** del cuerpo: `[[ref]]`, `[[ref#anchor]]`, `[[ref|texto]]`, `[[ref#anchor|texto]]` → filas `Link`
+6. **Limpia huerfanos**: elimina filas `Link` cuyo archivo fuente ya no existe en disco
+7. Reporta: `N notes scanned, M labels registered, K links created, C citations registered, J orphans dropped`
 
 ### Cuándo ejecutar
 

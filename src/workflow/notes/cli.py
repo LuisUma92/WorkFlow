@@ -308,6 +308,7 @@ def sync_cmd(ctx: click.Context, dry_run: bool, project_filter: str | None) -> N
         f"Sync complete{suffix}: {report.notes_scanned} notes scanned, "
         f"{report.labels_registered} labels registered, "
         f"{report.links_created} links created, "
+        f"{report.citations_registered} citations registered, "
         f"{report.orphans_dropped} orphans dropped."
     )
 
