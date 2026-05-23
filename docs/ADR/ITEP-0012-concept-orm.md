@@ -4,7 +4,7 @@ id: ITEP-0012
 title: "Concept ORM Surface"
 aliases:
   - ADR-ITEP-0012
-status: Accepted
+status: Implemented (2026-05-23)
 crated: 2026-05-06
 authors:
   - "Luis Fernando Umaña Castro"
@@ -184,3 +184,23 @@ the note's resolved `main_topic_id` (mt-mismatch detection).
 
 - Cross-DB FK fiction: `concepts:` in frontmatter refers to GlobalBase;
   per-note MD files don't have a DB FK. Validator-time enforcement only.
+
+---
+
+## Implementation Retrospective (2026-05-23)
+
+The Concept ORM CLI surface (`concept list|show|add|tree|rm|rename`) and the `--strict-concepts` validator
+flag shipped in earlier phases. Migration 0008 (v1.5.1) renamed `note_concept.tag_id` → `concept_id`,
+repairing a legacy `create_all()` drift that predated ITEP-0012.
+
+**P1** (`dc79b59`): `notes link --concept CODE` materializes a `NoteConcept` row via `upsert_note_concept()`.
+Added `--remove` flag (drops frontmatter entry + deletes DB row, idempotent) and `--strict` flag (unknown
+codes are errors rather than warnings). 18 new tests.
+
+**P2** (`2340d38`): `notes sync` runs a per-note `_sync_note_concepts` pass (Pass 5) that reads the
+frontmatter `concepts:` list and upserts `NoteConcept` rows. `SyncReport` gained a `concept_links_created`
+counter. `--strict-concepts` flag propagates the `strict` parameter to `resolve_concepts`. 8 new tests.
+
+**Known limitation:** stale `NoteConcept` rows are NOT pruned when frontmatter drops a concept code.
+Removal requires explicit `notes link --concept CODE --remove`. A future `--prune` flag on `notes sync`
+is deferred.
