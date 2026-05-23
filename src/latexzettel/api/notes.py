@@ -19,13 +19,14 @@ from typing import Optional
 
 from sqlalchemy import select
 
+from workflow.db.models.notes import Note
+
 from latexzettel.config.settings import NotesPaths, DEFAULT_SETTINGS
 from latexzettel.domain.errors import (
     NoteAlreadyExists,
     ReferenceAlreadyExists,
     NoteNotFound,
 )
-from latexzettel.domain.types import DbModule
 from latexzettel.infra.db import ensure_schema_if_needed, db_session
 from latexzettel.util.text import (
     default_reference_name,
@@ -40,7 +41,6 @@ from latexzettel.util.fs import (
 
 def create_note(
     *,
-    db: DbModule,
     note_name: str,
     reference_name: Optional[str] = None,
     extension: str = "tex",
@@ -55,10 +55,6 @@ def create_note(
     - crea archivo desde plantilla (opcional)
     - agrega entrada a notes/documents.tex (opcional)
     - crea registro Note en DB
-
-    db: módulo externo con:
-      - modelos (Note, ...)
-      - create_all_tables() (usado indirectamente por infra/db.ensure_tables)
     """
     if not note_name:
         raise ValueError("note_name vacío")
@@ -69,19 +65,19 @@ def create_note(
 
     ts = now or datetime.now()
 
-    ensure_schema_if_needed(db)
+    ensure_schema_if_needed()
 
-    with db_session(db) as session:
+    with db_session() as session:
         # Unicidad por filename
         existing = session.scalars(
-            select(db.Note).where(db.Note.filename == note_name)
+            select(Note).where(Note.filename == note_name)
         ).first()
         if existing is not None:
             raise NoteAlreadyExists(f"Ya existe note filename='{note_name}'")
 
         # Unicidad por reference
         existing_ref = session.scalars(
-            select(db.Note).where(db.Note.reference == reference_name)
+            select(Note).where(Note.reference == reference_name)
         ).first()
         if existing_ref is not None:
             raise ReferenceAlreadyExists(f"Ya existe note reference='{reference_name}'")
@@ -92,7 +88,7 @@ def create_note(
         if add_to_documents:
             append_documents_entry(paths, filename=note_name, reference=reference_name)
 
-        note = db.Note(
+        note = Note(
             filename=note_name,
             reference=reference_name,
             created=ts,
@@ -104,7 +100,6 @@ def create_note(
 
 def create_note_md(
     *,
-    db: DbModule,
     note_name: str,
     reference_name: Optional[str] = None,
     paths: NotesPaths = DEFAULT_SETTINGS.paths,
@@ -114,7 +109,6 @@ def create_note_md(
     Crea una nota markdown, equivalente a Helper.newnote_md().
     """
     create_note(
-        db=db,
         note_name=note_name,
         reference_name=reference_name,
         extension="md",
@@ -125,7 +119,6 @@ def create_note_md(
 
 def rename_note_file(
     *,
-    db: DbModule,
     old_filename: str,
     new_filename: str,
     paths: NotesPaths = DEFAULT_SETTINGS.paths,
@@ -140,11 +133,11 @@ def rename_note_file(
     if not old_filename or not new_filename:
         raise ValueError("old_filename y new_filename son obligatorios")
 
-    ensure_schema_if_needed(db)
+    ensure_schema_if_needed()
 
-    with db_session(db) as session:
+    with db_session() as session:
         note = session.scalars(
-            select(db.Note).where(db.Note.filename == old_filename)
+            select(Note).where(Note.filename == old_filename)
         ).first()
         if note is None:
             raise NoteNotFound(f"No existe nota filename='{old_filename}'")
@@ -176,7 +169,6 @@ def rename_note_file(
 
 def rename_reference(
     *,
-    db: DbModule,
     old_reference: str,
     new_reference: str,
     paths: NotesPaths = DEFAULT_SETTINGS.paths,
@@ -193,18 +185,18 @@ def rename_reference(
     if not old_reference or not new_reference:
         raise ValueError("old_reference y new_reference son obligatorios")
 
-    ensure_schema_if_needed(db)
+    ensure_schema_if_needed()
 
-    with db_session(db) as session:
+    with db_session() as session:
         note = session.scalars(
-            select(db.Note).where(db.Note.reference == old_reference)
+            select(Note).where(Note.reference == old_reference)
         ).first()
         if note is None:
             raise NoteNotFound(f"No existe nota reference='{old_reference}'")
 
         # colisión
         collision = session.scalars(
-            select(db.Note).where(db.Note.reference == new_reference)
+            select(Note).where(Note.reference == new_reference)
         ).first()
         if collision is not None:
             raise ReferenceAlreadyExists(f"Ya existe note reference='{new_reference}'")
@@ -261,7 +253,6 @@ def rename_reference(
 
 def remove_note(
     *,
-    db: DbModule,
     filename: str,
     paths: NotesPaths = DEFAULT_SETTINGS.paths,
     delete_db_entry: bool = True,
@@ -279,11 +270,11 @@ def remove_note(
     if not filename:
         raise ValueError("filename vacío")
 
-    ensure_schema_if_needed(db)
+    ensure_schema_if_needed()
 
-    with db_session(db) as session:
+    with db_session() as session:
         note = session.scalars(
-            select(db.Note).where(db.Note.filename == filename)
+            select(Note).where(Note.filename == filename)
         ).first()
 
         if delete_db_entry and note is not None:

@@ -27,6 +27,8 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from workflow.db.models.notes import Note, Citation, Label, Link
+
 from latexzettel.config.settings import NotesPaths, DEFAULT_SETTINGS
 from latexzettel.domain.errors import (
     DomainError,
@@ -34,7 +36,6 @@ from latexzettel.domain.errors import (
     DocumentsTexNotFound,
 )
 from latexzettel.domain.templates import min_tex_file
-from latexzettel.domain.types import DbModule
 from latexzettel.infra.db import ensure_tables, db_session
 from latexzettel.infra.regexes import (
     EXTERNALDOCUMENT_RE,
@@ -134,13 +135,13 @@ def _get_links_from_file(note_file: Path) -> list[tuple[str, str]]:
     return out
 
 
-def _sync_note_labels(db: DbModule, session: Session, note, note_file: Path) -> None:
+def _sync_note_labels(session: Session, note, note_file: Path) -> None:
     file_labels = _get_labels_from_file(note_file)
     tracked_labels = [lbl.label for lbl in note.labels]
 
     for lbl in file_labels:
         if lbl not in tracked_labels:
-            new_lbl = db.Label(label=lbl, note=note)
+            new_lbl = Label(label=lbl, note=note)
             session.add(new_lbl)
 
     # remover labels que ya no existen
@@ -151,10 +152,10 @@ def _sync_note_labels(db: DbModule, session: Session, note, note_file: Path) -> 
     session.flush()
 
 
-def _sync_note_citations(db: DbModule, session: Session, note, note_file: Path) -> bool:
+def _sync_note_citations(session: Session, note, note_file: Path) -> bool:
     """
     Sincroniza tabla Citation para la nota.
-    Retorna True si hubo cambios (para decidir biber), como manage.py.
+    Retorna True si hubo cambios (para decidir biber).
     """
     keys = _get_citation_keys_from_file(note_file)
     tracked = [c for c in note.citations]
@@ -164,7 +165,7 @@ def _sync_note_citations(db: DbModule, session: Session, note, note_file: Path) 
 
     for key in keys:
         if key not in tracked_keys:
-            new_cit = db.Citation(note=note, citationkey=key)
+            new_cit = Citation(note=note, citationkey=key)
             session.add(new_cit)
             changed = True
 
@@ -177,11 +178,10 @@ def _sync_note_citations(db: DbModule, session: Session, note, note_file: Path) 
     return changed
 
 
-def _sync_note_links(db: DbModule, session: Session, note, note_file: Path) -> list:
+def _sync_note_links(session: Session, note, note_file: Path) -> list:
     """
     Sincroniza tabla Link para la nota.
-    Retorna lista de instancias Link modificadas (creadas/eliminadas),
-    como manage.py.
+    Retorna lista de instancias Link modificadas (creadas/eliminadas).
     """
     links = _get_links_from_file(note_file)
     modified: list = []
@@ -193,16 +193,14 @@ def _sync_note_links(db: DbModule, session: Session, note, note_file: Path) -> l
         if link in tracked:
             continue
         label = session.scalars(
-            select(db.Label)
-            .join(db.Label.note)
-            .where(db.Note.reference == link[0])
-            .where(db.Label.label == link[1])
+            select(Label)
+            .join(Label.note)
+            .where(Note.reference == link[0])
+            .where(Label.label == link[1])
         ).first()
         if label is None:
-            # No existe el label target; en legacy se imprimía un warning.
-            # Aquí lo omitimos silenciosamente. El CLI puede reportarlo si deseas.
             continue
-        lnk = db.Link(target=label, source=note)
+        lnk = Link(target=label, source=note)
         session.add(lnk)
         session.flush()
         modified.append(lnk)
@@ -218,7 +216,7 @@ def _sync_note_links(db: DbModule, session: Session, note, note_file: Path) -> l
 
 
 def _update_note_from_file(
-    db: DbModule, session: Session, note, paths: NotesPaths
+    session: Session, note, paths: NotesPaths
 ) -> tuple[bool, list]:
     """
     Relee el archivo de la nota y actualiza labels/citations/links.
@@ -229,14 +227,13 @@ def _update_note_from_file(
     """
     note_file = _note_tex_path(paths, note.filename)
     if not note_file.exists():
-        # en legacy se imprimía; aquí lo elevamos como error leve
         raise NoteNotFound(
             f"Archivo no encontrado para note '{note.filename}': {note_file}"
         )
 
-    _sync_note_labels(db, session, note, note_file)
-    run_biber = _sync_note_citations(db, session, note, note_file)
-    modified_links = _sync_note_links(db, session, note, note_file)
+    _sync_note_labels(session, note, note_file)
+    run_biber = _sync_note_citations(session, note, note_file)
+    modified_links = _sync_note_links(session, note, note_file)
     return run_biber, modified_links
 
 
@@ -247,24 +244,19 @@ def _update_note_from_file(
 
 def synchronize(
     *,
-    db: DbModule,
     paths: NotesPaths = DEFAULT_SETTINGS.paths,
 ) -> SyncResult:
     """
     Sincronización incremental:
     - detecta notas editadas desde el último sync (mtime > note.last_edit_date)
-    - last_edit_date
     - reparsea labels/citations/links solo para las notas modificadas
-
-    Retorna estructuras equivalentes a manage.py:
-      (to_read, new_links, run_biber)
     """
-    health = ensure_tables(db)
+    health = ensure_tables()
     if not health.ok:
         raise DomainError(f"DB no disponible: {health.error}")
 
-    with db_session(db) as session:
-        all_notes = session.scalars(select(db.Note)).all()
+    with db_session() as session:
+        all_notes = session.scalars(select(Note)).all()
         to_read: list = []
 
         # detectar notas modificadas
@@ -280,14 +272,13 @@ def synchronize(
                     note.last_edit_date = file_mtime(fpath)
                     session.flush()
             except FileNotFoundError:
-                # legacy imprimía un warning; aquí omitimos (force_synchronize lo arregla)
                 continue
 
         run_biber: dict = {}
         new_links: list = []
 
         for note in to_read:
-            rb, modified_links = _update_note_from_file(db, session, note, paths)
+            rb, modified_links = _update_note_from_file(session, note, paths)
             run_biber[note] = rb
             new_links.extend(modified_links)
 
@@ -303,35 +294,23 @@ def synchronize(
 
 def force_synchronize(
     *,
-    db: DbModule,
     paths: NotesPaths = DEFAULT_SETTINGS.paths,
     create_missing_note_files: bool = False,
     create_documents_tex_if_missing: bool = True,
     timestamp: Optional[datetime] = None,
 ) -> ForceSyncResult:
     """
-    Sincronización completa (force), inspirada en Helper.force_synchronize().
-
-    Diferencias vs legacy:
-    - No hace prompts interactivos.
-    - Los comportamientos interactivos (crear archivos faltantes, agregar a documents.tex)
-      se controlan con flags.
-    - No imprime.
+    Sincronización completa (force).
 
     Flujo:
     1) Lee notes/documents.tex y determina tracked_notes (filename->reference)
     2) Valida que cada filename exista en slipbox; opcionalmente crea archivos faltantes
-    3) Sincroniza/crea entradas Note en DB (filename/reference/timestamps build si existen)
-    4) Busca notas .tex en slipbox no listadas en documents.tex:
-       - (opcional) agrega a documents.tex (aquí NO lo hacemos automáticamente; esa política
-         queda para el CLI y/o api/notes.py)
-    5) Reparsea labels/citations/links para todas las notas
-
-    Retorna un resumen de cambios.
+    3) Sincroniza/crea entradas Note en DB
+    4) Reparsea labels/citations/links para todas las notas
     """
     ts = timestamp or now()
 
-    health = ensure_tables(db)
+    health = ensure_tables()
     if not health.ok:
         raise DomainError(f"DB no disponible: {health.error}")
 
@@ -373,7 +352,7 @@ def force_synchronize(
     added_notes: list = []
     updated_notes: list = []
 
-    with db_session(db) as session:
+    with db_session() as session:
         # 4) Sync DB para tracked_notes
         for filename, reference_name in tracked_notes.items():
             fpath = _note_tex_path(paths, filename)
@@ -383,7 +362,7 @@ def force_synchronize(
             modified_dt = file_mtime(fpath)
 
             note = session.scalars(
-                select(db.Note).where(db.Note.filename == filename)
+                select(Note).where(Note.filename == filename)
             ).first()
 
             if note is not None:
@@ -409,9 +388,9 @@ def force_synchronize(
                 updated_notes.append(note)
 
             else:
-                # Si existe una nota con el mismo reference, reasignar filename (comportamiento legacy)
+                # Si existe una nota con el mismo reference, reasignar filename
                 note_by_ref = session.scalars(
-                    select(db.Note).where(db.Note.reference == reference_name)
+                    select(Note).where(Note.reference == reference_name)
                 ).first()
 
                 if note_by_ref is not None:
@@ -422,7 +401,7 @@ def force_synchronize(
                     session.flush()
                     updated_notes.append(note_by_ref)
                 else:
-                    new_note = db.Note(
+                    new_note = Note(
                         filename=filename,
                         reference=reference_name,
                         created=modified_dt,
@@ -433,10 +412,10 @@ def force_synchronize(
                     added_notes.append(new_note)
 
         # 5) Reparsear labels/citations/links para todas las notas presentes en DB
-        all_notes = session.scalars(select(db.Note)).all()
+        all_notes = session.scalars(select(Note)).all()
         for note in all_notes:
             try:
-                _update_note_from_file(db, session, note, paths)
+                _update_note_from_file(session, note, paths)
             except NoteNotFound:
                 continue
 

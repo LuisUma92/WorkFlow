@@ -24,6 +24,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from workflow.db.models.notes import Note
+
 from latexzettel.config.settings import (
     NotesPaths,
     RenderSettings,
@@ -35,7 +37,7 @@ from latexzettel.domain.errors import (
 )
 from sqlalchemy import select
 
-from latexzettel.domain.types import DbModule, RenderFormat
+from latexzettel.domain.types import RenderFormat
 from latexzettel.infra import processes
 from latexzettel.infra.db import ensure_tables, db_session
 from latexzettel.util.time import now
@@ -174,7 +176,6 @@ def biber(
 
 def render_note(
     *,
-    db: DbModule,
     filename: str,
     format: RenderFormat = RenderFormat.PDF,
     run_biber: bool = False,
@@ -187,10 +188,9 @@ def render_note(
     Renderiza una nota a PDF o HTML.
 
     Parámetros:
-    - db: módulo externo de Peewee (legacy o nuevo), con Note + create_all_tables + database
     - filename: nombre de nota (sin extensión)
     - format: RenderFormat.PDF | RenderFormat.HTML
-    - run_biber: si True, ejecuta un ciclo: render -> biber -> render (igual que manage.py) :contentReference[oaicite:6]{index=6}
+    - run_biber: si True, ejecuta un ciclo: render -> biber -> render
     - settings: RenderSettings (comandos y opciones)
     - paths: NotesPaths (rutas del proyecto)
     - timestamp: si None, usa util.time.now()
@@ -202,15 +202,15 @@ def render_note(
     # Timestamp
     ts = timestamp or now()
 
-    # Asegurar esquema si estás usando el patrón modular defensivo
-    health = ensure_tables(db)
+    # Asegurar esquema
+    health = ensure_tables()
     if not health.ok:
         raise DomainError(f"DB no disponible: {health.error}")
 
     # Obtener Note desde DB
-    with db_session(db) as session:
+    with db_session() as session:
         note = session.scalars(
-            select(db.Note).where(db.Note.filename == filename)
+            select(Note).where(Note.filename == filename)
         ).first()
     if note is None:
         raise NoteNotFound(f"No existe nota en DB: filename='{filename}'")
@@ -219,7 +219,6 @@ def render_note(
     if run_biber:
         # Primera pasada sin biber=True para evitar recursión
         _ = render_note(
-            db=db,
             filename=filename,
             format=format,
             run_biber=False,
@@ -235,7 +234,6 @@ def render_note(
         _ = biber(filename=filename, folder=folder, check=check)
         # Segunda pasada
         return render_note(
-            db=db,
             filename=filename,
             format=format,
             run_biber=False,
@@ -319,9 +317,9 @@ def render_note(
         )
 
     # Actualizar timestamps en DB
-    with db_session(db) as session:
+    with db_session() as session:
         db_note = session.scalars(
-            select(db.Note).where(db.Note.filename == filename)
+            select(Note).where(Note.filename == filename)
         ).first()
         if db_note is not None:
             if format == RenderFormat.HTML:
@@ -342,7 +340,6 @@ def render_note(
 
 def render_all(
     *,
-    db: DbModule,
     format: RenderFormat = RenderFormat.PDF,
     settings: RenderSettings = DEFAULT_SETTINGS.render,
     paths: NotesPaths = DEFAULT_SETTINGS.paths,
@@ -352,16 +349,13 @@ def render_all(
     """
     Renderiza todas las notas en notes/slipbox/*.tex.
 
-    Equivale a render_all_pdf() / render_all_html() pero sin prints y
-    con retorno de resultados. :contentReference[oaicite:8]{index=8}
-
     Nota:
     - La implementación original hacía "pass 1" y "pass 2".
     - Aquí mantenemos dos pasadas para reproducir la semántica.
     """
     from latexzettel.infra.fs import rglob_files  # import local para evitar ciclos
 
-    health = ensure_tables(db)
+    health = ensure_tables()
     if not health.ok:
         raise DomainError(f"DB no disponible: {health.error}")
 
@@ -373,7 +367,6 @@ def render_all(
     # pass 1
     for fn in filenames:
         res = render_note(
-            db=db,
             filename=fn,
             format=format,
             run_biber=run_biber_each,
@@ -386,7 +379,6 @@ def render_all(
     # pass 2
     for fn in filenames:
         res = render_note(
-            db=db,
             filename=fn,
             format=format,
             run_biber=False,
@@ -417,7 +409,6 @@ class RenderUpdatesResult:
 
 def render_updates(
     *,
-    db: DbModule,
     format: RenderFormat = RenderFormat.PDF,
     settings: RenderSettings = DEFAULT_SETTINGS.render,
     paths: NotesPaths = DEFAULT_SETTINGS.paths,
@@ -428,19 +419,18 @@ def render_updates(
     Render incremental con semántica legacy.
 
     Parámetros:
-    - db: módulo externo peewee (modularidad)
     - format: RenderFormat.PDF | RenderFormat.HTML
     - timestamp: timestamp único para esta corrida (si None, now()).
-    - check: si True, propaga fallos de proceso como excepción (ver api/render.py).
+    - check: si True, propaga fallos de proceso como excepción.
     """
     ts = timestamp or now()
 
-    health = ensure_tables(db)
+    health = ensure_tables()
     if not health.ok:
         raise DomainError(f"DB no disponible: {health.error}")
 
     # 1) Sync incremental (equivalente a Helper.synchronize())
-    sync_res = synchronize(db=db, paths=paths)
+    sync_res = synchronize(paths=paths)
 
     # "updated" del legacy = to_read (notas cuyo archivo cambió desde last_edit_date)
     updated = list(sync_res.updated_notes)  # list[Note]
@@ -449,8 +439,8 @@ def render_updates(
 
     # 2) Extender updated con notas que requieren render por timestamps (igual que legacy)
     #    y, al agregarlas, marcar run_biber=True y extender new_links con note.references
-    with db_session(db) as session:
-        all_notes = session.scalars(select(db.Note)).all()
+    with db_session() as session:
+        all_notes = session.scalars(select(Note)).all()
     for note in all_notes:
         if note in updated:
             continue
@@ -477,7 +467,6 @@ def render_updates(
     for note in updated:
         rb = bool(run_biber.get(note, False))
         res = render_note(
-            db=db,
             filename=note.filename,
             format=format,
             run_biber=rb,
@@ -499,7 +488,6 @@ def render_updates(
         seen_targets.add(target_note.filename)
 
         res = render_note(
-            db=db,
             filename=target_note.filename,
             format=format,
             run_biber=False,
@@ -521,7 +509,6 @@ def render_updates(
         seen_sources.add(source_note.filename)
 
         res = render_note(
-            db=db,
             filename=source_note.filename,
             format=format,
             run_biber=False,

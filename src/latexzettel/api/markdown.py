@@ -24,6 +24,8 @@ from typing import Optional
 
 from sqlalchemy import select
 
+from workflow.db.models.notes import Note
+
 from latexzettel.config.settings import DEFAULT_SETTINGS, NotesPaths, PandocSettings
 from latexzettel.domain.errors import DomainError, NoteNotFound
 from latexzettel.infra.db import ensure_tables, db_session
@@ -113,15 +115,13 @@ def _md_filename_to_slipbox_filename(md_path: Path) -> str:
     return _wiki_note_to_db_filename(stem)
 
 
-def _md_name_to_reference(db, session, md_note_name: str) -> str:
+def _md_name_to_reference(session, md_note_name: str) -> str:
     """
     Convierte el nombre dentro del wikilink [[...]] hacia la reference LaTeX.
-    En legacy se asumía que el texto era el filename (con espacios) y se buscaba Note por filename.
-    Aquí lo canonicalizamos a filename y resolvemos reference en DB.
     """
     filename = _wiki_note_to_db_filename(md_note_name)
     note = session.scalars(
-        select(db.Note).where(db.Note.filename == filename)
+        select(Note).where(Note.filename == filename)
     ).first()
     if note is None:
         raise NoteNotFound(
@@ -130,22 +130,21 @@ def _md_name_to_reference(db, session, md_note_name: str) -> str:
     return note.reference
 
 
-def _convert_wikilinks_to_latex(db, session, md_text: str) -> str:
+def _convert_wikilinks_to_latex(session, md_text: str) -> str:
     """
     Reemplaza WikiLinks por \\excref/\\exhyperref.
-    Replica la intención de sync_md() legacy con 4 regex.
     """
 
     # [[Note]]
     def repl_note(m):
-        ref = _md_name_to_reference(db, session, m.group(1))
+        ref = _md_name_to_reference(session, m.group(1))
         return f"\\excref{{{ref}}}"
 
     text = WIKILINK_NOTE_RE.sub(repl_note, md_text)
 
     # [[Note#label]]
     def repl_note_label(m):
-        ref = _md_name_to_reference(db, session, m.group(1))
+        ref = _md_name_to_reference(session, m.group(1))
         label = m.group(2)
         return f"\\excref[{label}]{{{ref}}}"
 
@@ -153,7 +152,7 @@ def _convert_wikilinks_to_latex(db, session, md_text: str) -> str:
 
     # [[Note|Text]]
     def repl_note_text(m):
-        ref = _md_name_to_reference(db, session, m.group(1))
+        ref = _md_name_to_reference(session, m.group(1))
         label_text = m.group(2)
         return f"\\exhyperref{{{ref}}}{{{label_text}}}"
 
@@ -161,7 +160,7 @@ def _convert_wikilinks_to_latex(db, session, md_text: str) -> str:
 
     # [[Note#label|Text]]
     def repl_note_label_text(m):
-        ref = _md_name_to_reference(db, session, m.group(1))
+        ref = _md_name_to_reference(session, m.group(1))
         label = m.group(2)
         label_text = m.group(3)
         return f"\\exhyperref[{label}]{{{ref}}}{{{label_text}}}"
@@ -170,15 +169,9 @@ def _convert_wikilinks_to_latex(db, session, md_text: str) -> str:
     return text
 
 
-def _convert_exrefs_to_wikilinks(db, session, latex_text: str) -> str:
+def _convert_exrefs_to_wikilinks(session, latex_text: str) -> str:
     """
-    Convierte \\excref/\\exhyperref a WikiLinks, como to_md() legacy.
-
-    Maneja:
-      \\excref{Ref}                      -> [[filename]]
-      \\excref[label]{Ref}               -> [[filename#label]]
-      \\exhyperref{Ref}{Text}            -> [[filename|Text]]
-      \\exhyperref[label]{Ref}{Text}     -> [[filename#label|Text]]
+    Convierte \\excref/\\exhyperref a WikiLinks.
     """
 
     def replace(m):
@@ -188,7 +181,7 @@ def _convert_exrefs_to_wikilinks(db, session, latex_text: str) -> str:
         text = m.group(7)  # opcional (solo si hyperref tenía {Text})
 
         note = session.scalars(
-            select(db.Note).where(db.Note.reference == ref)
+            select(Note).where(Note.reference == ref)
         ).first()
         if note is None:
             # si no existe, dejamos la referencia intacta (conservador)
@@ -222,7 +215,6 @@ def _convert_exrefs_to_wikilinks(db, session, latex_text: str) -> str:
 
 def sync_md(
     *,
-    db,
     paths: NotesPaths = DEFAULT_SETTINGS.paths,
     pandoc: PandocSettings = DEFAULT_SETTINGS.pandoc,
     overwrite_tex: bool = True,
@@ -231,19 +223,12 @@ def sync_md(
     """
     Sincroniza notes/md/*.md hacia notes/slipbox/*.tex con pandoc.
 
-    Semántica base (legacy):
-    - Detecta archivos md.
-    - Determina filename destino en slipbox.
-    - Asegura que estén en DB y documents.tex (cuando son nuevos).
-    - Reescribe wikilinks a comandos LaTeX (\\excref/\\exhyperref).
-    - Ejecuta pandoc para producir .tex en slipbox.
-
     Parámetros:
     - overwrite_tex: si False, no sobrescribe .tex existente.
     - auto_register_new_notes: si True, crea Nota en DB y agrega documents.tex
       cuando detecta md nuevo no registrado.
     """
-    health = ensure_tables(db)
+    health = ensure_tables()
     if not health.ok:
         raise DomainError(f"DB no disponible: {health.error}")
 
@@ -255,9 +240,9 @@ def sync_md(
     skipped_notes: list[str] = []
     pandoc_failures: dict[str, str] = {}
 
-    with db_session(db) as session:
+    with db_session() as session:
         # Conjunto de filenames ya rastreados en DB
-        tracked = {n.filename for n in session.scalars(select(db.Note)).all()}
+        tracked = {n.filename for n in session.scalars(select(Note)).all()}
 
         for md_file in md_files:
             slipbox_filename = _md_filename_to_slipbox_filename(md_file)
@@ -272,7 +257,7 @@ def sync_md(
                 # Crear entrada DB y documents.tex usando el mismo criterio de referencia
                 reference = default_reference_name(slipbox_filename)
 
-                new_note = db.Note(
+                new_note = Note(
                     filename=slipbox_filename,
                     reference=reference,
                 )
@@ -291,7 +276,7 @@ def sync_md(
 
             # Leer MD y convertir wikilinks a LaTeX
             md_text = md_file.read_text(encoding="utf-8")
-            latex_ready_text = _convert_wikilinks_to_latex(db, session, md_text)
+            latex_ready_text = _convert_wikilinks_to_latex(session, md_text)
 
             # Construir opciones pandoc (alineado a legacy)
             # Legacy incluye: -o slipbox.tex + ... + "-M title=<filename>"
@@ -321,7 +306,6 @@ def sync_md(
 
 def tex_to_md(
     *,
-    db,
     note_name: str,
     paths: NotesPaths = DEFAULT_SETTINGS.paths,
     output_dir: Optional[Path] = None,
@@ -330,15 +314,10 @@ def tex_to_md(
     """
     Exporta notes/slipbox/<note_name>.tex a Markdown.
 
-    Semántica base (legacy to_md):
-    - Lee .tex
-    - Convierte \\excref/\\exhyperref a wikilinks
-    - Ejecuta pandoc latex->markdown para escribir archivo .md
-
     Parámetros:
     - output_dir: por defecto crea/usa <root>/markdown (como legacy).
     """
-    health = ensure_tables(db)
+    health = ensure_tables()
     if not health.ok:
         raise DomainError(f"DB no disponible: {health.error}")
 
@@ -360,9 +339,9 @@ def tex_to_md(
 
     latex_text = tex_path.read_text(encoding="utf-8")
 
-    with db_session(db) as session:
+    with db_session() as session:
         # Convertir exrefs a wikilinks antes de pandoc
-        wikified = _convert_exrefs_to_wikilinks(db, session, latex_text)
+        wikified = _convert_exrefs_to_wikilinks(session, latex_text)
 
     # Ejecutar pandoc: -t markdown -f latex -o out.md
     proc = run_pandoc(

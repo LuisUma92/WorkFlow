@@ -25,8 +25,9 @@ from dataclasses import dataclass
 import numpy as np
 from sqlalchemy import select
 
+from workflow.db.models.notes import Note, Citation
+
 from latexzettel.domain.errors import DomainError
-from latexzettel.domain.types import DbModule
 from latexzettel.infra.db import ensure_tables, db_session
 
 
@@ -59,24 +60,12 @@ class AdjacencyMatrixResult:
 
 def calculate_adjacency_matrix(
     *,
-    db: DbModule,
     index_by: str = "filename",
 ) -> AdjacencyMatrixResult:
     """
     Calcula matriz de adyacencia del grafo de referencias entre notas.
 
-    Basado en el legacy:
-        ids = [note.id for note in Note]
-        adjacency_matrix = zeros([len(ids), len(ids)])
-        for note in Note:
-            for reference in note.references:
-                adjacency_matrix[ids.index(note.id), ids.index(reference.target.note.id)] += 1
-
     Parámetros:
-    - db: módulo externo (modularidad), con:
-        - Note iterable via SQLAlchemy session
-        - Link accesible vía note.references
-        - reference.target.note en cada link
     - index_by: cómo ordenar notas para indexación:
         - "filename" (recomendado, estable)
         - "reference"
@@ -85,25 +74,25 @@ def calculate_adjacency_matrix(
     Retorna:
     - AdjacencyMatrixResult
     """
-    health = ensure_tables(db)
+    health = ensure_tables()
     if not health.ok:
         raise DomainError(f"DB no disponible: {health.error}")
 
-    with db_session(db) as session:
+    with db_session() as session:
         # Obtener notas en orden estable
         if index_by == "filename":
             notes = list(
-                session.scalars(select(db.Note).order_by(db.Note.filename)).all()
+                session.scalars(select(Note).order_by(Note.filename)).all()
             )
             key = lambda n: n.filename
         elif index_by == "reference":
             notes = list(
-                session.scalars(select(db.Note).order_by(db.Note.reference)).all()
+                session.scalars(select(Note).order_by(Note.reference)).all()
             )
             key = lambda n: n.reference
         elif index_by == "id":
             notes = list(
-                session.scalars(select(db.Note).order_by(db.Note.id)).all()
+                session.scalars(select(Note).order_by(Note.id)).all()
             )
             key = lambda n: n.id
         else:
@@ -132,39 +121,32 @@ def calculate_adjacency_matrix(
 
 def list_unreferenced_notes(
     *,
-    db: DbModule,
     index_by: str = "filename",
 ) -> list:
     """
     Retorna una lista de notas que NO son referenciadas por ninguna otra nota
     (grado de entrada = 0).
-
-    Esto es el equivalente funcional de Helper.list_unreferenced() que usaba
-    calculate_adjacency_matrix() y sumaba columnas.
     """
-    res = calculate_adjacency_matrix(db=db, index_by=index_by)
+    res = calculate_adjacency_matrix(index_by=index_by)
     referenced_by = np.sum(res.adjacency, axis=0)  # entradas a cada nodo
     return [note for note, indeg in zip(res.notes, referenced_by) if indeg == 0]
 
 
-def remove_duplicate_citations(
-    *,
-    db: DbModule,
-) -> int:
+def remove_duplicate_citations() -> int:
     """
     Elimina instancias duplicadas de Citation (misma note + citationkey),
     replicando Helper.remove_duplicate_citations().
 
     Retorna el número de filas eliminadas.
     """
-    health = ensure_tables(db)
+    health = ensure_tables()
     if not health.ok:
         raise DomainError(f"DB no disponible: {health.error}")
 
     deleted = 0
 
-    with db_session(db) as session:
-        all_notes = session.scalars(select(db.Note)).all()
+    with db_session() as session:
+        all_notes = session.scalars(select(Note)).all()
 
         for note in all_notes:
             tracked = [c for c in note.citations]
@@ -176,9 +158,9 @@ def remove_duplicate_citations(
 
             for key in uniq:
                 citations = session.scalars(
-                    select(db.Citation).where(
-                        (db.Citation.note_id == note.id)
-                        & (db.Citation.citationkey == key)
+                    select(Citation).where(
+                        (Citation.note_id == note.id)
+                        & (Citation.citationkey == key)
                     )
                 ).all()
                 # Mantener 1, borrar el resto

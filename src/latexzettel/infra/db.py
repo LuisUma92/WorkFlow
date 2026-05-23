@@ -2,34 +2,27 @@
 """
 Capa de infraestructura para base de datos (SQLAlchemy).
 
-Mantiene la misma API pública que la versión Peewee para que los 7 módulos
-API que importan de aquí no necesiten cambios:
+LZK-0004: API pública sin parámetro db — accede directamente al engine global.
 
-  - ensure_tables(db)           — usado por cli/main.py, server/main.py,
-                                   api/render.py, api/analysis.py,
-                                   api/markdown.py, api/sync.py
-  - ensure_schema_if_needed(db) — usado por api/notes.py
-  - DbHealth                    — dataclass de resultado
-  - connect(db) / close(db)     — no-ops (SQLAlchemy gestiona el pool)
-  - db_session                  — context manager que envuelve Session de SQLAlchemy
+  - ensure_tables()           — verifica/crea tablas en la GlobalDB
+  - ensure_schema_if_needed() — ídem, versión lazy para api/notes.py
+  - DbHealth                  — dataclass de resultado
+  - connect() / close()       — no-ops (SQLAlchemy gestiona el pool)
+  - db_session                — context manager que envuelve Session de SQLAlchemy
 
-Internamente usa workflow.db.engine. ITEP-0011 P3: el shim apunta a la
-base de datos GLOBAL ($WORKFLOW_DATA_DIR/workflow.db, default ~/01-U/workflow/workflow.db).
-
-El parámetro `db` que reciben las funciones es el módulo orm de latexzettel
-(latexzettel.infra.orm), que ahora actúa como shim y expone:
-  - db.get_engine()      — SQLAlchemy engine global
-  - db.Note              — clase SQLAlchemy Note (workflow.db.models.notes)
-  - db.create_all_tables() — crea tablas via GlobalBase.metadata.create_all
+Internamente usa workflow.db.engine (get_global_engine, init_global_db).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Optional
 
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
+
+from workflow.db.engine import get_global_engine, init_global_db
+from workflow.db.models.notes import Note
 
 from latexzettel.domain.errors import DomainError
 
@@ -47,7 +40,7 @@ class DbHealth:
     ok:
       True si el esquema está disponible para operar.
     initialized:
-      True si se ejecutó create_all_tables() durante ensure_tables().
+      True si se ejecutó init_global_db() durante ensure_tables().
     error:
       mensaje de error si ok=False.
     """
@@ -62,67 +55,52 @@ class DbHealth:
 # =============================================================================
 
 
-def _get_engine(db: Any):
-    """Extrae el engine SQLAlchemy del módulo orm."""
-    if callable(getattr(db, "get_engine", None)):
-        return db.get_engine()
-    return db.engine
-
-
-def _schema_exists(db: Any) -> bool:
+def _schema_exists() -> bool:
     """
     Verifica si la tabla 'note' existe ejecutando una consulta mínima.
     """
-    engine = _get_engine(db)
+    engine = get_global_engine()
     try:
         with Session(engine) as session:
-            session.query(db.Note).limit(1).all()
+            session.query(Note).limit(1).all()
         return True
     except OperationalError:
         return False
 
 
 # =============================================================================
-# API pública (mismas firmas que la versión Peewee)
+# API pública
 # =============================================================================
 
 
-def connect(_db: Any) -> None:
-    """
-    No-op: SQLAlchemy gestiona conexiones via pool automáticamente.
-    Se mantiene por compatibilidad con código existente.
-    """
+def connect() -> None:
+    """No-op: SQLAlchemy gestiona conexiones via pool automáticamente."""
     pass
 
 
-def close(_db: Any) -> None:
-    """
-    No-op: SQLAlchemy gestiona conexiones via pool automáticamente.
-    Se mantiene por compatibilidad con código existente.
-    """
+def close() -> None:
+    """No-op: SQLAlchemy gestiona conexiones via pool automáticamente."""
     pass
 
 
-def schema_exists(db: Any) -> bool:
-    """
-    Verifica si el esquema existe intentando una consulta mínima sobre Note.
-    """
-    return _schema_exists(db)
+def schema_exists() -> bool:
+    """Verifica si el esquema existe intentando una consulta mínima sobre Note."""
+    return _schema_exists()
 
 
-def ensure_tables(db: Any) -> DbHealth:
+def ensure_tables() -> DbHealth:
     """
     Garantiza que las tablas existan:
     - Si ya existen: no hace nada y retorna initialized=False.
     - Si no existen: crea tablas y retorna initialized=True.
     """
     try:
-        if _schema_exists(db):
+        if _schema_exists():
             return DbHealth(ok=True, initialized=False)
 
-        db.create_all_tables()
+        init_global_db(engine=get_global_engine())
 
-        if _schema_exists(db):
+        if _schema_exists():
             return DbHealth(ok=True, initialized=True)
 
         return DbHealth(
@@ -134,17 +112,17 @@ def ensure_tables(db: Any) -> DbHealth:
         return DbHealth(ok=False, initialized=False, error=str(e))
 
 
-def ensure_schema_if_needed(db: Any) -> None:
+def ensure_schema_if_needed() -> None:
     """
     Solo crea tablas si el primer acceso básico falla por OperationalError
     (típicamente 'no such table').
     """
     try:
-        engine = _get_engine(db)
+        engine = get_global_engine()
         with Session(engine) as session:
-            session.query(db.Note).limit(1).all()
+            session.query(Note).limit(1).all()
     except OperationalError:
-        health = ensure_tables(db)
+        health = ensure_tables()
         if not health.ok:
             raise DomainError(f"DB no disponible: {health.error}")
 
@@ -156,24 +134,21 @@ def ensure_schema_if_needed(db: Any) -> None:
 
 class db_session:
     """
-    Context manager que devuelve una SQLAlchemy Session abierta.
+    Context manager que devuelve una SQLAlchemy Session abierta sobre la GlobalDB.
 
     Uso:
-        from latexzettel.infra import orm as db_mod
         from latexzettel.infra.db import db_session, ensure_tables
 
-        ensure_tables(db_mod)
-        with db_session(db_mod) as session:
-            session.query(db_mod.Note).all()
+        ensure_tables()
+        with db_session() as session:
+            session.query(Note).all()
     """
 
-    def __init__(self, db: Any):
-        self._db = db
+    def __init__(self):
         self._session: Optional[Session] = None
 
     def __enter__(self) -> Session:
-        engine = _get_engine(self._db)
-        self._session = Session(engine)
+        self._session = Session(get_global_engine())
         return self._session
 
     def __exit__(self, exc_type, _exc, _tb) -> bool:
