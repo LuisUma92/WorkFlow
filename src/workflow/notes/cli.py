@@ -9,6 +9,10 @@ import click
 
 from workflow.db.errors import with_schema_guard
 from workflow.notes.formatters import (
+    format_edge_json,
+    format_edge_table,
+    format_edges_list_json,
+    format_edges_list_table,
     format_note_json,
     format_note_table,
     format_notes_list_json,
@@ -312,6 +316,83 @@ def sync_cmd(ctx: click.Context, dry_run: bool, project_filter: str | None) -> N
         f"{report.edges_created} edges registered, "
         f"{report.orphans_dropped} orphans dropped."
     )
+
+
+@notes.group(name="edges")
+def edges_group() -> None:
+    """Query note relation edges stored in the DB."""
+
+
+@edges_group.command(name="list")
+@click.option("--source", "source_zettel_id", default=None, help="Filter by source note zettel_id.")
+@click.option(
+    "--edge-class",
+    "edge_class",
+    type=click.Choice(["structural", "associative"]),
+    default=None,
+)
+@click.option(
+    "--relation-type",
+    "relation_type",
+    type=click.Choice([
+        "continuation", "refines", "branches", "synthesis", "rebuttal",
+        "supports", "contradicts", "expands", "see_also",
+    ]),
+    default=None,
+)
+@click.option("--json", "as_json", is_flag=True)
+@click.pass_context
+@with_schema_guard
+def edges_list_cmd(
+    ctx: click.Context,
+    source_zettel_id: str | None,
+    edge_class: str | None,
+    relation_type: str | None,
+    as_json: bool,
+) -> None:
+    """List note relation edges, with optional filters."""
+    from sqlalchemy.orm import Session
+
+    from workflow.db.engine import get_engine_from_ctx
+    from workflow.notes.edges_service import list_edges
+
+    engine = get_engine_from_ctx(ctx)
+    with Session(engine) as session:
+        edges = list_edges(
+            session,
+            source_zettel_id=source_zettel_id,
+            edge_class=edge_class,
+            relation_type=relation_type,
+        )
+
+    if as_json:
+        click.echo(format_edges_list_json(edges))
+    else:
+        click.echo(format_edges_list_table(edges))
+
+
+@edges_group.command(name="show")
+@click.argument("edge_id", type=int)
+@click.option("--json", "as_json", is_flag=True)
+@click.pass_context
+@with_schema_guard
+def edges_show_cmd(ctx: click.Context, edge_id: int, as_json: bool) -> None:
+    """Show details of a single edge by ID."""
+    from sqlalchemy.orm import Session
+
+    from workflow.db.engine import get_engine_from_ctx
+    from workflow.notes.edges_service import get_edge
+
+    engine = get_engine_from_ctx(ctx)
+    with Session(engine) as session:
+        edge = get_edge(session, edge_id)
+        if edge is None:
+            raise click.ClickException(f"Edge {edge_id} not found.")
+        if as_json:
+            output = format_edge_json(edge)
+        else:
+            output = format_edge_table(edge)
+        click.echo(output)
 
 
 @notes.command(name="link")
