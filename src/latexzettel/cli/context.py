@@ -10,11 +10,8 @@ class CLIContext:
     """
     Contexto compartido entre comandos Click.
 
-    db:
-      módulo externo peewee (por modularidad). Debe exponer Note, create_all_tables(), database, etc.
     settings:
       configuración ensamblada (paths, renderers, platform, etc.)
     """
 
-    db: object
     settings: Settings

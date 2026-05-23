@@ -66,7 +66,6 @@ def cmd_newnote(
     c: CLIContext = ctx.obj
     try:
         api_notes.create_note(
-            db=c.db,
             note_name=note_name,
             reference_name=reference_name,
             extension=extension,
@@ -92,7 +91,6 @@ def cmd_newnote_md(
     c: CLIContext = ctx.obj
     try:
         api_notes.create_note_md(
-            db=c.db,
             note_name=note_name,
             reference_name=reference_name,
             paths=c.settings.paths,
@@ -118,7 +116,6 @@ def cmd_rename_file(ctx: click.Context, old_filename: str, new_filename: str) ->
     c: CLIContext = ctx.obj
     try:
         api_notes.rename_note_file(
-            db=c.db,
             old_filename=old_filename,
             new_filename=new_filename,
             paths=c.settings.paths,
@@ -144,7 +141,6 @@ def cmd_rename_ref(
     c: CLIContext = ctx.obj
     try:
         api_notes.rename_reference(
-            db=c.db,
             old_reference=old_reference,
             new_reference=new_reference,
             paths=c.settings.paths,
@@ -198,7 +194,6 @@ def cmd_remove(
 
     try:
         api_notes.remove_note(
-            db=c.db,
             filename=filename,
             paths=c.settings.paths,
             delete_db_entry=db,
@@ -311,10 +306,8 @@ def cmd_to_md(
         from pathlib import Path as _Path
 
         res = tex_to_md(
-            db=c.db,
             note_name=note_name,
             paths=c.settings.paths,
-            pandoc=c.settings.pandoc,
             output_dir=None if out_dir is None else _Path(out_dir),
             overwrite=not no_overwrite,
         )

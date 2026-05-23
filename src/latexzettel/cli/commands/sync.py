@@ -38,7 +38,7 @@ def cmd_synchronize(ctx: click.Context) -> None:
     """
     c: CLIContext = ctx.obj
     try:
-        res = synchronize(db=c.db, paths=c.settings.paths)
+        res = synchronize(paths=c.settings.paths)
 
         click.echo(f"Updated notes: {len(res.updated_notes)}")
         for n in res.updated_notes:
@@ -87,7 +87,6 @@ def cmd_force(
     c: CLIContext = ctx.obj
     try:
         res = force_synchronize(
-            db=c.db,
             paths=c.settings.paths,
             create_missing_note_files=create_missing_files,
             create_documents_tex_if_missing=not no_create_documents_tex,
@@ -131,7 +130,6 @@ def cmd_sync_md(ctx: click.Context, no_overwrite: bool, no_auto_register: bool) 
     c: CLIContext = ctx.obj
     try:
         res = sync_md(
-            db=c.db,
             paths=c.settings.paths,
             pandoc=c.settings.pandoc,
             overwrite_tex=not no_overwrite,

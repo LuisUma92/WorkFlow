@@ -132,7 +132,7 @@ class DbModule(Protocol):
     """
     Contrato mínimo esperado por infra/db.py (SQLAlchemy).
 
-    Implementado por latexzettel.infra.orm (shim sobre workflow.db).
+    Implementado por workflow.db.models.notes (SQLAlchemy, GlobalBase).
     Requiere:
       - engine: SQLAlchemy Engine apuntando a slipbox.db
       - Note:   clase ORM (workflow.db.models.notes.Note)

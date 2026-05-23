@@ -81,7 +81,6 @@ def cmd_render_note(
     c: CLIContext = ctx.obj
     try:
         res = render_note(
-            db=c.db,
             filename=filename,
             format=_parse_format(fmt),
             run_biber=run_biber,
@@ -187,7 +186,6 @@ def cmd_render_all(
     c: CLIContext = ctx.obj
     try:
         results = render_all(
-            db=c.db,
             format=_parse_format(fmt),
             settings=c.settings.render,
             paths=c.settings.paths,
@@ -240,7 +238,6 @@ def cmd_render_updates(ctx: click.Context, fmt: str, check: bool) -> None:
     c: CLIContext = ctx.obj
     try:
         res = render_updates(
-            db=c.db,
             format=_parse_format(fmt),
             settings=c.settings.render,
             paths=c.settings.paths,
