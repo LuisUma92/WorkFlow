@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from workflow.db.models.notes import Label, Link, Note, NoteEdge
 from workflow.notes.edges import parse_relations_frontmatter
-from workflow.notes.linker_ops import upsert_label, upsert_link, upsert_note_edge
+from workflow.notes.linker_ops import upsert_label, upsert_link, upsert_note_concept, upsert_note_edge
 from workflow.notes.wikilinks import (
     WIKILINK_NOTE_LABEL_RE,
     WIKILINK_NOTE_LABEL_TEXT_RE,
@@ -36,6 +36,12 @@ class SyncReport:
     citations_registered: int = 0
     orphans_dropped: int = 0
     edges_created: int = 0
+    concept_links_created: int = 0
+    concept_issues: list = None  # list[dict[str, str]]
+
+    def __post_init__(self) -> None:
+        if self.concept_issues is None:
+            self.concept_issues = []
 
 
 def _parse_md(path: Path) -> tuple[dict[str, object], str] | None:
@@ -270,6 +276,36 @@ def _upsert_note_edges(session: Session, note: Note, fm: dict) -> int:
     return created
 
 
+def _sync_note_concepts(
+    session: Session,
+    note: "Note",
+    fm: dict,
+    *,
+    strict: bool = False,
+) -> tuple[int, list[dict]]:
+    """Upsert NoteConcept rows from frontmatter ``concepts:`` list.
+
+    Returns (rows_upserted, issues). Issues follow resolve_concepts format:
+    ``{"severity": "warning"|"error", "message": str}``.
+    """
+    from workflow.concept.service import resolve_concepts
+
+    codes = [c for c in (fm.get("concepts") or []) if isinstance(c, str) and c.strip()]
+    if not codes:
+        return 0, []
+
+    found, issues = resolve_concepts(codes, session, strict=strict)
+    upserted = 0
+    for concept in found:
+        if upsert_note_concept(session, note_id=note.id, concept_id=concept.id):
+            upserted += 1
+
+    if upserted:
+        session.flush()
+
+    return upserted, issues
+
+
 def _drop_orphan_links(
     session: Session,
     scope_prefix: str,
@@ -306,6 +342,7 @@ def sync_vault(
     *,
     dry_run: bool = False,
     project_filter: str | None = None,
+    strict_concepts: bool = False,
 ) -> SyncReport:
     """Scan vault_root/**/*.md, parse frontmatter + wikilinks, upsert Note/Label/Link rows.
 
@@ -382,5 +419,12 @@ def sync_vault(
     if not dry_run:
         for note, _body, fm in note_data:
             report.edges_created += _upsert_note_edges(session, note, fm)
+
+    # Pass 5: upsert NoteConcept rows from concepts: frontmatter
+    if not dry_run:
+        for note, _body, fm in note_data:
+            created, issues = _sync_note_concepts(session, note, fm, strict=strict_concepts)
+            report.concept_links_created += created
+            report.concept_issues.extend(issues)
 
     return report

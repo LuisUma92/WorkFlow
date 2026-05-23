@@ -283,10 +283,27 @@ def tag_cmd(
 @notes.command(name="sync")
 @click.option("--dry-run", is_flag=True, default=False, help="Report changes without writing.")
 @click.option("--project", "project_filter", default=None, help="Restrict to project subtree.")
+@click.option(
+    "--strict-concepts",
+    "strict_concepts",
+    is_flag=True,
+    default=False,
+    help="Treat unknown concept codes as errors (abort sync).",
+)
+@click.option("--json", "as_json", is_flag=True, default=False, help="Emit JSON report.")
 @click.pass_context
 @with_schema_guard
-def sync_cmd(ctx: click.Context, dry_run: bool, project_filter: str | None) -> None:
+def sync_cmd(
+    ctx: click.Context,
+    dry_run: bool,
+    project_filter: str | None,
+    strict_concepts: bool,
+    as_json: bool,
+) -> None:
     """Sync notes vault: upsert Note/Label/Link rows from .md files."""
+    import json as _json
+    import sys
+
     from sqlalchemy.orm import Session
 
     from workflow.db.engine import get_engine_from_ctx
@@ -296,18 +313,48 @@ def sync_cmd(ctx: click.Context, dry_run: bool, project_filter: str | None) -> N
     engine = get_engine_from_ctx(ctx)
     vault_root = resolve_vault_root()
     with Session(engine) as session:
-        report = sync_vault(vault_root, session, dry_run=dry_run, project_filter=project_filter)
+        report = sync_vault(
+            vault_root,
+            session,
+            dry_run=dry_run,
+            project_filter=project_filter,
+            strict_concepts=strict_concepts,
+        )
         if not dry_run:
             session.commit()
-    suffix = " (dry run)" if dry_run else ""
-    click.echo(
-        f"Sync complete{suffix}: {report.notes_scanned} notes scanned, "
-        f"{report.labels_registered} labels registered, "
-        f"{report.links_created} links created, "
-        f"{report.citations_registered} citations registered, "
-        f"{report.edges_created} edges registered, "
-        f"{report.orphans_dropped} orphans dropped."
-    )
+
+    # Emit report
+    if as_json:
+        data = {
+            "notes_scanned": report.notes_scanned,
+            "labels_registered": report.labels_registered,
+            "links_created": report.links_created,
+            "citations_registered": report.citations_registered,
+            "edges_created": report.edges_created,
+            "orphans_dropped": report.orphans_dropped,
+            "concept_links_created": report.concept_links_created,
+            "concept_issues": report.concept_issues,
+            "dry_run": dry_run,
+        }
+        click.echo(_json.dumps(data, ensure_ascii=False, indent=2))
+    else:
+        suffix = " (dry run)" if dry_run else ""
+        click.echo(
+            f"Sync complete{suffix}: {report.notes_scanned} notes scanned, "
+            f"{report.labels_registered} labels registered, "
+            f"{report.links_created} links created, "
+            f"{report.citations_registered} citations registered, "
+            f"{report.edges_created} edges registered, "
+            f"{report.orphans_dropped} orphans dropped, "
+            f"{report.concept_links_created} concept links created."
+        )
+        if report.concept_issues:
+            for issue in report.concept_issues:
+                click.echo(f"  [{issue['severity'].upper()}] {issue['message']}", err=True)
+
+    # Non-zero exit when strict concept errors present
+    if report.concept_issues and any(i["severity"] == "error" for i in report.concept_issues):
+        sys.exit(1)
 
 
 @notes.group(name="edges")
