@@ -395,6 +395,36 @@ def edges_show_cmd(ctx: click.Context, edge_id: int, as_json: bool) -> None:
         click.echo(output)
 
 
+@edges_group.command(name="check")
+@click.option("--json", "as_json", is_flag=True)
+@click.pass_context
+@with_schema_guard
+def edges_check_cmd(ctx: click.Context, as_json: bool) -> None:
+    """Detect cycles in structural edges. Exits 1 if cycles found."""
+    from sqlalchemy.orm import Session
+
+    from workflow.db.engine import get_engine_from_ctx
+    from workflow.notes.dag import detect_structural_cycles
+
+    engine = get_engine_from_ctx(ctx)
+    with Session(engine) as session:
+        cycles = detect_structural_cycles(session)
+
+    if as_json:
+        click.echo(json.dumps({"cycles": cycles}, ensure_ascii=False))
+    else:
+        if not cycles:
+            click.echo("No cycles found in structural edges.")
+        else:
+            click.echo(f"Cycles detected in structural edges: {len(cycles)}\n")
+            for i, cycle in enumerate(cycles, 1):
+                path = " → ".join(str(n) for n in cycle)
+                click.echo(f"  Cycle {i}: {path}")
+
+    if cycles:
+        raise click.exceptions.Exit(1)
+
+
 @notes.command(name="link")
 @click.argument("note_id")
 @click.option("--concept", "concept", default=None)
