@@ -221,6 +221,41 @@ def collect_bibliography(
     return nodes, ()
 
 
+# ── Note-edge collector (ITEP-0013 P2.6) ────────────────────────────────────
+
+
+def collect_note_edges(
+    session: Session,
+) -> tuple[tuple[GraphNode, ...], tuple[GraphEdge, ...]]:
+    """Return GraphEdge objects for resolved NoteEdges (ITEP-0013).
+
+    Only edges with target_id IS NOT NULL are included — unresolved edges
+    have no target node in the graph yet.
+
+    edge_type format: ``"note_edge:<edge_class>"``  e.g. ``"note_edge:structural"``
+    label: the relation_type string (e.g. ``"refines"``)
+    """
+    from workflow.db.models.notes import NoteEdge
+
+    rows = session.scalars(
+        select(NoteEdge).where(NoteEdge.target_id.is_not(None))
+    ).all()
+
+    if not rows:
+        return (), ()
+
+    edges = tuple(
+        GraphEdge(
+            source_id=f"note:{row.source_id}",
+            target_id=f"note:{row.target_id}",
+            edge_type=f"note_edge:{row.edge_class}",
+            label=row.relation_type,
+        )
+        for row in rows
+    )
+    return (), edges
+
+
 # ── Master builder ──────────────────────────────────────────────────────────
 
 
@@ -229,8 +264,8 @@ def build_knowledge_graph(
 ) -> KnowledgeGraph:
     """Collect all sources, merge, and deduplicate nodes by node_id.
 
-    ITEP-0011 P3: all sources (notes, exercises, academic, bibliography)
-    live on GlobalBase, so a single session is sufficient.
+    ITEP-0011 P3: all sources (notes, exercises, academic, bibliography,
+    note-edges) live on GlobalBase, so a single session is sufficient.
     """
     all_nodes: list[GraphNode] = []
     all_edges: list[GraphEdge] = []
@@ -240,6 +275,7 @@ def build_knowledge_graph(
         collect_exercises,
         collect_academic,
         collect_bibliography,
+        collect_note_edges,
     ):
         nodes, edges = collector(global_session)
         all_nodes.extend(nodes)
@@ -261,5 +297,6 @@ __all__ = [
     "collect_exercises",
     "collect_academic",
     "collect_bibliography",
+    "collect_note_edges",
     "build_knowledge_graph",
 ]
