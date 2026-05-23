@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Callable, Dict, Optional, Union
 
 from latexzettel.config.settings import DEFAULT_SETTINGS, Settings
 from latexzettel.domain.types import RenderFormat
@@ -73,8 +73,6 @@ class ServerContext:
     """
 
     settings: Settings
-    db_module_path: str
-    db: Any
     initialized: bool = False
 
 
@@ -135,7 +133,7 @@ def handle_initialize(
     require_not_cancelled(token)
 
     # Estos campos son metadata; el transport layer puede usar db_module/root para reconfigurar.
-    # En MVP, ctx.settings se mantiene; ctx.db se reemplaza desde main.py para evitar imports circulares.
+    # En MVP, ctx.settings se mantiene inmutable durante la sesión.
     ctx.initialized = True
 
     client = params.get("client", {})
@@ -176,7 +174,6 @@ def handle_notes_new(
         raise ProtocolError("params.extension must be string")
 
     create_note(
-        db=ctx.db,
         note_name=note_name,
         reference_name=reference_name,
         extension=extension,
@@ -195,7 +192,6 @@ def handle_notes_new_md(
     reference_name = _opt_str(params, "reference_name")
 
     create_note_md(
-        db=ctx.db,
         note_name=note_name,
         reference_name=reference_name,
         paths=ctx.settings.paths,
@@ -238,7 +234,6 @@ def handle_notes_rename_file(
     old_filename = _req_str(params, "old_filename")
     new_filename = _req_str(params, "new_filename")
     rename_note_file(
-        db=ctx.db,
         old_filename=old_filename,
         new_filename=new_filename,
         paths=ctx.settings.paths,
@@ -253,7 +248,6 @@ def handle_notes_rename_ref(
     old_reference = _req_str(params, "old_reference")
     new_reference = _req_str(params, "new_reference")
     rename_reference(
-        db=ctx.db,
         old_reference=old_reference,
         new_reference=new_reference,
         paths=ctx.settings.paths,
@@ -272,7 +266,6 @@ def handle_notes_remove(
     require_not_cancelled(token)
     filename = _req_str(params, "filename")
     remove_note(
-        db=ctx.db,
         filename=filename,
         paths=ctx.settings.paths,
         delete_db_entry=_opt_bool(params, "delete_db_entry", True),
@@ -296,7 +289,6 @@ def handle_render_note(
     run_biber_flag = _opt_bool(params, "run_biber", False)
 
     res = render_note(
-        db=ctx.db,
         filename=filename,
         format=(RenderFormat.PDF if fmt == "pdf" else RenderFormat.HTML),
         run_biber=run_biber_flag,
@@ -315,7 +307,6 @@ def handle_render_updates(
     require_not_cancelled(token)
     fmt = _opt_format(params)
     res = render_updates(
-        db=ctx.db,
         format=(RenderFormat.PDF if fmt == "pdf" else RenderFormat.HTML),
         settings=ctx.settings.render,
         paths=ctx.settings.paths,
@@ -337,7 +328,7 @@ def handle_sync_synchronize(
     ctx: ServerContext, params: JsonObject, token: CancelToken
 ) -> JsonObject:
     require_not_cancelled(token)
-    res = synchronize(db=ctx.db, paths=ctx.settings.paths)
+    res = synchronize(paths=ctx.settings.paths)
     return {
         "updated_notes": [n.filename for n in res.updated_notes],
         "modified_links": len(res.new_or_modified_links),
@@ -350,7 +341,6 @@ def handle_sync_force(
 ) -> JsonObject:
     require_not_cancelled(token)
     res = force_synchronize(
-        db=ctx.db,
         paths=ctx.settings.paths,
         create_missing_note_files=_opt_bool(params, "create_missing_note_files", False),
         create_documents_tex_if_missing=_opt_bool(
@@ -374,7 +364,6 @@ def handle_markdown_sync_md(
 ) -> JsonObject:
     require_not_cancelled(token)
     res = sync_md(
-        db=ctx.db,
         paths=ctx.settings.paths,
         pandoc=ctx.settings.pandoc,
         overwrite_tex=_opt_bool(params, "overwrite_tex", True),
@@ -397,10 +386,8 @@ def handle_markdown_tex_to_md(
     output_dir = Path(out_dir) if out_dir else None
 
     res = tex_to_md(
-        db=ctx.db,
         note_name=note_name,
         paths=ctx.settings.paths,
-        pandoc=ctx.settings.pandoc,
         output_dir=output_dir,
         overwrite=_opt_bool(params, "overwrite", True),
     )
@@ -470,7 +457,7 @@ def handle_analysis_unreferenced(
     index_by = params.get("index_by", "filename")
     if not isinstance(index_by, str):
         raise ProtocolError("params.index_by must be string")
-    notes = list_unreferenced_notes(db=ctx.db, index_by=index_by)
+    notes = list_unreferenced_notes(index_by=index_by)
     return {"unreferenced": [n.filename for n in notes]}
 
 
@@ -478,7 +465,7 @@ def handle_analysis_dedup_citations(
     ctx: ServerContext, params: JsonObject, token: CancelToken
 ) -> JsonObject:
     require_not_cancelled(token)
-    deleted = remove_duplicate_citations(db=ctx.db)
+    deleted = remove_duplicate_citations()
     return {"deleted": deleted}
 
 
@@ -491,7 +478,7 @@ def handle_analysis_adjacency(
     if not isinstance(index_by, str):
         raise ProtocolError("params.index_by must be string")
 
-    res = calculate_adjacency_matrix(db=ctx.db, index_by=index_by)
+    res = calculate_adjacency_matrix(index_by=index_by)
     payload: JsonObject = {"count": len(res.notes), "index_by": res.index_by}
     if show:
         payload["adjacency"] = res.adjacency.tolist()

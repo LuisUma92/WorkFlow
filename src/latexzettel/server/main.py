@@ -37,10 +37,11 @@ import json
 import os
 import sys
 import traceback
-from typing import Any, Optional, Union
+from typing import Optional, Union
+
+from workflow.db.engine import init_global_db, get_global_engine
 
 from latexzettel.config.settings import DEFAULT_SETTINGS
-from latexzettel.infra.db import ensure_tables
 
 from latexzettel.server.protocols import JsonObject, ProtocolError
 from latexzettel.server.routers import (
@@ -82,23 +83,6 @@ def _error_obj(
 
 def _ok_obj(*, v: int, req_id: str | int, result: JsonObject) -> JsonObject:
     return {"v": v, "id": req_id, "ok": True, "result": result}
-
-
-# =============================================================================
-# DB helpers
-# =============================================================================
-
-
-def _import_db_module(db_module: str):
-    import importlib
-
-    return importlib.import_module(db_module)
-
-
-def _init_db(db: Any) -> None:
-    health = ensure_tables(db)
-    if not health.ok:
-        raise RuntimeError(f"DB init failed: {health.error}")
 
 
 # =============================================================================
@@ -246,13 +230,11 @@ def main() -> None:
     """
     ctx = ServerContext(
         settings=DEFAULT_SETTINGS,
-        db_module_path="latexzettel.infra.orm",
-        db=_import_db_module("latexzettel.infra.orm"),
         initialized=False,
     )
 
     try:
-        _init_db(ctx.db)
+        init_global_db(engine=get_global_engine())
     except Exception as e:
         _eprint(f"[{SERVER_NAME}] DB init failed on startup: {e}")
         sys.exit(2)
@@ -312,8 +294,7 @@ def main() -> None:
         _write_jsonl(resp)
 
     try:
-        if hasattr(ctx.db, "database") and hasattr(ctx.db.database, "close"):
-            ctx.db.database.close()
+        get_global_engine().dispose()
     except Exception:
         pass
 
