@@ -37,6 +37,45 @@ def upsert_link(session: Session, source_id: int, target_label_id: int) -> bool:
     return False
 
 
+def upsert_note_edge(
+    session: Session,
+    source_id: int,
+    target_zettel_id: str,
+    edge_class: str,
+    relation_type: str,
+    *,
+    target_id: int | None = None,
+    weight: float = 1.0,
+    rationale: str | None = None,
+) -> bool:
+    """Insert-or-skip: add the NoteEdge only if (source_id, target_zettel_id,
+    relation_type) does not yet exist.  Returns True if a new row was inserted,
+    False if the edge already existed (weight/rationale NOT updated on re-scan —
+    mirrors upsert_link semantics, intentional for Phase 2.1).
+    """
+    from workflow.db.models.notes import NoteEdge
+
+    existing = session.scalars(
+        select(NoteEdge).where(
+            NoteEdge.source_id == source_id,
+            NoteEdge.target_zettel_id == target_zettel_id,
+            NoteEdge.relation_type == relation_type,
+        )
+    ).first()
+    if existing is None:
+        session.add(NoteEdge(
+            source_id=source_id,
+            target_id=target_id,
+            target_zettel_id=target_zettel_id,
+            edge_class=edge_class,
+            relation_type=relation_type,
+            weight=weight,
+            rationale=rationale,
+        ))
+        return True
+    return False
+
+
 def upsert_citation(session: Session, note_id: int, citationkey: str) -> bool:
     """Insert a Citation if it does not already exist. Returns True if created."""
     from workflow.db.models.notes import Citation

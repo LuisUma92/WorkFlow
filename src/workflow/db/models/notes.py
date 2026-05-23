@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, Index, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from workflow.db.base import GlobalBase
@@ -223,6 +223,58 @@ class NoteConcept(GlobalBase):
     )
 
 
+class NoteEdge(GlobalBase):
+    """Directed semantic edge between two notes (ITEP-0013).
+
+    source_id → the note declaring the relation.
+    target_zettel_id → stable string ref; target_id is nullable until resolved.
+    """
+
+    __tablename__ = "note_edge"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source_id: Mapped[int] = mapped_column(
+        ForeignKey("note.id", ondelete="CASCADE"), nullable=False
+    )
+    target_id: Mapped[int | None] = mapped_column(
+        ForeignKey("note.id", ondelete="SET NULL"), nullable=True
+    )
+    target_zettel_id: Mapped[str] = mapped_column(String(21))
+    edge_class: Mapped[str] = mapped_column(String(16))
+    relation_type: Mapped[str] = mapped_column(String(24))
+    weight: Mapped[float] = mapped_column(Float, default=1.0)
+    rationale: Mapped[str | None] = mapped_column(Text)
+    # server_default keeps ORM and raw-SQL inserts consistent (both use DB UTC).
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=text("CURRENT_TIMESTAMP")
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "edge_class IN ('structural', 'associative')",
+            name="ck_note_edge_class_valid",
+        ),
+        CheckConstraint(
+            "relation_type IN ('continuation','refines','branches','synthesis','rebuttal',"
+            "'supports','contradicts','expands','see_also')",
+            name="ck_note_edge_relation_type_valid",
+        ),
+        UniqueConstraint(
+            "source_id", "target_zettel_id", "relation_type",
+            name="uq_note_edge_src_tgt_rel",
+        ),
+        Index("ix_note_edge_source", "source_id", "edge_class", "relation_type"),
+        Index("ix_note_edge_target", "target_id", "edge_class", "relation_type"),
+        Index("ix_note_edge_unresolved", "target_zettel_id"),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<NoteEdge id={self.id} {self.edge_class}/{self.relation_type} "
+            f"src={self.source_id} tgt={self.target_zettel_id!r}>"
+        )
+
+
 __all__ = [
     "Note",
     "Citation",
@@ -232,4 +284,5 @@ __all__ = [
     "NoteTag",
     "Concept",
     "NoteConcept",
+    "NoteEdge",
 ]

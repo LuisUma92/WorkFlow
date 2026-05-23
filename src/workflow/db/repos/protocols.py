@@ -19,7 +19,7 @@ from workflow.db.models.academic import (
     Item,
 )
 from workflow.db.models.exercises import Exercise
-from workflow.db.models.notes import Link, Note, Tag
+from workflow.db.models.notes import Link, Note, NoteEdge, Tag
 
 
 @runtime_checkable
@@ -62,6 +62,25 @@ class LinkRepo(Protocol):
     def get_links_from(self, note_id: int) -> list[Link]: ...
     def get_links_to(self, label_id: int) -> list[Link]: ...
     def create(self, source_id: int, target_id: int) -> Link: ...
+
+
+@runtime_checkable
+class NoteEdgeRepo(Protocol):
+    def get_edges_from(self, source_id: int) -> list[NoteEdge]: ...
+    def get_edges_to(self, target_zettel_id: str) -> list[NoteEdge]: ...
+    def upsert_edge(
+        self,
+        source_id: int,
+        target_zettel_id: str,
+        edge_class: str,
+        relation_type: str,
+        *,
+        target_id: int | None = None,
+        weight: float = 1.0,
+        rationale: str | None = None,
+    ) -> bool:
+        """Insert-or-skip.  True = row created; False = already existed (not updated)."""
+        ...
 
 
 @runtime_checkable
@@ -133,6 +152,7 @@ __all__ = [
     "ExerciseRepo",
     "ItemRepo",
     "LinkRepo",
+    "NoteEdgeRepo",
     "NoteRepo",
     "TagRepo",
 ]
