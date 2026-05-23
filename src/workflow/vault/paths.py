@@ -12,7 +12,7 @@ from pathlib import Path
 
 __all__ = ["DEFAULT_VAULT_ROOT", "ENV_VAULT_ROOT", "resolve_vault_root"]
 
-DEFAULT_VAULT_ROOT = Path.home() / "Documents" / "01-U" / "0000AA-Vault"
+DEFAULT_VAULT_ROOT = Path.home() / "01-U" / "0000AA-Vault"
 ENV_VAULT_ROOT = "WORKFLOW_VAULT_ROOT"
 
 

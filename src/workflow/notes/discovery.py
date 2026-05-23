@@ -10,12 +10,14 @@ from typing import Iterator
 
 import yaml
 
-__all__ = ["iter_note_files", "parse_frontmatter"]
+__all__ = ["iter_note_files", "walk_note_files", "parse_frontmatter"]
 
 _log = logging.getLogger(__name__)
 
-# Directories to skip during discovery (lessons.md row 18 — avoid loops)
-_SKIP_DIRS = frozenset({"images", "__pycache__", "node_modules"})
+# Directories to skip during discovery (lessons.md row 18 — avoid loops + non-note dirs).
+_SKIP_DIR_NAMES = frozenset({
+    "images", "__pycache__", "node_modules", "templates",
+})
 
 
 def iter_note_files(root: Path) -> Iterator[Path]:
@@ -33,6 +35,38 @@ def iter_note_files(root: Path) -> Iterator[Path]:
             continue
         if entry.is_file() and entry.suffix == ".md":
             yield entry
+
+
+def walk_note_files(root: Path) -> Iterator[Path]:
+    """Yield all .md files under *root*, recursively.
+
+    Skips: hidden directories (``.git``, ``.obsidian``, ``.workflow`` …), the
+    ``templates/`` directory, build/cache dirs, and directory symlinks (loop
+    safety). Files resolved outside ``root`` (escape via symlink) are dropped.
+    """
+    if not root.is_dir():
+        return
+    root_resolved = root.resolve()
+    stack: list[Path] = [root]
+    while stack:
+        current = stack.pop()
+        try:
+            entries = sorted(current.iterdir())
+        except (PermissionError, OSError):
+            continue
+        for entry in entries:
+            if entry.is_symlink() and entry.is_dir():
+                continue
+            if entry.is_dir():
+                if entry.name.startswith(".") or entry.name in _SKIP_DIR_NAMES:
+                    continue
+                stack.append(entry)
+            elif entry.is_file() and entry.suffix == ".md":
+                try:
+                    if entry.resolve().is_relative_to(root_resolved):
+                        yield entry
+                except (OSError, ValueError):
+                    continue
 
 
 def parse_frontmatter(path: Path) -> tuple[dict, str]:
