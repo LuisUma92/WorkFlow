@@ -26,7 +26,7 @@ from workflow.exercise.parser import parse_exercise
 def test_generate_single_file_creates_file():
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp)
-        result = generate_exercise_file(out, "my-ex-001")
+        result = generate_exercise_file(out, exercise_id="my-ex-001")
         assert result.file_path.exists()
         assert result.created is True
         assert result.exercise_id == "my-ex-001"
@@ -37,7 +37,7 @@ def test_generate_single_file_correct_yaml_metadata():
         out = Path(tmp)
         generate_exercise_file(
             out,
-            "serway-ch01-005",
+            exercise_id="serway-ch01-005",
             exercise_type="essay",
             difficulty="medium",
             taxonomy_level="Usar-Aplicar",
@@ -57,7 +57,7 @@ def test_generate_single_file_correct_yaml_metadata():
 def test_generate_file_has_question_skeleton():
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp)
-        generate_exercise_file(out, "ex-001")
+        generate_exercise_file(out, exercise_id="ex-001")
         content = (out / "ex-001.tex").read_text()
         assert r"\question{" in content
 
@@ -65,7 +65,7 @@ def test_generate_file_has_question_skeleton():
 def test_generate_file_has_exa_when_chapter_and_num_provided():
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp)
-        generate_exercise_file(out, "serway-ch01-005", chapter=1, exercise_num=5)
+        generate_exercise_file(out, exercise_id="serway-ch01-005", chapter=1, exercise_num=5)
         content = (out / "serway-ch01-005.tex").read_text()
         assert r"\exa[1]{5}" in content
 
@@ -73,16 +73,17 @@ def test_generate_file_has_exa_when_chapter_and_num_provided():
 def test_generate_file_no_exa_when_chapter_missing():
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp)
-        generate_exercise_file(out, "generic-001")
+        generate_exercise_file(out, exercise_id="generic-001")
         content = (out / "generic-001.tex").read_text()
-        assert r"\exa" not in content
+        # Without chapter+exercise_num, no chapter-specific \exa[N]{M} is emitted
+        assert r"\exa[" not in content
 
 
 def test_generate_file_has_book_cite():
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp)
         generate_exercise_file(
-            out, "serway-ch01-005", book_cite="serway", chapter=1, exercise_num=5
+            out, exercise_id="serway-ch01-005", book_cite="serway", chapter=1, exercise_num=5
         )
         content = (out / "serway-ch01-005.tex").read_text()
         assert r"\cite{serway}" in content
@@ -94,7 +95,7 @@ def test_generate_skips_existing_file():
         path = out / "ex-001.tex"
         path.write_text("EXISTING CONTENT")
 
-        result = generate_exercise_file(out, "ex-001")
+        result = generate_exercise_file(out, exercise_id="ex-001")
 
         assert result.created is False
         # File must not be overwritten
@@ -104,7 +105,7 @@ def test_generate_skips_existing_file():
 def test_generate_file_has_ifthenelse_guard():
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp)
-        generate_exercise_file(out, "ex-001")
+        generate_exercise_file(out, exercise_id="ex-001")
         content = (out / "ex-001.tex").read_text()
         assert r"\ifthenelse{\boolean{main}}" in content
 
@@ -112,7 +113,7 @@ def test_generate_file_has_ifthenelse_guard():
 def test_generate_file_tags_empty_list():
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp)
-        generate_exercise_file(out, "ex-002", tags=[])
+        generate_exercise_file(out, exercise_id="ex-002", tags=[])
         content = (out / "ex-002.tex").read_text()
         assert "tags: []" in content
 
@@ -120,7 +121,7 @@ def test_generate_file_tags_empty_list():
 def test_generate_file_no_tags_defaults_empty():
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp)
-        generate_exercise_file(out, "ex-003")
+        generate_exercise_file(out, exercise_id="ex-003")
         content = (out / "ex-003.tex").read_text()
         assert "tags:" in content
 
@@ -134,7 +135,7 @@ def test_generate_from_content_creates_correct_number_of_files():
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp)
         results = generate_from_content(
-            out, "serway", chapter=1, first_exercise=1, last_exercise=5
+            out, "serway", chapter=1, section="01", first_exercise=1, last_exercise=5
         )
         assert len(results) == 5
         assert all(r.created for r in results)
@@ -144,13 +145,13 @@ def test_generate_from_content_naming_convention():
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp)
         results = generate_from_content(
-            out, "serway", chapter=3, first_exercise=10, last_exercise=12
+            out, "serway", chapter=3, section="01", first_exercise=10, last_exercise=12
         )
         names = {r.file_path.name for r in results}
         assert names == {
-            "serway-ch03-010.tex",
-            "serway-ch03-011.tex",
-            "serway-ch03-012.tex",
+            "serway-C03S01P010.tex",
+            "serway-C03S01P011.tex",
+            "serway-C03S01P012.tex",
         }
 
 
@@ -158,7 +159,7 @@ def test_generate_from_content_files_contain_exa():
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp)
         results = generate_from_content(
-            out, "serway", chapter=1, first_exercise=1, last_exercise=2
+            out, "serway", chapter=1, section="01", first_exercise=1, last_exercise=2
         )
         content_1 = results[0].file_path.read_text()
         content_2 = results[1].file_path.read_text()
@@ -169,11 +170,11 @@ def test_generate_from_content_files_contain_exa():
 def test_generate_from_content_skips_existing():
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp)
-        existing = out / "serway-ch01-001.tex"
+        existing = out / "serway-C01S01P001.tex"
         existing.write_text("PRE-EXISTING")
 
         results = generate_from_content(
-            out, "serway", chapter=1, first_exercise=1, last_exercise=3
+            out, "serway", chapter=1, section="01", first_exercise=1, last_exercise=3
         )
 
         created = [r for r in results if r.created]
@@ -193,7 +194,7 @@ def test_generated_file_is_parseable():
         out = Path(tmp)
         generate_exercise_file(
             out,
-            "roundtrip-001",
+            exercise_id="roundtrip-001",
             exercise_type="essay",
             difficulty="medium",
             taxonomy_level="Usar-Aplicar",
@@ -221,10 +222,10 @@ def test_generated_file_is_parseable():
 def test_exercise_id_path_traversal_rejected(tmp_path):
     """Exercise IDs with path separators should be rejected."""
     with pytest.raises(ValueError, match="unsafe characters"):
-        generate_exercise_file(tmp_path, "../../../evil")
+        generate_exercise_file(tmp_path, exercise_id="../../../evil")
 
 
 def test_exercise_id_with_dots_allowed(tmp_path):
     """Exercise IDs with dots (but no slashes) should be allowed."""
-    result = generate_exercise_file(tmp_path, "phys.gauss.001")
+    result = generate_exercise_file(tmp_path, exercise_id="phys.gauss.001")
     assert result.created is True

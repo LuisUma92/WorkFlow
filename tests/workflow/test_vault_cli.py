@@ -54,6 +54,7 @@ def isolated_global_db(tmp_path, monkeypatch):
     data = tmp_path / "share" / "workflow"
     data.mkdir(parents=True)
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "share"))
+    monkeypatch.setenv("WORKFLOW_DATA_DIR", str(data))
     monkeypatch.setenv("WORKFLOW_VAULT_ROOT", str(_make_vault(tmp_path)))
     return tmp_path
 

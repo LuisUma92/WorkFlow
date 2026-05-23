@@ -109,7 +109,9 @@ def test_iter_general_links_emits_config_entries(session, tmp_path):
 
 def test_get_tex_config_unknown_institution_returns_default():
     assert get_tex_config(None) is DEF_TEX_CONFIG
-    assert get_tex_config("UCR") is DEF_TEX_CONFIG  # not yet specialized
+    assert get_tex_config("UNKNOWN_INST") is DEF_TEX_CONFIG
+    # UCR now has a specialized config
+    assert get_tex_config("UCR") is INSTITUTION_TEX_CONFIG["UCR"]
 
 
 def test_get_tex_config_ucimed_uses_underscore_scheme():

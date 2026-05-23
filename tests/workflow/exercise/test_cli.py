@@ -443,63 +443,89 @@ class TestExportMoodleCommand:
 
 
 class TestCreateCommand:
-    def test_create_single_creates_file(self, runner, tmp_path):
-        result = runner.invoke(
-            exercise,
-            [
-                "create",
-                "my-ex-001",
-                "--output-dir",
-                str(tmp_path),
-            ],
-        )
+    def test_create_single_creates_file(self, runner, tmp_path, db_engine):
+        # The create CLI derives the exercise_id from book+chapter+section+exercise_num.
+        # We pass obj={"engine": db_engine} so the CLI uses the test DB and does not
+        # hit the live global DB. _test_bib_entry_existence is skipped when book=None,
+        # but section+chapter+exercise_num allow derivation. We patch the bib check
+        # to bypass DB lookup for book.
+        from unittest.mock import patch
+        with patch("workflow.exercise.cli._test_bib_entry_existence", return_value=None):
+            result = runner.invoke(
+                exercise,
+                [
+                    "create",
+                    "--output-dir", str(tmp_path),
+                    "--book", "testbook",
+                    "--chapter", "1",
+                    "--section", "01",
+                    "--exercise-num", "1",
+                ],
+                obj={"engine": db_engine},
+            )
         assert result.exit_code == 0, result.output
-        assert (tmp_path / "my-ex-001.tex").exists()
+        assert (tmp_path / "testbook-C01S01P001.tex").exists()
 
-    def test_create_single_reports_created(self, runner, tmp_path):
-        result = runner.invoke(
-            exercise,
-            ["create", "my-ex-001", "--output-dir", str(tmp_path)],
-        )
+    def test_create_single_reports_created(self, runner, tmp_path, db_engine):
+        from unittest.mock import patch
+        with patch("workflow.exercise.cli._test_bib_entry_existence", return_value=None):
+            result = runner.invoke(
+                exercise,
+                [
+                    "create",
+                    "--output-dir", str(tmp_path),
+                    "--book", "testbook",
+                    "--chapter", "1",
+                    "--section", "01",
+                    "--exercise-num", "1",
+                ],
+                obj={"engine": db_engine},
+            )
         assert result.exit_code == 0
-        assert "my-ex-001" in result.output
+        assert "testbook-C01S01P001" in result.output
 
-    def test_create_with_options(self, runner, tmp_path):
-        result = runner.invoke(
-            exercise,
-            [
-                "create",
-                "serway-ch01-005",
-                "--output-dir",
-                str(tmp_path),
-                "--type",
-                "essay",
-                "--difficulty",
-                "hard",
-                "--book",
-                "serway",
-                "--chapter",
-                "1",
-                "--exercise-num",
-                "5",
-                "--tag",
-                "physics",
-            ],
-        )
+    def test_create_with_options(self, runner, tmp_path, db_engine):
+        from unittest.mock import patch
+        with patch("workflow.exercise.cli._test_bib_entry_existence", return_value=None):
+            result = runner.invoke(
+                exercise,
+                [
+                    "create",
+                    "--output-dir", str(tmp_path),
+                    "--type", "essay",
+                    "--difficulty", "hard",
+                    "--book", "serway",
+                    "--chapter", "1",
+                    "--section", "01",
+                    "--exercise-num", "5",
+                    "--tag", "physics",
+                ],
+                obj={"engine": db_engine},
+            )
         assert result.exit_code == 0, result.output
-        content = (tmp_path / "serway-ch01-005.tex").read_text()
-        assert "id: serway-ch01-005" in content
+        content = (tmp_path / "serway-C01S01P005.tex").read_text()
+        assert "id: serway-C01S01P005" in content
         assert "difficulty: hard" in content
         assert r"\exa[1]{5}" in content
 
-    def test_create_existing_skips_without_overwrite(self, runner, tmp_path):
-        path = tmp_path / "ex-001.tex"
+    def test_create_existing_skips_without_overwrite(self, runner, tmp_path, db_engine):
+        path = tmp_path / "testbook-C01S01P001.tex"
         path.write_text("EXISTING")
 
-        result = runner.invoke(
-            exercise,
-            ["create", "ex-001", "--output-dir", str(tmp_path)],
-        )
+        from unittest.mock import patch
+        with patch("workflow.exercise.cli._test_bib_entry_existence", return_value=None):
+            result = runner.invoke(
+                exercise,
+                [
+                    "create",
+                    "--output-dir", str(tmp_path),
+                    "--book", "testbook",
+                    "--chapter", "1",
+                    "--section", "01",
+                    "--exercise-num", "1",
+                ],
+                obj={"engine": db_engine},
+            )
         assert result.exit_code == 0
         assert path.read_text() == "EXISTING"
         assert "skip" in result.output.lower() or "exist" in result.output.lower()
@@ -520,6 +546,8 @@ class TestCreateRangeCommand:
                 "serway",
                 "--chapter",
                 "1",
+                "--section",
+                "01",
                 "--first",
                 "1",
                 "--last",
@@ -528,7 +556,7 @@ class TestCreateRangeCommand:
         )
         assert result.exit_code == 0, result.output
         for num in range(1, 6):
-            assert (tmp_path / f"serway-ch01-{num:03d}.tex").exists()
+            assert (tmp_path / f"serway-C01S01P{num:03d}.tex").exists()
 
     def test_create_range_reports_count(self, runner, tmp_path):
         result = runner.invoke(
@@ -541,6 +569,8 @@ class TestCreateRangeCommand:
                 "serway",
                 "--chapter",
                 "2",
+                "--section",
+                "01",
                 "--first",
                 "10",
                 "--last",
@@ -551,7 +581,7 @@ class TestCreateRangeCommand:
         assert "5" in result.output  # 5 files created
 
     def test_create_range_skips_existing(self, runner, tmp_path):
-        existing = tmp_path / "serway-ch01-001.tex"
+        existing = tmp_path / "serway-C01S01P001.tex"
         existing.write_text("PRE-EXISTING")
 
         result = runner.invoke(
@@ -564,6 +594,8 @@ class TestCreateRangeCommand:
                 "serway",
                 "--chapter",
                 "1",
+                "--section",
+                "01",
                 "--first",
                 "1",
                 "--last",
@@ -584,6 +616,8 @@ class TestCreateRangeCommand:
                 "halliday",
                 "--chapter",
                 "5",
+                "--section",
+                "01",
                 "--first",
                 "1",
                 "--last",
@@ -595,7 +629,7 @@ class TestCreateRangeCommand:
             ],
         )
         assert result.exit_code == 0
-        content = (tmp_path / "halliday-ch05-001.tex").read_text()
+        content = (tmp_path / "halliday-C05S01P001.tex").read_text()
         assert "mechanics" in content
         assert "forces" in content
 

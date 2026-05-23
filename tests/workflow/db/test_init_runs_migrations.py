@@ -57,7 +57,7 @@ def test_init_local_db_stamps_baseline(tmp_local_db):
     insp = inspect(engine)
     assert "schema_version" in insp.get_table_names()
     with Session(engine) as s:
-        assert current_version(s, "local") == "0001_baseline"
+        assert current_version(s, "local") == "0002_add_project_layer"
 
 
 def test_init_global_db_creates_business_tables_too(tmp_global_db):

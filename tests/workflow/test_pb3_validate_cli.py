@@ -23,6 +23,7 @@ def runner() -> CliRunner:
 def _isolated_global_db(tmp_path_factory, monkeypatch):
     base = tmp_path_factory.mktemp("xdg")
     monkeypatch.setenv("XDG_DATA_HOME", str(base))
+    monkeypatch.setenv("WORKFLOW_DATA_DIR", str(base / "workflow"))
 
 
 def _seed_main_topic(code: str = "FI0006") -> int:

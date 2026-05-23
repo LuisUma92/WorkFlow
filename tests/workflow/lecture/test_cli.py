@@ -21,6 +21,7 @@ def _isolated_global_db(tmp_path_factory, monkeypatch):
     """Redirect appdirs user_data_dir into tmp so tests don't touch real DB."""
     base = tmp_path_factory.mktemp("xdg")
     monkeypatch.setenv("XDG_DATA_HOME", str(base))
+    monkeypatch.setenv("WORKFLOW_DATA_DIR", str(base / "workflow"))
 
 
 # ── scan command ────────────────────────────────────────────────────────────
