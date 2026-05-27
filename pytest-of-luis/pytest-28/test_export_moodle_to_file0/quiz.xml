@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<quiz><question type="multichoice"><name><text>cli-test-001</text></name><idnumber>cli-test-001</idnumber><questiontext format="html"><text>
+  Find \(\vec{E}\).
+  \begin{enumerate}[a)]
+    \qpart{ Option A}{Sol A}
+    \qpart{Option B}{Sol B}
+  \end{enumerate}
+</text></questiontext><generalfeedback format="html"><text>
+  General solution.
+</text></generalfeedback><penalty>0.3333333</penalty><single>true</single><shuffleanswers>1</shuffleanswers><answer fraction="100" format="html"><text> Option A</text><feedback><text>Sol A</text></feedback></answer><answer fraction="0" format="html"><text>Option B</text><feedback><text>Sol B</text></feedback></answer><tags><tag><text>physics</text></tag><tag><text>electrostatics</text></tag></tags></question></quiz>

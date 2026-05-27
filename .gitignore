@@ -223,4 +223,4 @@ log.data
 docs/.obsidian
 .~lock.biblatex-entries.ods#
 slipbox.db
-.claude/settings.local.json
+.claude/

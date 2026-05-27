@@ -53,7 +53,12 @@
       "Bash(.venv/bin/python -m pytest tests/workflow/lecture/test_cli.py tests/workflow/lecture/test_note_splitter.py -q)",
       "Bash(.venv/bin/python -m pytest -q --ignore=tests/test_database.py)",
       "Bash(.venv/bin/flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics)",
-      "Bash(.venv/bin/flake8 src/workflow/vault/paths.py src/workflow/vault/cli.py src/workflow/lecture/cli.py --count --max-complexity=10 --max-line-length=127 --statistics)"
+      "Bash(.venv/bin/flake8 src/workflow/vault/paths.py src/workflow/vault/cli.py src/workflow/lecture/cli.py --count --max-complexity=10 --max-line-length=127 --statistics)",
+      "Bash(ip -4 addr show enp5s0f3u1)",
+      "Read(//home/luis/01-U/workflow/**)",
+      "Read(//home/luis/01-U/0000AA-Vault/inbox/**)",
+      "Read(//home/luis/01-U/0000AA-Vault/templates/**)",
+      "Bash(sed -n '30,75p' src/workflow/notes/init.py)"
     ]
   }
 }

@@ -256,6 +256,49 @@ def collect_note_edges(
     return (), edges
 
 
+# ── Note-concept collector (ITEP-0012) ──────────────────────────────────────
+
+
+def collect_note_concepts(
+    session: Session,
+) -> tuple[tuple[GraphNode, ...], tuple[GraphEdge, ...]]:
+    """Return GraphNode objects for Concepts + GraphEdge for each NoteConcept row.
+
+    Concept nodes are identified as ``"concept:<id>"``; label is concept.code.
+    Edge type is ``"note_concept"``; label is concept.code.
+    Concept nodes are deduplicated (multiple notes can share the same concept).
+    """
+    from workflow.db.models.notes import Concept, NoteConcept
+
+    rows = session.scalars(select(NoteConcept)).all()
+    if not rows:
+        return (), ()
+
+    concept_ids = {row.concept_id for row in rows}
+    concepts = {
+        c.id: c
+        for c in session.scalars(
+            select(Concept).where(Concept.id.in_(concept_ids))
+        ).all()
+    }
+
+    nodes = tuple(
+        GraphNode(node_id=f"concept:{c.id}", node_type="concept", label=c.code)
+        for c in concepts.values()
+    )
+    edges = tuple(
+        GraphEdge(
+            source_id=f"note:{row.note_id}",
+            target_id=f"concept:{row.concept_id}",
+            edge_type="note_concept",
+            label=concepts[row.concept_id].code,
+        )
+        for row in rows
+        if row.concept_id in concepts
+    )
+    return nodes, edges
+
+
 # ── Master builder ──────────────────────────────────────────────────────────
 
 
@@ -276,6 +319,7 @@ def build_knowledge_graph(
         collect_academic,
         collect_bibliography,
         collect_note_edges,
+        collect_note_concepts,
     ):
         nodes, edges = collector(global_session)
         all_nodes.extend(nodes)
@@ -298,5 +342,6 @@ __all__ = [
     "collect_academic",
     "collect_bibliography",
     "collect_note_edges",
+    "collect_note_concepts",
     "build_knowledge_graph",
 ]

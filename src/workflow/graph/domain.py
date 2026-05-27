@@ -33,6 +33,7 @@ class GraphEdge:
         "exercise_book"    — exercise → bib_entry (source textbook)
         "bib_content"      — bib_entry → content (BibContent join)
         "course_content"   — course → content (CourseContent join)
+        "note_concept"     — note → concept (NoteConcept join, ITEP-0012)
     """
 
     source_id: str
