@@ -4,11 +4,19 @@ title: Add `workflow exam scaffold-xml` to generate Moodle quiz skeletons
 type: feature
 source_agent: exam-author
 opened_on: 2026-04-29
-status: proposed
+status: completed
+resolution: implemented
+closed_on: 2026-05-27
+closed_by: Luis Fernando Umaña Castro
+implementation:
+  - src/workflow/exam/__init__.py
+  - src/workflow/exam/scaffold.py
+  - src/workflow/exam/cli.py
+  - tests/workflow/exam/test_scaffold_xml.py
 priority: P1
 severity: recurring-friction
 labels: [cli, exercise]
-components: [workflow.exercise, workflow.latex]
+components: [workflow.exam]
 adr_refs: [ADR-0010, ADR-0012]
 related_gaps:
   - "raw/exam-author.md#2026-04-27"
@@ -129,3 +137,10 @@ required flags, or output path not writable.
 
 - `raw/exam-author.md#2026-04-27` — no CLI to scaffold Moodle XML quiz from
   spec (UCR PC authoring fully manual); PC03 + PC04 both hand-authored
+
+## Progress log
+
+- **2026-05-27** — Implemented. New top-level `workflow exam` group with `scaffold-xml`
+  subcommand in `src/workflow/exam/` (scaffold.py + cli.py). Pure-Python, no DB.
+  String-template approach for CDATA sections. 35 tests added; full suite 1286 passed.
+  `xmllint --noout` confirms valid output. Wired into `src/main.py`.
