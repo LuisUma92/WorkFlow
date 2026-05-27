@@ -109,6 +109,7 @@ Sonnet 4.6 (LOW scope, pure docs).
 
 ## References
 
+- 2026-05-27 — Triage: substantially resolved by commits `6cb2086` (vault P7 closeout) and `5d37305` (wiki vault model). One stale `00ZZ-Vault` reference remains at `docs/wiki/Zettelkasten-Notes.md:109` — micro-fix (~10 lines) tracked in Phase 5 of `tasks/roadmap/2026-05-27.md`.
 - Current session commit: `docs(wiki): document note-creation boundary with obsidian.nvim`
 - Primary file: `docs/wiki/Zettelkasten-Notes.md`
 - Source of truth: `src/workflow/notes/init.py`

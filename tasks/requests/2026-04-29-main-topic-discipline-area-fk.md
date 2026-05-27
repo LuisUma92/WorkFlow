@@ -4,7 +4,11 @@ title: Add NOT NULL FK from main_topic.discipline_area_id to discipline_area.id
 type: enhancement
 source_agent: user
 opened_on: 2026-04-29
-status: proposed
+status: completed
+resolution: implemented
+closed_on: 2026-04-30
+closed_by: Luis Fernando Umaña Castro
+implementation: [7d4a156]
 priority: P0
 severity: blocker
 labels: [db, validation]
