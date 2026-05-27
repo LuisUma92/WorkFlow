@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session
 
 from workflow.db.base import GlobalBase
 from workflow.db.engine import _enable_fk_pragma
-from workflow.db.models.exercises import Exercise
+from workflow.db.models.exercises import Exercise, ExerciseConcept
+from workflow.db.models.knowledge import Concept, Content, DisciplineArea, MainTopic, Topic
 from workflow.exercise.service import (
     SyncResult,
     delete_orphans,
@@ -24,10 +25,45 @@ from workflow.exercise.service import (
 # ── Fixtures ─────────────────────────────────────────────────────────────────
 
 
+def _seed_concept_chain(session: Session, code: str = "test-concept") -> Concept:
+    """Seed minimal DisciplineArea → MainTopic → Topic → Content → Concept chain."""
+    area = DisciplineArea(
+        name="Test Area",
+        code="TST",
+        dewey="000",
+        discipline_num=1,
+        topic_num=1,
+        area_initials="TA",
+    )
+    session.add(area)
+    session.flush()
+    main_topic = MainTopic(name="Test Topic", code="TST-001", discipline_area_id=area.id)
+    session.add(main_topic)
+    session.flush()
+    subtopic = Topic(name="Sub Topic", serial_number=1, main_topic_id=main_topic.id)
+    session.add(subtopic)
+    session.flush()
+    content = Content(name="Test Content", topic_id=subtopic.id)
+    session.add(content)
+    session.flush()
+    concept = Concept(
+        code=code,
+        label=code.replace("-", " ").title(),
+        domain="Información",
+        content_id=content.id,
+    )
+    session.add(concept)
+    session.flush()
+    return concept
+
+
 @pytest.fixture()
 def mem_engine():
     """In-memory SQLite engine with GlobalBase tables."""
     import workflow.db.models.exercises  # noqa: F401 — populate metadata
+    import workflow.db.models.knowledge  # noqa: F401 — populate metadata
+    import workflow.db.models.bibliography  # noqa: F401 — populate metadata
+    import workflow.db.models.notes  # noqa: F401 — populate metadata
 
     engine = create_engine("sqlite:///:memory:")
     event.listen(engine, "connect", _enable_fk_pragma)
@@ -371,3 +407,154 @@ class TestParseAndFilter:
         assert "paf-003" in ids
         assert "paf-004" not in ids
         assert skipped == 0
+
+
+# ── ExerciseConcept upsert ────────────────────────────────────────────────────
+
+CONCEPT_TEX_TEMPLATE = """\
+% ---
+% id: {ex_id}
+% type: essay
+% difficulty: easy
+% taxonomy_level: Recordar
+% taxonomy_domain: Información
+% tags: []
+% concepts: [{concepts}]
+% status: complete
+% ---
+\\question{{Concept test.}}{{answer}}
+"""
+
+
+class TestSyncExerciseConcepts:
+    def _make_concept_tex(
+        self, path: Path, ex_id: str, concepts: str = ""
+    ) -> Path:
+        path.write_text(
+            CONCEPT_TEX_TEMPLATE.format(ex_id=ex_id, concepts=concepts),
+            encoding="utf-8",
+        )
+        return path
+
+    def test_sync_writes_exercise_concept_rows(
+        self, session: Session, tmp_path: Path
+    ) -> None:
+        """sync_exercises creates ExerciseConcept rows for valid concept slugs."""
+        concept = _seed_concept_chain(session, code="newton-law")
+        session.commit()
+
+        tex = self._make_concept_tex(tmp_path / "ec-001.tex", "ec-001", "newton-law")
+        sync_exercises(session, [tex])
+
+        from workflow.db.repos.sqlalchemy import SqlExerciseRepo
+        repo = SqlExerciseRepo(session)
+        ex = repo.get_by_exercise_id("ec-001")
+        assert ex is not None
+        linked_ids = {ec.concept_id for ec in ex.concept_links}
+        assert concept.id in linked_ids
+
+    def test_sync_is_idempotent(
+        self, session: Session, tmp_path: Path
+    ) -> None:
+        """Re-running sync on the same file produces no duplicate ExerciseConcept rows."""
+        _seed_concept_chain(session, code="idempotent-concept")
+        session.commit()
+
+        tex = self._make_concept_tex(
+            tmp_path / "ec-002.tex", "ec-002", "idempotent-concept"
+        )
+        # First sync
+        tex.write_bytes(tex.read_bytes())  # touch to ensure hash differs on second run
+        sync_exercises(session, [tex])
+
+        # Modify file to force re-sync
+        tex.write_text(
+            CONCEPT_TEX_TEMPLATE.format(
+                ex_id="ec-002", concepts="idempotent-concept"
+            ).replace("Recordar", "Aplicar"),
+            encoding="utf-8",
+        )
+        sync_exercises(session, [tex])
+
+        from workflow.db.repos.sqlalchemy import SqlExerciseRepo
+        repo = SqlExerciseRepo(session)
+        ex = repo.get_by_exercise_id("ec-002")
+        assert ex is not None
+        assert len(ex.concept_links) == 1
+
+    def test_sync_removes_stale_concept_links(
+        self, session: Session, tmp_path: Path
+    ) -> None:
+        """Removing a concept slug from .tex and re-syncing deletes the ExerciseConcept row."""
+        c1 = _seed_concept_chain(session, code="stale-concept")
+        c2_area = session.query(
+            __import__(
+                "workflow.db.models.knowledge", fromlist=["DisciplineArea"]
+            ).DisciplineArea
+        ).first()
+        from workflow.db.models.knowledge import Concept, Content, Topic
+        # Reuse existing content chain — find the content
+        content = session.query(Content).first()
+        c2 = Concept(
+            code="keep-concept",
+            label="Keep Concept",
+            domain="Información",
+            content_id=content.id,
+        )
+        session.add(c2)
+        session.flush()
+        session.commit()
+
+        tex = tmp_path / "ec-003.tex"
+        tex.write_text(
+            CONCEPT_TEX_TEMPLATE.format(
+                ex_id="ec-003", concepts="stale-concept, keep-concept"
+            ),
+            encoding="utf-8",
+        )
+        sync_exercises(session, [tex])
+
+        # Now remove stale-concept from frontmatter
+        tex.write_text(
+            CONCEPT_TEX_TEMPLATE.format(ex_id="ec-003", concepts="keep-concept"),
+            encoding="utf-8",
+        )
+        sync_exercises(session, [tex])
+
+        from workflow.db.repos.sqlalchemy import SqlExerciseRepo
+        repo = SqlExerciseRepo(session)
+        ex = repo.get_by_exercise_id("ec-003")
+        assert ex is not None
+        linked_ids = {ec.concept_id for ec in ex.concept_links}
+        assert c1.id not in linked_ids
+        assert c2.id in linked_ids
+
+    def test_sync_strict_concepts_raises_on_unknown(
+        self, session: Session, tmp_path: Path
+    ) -> None:
+        """sync_exercises with strict_concepts=True raises ValueError for unknown codes."""
+        session.commit()
+
+        tex = self._make_concept_tex(
+            tmp_path / "ec-004.tex", "ec-004", "nonexistent-concept"
+        )
+        with pytest.raises(ValueError, match="nonexistent-concept"):
+            sync_exercises(session, [tex], strict_concepts=True)
+
+    def test_sync_lenient_skips_unknown_concept(
+        self, session: Session, tmp_path: Path
+    ) -> None:
+        """sync_exercises (lenient) does not raise for unknown concept codes."""
+        session.commit()
+
+        tex = self._make_concept_tex(
+            tmp_path / "ec-005.tex", "ec-005", "unknown-concept"
+        )
+        result, _ = sync_exercises(session, [tex], strict_concepts=False)
+        # Should succeed — unknown concept just produces no ExerciseConcept rows
+        assert result.new == 1
+        from workflow.db.repos.sqlalchemy import SqlExerciseRepo
+        repo = SqlExerciseRepo(session)
+        ex = repo.get_by_exercise_id("ec-005")
+        assert ex is not None
+        assert len(ex.concept_links) == 0

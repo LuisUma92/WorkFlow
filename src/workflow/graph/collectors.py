@@ -78,11 +78,13 @@ def collect_notes(
 def collect_exercises(
     global_session: Session,
 ) -> tuple[tuple[GraphNode, ...], tuple[GraphEdge, ...]]:
-    """Return Exercise nodes + edges to Content and BibEntry.
+    """Return Exercise nodes + edges to BibEntry.
 
     Exercises are identified as "exercise:{exercise_id}".
-    content_id FK → edge to "content:{content_id}".
     book_id FK    → edge to "bib:{book_id}".
+
+    Note: Exercise.content_id was dropped in the ORM reshape (Phase 4);
+    exercise→content edges are now expressed via ExerciseConcept→Concept→Content.
     """
     from workflow.db.models.exercises import Exercise
 
@@ -101,14 +103,6 @@ def collect_exercises(
 
     edges: list[GraphEdge] = []
     for ex in exercises:
-        if ex.content_id is not None:
-            edges.append(
-                GraphEdge(
-                    source_id=f"exercise:{ex.exercise_id}",
-                    target_id=f"content:{ex.content_id}",
-                    edge_type="exercise_content",
-                )
-            )
         if ex.book_id is not None:
             edges.append(
                 GraphEdge(
@@ -296,6 +290,67 @@ def collect_note_concepts(
     return nodes, edges
 
 
+# ── Exercise-concept collector (Phase 4B) ───────────────────────────────────
+
+
+def collect_exercise_concepts(
+    global_session: Session,
+) -> tuple[tuple[GraphNode, ...], tuple[GraphEdge, ...]]:
+    """Return GraphNode objects for Concepts + GraphEdge for each ExerciseConcept row.
+
+    Concept nodes are identified as ``"concept:<id>"``; label is concept.code.
+    Exercise nodes are identified as ``"exercise:<exercise_id>"``; label is exercise_id.
+    Edge type is ``"exercise→concept"``; label is concept.code.
+    Concept nodes are deduplicated (multiple exercises can share the same concept).
+    """
+    from workflow.db.models.exercises import Exercise, ExerciseConcept
+    from workflow.db.models.knowledge import Concept
+
+    rows = global_session.scalars(select(ExerciseConcept)).all()
+    if not rows:
+        return (), ()
+
+    concept_ids = {row.concept_id for row in rows}
+    concepts = {
+        c.id: c
+        for c in global_session.scalars(
+            select(Concept).where(Concept.id.in_(concept_ids))
+        ).all()
+    }
+
+    exercise_int_ids = {row.exercise_id for row in rows}
+    exercises = {
+        ex.id: ex
+        for ex in global_session.scalars(
+            select(Exercise).where(Exercise.id.in_(exercise_int_ids))
+        ).all()
+    }
+
+    nodes = tuple(
+        GraphNode(node_id=f"concept:{c.id}", node_type="concept", label=c.code)
+        for c in concepts.values()
+    )
+    exercise_nodes = tuple(
+        GraphNode(
+            node_id=f"exercise:{ex.exercise_id}",
+            node_type="exercise",
+            label=ex.exercise_id,
+        )
+        for ex in exercises.values()
+    )
+    edges = tuple(
+        GraphEdge(
+            source_id=f"exercise:{exercises[row.exercise_id].exercise_id}",
+            target_id=f"concept:{row.concept_id}",
+            edge_type="exercise→concept",
+            label=concepts[row.concept_id].code,
+        )
+        for row in rows
+        if row.exercise_id in exercises and row.concept_id in concepts
+    )
+    return exercise_nodes + nodes, edges
+
+
 # ── Master builder ──────────────────────────────────────────────────────────
 
 
@@ -317,6 +372,7 @@ def build_knowledge_graph(
         collect_bibliography,
         collect_note_edges,
         collect_note_concepts,
+        collect_exercise_concepts,
     ):
         nodes, edges = collector(global_session)
         all_nodes.extend(nodes)
@@ -340,5 +396,6 @@ __all__ = [
     "collect_bibliography",
     "collect_note_edges",
     "collect_note_concepts",
+    "collect_exercise_concepts",
     "build_knowledge_graph",
 ]

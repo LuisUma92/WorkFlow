@@ -286,8 +286,6 @@ class SqlExerciseRepo:
         "taxonomy_level",
         "taxonomy_domain",
         "tags",
-        "concepts",
-        "content_id",
         "book_id",
         "default_grade",
         "penalty",

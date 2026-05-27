@@ -152,7 +152,8 @@ def test_collect_exercises_basic(global_session):
     assert node.node_type == "exercise"
 
 
-def test_collect_exercises_with_content_edge(global_session):
+def test_collect_exercises_no_content_edge(global_session):
+    """Exercise.content_id was dropped in Phase 4; no exercise_content edges exist."""
     da = _da_for(global_session, "PHY", "Physics")
     main_topic = MainTopic(name="Physics", code="PHY", discipline_area_id=da.id)
     global_session.add(main_topic)
@@ -162,14 +163,7 @@ def test_collect_exercises_with_content_edge(global_session):
     global_session.add(topic)
     global_session.flush()
 
-    content = Content(
-        topic_id=topic.id,
-        chapter_number=1,
-        section_number=1,
-        name="Newton Laws",
-        first_page=1,
-        last_page=10,
-    )
+    content = Content(topic_id=topic.id, name="Newton Laws")
     global_session.add(content)
     global_session.flush()
 
@@ -177,16 +171,13 @@ def test_collect_exercises_with_content_edge(global_session):
         exercise_id="phys-002",
         source_path="/path/phys-002.tex",
         file_hash="def456",
-        content_id=content.id,
     )
     global_session.add(ex)
     global_session.flush()
 
     nodes, edges = collect_exercises(global_session)
     content_edges = [e for e in edges if e.edge_type == "exercise_content"]
-    assert len(content_edges) == 1
-    assert content_edges[0].source_id == "exercise:phys-002"
-    assert content_edges[0].target_id == f"content:{content.id}"
+    assert len(content_edges) == 0
 
 
 def test_collect_exercises_with_book_edge(global_session):
@@ -229,14 +220,7 @@ def test_collect_academic_content_topic(global_session):
     global_session.add(topic)
     global_session.flush()
 
-    content = Content(
-        topic_id=topic.id,
-        chapter_number=1,
-        section_number=2,
-        name="Derivatives",
-        first_page=50,
-        last_page=75,
-    )
+    content = Content(topic_id=topic.id, name="Derivatives")
     global_session.add(content)
     global_session.flush()
 
@@ -283,18 +267,18 @@ def test_collect_academic_bib_content_edge(global_session):
     global_session.add(topic)
     global_session.flush()
 
-    content = Content(
-        topic_id=topic.id,
-        chapter_number=2,
-        section_number=1,
-        name="Integration",
-        first_page=80,
-        last_page=110,
-    )
+    content = Content(topic_id=topic.id, name="Integration")
     global_session.add(content)
     global_session.flush()
 
-    bc = BibContent(bib_entry_id=bib.id, content_id=content.id)
+    bc = BibContent(
+        bib_entry_id=bib.id,
+        content_id=content.id,
+        chapter_number=2,
+        section_number=1,
+        first_page=80,
+        last_page=110,
+    )
     global_session.add(bc)
     global_session.flush()
 
@@ -325,14 +309,7 @@ def test_collect_academic_course_content_edge(global_session):
     global_session.add(topic)
     global_session.flush()
 
-    content = Content(
-        topic_id=topic.id,
-        chapter_number=20,
-        section_number=1,
-        name="Coulomb",
-        first_page=400,
-        last_page=420,
-    )
+    content = Content(topic_id=topic.id, name="Coulomb")
     global_session.add(content)
     global_session.flush()
 

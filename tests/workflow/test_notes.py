@@ -584,9 +584,14 @@ class TestCLILink:
         import workflow.db.models.notes  # noqa: F401
         import workflow.db.models.exercises  # noqa: F401
         from workflow.db.base import GlobalBase as _GB
-        from workflow.db.models.knowledge import Concept as _C
+        from workflow.db.models.knowledge import (
+            Concept as _C,
+            Content as _Ct,
+            DisciplineArea as _DA,
+            MainTopic as _MT,
+            Topic as _T,
+        )
         from workflow.db.models.notes import Note as _Note
-        from workflow.db.models.academic import DisciplineArea as _DA, MainTopic as _MT
 
         eng = _ce("sqlite:///:memory:")
         _GB.metadata.create_all(eng)
@@ -597,7 +602,13 @@ class TestCLILink:
             mt = _MT(code="XX0001", name="X Topic", discipline_area_id=da.id)
             s.add(mt)
             s.flush()
-            s.add(_C(code=concept_code, label=concept_code, main_topic_id=mt.id))
+            tp = _T(main_topic_id=mt.id, name="X Sub", serial_number=1)
+            s.add(tp)
+            s.flush()
+            ct = _Ct(topic_id=tp.id, name="X Content")
+            s.add(ct)
+            s.flush()
+            s.add(_C(code=concept_code, label=concept_code, content_id=ct.id, domain="Información"))
             s.add(_Note(filename=f"{note_id}.md", reference=note_id, zettel_id=note_id))
             s.commit()
         return eng

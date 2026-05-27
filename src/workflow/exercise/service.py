@@ -7,13 +7,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Session
 
-from workflow.db.models.exercises import Exercise, ExerciseOption
+from workflow.concept.service import resolve_concepts
+from workflow.db.models.exercises import Exercise, ExerciseConcept, ExerciseOption
 from workflow.db.repos.sqlalchemy import SqlExerciseRepo
 from workflow.exercise.parser import parse_exercise
 from workflow.prisma.service import get_bib_entry_by_bibkey
@@ -52,6 +54,7 @@ def sync_exercises(
     session: Session,
     files: list[Path],
     max_file_bytes: int = _MAX_FILE_BYTES,
+    strict_concepts: bool = False,
 ) -> tuple[SyncResult, list[str]]:
     """Sync .tex files to DB. Returns (result, log_messages)."""
     repo = SqlExerciseRepo(session)
@@ -98,9 +101,6 @@ def sync_exercises(
             bib_entry_id = bib.id if bib is not None else None
 
         tags_json = json.dumps(ex.metadata.tags) if ex.metadata.tags else None
-        concepts_json = (
-            json.dumps(ex.metadata.concepts) if ex.metadata.concepts else None
-        )
 
         exercise_record = Exercise(
             exercise_id=ex.metadata.id,
@@ -112,7 +112,6 @@ def sync_exercises(
             taxonomy_level=ex.metadata.taxonomy_level,
             taxonomy_domain=ex.metadata.taxonomy_domain,
             tags=tags_json,
-            concepts=concepts_json,
             default_grade=ex.default_grade,
             has_images=len(ex.image_refs) > 0,
             image_refs=json.dumps(list(ex.image_refs)) if ex.image_refs else None,
@@ -132,6 +131,22 @@ def sync_exercises(
                     sort_order=ord(opt.label) - ord("a"),
                 )
             )
+
+        # Upsert ExerciseConcept M2M rows from frontmatter concept slugs
+        concept_codes: list[str] = ex.metadata.concepts or []
+        found_concepts, issues = resolve_concepts(concept_codes, session, strict=strict_concepts)
+        for issue in issues:
+            if issue["severity"] == "error":
+                raise ValueError(issue["message"])
+            print(f"  [WARN] {issue['message']}", file=sys.stderr)
+        desired_ids = {c.id for c in found_concepts}
+        existing_ids = {ec.concept_id for ec in result_record.concept_links}
+        for c in found_concepts:
+            if c.id not in existing_ids:
+                session.add(ExerciseConcept(exercise_id=result_record.id, concept_id=c.id))
+        for ec in list(result_record.concept_links):
+            if ec.concept_id not in desired_ids:
+                session.delete(ec)
 
         if existing is not None:
             updated_count += 1
