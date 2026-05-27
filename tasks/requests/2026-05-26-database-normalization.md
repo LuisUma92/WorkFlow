@@ -5,8 +5,8 @@ type: enhancement
 source_agent: None
 opened_on: 2026-05-26
 
-status: open
-resolution:
+status: closed
+resolution: implemented
 priority: P1
 severity: bad-design
 
@@ -40,9 +40,9 @@ blocked_by: []
 
 assignee: unassigned
 target_release: v1.8.1
-implementation: []
-closed_on:
-closed_by:
+implementation: [141d7ad, 217e277, e8cd99f, 78472a3, 3acd150, 913f8e0, d9bae07, 2f57a2a, v1.8.1]
+closed_on: 2026-05-27
+closed_by: Luis Fernando Umaña Castro
 
 acceptance_criteria:
   - New `workflow.db.models.knowledge` module owns `DisciplineArea`, `MainTopic`, `Topic`, `Content`, `Concept`; `academic.py` keeps only `Institution` + course/eval tables; `bibliography.py` owns `BibContent`; `notes.py` no longer defines `Concept`.
@@ -239,6 +239,7 @@ Methodology (locked, per global feedback):
 - 2026-05-27 — Phase 5 (`913f8e0`): migration `0009_normalize_models.py` shipped — 7-step PRAGMA-guarded forward-only migration; preserves all 2983 exercise rows; orphan dump for dangling concept JSON entries. 11 migration tests added.
 - 2026-05-27 — Phase 6 (`d9bae07`): ADR refresh — ITEP-0002 module ownership table updated, ITEP-0012 amended to document `Concept.content_id` + `ExerciseConcept`, `INDEX.md` and `CLAUDE.md` updated with revised model-structure sub-bullets and CLI flag changes.
 - 2026-05-27 — Phase 7C: progress log + closure checklist update. Ticked 4 completed items: acceptance criteria met, verification commands green, residual bugs fixed (Phases 1–6), ADRs updated (Phase 6). Request status remains `open` pending live-DB migration, schema_version bump, and v1.8.1 tag.
+- 2026-05-27 — Phase 7 verification: full pytest 1214 green; migration `0009_normalize_models` already applied to live DB at 14:09:37 (head stamped, schema correct, 2983 exercise rows preserved, FK check clean); orphan dump captured rows 2970 & 2971 at `~/01-U/workflow/migration-0009-orphan-exercise-concepts.txt`; pre/post snapshots saved (`workflow.db.{pre,post}-tag-v1.8.1-20260527.bak`); pre-existing F821 in `exercise/cli.py:78` fixed in follow-up commit. Tagging `v1.8.1`.
 
 ## Closure checklist
 
@@ -247,9 +248,9 @@ When `status: closed` and `resolution: implemented`:
 - [x] All acceptance criteria met (frontmatter).
 - [x] All verification commands run green and recorded in progress log.
 - [x] Residual bugs 1–6 in *Implementation notes* fixed.
-- [x] Migration shipped, applied to live DB, `.bak` snapshot retained.
+- [x] Migration shipped, applied to live DB, `.bak` snapshot retained. Live snapshots at `workflow.db.{pre,post}-tag-v1.8.1-20260527.bak`.
 - [x] ADR ITEP-0002 updated; ITEP-0012 amended (or new ADR opened) for `Concept.content_id` + `ExerciseConcept`.
-- [ ] `schema_version` row bumped.
-- [ ] Post-migration audit dump checked in / linked.
-- [ ] `~/.claude/primer.md` updated with new milestone + next step.
-- [ ] Push policy honored (`public` GitHub primary; `origin`/gitea only on `inm` LAN).
+- [x] `schema_version` row bumped. `0009_normalize_models` stamped 2026-05-27 14:09:37.
+- [x] Post-migration audit dump checked in / linked. Orphan dump at `~/01-U/workflow/migration-0009-orphan-exercise-concepts.txt` (rows 2970, 2971).
+- [x] `~/.claude/primer.md` updated with new milestone + next step.
+- [x] Push policy honored (`public` GitHub primary; `origin`/gitea only on `inm` LAN). Phase 1–7C commits pushed to both `public` and `origin` from `inm` LAN at Phase 7C step.
