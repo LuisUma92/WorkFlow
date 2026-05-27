@@ -45,7 +45,7 @@ These decisions establish the physical and logical organization of projects.
 | ADR                                              | Title                                | Domain       | Status   | Depends On |
 | ------------------------------------------------ | ------------------------------------ | ------------ | -------- | ---------- |
 | [ITEP-0001](ITEP-0001-sqlalchemy-persistence.md) | SQLAlchemy as persistence layer      | ITeP         | Accepted | —          |
-| [ITEP-0002](ITEP-0002-four-layer-schema.md)      | Four-layer database schema           | ITeP         | Accepted | ITEP-0001  |
+| [ITEP-0002](ITEP-0002-four-layer-schema.md)      | Four-layer database schema — module ownership updated for normalization (migration 0009) | ITeP | Accepted (updated 2026-05-27) | ITEP-0001 |
 | [ITEP-0006](ITEP-0006-taxonomy-enums.md)         | Bloom taxonomy enums                 | ITeP         | Accepted | ITEP-0002  |
 | [ITEP-0007](ITEP-0007-crud-manager-layer.md)     | CRUD manager abstraction             | ITeP         | Accepted | ITEP-0001  |
 | [0003](0003-hybrid-database.md)                  | Hybrid database (global + local)     | Zettelkasten | Accepted | ITEP-0001  |
@@ -78,7 +78,7 @@ These ADRs document the custom LaTeX packages in `shared/sty/`.
 | [0001](0001-Zettelkasten-system.md)      | Zettelkasten note semantic layer                         | Zettelkasten | Superseded by 0015 | —          |
 | [0002](0002-Unified-knowledge.md)        | Markdown as canonical knowledge layer                    | Zettelkasten | Accepted           | 0001       |
 | [0015](0015-zettelkasten-dailly-work.md) | Zettelkasten daily work: notes, demos, images, exercises | Zettelkasten | Accepted | 0001, 0002 |
-| [ITEP-0012](ITEP-0012-concept-orm.md)   | Concept ORM surface: taxonomy tree, `concepts:` resolver, `--strict-concepts` validator | ITeP | Accepted | ITEP-0002, ITEP-0006, ITEP-0009, ITEP-0011 |
+| [ITEP-0012](ITEP-0012-concept-orm.md)   | Concept ORM surface: taxonomy tree, `concepts:` resolver, `--strict-concepts` validator; amended for `content_id` re-rooting, `domain` column, `ExerciseConcept` M2M (migration 0009) | ITeP | Implemented (Phase 5, 2026-05-27) | ITEP-0002, ITEP-0006, ITEP-0009, ITEP-0011 |
 | [ITEP-0013](ITEP-0013-note-relation-graph.md) | Note relation graph: directed lineage + associative edges, DAG traversal, `note_edge` table | ITeP | Proposed | 0002, 0010, LZK-0003, ITEP-0009, ITEP-0011 |
 
 ## Exercise System

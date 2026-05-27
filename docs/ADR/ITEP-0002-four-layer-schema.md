@@ -37,12 +37,22 @@ La base de datos relacional necesita una organización que refleje las dependenc
 
 Organizar los modelos en 4 capas jerárquicas:
 
-| Capa | Nombre            | Modelos                                                                                       | Descripción                          |
-| ---- | ----------------- | --------------------------------------------------------------------------------------------- | ------------------------------------ |
-| 1    | Reference data    | `Institution`, `MainTopic`                                                                    | Datos estables, sembrados al inicio  |
-| 2    | Master entities   | `Author`, `Book`, `BookAuthor`, `Topic`, `Content`, `BookContent`                             | Entidades reutilizables entre cursos |
-| 3    | Course templates  | `Course`, `CourseContent`, `EvaluationTemplate`, `Item`, `EvaluationItem`, `CourseEvaluation` | Estructura académica                 |
-| 4    | Project instances | `LectureInstance`, `GeneralProject`, `GeneralProjectBook`, `GeneralProjectTopic`              | Instancias concretas en filesystem   |
+| Capa | Nombre            | Modelos                                                                                                                        | Descripción                          |
+| ---- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------ |
+| 1    | Reference data    | `Institution`, `MainTopic`                                                                                                     | Datos estables, sembrados al inicio  |
+| 2    | Master entities   | `Author`, `Book`, `BookAuthor`, `Topic`, `Content`, `BookContent`, `BibContent`, `Concept`, `DisciplineArea`, `_TAXONOMY_DOMAINS` | Entidades reutilizables entre cursos |
+| 3    | Course templates  | `Course`, `CourseContent`, `EvaluationTemplate`, `Item`, `EvaluationItem`, `CourseEvaluation`, `_TAXONOMY_LEVELS`              | Estructura académica                 |
+| 4    | Project instances | `LectureInstance`, `GeneralProject`, `GeneralProjectBook`, `GeneralProjectTopic`                                               | Instancias concretas en filesystem   |
+
+### Module ownership (post-normalization, migration 0009)
+
+| Module                          | Owns                                                                                                          |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `workflow.db.models.knowledge`  | `DisciplineArea`, `MainTopic`, `Topic`, `Content`, `Concept`, `_TAXONOMY_DOMAINS`                            |
+| `workflow.db.models.academic`   | `Institution`, `Course`, `CourseContent`, `EvaluationTemplate`, `Item`, `EvaluationItem`, `CourseEvaluation`, `_TAXONOMY_LEVELS` (imports `_TAXONOMY_DOMAINS` from `knowledge`) |
+| `workflow.db.models.bibliography` | `BibEntry`, `BibContent` (gains `chapter_number`, `section_number`, `first_page`, `last_page`, `first_exercise`, `last_exercise`) |
+| `workflow.db.models.notes`      | `Note`, `Citation`, `Label`, `Link`, `Tag`, `NoteTag`, `NoteConcept`, `NoteEdge` — `Concept` no longer defined here |
+| `workflow.db.models.exercises`  | `Exercise`, `ExerciseConcept` M2M (composite PK `(exercise_id, concept_id)`, `ON DELETE CASCADE` both FKs) — `Exercise.content_id` and `Exercise.concepts` JSON dropped |
 
 ---
 
@@ -96,12 +106,13 @@ Las capas están delimitadas con comentarios en `database.py`:
 
 ## Status
 
-**Accepted**
+**Accepted** (module layout updated — see Change Log)
 
 ---
 
 ## Change Log
 
-| Date       | Change      |
-| ---------- | ----------- |
-| 2026-03-20 | Initial ADR |
+| Date       | Change                                                                                   |
+| ---------- | ---------------------------------------------------------------------------------------- |
+| 2026-03-20 | Initial ADR                                                                              |
+| 2026-05-27 | Updated module ownership table to reflect DB normalization landed in migration 0009 (`78472a3`). `Concept` moved to `knowledge` module; `ExerciseConcept` M2M added; `BibContent` extended; `_TAXONOMY_DOMAINS` moved from `academic` to `knowledge`. |

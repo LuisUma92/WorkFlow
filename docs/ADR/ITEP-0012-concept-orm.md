@@ -4,7 +4,7 @@ id: ITEP-0012
 title: "Concept ORM Surface"
 aliases:
   - ADR-ITEP-0012
-status: Implemented (2026-05-23)
+status: Implemented (Phase 5, migration 0009, 2026-05-27)
 crated: 2026-05-06
 authors:
   - "Luis Fernando Umaña Castro"
@@ -204,3 +204,63 @@ counter. `--strict-concepts` flag propagates the `strict` parameter to `resolve_
 **Known limitation:** stale `NoteConcept` rows are NOT pruned when frontmatter drops a concept code.
 Removal requires explicit `notes link --concept CODE --remove`. A future `--prune` flag on `notes sync`
 is deferred.
+
+---
+
+## Amendment 2026-05-27 — DB Normalization (migration 0009)
+
+Migration `src/workflow/db/migrations/global/0009_normalize_models.py` (forward-only per ITEP-0010,
+single atomic transaction) introduced the following changes to the Concept surface. Dangling
+`Exercise.concepts` JSON was dumped to `~/01-U/workflow/migration-0009-orphan-exercise-concepts.txt`
+before the column was dropped.
+
+### Re-rooting: `content_id` replaces `main_topic_id`
+
+`Concept.main_topic_id` (FK → `MainTopic`) has been replaced by `content_id` (FK → `Content`,
+`ON DELETE RESTRICT`). `Content` sits one level below `MainTopic` in the hierarchy
+(`MainTopic → Topic → Content`), giving concepts a more precise topical anchor.
+
+### New `domain` column
+
+`Concept` gains a `domain VARCHAR(40) NOT NULL` column with a CHECK constraint
+(`ck_taxonomy_domain`) whose accepted values come from `_TAXONOMY_DOMAINS`:
+
+- `Información`
+- `Procedimiento Mental`
+- `Procedimiento Psicomotor`
+- `Metacognitivo`
+
+### `Concept.main_topic` property + backward-compat forwarder
+
+A `@property` `Concept.main_topic` traverses `content → topic → main_topic` and returns `None`
+safely if any link is missing. The service layer exposes a thin `concept_main_topic(concept)`
+forwarder for backward compatibility with callers that previously read `concept.main_topic_id`
+directly.
+
+### `ExerciseConcept` M2M shape
+
+`Exercise.concepts` (JSON column) and `Exercise.content_id` (FK) are dropped. Topical linking
+is now exclusively via `ExerciseConcept(exercise_id, concept_id)` with a composite PK and
+`ON DELETE CASCADE` on both FKs. `exercise/service.py` sync resolves frontmatter concept slugs
+via `resolve_concepts()` and upserts + sweeps `ExerciseConcept` rows. Strict mode
+(`--strict-concepts`) raises on unknown slug; lenient mode warns and skips.
+
+### CLI change: `workflow concept add`
+
+| Before | After |
+| ------ | ----- |
+| `--main-topic DDTTAA` (required) | `--content-id INTEGER` (positive, `IntRange(min=1)`) + `--domain TEXT` (both required) |
+
+**Note (deliberate defer):** `--content-id` accepts a raw integer because `Content.code` slug
+lookup is not yet implemented. A future follow-up will add `--content-code SLUG` as the
+human-friendly alias. Until then, callers must look up the integer PK from
+`workflow db content list` (or equivalent).
+
+### Open questions (not yet resolved — do not close)
+
+1. **`Content.code` slug** — deferred. CLI uses numeric `--content-id` until a slug column is
+   added to `Content` and a resolver is wired in.
+2. **`Concept.domain` derivation rule** — independently assigned per concept vs. derived from
+   `content.topic`. Policy not yet decided; currently caller-supplied.
+3. **`workflow exercise sync` auto-create policy** — current policy: warn-and-skip (lenient) or
+   raise (strict). Auto-creation of unknown concept slugs is explicitly NOT supported.
