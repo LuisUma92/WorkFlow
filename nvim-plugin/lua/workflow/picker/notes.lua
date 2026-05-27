@@ -60,6 +60,11 @@ function M.pick(opts)
 			})
 		end
 
+		local ok_snacks, Snacks = pcall(require, "snacks")
+		if not ok_snacks or not Snacks or not Snacks.picker then
+			vim.notify("snacks.nvim is required for pickers (https://github.com/folke/snacks.nvim)", vim.log.levels.ERROR, { title = "workflow" })
+			return
+		end
 		Snacks.picker({
 			title = "Notes",
 			items = items,
@@ -83,9 +88,14 @@ function M.pick(opts)
 				table.insert(lines, "---")
 				table.insert(lines, "")
 				if e.path and e.path ~= "" then
-					local body = vim.fn.readfile(e.path, "", 30)
-					for _, l in ipairs(body) do
-						table.insert(lines, l)
+					local expanded = vim.fn.expand(e.path)
+					if require("workflow.config").is_in_workspace(expanded, config.vault_root) or require("workflow.config").is_in_workspace(expanded, config.workspace_dir) then
+						local body = vim.fn.readfile(expanded, "", 30)
+						for _, l in ipairs(body) do
+							table.insert(lines, l)
+						end
+					else
+						table.insert(lines, "(path outside workspace — not displayed)")
 					end
 				end
 				return lines
@@ -93,7 +103,12 @@ function M.pick(opts)
 			confirm = function(picker, item)
 				picker:close()
 				if item and item.item and item.item.path then
-					vim.cmd("edit " .. vim.fn.fnameescape(item.item.path))
+					local expanded = vim.fn.expand(item.item.path)
+					if require("workflow.config").is_in_workspace(expanded, config.vault_root) or require("workflow.config").is_in_workspace(expanded, config.workspace_dir) then
+						vim.cmd("edit " .. vim.fn.fnameescape(expanded))
+					else
+						vim.notify("Path outside workspace — refusing to open: " .. expanded, vim.log.levels.ERROR, { title = "workflow" })
+					end
 				elseif item then
 					vim.notify("No file path for note " .. (item.item.id or "?"), vim.log.levels.WARN, { title = "workflow" })
 				end

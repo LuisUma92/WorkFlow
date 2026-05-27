@@ -16,6 +16,9 @@ M._config = {
 	debug = false,
 }
 
+-- Deprecation notice fires at most once per nvim session.
+local _deprecation_shown = false
+
 local function notify(msg, level)
 	vim.schedule(function()
 		vim.notify(msg, level or vim.log.levels.INFO, { title = "latexzettel" })
@@ -24,6 +27,20 @@ end
 
 function M.setup(opts)
 	opts = opts or {}
+
+	if not _deprecation_shown then
+		_deprecation_shown = true
+		vim.schedule(function()
+			vim.notify(
+				"[latexzettel] notice: the workflow.* plugin (nvim-plugin/) is now the\n"
+					.. "primary surface for note authoring. latexzettel.* commands will be\n"
+					.. "removed in v2.0.0; migrate to :WorkflowNote* equivalents.",
+				vim.log.levels.WARN,
+				{ title = "latexzettel" }
+			)
+		end)
+	end
+
 	M._config = vim.tbl_deep_extend("force", M._config, opts)
 
 	M._client = Client.new({

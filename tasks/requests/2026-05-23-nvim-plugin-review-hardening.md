@@ -5,8 +5,8 @@ type: enhancement
 source_agent: claude
 opened_on: 2026-05-23
 
-status: proposed
-resolution:
+status: completed
+resolution: implemented
 priority: P1
 severity: recurring-friction
 
@@ -26,9 +26,16 @@ blocked_by: []
 
 assignee: unassigned
 target_release: v1.8.0
-implementation: []
-closed_on:
-closed_by:
+implementation:
+  - nvim-plugin/lua/workflow/picker/notes.lua
+  - nvim-plugin/lua/workflow/picker/edges.lua
+  - nvim-plugin/lua/workflow/picker/evaluations.lua
+  - nvim-plugin/lua/workflow/contracts.lua
+  - nvim-plugin/docs/cli-contracts.md
+  - nvim-plugin/doc/workflow.txt
+  - src/latexzettel/lua/latexzettel/init.lua
+closed_on: 2026-05-27
+closed_by: Luis Fernando Umaña Castro
 
 acceptance_criteria:
   - "Snacks global access guarded by pcall in all 3 picker files (no hard error when snacks.nvim missing)"
@@ -138,6 +145,11 @@ E5108: Error executing lua [string ":lua"]:1: attempt to index global 'Snacks' (
 ## Progress log
 
 - 2026-05-23 — opened by claude after 4-reviewer Lua review schema on commit `a693f1b`
+- 2026-05-27 — HIGH-1 fixed: `pcall(require, "snacks")` guard added to picker/notes.lua, picker/edges.lua, picker/evaluations.lua — no hard error when snacks.nvim absent
+- 2026-05-27 — HIGH-2 fixed: `src/latexzettel/lua/latexzettel/init.lua#setup()` prints deprecation notice once per session via `_deprecation_shown` flag
+- 2026-05-27 — HIGH-3 fixed: `nvim-plugin/lua/workflow/contracts.lua` created with 4 EmmyLua `---@class` definitions; `nvim-plugin/docs/cli-contracts.md` with example JSON bodies for all 4 shapes
+- 2026-05-27 — HIGH-4 fixed: `nvim-plugin/doc/workflow.txt` created with :helptags-compatible tags for all 11 :Workflow* commands
+- 2026-05-27 — MEDIUM (path-traversal) fixed: `config.is_in_workspace` guard at every `vim.cmd("edit ...")` and `vim.fn.readfile(...)` site in picker/notes.lua and picker/edges.lua
 
 ## Closure checklist
 

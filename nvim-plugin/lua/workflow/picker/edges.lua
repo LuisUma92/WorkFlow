@@ -56,6 +56,11 @@ function M.pick(opts)
 			})
 		end
 
+		local ok_snacks, Snacks = pcall(require, "snacks")
+		if not ok_snacks or not Snacks or not Snacks.picker then
+			vim.notify("snacks.nvim is required for pickers (https://github.com/folke/snacks.nvim)", vim.log.levels.ERROR, { title = "workflow" })
+			return
+		end
 		Snacks.picker({
 			title = "Note Edges",
 			items = items,
@@ -114,7 +119,13 @@ function M.pick(opts)
 					end
 					local ok3, note = pcall(vim.json.decode, out2)
 					if ok3 and note and note.path then
-						vim.cmd("edit " .. vim.fn.fnameescape(note.path))
+						local expanded = vim.fn.expand(note.path)
+						local cfg2 = require("workflow.config").resolve(opts)
+						if require("workflow.config").is_in_workspace(expanded, cfg2.vault_root) or require("workflow.config").is_in_workspace(expanded, cfg2.workspace_dir) then
+							vim.cmd("edit " .. vim.fn.fnameescape(expanded))
+						else
+							vim.notify("Path outside workspace — refusing to open: " .. expanded, vim.log.levels.ERROR, { title = "workflow" })
+						end
 					else
 						vim.notify("No file path for note " .. src_id, vim.log.levels.WARN, { title = "workflow" })
 					end

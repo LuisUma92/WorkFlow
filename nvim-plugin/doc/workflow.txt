@@ -1,0 +1,182 @@
+*workflow.txt*  WorkFlow Neovim plugin — CLI-backed notes & evaluation pickers
+
+==============================================================================
+CONTENTS                                                    *workflow-contents*
+
+  1. Setup ............................................. |workflow-setup|
+  2. Commands .......................................... |workflow-commands|
+  3. Keymaps ........................................... |workflow-keymaps|
+  4. Configuration ..................................... |workflow-config|
+  5. Troubleshooting ................................... |workflow-troubleshooting|
+
+==============================================================================
+1. SETUP                                                       *workflow-setup*
+
+Add to your lazy.nvim / packer spec: >
+
+  {
+    dir = "~/02-Projects/WorkFlow/nvim-plugin",
+    name = "workflow",
+    config = function()
+      require("workflow").setup({
+        workflow_cmd = nil,        -- auto-detected
+        vault_dir   = "~/01-U/0000AA-Vault",
+        keymaps     = true,
+        keymap_prefix = "<leader>z",
+      })
+    end,
+  }
+<
+
+Requires: snacks.nvim (https://github.com/folke/snacks.nvim) for pickers.
+Without snacks.nvim pickers display an error notification; all other commands
+continue to function normally.
+
+==============================================================================
+2. COMMANDS                                                 *workflow-commands*
+
+------------------------------------------------------------------------------
+2.1 Utility                                               *workflow-util-cmds*
+
+*:WorkflowSync*
+  Sync the current buffer's exercise/note metadata to the DB.
+
+*:WorkflowSyncExercise*
+  Sync the current buffer as a LaTeX exercise file.
+
+*:WorkflowValidate*
+  Validate the YAML frontmatter of the current buffer.
+
+*:WorkflowPromote*
+  Move the current note from `inbox/` to the vault root and change its type
+  from `fleeting` to `permanent`.
+
+------------------------------------------------------------------------------
+2.2 Note commands                                         *workflow-note-cmds*
+
+*:WorkflowNoteSync*[!]
+  Bulk-sync the vault (.md files → DB).  Add `!` to pass --strict-concepts,
+  treating unknown concept codes as errors.
+
+*:WorkflowNotePicker* [key=value ...]
+  Open a Snacks picker over all notes.  Optional filter keys:
+    tag=<tag>   concept=<slug>   note_type=<type>   candidate_project=<name>
+
+  Keybindings inside the picker:
+    <CR>    Open the note file
+    <C-t>   Prompt to add/remove tags (+add -remove)
+    <C-l>   Prompt to link a concept, reference, or exercise
+
+*:WorkflowNoteShow* [id]
+  Display a note in a scratch buffer.  If `id` is omitted, parses the current
+  buffer's frontmatter for an `id:` field.
+
+*:WorkflowNoteTag* {id} +tag1 -tag2 ...
+  Add or remove tags on note `id`.  Tokens prefixed with `+` are added;
+  tokens prefixed with `-` are removed; bare tokens are added.
+
+*:WorkflowNoteLink* {id} {kind} {value} [remove]
+  Link note `id` to a concept, reference, or exercise.
+  `kind` must be one of: concept | reference | exercise
+  Append `remove` as a fourth argument to unlink instead.
+
+*:WorkflowNoteNew* {id} {title words ...}
+  Create a new note.  `id` is the NanoID; remaining args form the title.
+
+------------------------------------------------------------------------------
+2.3 Edge commands                                         *workflow-edge-cmds*
+
+*:WorkflowEdgesPicker* [key=value ...]
+  Open a Snacks picker over note edges.  Optional filter keys:
+    source=<zettel_id>   edge_class=<class>   relation_type=<type>
+
+  <CR> resolves the source note path and opens the file.
+
+*:WorkflowEdgesCheck*
+  Detect cycles in the structural edge graph.  If cycles exist they are
+  added to the quickfix list and `:copen` is called automatically.
+
+------------------------------------------------------------------------------
+2.4 Evaluation pickers                                    *workflow-eval-cmds*
+
+*:WorkflowEvalPicker* [institution]
+  List evaluation templates.  Optional institution code filter.
+
+*:WorkflowItemPicker* [domain] [level]
+  List item bank entries.  Optional Bloom domain and level filters.
+
+*:WorkflowCoursePicker* [institution]
+  List courses.  Optional institution code filter.
+
+------------------------------------------------------------------------------
+2.5 PRISMA pickers                                      *workflow-prisma-cmds*
+
+*:WorkflowPrismaBibPicker* [key=value ...]
+  Browse PRISMA bibliography entries.
+
+*:WorkflowPrismaKeywordPicker*
+  Browse PRISMA search keywords.
+
+*:WorkflowPrismaReviewPicker* {keyword-id} [status]
+  Browse PRISMA article reviews for a keyword.  `status` is optional.
+
+==============================================================================
+3. KEYMAPS                                                   *workflow-keymaps*
+
+All keymaps are prefixed with `keymap_prefix` (default `<leader>z`).
+Set `keymaps = false` in setup to disable all keymaps.
+
+See `lua/workflow/keymaps.lua` for the full mapping table.
+
+==============================================================================
+4. CONFIGURATION                                              *workflow-config*
+
+Pass options to `require("workflow").setup(opts)`: >
+
+  {
+    -- Path to the `workflow` CLI binary.  nil = auto-detect from venv/PATH.
+    workflow_cmd = nil,
+
+    -- Sync note DB on :w in a vault .md file.
+    auto_sync_on_save = true,
+
+    -- Validate frontmatter on :w.
+    auto_validate_on_save = true,
+
+    -- Override workspace root (auto-detected from .workflow/config.yaml).
+    workspace_dir = nil,
+
+    -- Vault root override (env WORKFLOW_VAULT_ROOT takes precedence).
+    vault_dir = "~/01-U/0000AA-Vault",
+
+    -- Register <leader>z* keymaps.
+    keymaps = true,
+    keymap_prefix = "<leader>z",
+  }
+<
+
+The effective vault root is resolved in this priority order:
+  1. `$WORKFLOW_VAULT_ROOT` environment variable
+  2. `workspace_dir / vault_dir`
+  3. nil (vault-aware commands will warn and abort)
+
+==============================================================================
+5. TROUBLESHOOTING                                  *workflow-troubleshooting*
+
+  Error: "snacks.nvim is required for pickers"
+    Install snacks.nvim: https://github.com/folke/snacks.nvim
+    Pickers will not function without it; all other commands remain available.
+
+  Error: "No vault root configured"
+    Set `WORKFLOW_VAULT_ROOT` env var, or ensure a `.workflow/config.yaml`
+    exists in a parent directory of your cwd.
+
+  Error: "Path outside workspace — refusing to open"
+    A CLI-supplied path resolved outside your vault/workspace root.
+    This is a path-traversal guard.  Check that the frontmatter `path` field
+    in the affected note is not crafted to escape the vault directory.
+
+  Error: "notes sync error: ..."
+    Run `workflow notes sync --json` in a terminal for a detailed traceback.
+
+ vim:tw=78:ts=8:ft=help:norl:

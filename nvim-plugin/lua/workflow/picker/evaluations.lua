@@ -46,6 +46,11 @@ function M.pick(opts)
 			})
 		end
 
+		local ok_snacks, Snacks = pcall(require, "snacks")
+		if not ok_snacks or not Snacks or not Snacks.picker then
+			vim.notify("snacks.nvim is required for pickers (https://github.com/folke/snacks.nvim)", vim.log.levels.ERROR, { title = "workflow" })
+			return
+		end
 		Snacks.picker({
 			title = "Evaluation Templates",
 			items = items,
