@@ -11,7 +11,17 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, Index, String, Text, UniqueConstraint, text
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from workflow.db.base import GlobalBase
@@ -189,27 +199,6 @@ class NoteTag(GlobalBase):
     )
 
 
-class Concept(GlobalBase):
-    """A General Main Concept present in the note"""
-
-    __tablename__ = "concept"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    main_topic_id: Mapped[int] = mapped_column(
-        ForeignKey("main_topic.id", ondelete="RESTRICT"), nullable=False
-    )
-    code: Mapped[str] = mapped_column(
-        String(32), unique=True
-    )  # slug, e.g. "newton-2nd-law"
-    label: Mapped[str] = mapped_column(String(255))  # display name
-    description: Mapped[str | None] = mapped_column(String)
-    parent_id: Mapped[int | None] = mapped_column(
-        ForeignKey("concept.id", ondelete="SET NULL")
-    )  # optional hierarchy
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-    main_topic: Mapped["MainTopic"] = relationship(back_populates="concepts")
-    parent: Mapped["Concept | None"] = relationship(remote_side="Concept.id")
-
-
 class NoteConcept(GlobalBase):
     """M2M relation Note to Concept"""
 
@@ -260,7 +249,9 @@ class NoteEdge(GlobalBase):
             name="ck_note_edge_relation_type_valid",
         ),
         UniqueConstraint(
-            "source_id", "target_zettel_id", "relation_type",
+            "source_id",
+            "target_zettel_id",
+            "relation_type",
             name="uq_note_edge_src_tgt_rel",
         ),
         Index("ix_note_edge_source", "source_id", "edge_class", "relation_type"),
@@ -282,7 +273,6 @@ __all__ = [
     "Link",
     "Tag",
     "NoteTag",
-    "Concept",
     "NoteConcept",
     "NoteEdge",
 ]

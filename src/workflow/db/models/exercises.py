@@ -92,16 +92,6 @@ class Exercise(GlobalBase):
         nullable=True,
         comment="JSON list of tag strings",
     )
-    concepts: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True,
-        comment="JSON list of note IDs",
-    )
-    content_id: Mapped[int | None] = mapped_column(
-        ForeignKey("content.id"),
-        nullable=True,
-        comment="FK to book chapter/section this exercise tests",
-    )
     book_id: Mapped[int | None] = mapped_column(
         ForeignKey("bib_entry.id"),
         nullable=True,
@@ -153,7 +143,6 @@ class Exercise(GlobalBase):
         cascade="all, delete-orphan",
         order_by="ExerciseOption.sort_order",
     )
-    content: Mapped["Content | None"] = relationship()
     book: Mapped["BibEntry | None"] = relationship()
 
     def __repr__(self) -> str:
@@ -194,7 +183,21 @@ class ExerciseOption(GlobalBase):
         return f"<ExerciseOption {self.label} [{correct}]>"
 
 
+class ExerciseConcept(GlobalBase):
+    __tablename__ = "exercise_contcept"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    exercise_id: Mapped[int] = mapped_column(
+        ForeignKey("exercise.id", ondelete="CASCADE"), primary_key=True
+    )
+    concept_id: Mapped[int] = mapped_column(
+        ForeignKey("concept.id", ondelete="CASCADE"), primary_key=True
+    )
+
+
 __all__ = [
     "Exercise",
     "ExerciseOption",
+    "ExerciseConcept",
 ]

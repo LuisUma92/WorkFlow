@@ -15,13 +15,17 @@ from workflow.db.models.bibliography import (
     BibUrl,
     IsnType,
     ReferencedDatabase,
+    BibContent,
 )
-from workflow.db.models.academic import (
-    Institution,
+from workflow.db.models.knowledge import (
+    DisciplineArea,
     MainTopic,
     Topic,
     Content,
-    BibContent,
+    Concept,
+)
+from workflow.db.models.academic import (
+    Institution,
     Course,
     CourseContent,
     EvaluationTemplate,
@@ -37,7 +41,6 @@ from workflow.db.models.project import (
 )
 from workflow.db.models.notes import (
     Citation,
-    Concept,
     Label,
     Link,
     Note,

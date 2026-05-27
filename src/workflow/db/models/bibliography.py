@@ -319,6 +319,26 @@ class BibEntryTag(GlobalBase):
     bib_tag: Mapped["BibTag"] = relationship(back_populates="entry_links")
 
 
+class BibContent(GlobalBase):
+    """Links a bibliography entry to a content section (replaces BookContent)."""
+
+    __tablename__ = "bib_content"
+
+    bib_entry_id: Mapped[int] = mapped_column(
+        ForeignKey("bib_entry.id"), primary_key=True
+    )
+    content_id: Mapped[int] = mapped_column(ForeignKey("content.id"), primary_key=True)
+
+    bib_entry: Mapped["BibEntry"] = relationship(back_populates="content_links")
+    chapter_number: Mapped[int] = mapped_column(Integer)
+    section_number: Mapped[int] = mapped_column(Integer)
+    first_page: Mapped[int] = mapped_column(Integer)
+    last_page: Mapped[int] = mapped_column(Integer)
+    first_exercise: Mapped[int | None] = mapped_column(Integer, default=None)
+    last_exercise: Mapped[int | None] = mapped_column(Integer, default=None)
+    content: Mapped["Content"] = relationship(back_populates="bib_links")
+
+
 # ── PRISMA review tables ─────────────────────────────────────────────────
 
 
