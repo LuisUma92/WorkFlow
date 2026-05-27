@@ -4,10 +4,14 @@ title: Add `workflow exercise register` to import existing .tex files
 type: feature
 source_agent: exam-author
 opened_on: 2026-04-29
-status: proposed
+status: completed
 priority: P0
 severity: blocker
 labels: [cli, db, exercise]
+resolution: implemented
+closed_on: 2026-05-27
+closed_by: Luis Fernando Umaña Castro
+implementation: []
 components: [workflow.exercise, workflow.db]
 adr_refs: [ADR-0010, ADR-0011]
 related_requests: [2026-04-29-exercise-list-json-filters]
@@ -135,6 +139,12 @@ file not found, DB collision, or unknown `--type` value.
   a message containing "already registered".
 - `test_exercise_register_missing_path`: nonexistent path exits 1 with a message
   containing "not found".
+
+## Progress log
+
+- 2026-05-27: Implemented `register` and `register-batch` commands in `cli.py`.
+  `_register_one()` helper parses .tex, checks collision, builds Exercise row with course/cycle/partial
+  stored as tags. Glob expansion for batch. 22 new tests in `test_register.py`. Full suite 1236 passed.
 
 ## Raw entries harvested
 

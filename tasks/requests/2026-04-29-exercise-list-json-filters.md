@@ -4,10 +4,14 @@ title: Add `--json` and `--course` filters to `workflow exercise list`
 type: enhancement
 source_agent: workflow-runner
 opened_on: 2026-04-29
-status: proposed
+status: completed
 priority: P2
 severity: polish
 labels: [cli, exercise]
+resolution: implemented
+closed_on: 2026-05-27
+closed_by: Luis Fernando Umaña Castro
+implementation: []
 components: [workflow.exercise]
 adr_refs: [ADR-0010]
 related_gaps:
@@ -113,6 +117,12 @@ Exit codes: 0 on successful query (including empty results); 1 on unknown
   is `[]` and exit code is 0 (not an error).
 - `test_exercise_list_json_keys`: each object in the list contains at minimum
   `id`, `file`, `type`, `course` keys.
+
+## Progress log
+
+- 2026-05-27: Implemented `--json`, `--course`, extended `_EXERCISE_TYPES` with SCM/SSU/SDE.
+  Added `_exercise_to_dict()` helper. Tags-based course filter via `find_by_filters(tags=[course])`.
+  22 new tests in `test_list_json.py`. Full suite 1236 passed.
 
 ## Raw entries harvested
 

@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 import click
 from sqlalchemy.orm import Session
 
+from workflow.db.models.exercises import Exercise
 from workflow.db.repos.sqlalchemy import SqlExerciseRepo
 from workflow.db.errors import with_schema_guard
 from workflow.prisma.service import get_bib_entry_by_bibkey
@@ -147,6 +148,29 @@ def parse(path: str) -> None:
         raise click.ClickException(f"{error_count} file(s) had parse errors.")
 
 
+def _exercise_to_dict(ex: Any) -> dict[str, Any]:
+    """Serialize an Exercise ORM row to a JSON-serialisable dict."""
+    import json as _json
+    # Extract the first tag that looks like a course code for the 'course' field.
+    tags_raw = ex.tags or "[]"
+    try:
+        tags_list: list[str] = _json.loads(tags_raw)
+    except Exception:
+        tags_list = []
+    course = tags_list[0] if tags_list else None
+    return {
+        "id": ex.exercise_id,
+        "file": ex.source_path,
+        "type": ex.type,
+        "course": course,
+        "status": ex.status,
+        "difficulty": ex.difficulty,
+        "taxonomy_level": ex.taxonomy_level,
+        "taxonomy_domain": ex.taxonomy_domain,
+        "tags": tags_list,
+    }
+
+
 @exercise.command(name="list")
 @click.option(
     "--status",
@@ -159,14 +183,21 @@ def parse(path: str) -> None:
     "--taxonomy-level", type=str, default=None, help="Filter by taxonomy level."
 )
 @click.option("--type", "exercise_type", type=str, default=None, help="Filter by type.")
+@click.option("--course", type=str, default=None, help="Filter by course code (tag match).")
 @click.option("--limit", type=int, default=100, show_default=True)
+@click.option("--json", "as_json", is_flag=True, default=False, help="Emit JSON array.")
 @click.pass_context
 @with_schema_guard
 def list_exercises(
-    ctx, status, difficulty, taxonomy_level, exercise_type, limit
+    ctx, status, difficulty, taxonomy_level, exercise_type, course, limit, as_json
 ) -> None:
     """List exercises in the database."""
+    import json as _json
+
     engine = _get_engine(ctx)
+
+    # Build tag filter: course maps to a tag value
+    tag_filter = [course] if course else None
 
     with Session(engine) as session:
         repo = SqlExerciseRepo(session)
@@ -175,8 +206,13 @@ def list_exercises(
             difficulty=difficulty,
             taxonomy_level=taxonomy_level,
             exercise_type=exercise_type,
+            tags=tag_filter,
             limit=limit,
         )
+
+        if as_json:
+            click.echo(_json.dumps([_exercise_to_dict(ex) for ex in exercises], indent=2))
+            return
 
         if not exercises:
             click.echo("No exercises found.")
@@ -243,7 +279,7 @@ def gc(ctx, yes: bool) -> None:
     click.echo(f"Removed {count} orphaned record(s).")
 
 
-_EXERCISE_TYPES = ["multichoice", "shortanswer", "essay", "numerical", "truefalse"]
+_EXERCISE_TYPES = ["multichoice", "shortanswer", "essay", "numerical", "truefalse", "SCM", "SSU", "SDE"]
 _DIFFICULTIES = ["easy", "medium", "hard"]
 
 
@@ -564,3 +600,195 @@ def build_exam_cmd(
         click.echo(f"Exam written to {out_path}")
     else:
         click.echo(doc.content)
+
+
+# ── register / register-batch ────────────────────────────────────────────────
+
+_REGISTER_TYPES = _EXERCISE_TYPES  # same extended list
+
+
+def _register_one(
+    session: Any,
+    tex_path: Path,
+    exercise_type: str,
+    course: str,
+    cycle: str,
+    partial: str,
+    points: int,
+    taxonomy_level: str | None,
+    taxonomy_domain: str | None,
+) -> dict[str, Any]:
+    """Parse and register a single .tex file. Returns a result dict.
+
+    Raises click.ClickException on collision or parse failure.
+    """
+    import json as _json
+    from workflow.exercise.service import file_hash as _file_hash
+
+    if not tex_path.exists():
+        raise click.ClickException(f"File not found: {tex_path}")
+
+    text = tex_path.read_text(encoding="utf-8")
+    parse_result = parse_exercise(text, source_path=str(tex_path))
+
+    if parse_result.errors:
+        raise click.ClickException(
+            f"Parse error in {tex_path.name}: {parse_result.errors[0]}"
+        )
+
+    ex_parsed = parse_result.exercise
+    exercise_id: str = (
+        ex_parsed.metadata.id
+        if ex_parsed.metadata and ex_parsed.metadata.id
+        else tex_path.stem
+    )
+
+    repo = SqlExerciseRepo(session)
+    existing = repo.get_by_exercise_id(exercise_id)
+    if existing is not None:
+        raise click.ClickException(
+            f"Exercise '{exercise_id}' already registered (source: {existing.source_path})"
+        )
+
+    # Build tags list: course first, then cycle/partial
+    tags = [course, cycle, partial]
+    tags_json = _json.dumps(tags)
+
+    new_ex = Exercise(
+        exercise_id=exercise_id,
+        source_path=str(tex_path),
+        file_hash=_file_hash(tex_path),
+        status=ex_parsed.status or "complete",
+        type=exercise_type,
+        difficulty=(ex_parsed.metadata.difficulty if ex_parsed.metadata else None),
+        taxonomy_level=taxonomy_level or (ex_parsed.metadata.taxonomy_level if ex_parsed.metadata else None),
+        taxonomy_domain=taxonomy_domain or (ex_parsed.metadata.taxonomy_domain if ex_parsed.metadata else None),
+        tags=tags_json,
+        default_grade=float(points),
+        option_count=len(ex_parsed.options),
+    )
+    session.add(new_ex)
+    session.flush()
+
+    return {
+        "id": exercise_id,
+        "registered": True,
+        "db_row_id": new_ex.id,
+        "path": str(tex_path),
+        "course": course,
+        "cycle": cycle,
+        "partial": partial,
+        "type": exercise_type,
+    }
+
+
+@exercise.command()
+@click.option("--path", required=True, type=str, help="Path to existing .tex file.")
+@click.option(
+    "--type", "exercise_type",
+    required=True,
+    type=click.Choice(_REGISTER_TYPES, case_sensitive=False),
+    help="Exercise type.",
+)
+@click.option("--course", required=True, type=str, help="Course code (e.g. CB0009).")
+@click.option("--cycle", required=True, type=str, help="Academic cycle (e.g. 2026C1).")
+@click.option("--partial", required=True, type=str, help="Parcial ID (e.g. P02).")
+@click.option("--points", required=True, type=int, help="Point value.")
+@click.option("--taxonomy-level", type=str, default=None, help="Override taxonomy level.")
+@click.option("--taxonomy-domain", type=str, default=None, help="Override taxonomy domain.")
+@click.option("--json", "as_json", is_flag=True, default=False, help="Emit JSON output.")
+@click.pass_context
+@with_schema_guard
+def register(
+    ctx,
+    path: str,
+    exercise_type: str,
+    course: str,
+    cycle: str,
+    partial: str,
+    points: int,
+    taxonomy_level: str | None,
+    taxonomy_domain: str | None,
+    as_json: bool,
+) -> None:
+    """Register an existing .tex file into the exercise bank."""
+    import json as _json
+
+    tex_path = Path(path)
+    engine = _get_engine(ctx)
+
+    with Session(engine) as session:
+        row = _register_one(
+            session, tex_path, exercise_type, course, cycle, partial, points,
+            taxonomy_level, taxonomy_domain,
+        )
+        session.commit()
+
+    if as_json:
+        click.echo(_json.dumps([row], indent=2))
+    else:
+        click.echo(f"Registered: {row['id']} (db_row_id={row['db_row_id']})")
+
+
+@exercise.command(name="register-batch")
+@click.argument("glob_pattern")
+@click.option("--course", required=True, type=str, help="Course code (e.g. CB0009).")
+@click.option("--cycle", required=True, type=str, help="Academic cycle (e.g. 2026C1).")
+@click.option("--partial", required=True, type=str, help="Parcial ID (e.g. P02).")
+@click.option("--points", type=int, default=1, show_default=True, help="Point value per exercise.")
+@click.option(
+    "--type", "exercise_type",
+    type=click.Choice(_REGISTER_TYPES, case_sensitive=False),
+    default=None,
+    help="Override exercise type for all files.",
+)
+@click.option("--json", "as_json", is_flag=True, default=False, help="Emit JSON output.")
+@click.pass_context
+@with_schema_guard
+def register_batch(
+    ctx,
+    glob_pattern: str,
+    course: str,
+    cycle: str,
+    partial: str,
+    points: int,
+    exercise_type: str | None,
+    as_json: bool,
+) -> None:
+    """Register multiple existing .tex files matching a glob pattern."""
+    import glob as _glob
+    import json as _json
+
+    matched = sorted(_glob.glob(glob_pattern))
+    if not matched:
+        raise click.ClickException(f"No files matched glob: {glob_pattern}")
+
+    engine = _get_engine(ctx)
+    results: list[dict[str, Any]] = []
+
+    with Session(engine) as session:
+        for path_str in matched:
+            tex_path = Path(path_str)
+            # Infer type from .tex metadata if not overridden
+            inferred_type = exercise_type
+            if inferred_type is None:
+                text = tex_path.read_text(encoding="utf-8") if tex_path.exists() else ""
+                pr = parse_exercise(text, source_path=path_str)
+                if pr.exercise and pr.exercise.metadata and pr.exercise.metadata.type:
+                    inferred_type = pr.exercise.metadata.type
+                else:
+                    inferred_type = "essay"
+
+            row = _register_one(
+                session, tex_path, inferred_type, course, cycle, partial, points,
+                None, None,
+            )
+            results.append(row)
+        session.commit()
+
+    if as_json:
+        click.echo(_json.dumps(results, indent=2))
+    else:
+        for row in results:
+            click.echo(f"Registered: {row['id']} (db_row_id={row['db_row_id']})")
+        click.echo(f"\nTotal: {len(results)} exercise(s) registered.")
