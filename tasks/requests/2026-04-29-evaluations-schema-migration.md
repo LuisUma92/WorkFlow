@@ -4,7 +4,7 @@ title: Fix `workflow evaluations list` schema crash + add `db migrate` command
 type: bug
 source_agent: workflow-runner
 opened_on: 2026-04-29
-status: proposed
+status: completed
 priority: P0
 severity: blocker
 labels: [cli, db, validation]
@@ -12,6 +12,9 @@ components: [workflow.db, workflow.evaluation]
 adr_refs: [ADR-0007, ITEP-0008]
 related_requests: [2026-04-29-course-add-practice-quiz, 2026-04-29-main-topic-discipline-area-fk]
 blocked_by: [2026-04-29-main-topic-discipline-area-fk]
+resolution: implemented
+closed_on: 2026-05-27
+closed_by: Luis Fernando Umaña Castro
 related_gaps:
   - "raw/workflow-runner.md#2026-04-27-14:20"
 notes: |
@@ -119,6 +122,27 @@ institution, or empty result set when `--fail-empty` is passed.
 - `test_db_migrate_dry_run`: `--dry-run` prints SQL without modifying the DB.
 - `test_db_migrate_idempotent`: running `workflow db migrate` twice in a row
   exits 0 with `"applied": []` on the second run.
+
+## Progress log
+
+- **2026-05-27** — Implementation verified complete by Phase 3 review:
+  - `src/workflow/db/errors.py`: `with_schema_guard` decorator fully implemented;
+    translates `OperationalError` for missing column/table into `click.ClickException`
+    with "workflow db migrate" hint; exit code 1; no traceback.
+  - `src/workflow/evaluation/cli.py`: `@with_schema_guard` already applied to ALL
+    commands (`eval_list`, `eval_show`, `eval_add`, `eval_edit`, `eval_rename`,
+    `eval_add_item`, `eval_remove_item`, `item_list`, `item_taxonomy`, `item_add`,
+    `course_list`, `course_add_practice`, `course_practices`, `course_add`).
+  - `workflow db migrate` fully implemented: detects schema version, applies pending
+    migrations, `--dry-run` (no stamp), `--json`, `status` subcommand, `--to` cap,
+    idempotent on repeat runs.
+  - New test file: `tests/workflow/evaluation/test_schema_mismatch.py` (5 tests):
+    `test_evaluations_list_schema_mismatch_graceful`,
+    `test_evaluations_list_missing_table_graceful`,
+    `test_db_migrate_adds_missing_column`,
+    `test_db_migrate_dry_run`,
+    `test_db_migrate_idempotent` — all pass.
+  - Full suite: 1292 passed, 3 skipped, 0 failures.
 
 ## Raw entries harvested
 
