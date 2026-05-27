@@ -372,14 +372,14 @@ def check_concepts_against_db(
     - Each code in ``fm.concepts`` is looked up by ``Concept.code``.
     - Unknown codes produce a warning (lenient) or error (strict).
     - When ``fm.main_topic`` resolves to a ``MainTopic``, each found concept's
-      ``main_topic_id`` is compared.  A mismatch produces an issue at the same
-      severity level as an unknown code.
+      MainTopic (via ``concept.content.topic.main_topic``) is compared.
+      A mismatch produces an issue at the same severity level as an unknown code.
     - When ``fm.main_topic`` is None the mt-mismatch check is skipped silently.
     - Empty ``concepts`` list returns ``[]`` immediately (no DB hits).
 
     Mirrors ``check_main_topic_against_db`` strict-vs-lenient pattern (PB.2).
     """
-    from workflow.concept.service import resolve_concepts
+    from workflow.concept.service import concept_main_topic, resolve_concepts
 
     if not fm.concepts:
         return []
@@ -391,15 +391,17 @@ def check_concepts_against_db(
         note_mt, _ = check_main_topic_against_db(fm.main_topic, session)
         if note_mt is not None:
             for concept in found:
-                if concept.main_topic_id != note_mt.id:
+                concept_mt = concept_main_topic(concept)
+                concept_mt_id = concept_mt.id if concept_mt is not None else None
+                concept_mt_code = concept_mt.code if concept_mt is not None else "?"
+                if concept_mt_id != note_mt.id:
                     severity = "error" if strict else "warning"
                     issues.append(
                         {
                             "severity": severity,
                             "message": (
                                 f"concept {concept.code!r} belongs to "
-                                f"main_topic_id={concept.main_topic_id} "
-                                f"({concept.main_topic.code if concept.main_topic else '?'})"
+                                f"main_topic {concept_mt_code!r}"
                                 f" but note declares main_topic={note_mt.code!r}."
                             ),
                         }

@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 from sqlalchemy.orm import Session
 
-from workflow.db.models.knowledge import DisciplineArea, MainTopic
+from workflow.db.models.knowledge import DisciplineArea, MainTopic, Topic, Content
 from workflow.db.models.knowledge import Concept
 from workflow.db.models.notes import Note, NoteConcept
 from workflow.graph.collectors import build_knowledge_graph, collect_note_concepts
@@ -19,7 +19,8 @@ from workflow.graph.domain import GraphEdge, GraphNode
 _topic_counter = 0
 
 
-def _topic(session: Session, name: str = "Physics") -> MainTopic:
+def _topic(session: Session, name: str = "Physics") -> tuple[MainTopic, Content]:
+    """Create DisciplineArea→MainTopic→Topic→Content chain, return (MainTopic, Content)."""
     global _topic_counter
     _topic_counter += 1
     suffix = _topic_counter
@@ -35,12 +36,26 @@ def _topic(session: Session, name: str = "Physics") -> MainTopic:
     mt = MainTopic(code=f"MT{suffix:04d}", name=name, discipline_area_id=da.id)
     session.add(mt)
     session.flush()
-    return mt
+    tp = Topic(main_topic_id=mt.id, name=f"{name} subtopic", serial_number=1)
+    session.add(tp)
+    session.flush()
+    ct = Content(topic_id=tp.id, name=f"{name} content")
+    session.add(ct)
+    session.flush()
+    return mt, ct
 
 
-def _concept(session: Session, topic: MainTopic, code: str, label: str = "") -> Concept:
+def _concept(session: Session, topic_chain: tuple[MainTopic, Content] | MainTopic, code: str, label: str = "") -> Concept:
+    # Accept either the new (mt, ct) tuple or legacy MainTopic (for backward compat in tests)
+    if isinstance(topic_chain, tuple):
+        _mt, ct = topic_chain
+        content_id = ct.id
+    else:
+        # Shouldn't happen — legacy path
+        raise TypeError("_concept() requires a (MainTopic, Content) tuple from _topic()")
     c = Concept(
-        main_topic_id=topic.id,
+        content_id=content_id,
+        domain="Información",
         code=code,
         label=label or code,
     )
@@ -76,8 +91,8 @@ def test_collect_note_concepts_empty(global_session):
 
 def test_collect_note_concepts_single_link(global_session):
     """One NoteConcept → one concept node + one edge."""
-    topic = _topic(global_session)
-    concept = _concept(global_session, topic, "newton-2nd-law", "Newton's 2nd Law")
+    topic_chain = _topic(global_session)
+    concept = _concept(global_session, topic_chain, "newton-2nd-law", "Newton's 2nd Law")
     note = _note(global_session, "nctest-src00000")
     _link(global_session, note, concept)
 
@@ -101,8 +116,8 @@ def test_collect_note_concepts_single_link(global_session):
 
 def test_collect_note_concepts_shared_concept_deduplicated(global_session):
     """Two notes linked to same concept → one concept node, two edges."""
-    topic = _topic(global_session, "Math")
-    concept = _concept(global_session, topic, "calculus", "Calculus")
+    topic_chain = _topic(global_session, "Math")
+    concept = _concept(global_session, topic_chain, "calculus", "Calculus")
     note_a = _note(global_session, "ncshared-a00000")
     note_b = _note(global_session, "ncshared-b00000")
     _link(global_session, note_a, concept)
@@ -121,9 +136,9 @@ def test_collect_note_concepts_shared_concept_deduplicated(global_session):
 
 def test_collect_note_concepts_multiple_concepts(global_session):
     """One note linked to two concepts → two nodes + two edges."""
-    topic = _topic(global_session, "Biology")
-    c1 = _concept(global_session, topic, "dna", "DNA")
-    c2 = _concept(global_session, topic, "rna", "RNA")
+    topic_chain = _topic(global_session, "Biology")
+    c1 = _concept(global_session, topic_chain, "dna", "DNA")
+    c2 = _concept(global_session, topic_chain, "rna", "RNA")
     note = _note(global_session, "ncmulti-src0000")
     _link(global_session, note, c1)
     _link(global_session, note, c2)
@@ -141,8 +156,8 @@ def test_collect_note_concepts_multiple_concepts(global_session):
 
 def test_collect_note_concepts_edge_type(global_session):
     """Edge type is always 'note_concept'."""
-    topic = _topic(global_session, "Chemistry")
-    concept = _concept(global_session, topic, "oxidation")
+    topic_chain = _topic(global_session, "Chemistry")
+    concept = _concept(global_session, topic_chain, "oxidation")
     note = _note(global_session, "nctype-src00000")
     _link(global_session, note, concept)
 
@@ -158,8 +173,8 @@ def test_collect_note_concepts_edge_type(global_session):
 
 def test_build_knowledge_graph_includes_note_concepts(global_session):
     """build_knowledge_graph merges concept nodes and note_concept edges."""
-    topic = _topic(global_session, "Physics")
-    concept = _concept(global_session, topic, "gravity", "Gravity")
+    topic_chain = _topic(global_session, "Physics")
+    concept = _concept(global_session, topic_chain, "gravity", "Gravity")
     note = _note(global_session, "ncbuild-src0000")
     _link(global_session, note, concept)
 

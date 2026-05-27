@@ -67,11 +67,7 @@ def _make_topic(session, area: MainTopic, name: str = "T") -> Topic:
 def _make_content(session, topic: Topic) -> Content:
     c = Content(
         topic_id=topic.id,
-        chapter_number=1,
-        section_number=1,
         name="Section",
-        first_page=1,
-        last_page=10,
     )
     session.add(c)
     session.commit()
@@ -83,7 +79,14 @@ def _attach_bib(session, content: Content, n: int) -> None:
         bib = BibEntry(bibkey=f"k{content.id}_{i}", entry_type="article")
         session.add(bib)
         session.flush()
-        session.add(BibContent(bib_entry_id=bib.id, content_id=content.id))
+        session.add(BibContent(
+            bib_entry_id=bib.id,
+            content_id=content.id,
+            chapter_number=1,
+            section_number=1,
+            first_page=1,
+            last_page=10,
+        ))
     session.commit()
 
 

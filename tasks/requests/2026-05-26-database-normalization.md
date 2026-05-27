@@ -219,10 +219,18 @@ Methodology (locked, per global feedback):
   CRITICAL/HIGH inline.
 - Commit + tag at end of each phase; update `~/.claude/primer.md`.
 
+## Implementation notes
+
+- 2026-05-26 — Phase 3A: `workflow concept add` flag surface changed:
+  `--main-topic CODE` removed; `--content-id INTEGER` + `--domain TEXT`
+  required. Numeric content-id is a deliberate defer (slug column TBD,
+  see plan open question).
+
 ## Progress log
 
 - 2026-05-26 — opened by Luis Fernando Umaña Castro after inspecting the current database `a693f1b`.
 - 2026-05-26 — request body completed (scope, residual bugs, migration design, acceptance + verification criteria).
+- 2026-05-26 — Phase 3A complete: concept service/cli/formatters + 5 test files updated for content_id+domain shape; 67 tests GREEN.
 
 ## Closure checklist
 

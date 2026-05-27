@@ -135,13 +135,9 @@ def collect_academic(
     BibContent edge:   "bib:{bib_entry_id}" → "content:{content_id}"
     CourseContent edge: "course:{course_id}" → "content:{content_id}"
     """
-    from workflow.db.models.academic import (
-        BibContent,
-        Content,
-        Course,
-        CourseContent,
-        Topic,
-    )
+    from workflow.db.models.academic import Course, CourseContent
+    from workflow.db.models.bibliography import BibContent
+    from workflow.db.models.knowledge import Content, Topic
 
     contents = global_session.scalars(select(Content)).all()
     topics = global_session.scalars(select(Topic)).all()

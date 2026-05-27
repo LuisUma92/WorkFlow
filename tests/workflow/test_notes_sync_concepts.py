@@ -20,7 +20,7 @@ from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session
 
 from workflow.db.base import GlobalBase
-from workflow.db.models.knowledge import DisciplineArea, MainTopic
+from workflow.db.models.knowledge import DisciplineArea, MainTopic, Topic, Content
 from workflow.db.models.knowledge import Concept
 from workflow.db.models.notes import Note, NoteConcept
 from workflow.notes.cli import notes
@@ -98,13 +98,21 @@ def seeded(session, vault):
     session.add(mt)
     session.flush()
 
-    c1 = Concept(code="gravity", label="Gravity", main_topic_id=mt.id)
-    c2 = Concept(code="momentum", label="Momentum", main_topic_id=mt.id)
+    tp = Topic(main_topic_id=mt.id, name="Mechanics", serial_number=1)
+    session.add(tp)
+    session.flush()
+
+    ct = Content(topic_id=tp.id, name="Classical Mechanics")
+    session.add(ct)
+    session.flush()
+
+    c1 = Concept(code="gravity", label="Gravity", content_id=ct.id, domain="Información")
+    c2 = Concept(code="momentum", label="Momentum", content_id=ct.id, domain="Información")
     session.add(c1)
     session.add(c2)
     session.commit()
 
-    return {"da": da, "mt": mt, "c1": c1, "c2": c2, "vault": vault}
+    return {"da": da, "mt": mt, "tp": tp, "ct": ct, "c1": c1, "c2": c2, "vault": vault}
 
 
 @pytest.fixture()
@@ -211,7 +219,13 @@ class TestSyncConceptCLI:
         mt = MainTopic(code="TC0001", name="Test Topic", discipline_area_id=da.id)
         session.add(mt)
         session.flush()
-        c = Concept(code="test-concept", label="Test Concept", main_topic_id=mt.id)
+        tp = Topic(main_topic_id=mt.id, name="Test Subtopic", serial_number=1)
+        session.add(tp)
+        session.flush()
+        ct = Content(topic_id=tp.id, name="Test Content")
+        session.add(ct)
+        session.flush()
+        c = Concept(code="test-concept", label="Test Concept", content_id=ct.id, domain="Información")
         session.add(c)
         session.commit()
         return c

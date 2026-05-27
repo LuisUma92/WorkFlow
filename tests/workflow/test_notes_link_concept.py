@@ -16,7 +16,7 @@ from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session
 
 from workflow.db.base import GlobalBase
-from workflow.db.models.knowledge import DisciplineArea, MainTopic
+from workflow.db.models.knowledge import DisciplineArea, MainTopic, Topic, Content
 from workflow.db.models.knowledge import Concept
 from workflow.db.models.notes import Note, NoteConcept
 from workflow.notes.cli import notes
@@ -96,7 +96,15 @@ def seeded(session, notes_dir):
     session.add(mt)
     session.flush()
 
-    concept = Concept(code="forces", label="Forces", main_topic_id=mt.id)
+    tp = Topic(main_topic_id=mt.id, name="Dinamica", serial_number=1)
+    session.add(tp)
+    session.flush()
+
+    ct = Content(topic_id=tp.id, name="Segunda ley de Newton")
+    session.add(ct)
+    session.flush()
+
+    concept = Concept(code="forces", label="Forces", content_id=ct.id, domain="Información")
     session.add(concept)
     session.flush()
 
@@ -288,7 +296,13 @@ class TestLinkCmdCLI:
         mt = MainTopic(code="CL0001", name="CLI Topic", discipline_area_id=da.id)
         session.add(mt)
         session.flush()
-        concept = Concept(code="cli-force", label="CLI Force", main_topic_id=mt.id)
+        tp = Topic(main_topic_id=mt.id, name="CLI Subtopic", serial_number=1)
+        session.add(tp)
+        session.flush()
+        ct = Content(topic_id=tp.id, name="CLI Content")
+        session.add(ct)
+        session.flush()
+        concept = Concept(code="cli-force", label="CLI Force", content_id=ct.id, domain="Información")
         session.add(concept)
         session.flush()
         note_row = Note(filename="cli-note-01.md", reference="cli-note-01", zettel_id="cli-note-01")

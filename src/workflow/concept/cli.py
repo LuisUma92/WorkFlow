@@ -23,6 +23,7 @@ from workflow.concept.formatters import (
 )
 from workflow.concept.service import (
     ConceptError,
+    ContentNotFound,
     DuplicateCode,
     HasReferences,
     MainTopicNotFound,
@@ -113,10 +114,17 @@ def cmd_show(ctx: click.Context, code: str, as_json: bool) -> None:
 @click.option("--code", "code", required=True, help="Slug code (e.g. newton-2nd).")
 @click.option("--label", "label", required=True, help="Display label.")
 @click.option(
-    "--main-topic",
-    "main_topic_code",
+    "--content-id",
+    "content_id",
     required=True,
-    help="MainTopic.code (DDTTAA) this concept belongs to.",
+    type=int,
+    help="Numeric FK to Content.id this concept belongs to.",
+)
+@click.option(
+    "--domain",
+    "domain",
+    required=True,
+    help="Taxonomy domain (e.g. 'Información').",
 )
 @click.option(
     "--parent",
@@ -132,7 +140,8 @@ def cmd_add(
     ctx: click.Context,
     code: str,
     label: str,
-    main_topic_code: str,
+    content_id: int,
+    domain: str,
     parent_code: str | None,
     description: str | None,
     as_json: bool,
@@ -145,13 +154,14 @@ def cmd_add(
                 session,
                 code=code,
                 label=label,
-                main_topic_code=main_topic_code,
+                content_id=content_id,
+                domain=domain,
                 parent_code=parent_code,
                 description=description,
             )
             session.commit()
             session.refresh(c)
-        except (ConceptError, DuplicateCode, MainTopicNotFound) as exc:
+        except (ConceptError, ContentNotFound, DuplicateCode) as exc:
             raise click.ClickException(str(exc))
 
         if as_json:

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from workflow.db.base import GlobalBase
 from workflow.db.engine import init_global_db
-from workflow.db.models.knowledge import DisciplineArea, MainTopic
+from workflow.db.models.knowledge import DisciplineArea, MainTopic, Topic, Content
 from workflow.db.models.knowledge import Concept
 from workflow.validation.cli import validate
 from workflow.validation.schemas import (
@@ -46,7 +46,7 @@ def session(engine):
 
 @pytest.fixture()
 def seeded_session(session):
-    """Seed two MainTopics and one Concept under mt1."""
+    """Seed two MainTopics, Topic+Content chain under mt1, and one Concept."""
     da = DisciplineArea(
         code="FI0006",
         name="Fisica",
@@ -62,7 +62,15 @@ def seeded_session(session):
     session.add_all([mt1, mt2])
     session.flush()
 
-    c = Concept(code="forces", label="Forces", main_topic_id=mt1.id)
+    tp = Topic(main_topic_id=mt1.id, name="Cinematica", serial_number=1)
+    session.add(tp)
+    session.flush()
+
+    ct = Content(topic_id=tp.id, name="Movimiento rectilineo")
+    session.add(ct)
+    session.flush()
+
+    c = Concept(code="forces", label="Forces", content_id=ct.id, domain="Información")
     session.add(c)
     session.commit()
     return {"mt1": mt1, "mt2": mt2, "concept": c}
@@ -164,7 +172,13 @@ def _seed_global():
         mt = MainTopic(code="FI0006", name="Mecanica", discipline_area_id=da.id)
         session.add(mt)
         session.flush()
-        c = Concept(code="forces", label="Forces", main_topic_id=mt.id)
+        tp = Topic(main_topic_id=mt.id, name="Cinematica", serial_number=1)
+        session.add(tp)
+        session.flush()
+        ct = Content(topic_id=tp.id, name="Movimiento rectilineo")
+        session.add(ct)
+        session.flush()
+        c = Concept(code="forces", label="Forces", content_id=ct.id, domain="Información")
         session.add(c)
         session.commit()
         return mt.id

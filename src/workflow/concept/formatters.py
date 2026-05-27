@@ -31,7 +31,8 @@ def _concept_to_dict(concept: Concept) -> dict[str, Any]:
         "id": concept.id,
         "code": concept.code,
         "label": concept.label,
-        "main_topic": concept.main_topic.code if concept.main_topic else None,
+        "content": concept.content.name if concept.content else None,
+        "domain": concept.domain,
         "parent": concept.parent.code if concept.parent else None,
         "description": concept.description,
     }
@@ -62,11 +63,12 @@ def format_concept_show_json(concept: Concept, child_count: int) -> str:
 def format_concept_show_table(concept: Concept, child_count: int) -> str:
     """Human-readable for `concept show`."""
     parent_str = concept.parent.code if concept.parent else "(root)"
-    mt_str = concept.main_topic.code if concept.main_topic else "?"
+    content_str = concept.content.name if concept.content else "?"
     lines = [
         f"Concept: {concept.code}",
         f"  label       : {concept.label}",
-        f"  main_topic  : {mt_str}",
+        f"  content     : {content_str}",
+        f"  domain      : {concept.domain}",
         f"  parent      : {parent_str}",
         f"  child_count : {child_count}",
         f"  description : {concept.description or ''}",
@@ -83,9 +85,9 @@ def format_concepts_list_table(concepts: list[Concept]) -> str:
     lines: list[str] = []
     for c in concepts:
         parent_code = c.parent.code if c.parent else ""
-        mt_code = c.main_topic.code if c.main_topic else "?"
+        content_name = c.content.name if c.content else "?"
         lines.append(
-            f"  {c.id:4d}  {c.code:32s}  {c.label:40s}  {mt_code:8s}  {parent_code}"
+            f"  {c.id:4d}  {c.code:32s}  {c.label:40s}  {c.domain:24s}  {content_name:30s}  {parent_code}"
         )
     return "\n".join(lines)
 

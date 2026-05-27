@@ -13,7 +13,7 @@ from click.testing import CliRunner
 from sqlalchemy.orm import Session
 
 from workflow.db.engine import init_global_db
-from workflow.db.models.knowledge import DisciplineArea, MainTopic
+from workflow.db.models.knowledge import DisciplineArea, MainTopic, Topic, Content
 from workflow.db.models.knowledge import Concept
 from workflow.db.models.notes import NoteConcept, Note
 from workflow.concept.cli import concept
@@ -35,7 +35,7 @@ def _isolated_global_db(tmp_path_factory, monkeypatch):
 
 
 def _seed(*, mt_code: str = "FI0006") -> dict:
-    """Seed a DisciplineArea + MainTopic and return their DB ids."""
+    """Seed a DisciplineArea + MainTopic + Topic + Content chain and one Concept."""
     engine = init_global_db()
     with Session(engine) as session:
         da = DisciplineArea(
@@ -47,14 +47,23 @@ def _seed(*, mt_code: str = "FI0006") -> dict:
         mt = MainTopic(code=mt_code, name="Mecanica", discipline_area_id=da.id)
         session.add(mt)
         session.flush()
+        tp = Topic(main_topic_id=mt.id, name="Cinematica", serial_number=1)
+        session.add(tp)
+        session.flush()
+        ct = Content(topic_id=tp.id, name="Movimiento rectilineo")
+        session.add(ct)
+        session.flush()
 
-        c = Concept(code="forces", label="Forces", main_topic_id=mt.id)
+        c = Concept(code="forces", label="Forces", content_id=ct.id, domain="Información")
         session.add(c)
         session.commit()
-        return {"mt_id": mt.id, "concept_id": c.id, "mt_code": mt_code}
+        return {
+            "mt_id": mt.id, "concept_id": c.id, "mt_code": mt_code,
+            "content_id": ct.id, "topic_id": tp.id,
+        }
 
 
-def _add_note_concept(concept_id: int, mt_id: int) -> int:
+def _add_note_concept(concept_id: int, mt_id: int = 0) -> int:
     """Add a Note + NoteConcept row; return note id."""
     engine = init_global_db()
     with Session(engine) as session:
@@ -64,7 +73,6 @@ def _add_note_concept(concept_id: int, mt_id: int) -> int:
             reference="cli-note-001",
             title="CLI Test Note",
             note_type="permanent",
-            main_topic_id=mt_id,
         )
         session.add(note)
         session.flush()
@@ -98,7 +106,13 @@ def test_cli_list_filtered_by_main_topic(runner):
         mt2 = MainTopic(code="MA0001", name="Calculo", discipline_area_id=da2.id)
         session.add(mt2)
         session.flush()
-        session.add(Concept(code="integrals", label="Integrals", main_topic_id=mt2.id))
+        tp2 = Topic(main_topic_id=mt2.id, name="Integracion", serial_number=1)
+        session.add(tp2)
+        session.flush()
+        ct2 = Content(topic_id=tp2.id, name="Integracion definida")
+        session.add(ct2)
+        session.flush()
+        session.add(Concept(code="integrals", label="Integrals", content_id=ct2.id, domain="Información"))
         session.commit()
 
     result = runner.invoke(concept, ["list", "--main-topic", "FI0006", "--json"])
@@ -123,7 +137,7 @@ def test_cli_show_json_shape_locked(runner):
     result = runner.invoke(concept, ["show", "forces", "--json"])
     assert result.exit_code == 0, result.output
     data = json.loads(result.output)
-    expected_keys = {"code", "label", "main_topic", "parent", "description",
+    expected_keys = {"code", "label", "content", "domain", "parent", "description",
                      "id", "child_count", "created_at"}
     assert set(data.keys()) == expected_keys
 
@@ -132,45 +146,49 @@ def test_cli_show_json_shape_locked(runner):
 
 
 def test_cli_add_happy_path(runner):
-    _seed()
+    seed = _seed()
     result = runner.invoke(concept, [
         "add", "--code", "newton-2nd",
         "--label", "Newton 2nd Law",
-        "--main-topic", "FI0006",
+        "--content-id", str(seed["content_id"]),
+        "--domain", "Información",
         "--json",
     ])
     assert result.exit_code == 0, result.output
     data = json.loads(result.output)
     assert data["code"] == "newton-2nd"
-    assert data["main_topic"] == "FI0006"
+    assert data["content"] is not None
     assert "id" in data
 
 
 def test_cli_add_duplicate_exits_nonzero(runner):
-    _seed()
+    seed = _seed()
     result = runner.invoke(concept, [
         "add", "--code", "forces",
         "--label", "Forces Again",
-        "--main-topic", "FI0006",
+        "--content-id", str(seed["content_id"]),
+        "--domain", "Información",
     ])
     assert result.exit_code != 0
 
 
-def test_cli_add_unknown_main_topic_exits_nonzero(runner):
+def test_cli_add_unknown_content_exits_nonzero(runner):
     result = runner.invoke(concept, [
         "add", "--code", "test-c",
         "--label", "Test",
-        "--main-topic", "XX9999",
+        "--content-id", "99999",
+        "--domain", "Información",
     ])
     assert result.exit_code != 0
 
 
 def test_cli_add_unknown_parent_exits_nonzero(runner):
-    _seed()
+    seed = _seed()
     result = runner.invoke(concept, [
         "add", "--code", "child-c",
         "--label", "Child",
-        "--main-topic", "FI0006",
+        "--content-id", str(seed["content_id"]),
+        "--domain", "Información",
         "--parent", "nonexistent-parent",
     ])
     assert result.exit_code != 0
@@ -187,7 +205,8 @@ def test_cli_tree_ascii_renders_hierarchy(runner):
         parent = session.query(Concept).filter_by(code="forces").first()
         child = Concept(
             code="gravity", label="Gravity",
-            main_topic_id=parent.main_topic_id,
+            content_id=parent.content_id,
+            domain=parent.domain,
             parent_id=parent.id,
         )
         session.add(child)
@@ -206,7 +225,8 @@ def test_cli_tree_json_nested_shape(runner):
         parent = session.query(Concept).filter_by(code="forces").first()
         child = Concept(
             code="gravity", label="Gravity",
-            main_topic_id=parent.main_topic_id,
+            content_id=parent.content_id,
+            domain=parent.domain,
             parent_id=parent.id,
         )
         session.add(child)
@@ -274,5 +294,5 @@ def test_concept_list_json_shape_matches_sibling(runner):
     assert result.exit_code == 0, result.output
     data = json.loads(result.output)
     assert len(data) > 0
-    expected_keys = {"id", "code", "label", "main_topic", "parent", "description"}
+    expected_keys = {"id", "code", "label", "content", "domain", "parent", "description"}
     assert set(data[0].keys()) == expected_keys

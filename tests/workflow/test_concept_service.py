@@ -10,11 +10,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from workflow.db.base import GlobalBase
-from workflow.db.models.knowledge import DisciplineArea, MainTopic
+from workflow.db.models.knowledge import DisciplineArea, MainTopic, Topic, Content
 from workflow.db.models.knowledge import Concept
 from workflow.db.models.notes import NoteConcept, Note
 from workflow.concept.service import (
     ConceptError,
+    ContentNotFound,
     DuplicateCode,
     HasReferences,
     MainTopicNotFound,
@@ -22,6 +23,7 @@ from workflow.concept.service import (
     UnknownCode,
     add_concept,
     build_concept_tree,
+    concept_main_topic,
     get_concept,
     list_concepts,
     remove_concept,
@@ -53,28 +55,57 @@ def session(engine):
         yield s
 
 
-@pytest.fixture()
-def seeded(session):
-    """Seed one DisciplineArea + two MainTopics + one Concept."""
+def _seed_concept_chain(
+    session: Session,
+    *,
+    da_code: str = "FI0000",
+    mt_code: str = "FI0006",
+    domain: str = "Información",
+) -> tuple[DisciplineArea, MainTopic, Topic, Content]:
+    """Create DisciplineArea → MainTopic → Topic → Content chain."""
     da = DisciplineArea(
-        code="FI0006",
-        name="Fisica",
-        discipline_num=1,
-        topic_num=6,
-        area_initials="FI",
+        code=da_code, name="Fisica", discipline_num=10, topic_num=0, area_initials="FI"
     )
     session.add(da)
     session.flush()
+    mt = MainTopic(code=mt_code, name="Mecanica", discipline_area_id=da.id)
+    session.add(mt)
+    session.flush()
+    tp = Topic(main_topic_id=mt.id, name="Cinematica", serial_number=1)
+    session.add(tp)
+    session.flush()
+    ct = Content(topic_id=tp.id, name="Movimiento rectilineo")
+    session.add(ct)
+    session.flush()
+    return da, mt, tp, ct
 
-    mt1 = MainTopic(code="FI0006", name="Mecanica", discipline_area_id=da.id)
+
+@pytest.fixture()
+def seeded(session):
+    """Seed chain + two MainTopics + one Concept."""
+    da, mt1, tp1, ct1 = _seed_concept_chain(
+        session, da_code="FI0000", mt_code="FI0006"
+    )
+    # Second main topic with its own chain
     mt2 = MainTopic(code="FI0007", name="Termodinamica", discipline_area_id=da.id)
-    session.add_all([mt1, mt2])
+    session.add(mt2)
+    session.flush()
+    tp2 = Topic(main_topic_id=mt2.id, name="Calor", serial_number=1)
+    session.add(tp2)
+    session.flush()
+    ct2 = Content(topic_id=tp2.id, name="Calor especifico")
+    session.add(ct2)
     session.flush()
 
-    c = Concept(code="forces", label="Forces", main_topic_id=mt1.id)
+    c = Concept(code="forces", label="Forces", content_id=ct1.id, domain="Información")
     session.add(c)
     session.commit()
-    return {"da": da, "mt1": mt1, "mt2": mt2, "concept": c}
+    return {
+        "da": da,
+        "mt1": mt1, "tp1": tp1, "ct1": ct1,
+        "mt2": mt2, "tp2": tp2, "ct2": ct2,
+        "concept": c,
+    }
 
 
 # ── resolve_concepts ──────────────────────────────────────────────────────
@@ -118,17 +149,30 @@ def test_add_concept_duplicate_code_raises(session, seeded):
             session,
             code="forces",
             label="Forces Again",
-            main_topic_code="FI0006",
+            content_id=seeded["ct1"].id,
+            domain="Información",
         )
 
 
-def test_add_concept_unknown_main_topic_raises(session, seeded):
-    with pytest.raises(MainTopicNotFound):
+def test_add_concept_unknown_content_raises(session, seeded):
+    with pytest.raises(ContentNotFound):
         add_concept(
             session,
             code="new-concept",
             label="New",
-            main_topic_code="XX9999",
+            content_id=99999,
+            domain="Información",
+        )
+
+
+def test_add_concept_invalid_domain_raises(session, seeded):
+    with pytest.raises(ConceptError):
+        add_concept(
+            session,
+            code="bad-domain",
+            label="Bad Domain",
+            content_id=seeded["ct1"].id,
+            domain="InvalidDomain",
         )
 
 
@@ -138,20 +182,22 @@ def test_add_concept_unknown_parent_raises(session, seeded):
             session,
             code="child",
             label="Child",
-            main_topic_code="FI0006",
+            content_id=seeded["ct1"].id,
+            domain="Información",
             parent_code="does-not-exist",
         )
 
 
-def test_add_concept_parent_in_different_main_topic_raises(session, seeded):
-    """Parent must belong to same main_topic as child."""
-    # Add concept under mt2
-    mt2_concept = Concept(
+def test_add_concept_parent_in_different_content_raises(session, seeded):
+    """Parent must belong to same content as child."""
+    # Add concept under ct2 (different chain)
+    ct2_concept = Concept(
         code="heat",
         label="Heat",
-        main_topic_id=seeded["mt2"].id,
+        content_id=seeded["ct2"].id,
+        domain="Información",
     )
-    session.add(mt2_concept)
+    session.add(ct2_concept)
     session.commit()
 
     with pytest.raises(ConceptError):
@@ -159,7 +205,8 @@ def test_add_concept_parent_in_different_main_topic_raises(session, seeded):
             session,
             code="child-of-heat",
             label="Child of heat",
-            main_topic_code="FI0006",  # different MT than parent
+            content_id=seeded["ct1"].id,  # different content than parent
+            domain="Información",
             parent_code="heat",
         )
 
@@ -171,7 +218,8 @@ def test_add_concept_invalid_code_raises(session, seeded):
             session,
             code="INVALID CODE/bad",
             label="Bad",
-            main_topic_code="FI0006",
+            content_id=seeded["ct1"].id,
+            domain="Información",
         )
 
 
@@ -180,7 +228,8 @@ def test_add_concept_happy_path(session, seeded):
         session,
         code="newton-2nd",
         label="Newton 2nd Law",
-        main_topic_code="FI0006",
+        content_id=seeded["ct1"].id,
+        domain="Información",
         parent_code="forces",
     )
     session.commit()
@@ -203,8 +252,8 @@ def test_list_concepts_all(session, seeded):
 
 
 def test_list_concepts_filtered_by_main_topic(session, seeded):
-    # Add concept under mt2
-    session.add(Concept(code="heat", label="Heat", main_topic_id=seeded["mt2"].id))
+    # Add concept under ct2 (different main topic chain)
+    session.add(Concept(code="heat", label="Heat", content_id=seeded["ct2"].id, domain="Información"))
     session.commit()
 
     results = list_concepts(session, main_topic_code="FI0006")
@@ -216,15 +265,16 @@ def test_list_concepts_filtered_by_main_topic(session, seeded):
 
 
 def test_build_concept_tree_filters_by_main_topic(session, seeded):
-    # Add child concept under mt1
+    # Add child concept under ct1 (same MT chain)
     child = Concept(
         code="gravity",
         label="Gravity",
-        main_topic_id=seeded["mt1"].id,
+        content_id=seeded["ct1"].id,
+        domain="Información",
         parent_id=seeded["concept"].id,
     )
-    # Add concept under mt2
-    other = Concept(code="heat", label="Heat", main_topic_id=seeded["mt2"].id)
+    # Add concept under ct2 (different MT)
+    other = Concept(code="heat", label="Heat", content_id=seeded["ct2"].id, domain="Información")
     session.add_all([child, other])
     session.commit()
 
@@ -236,17 +286,18 @@ def test_build_concept_tree_filters_by_main_topic(session, seeded):
 
 def test_build_concept_tree_orphan_parent_outside_filter(session, seeded):
     """Child whose parent is filtered out becomes a root node."""
-    mt2_concept = Concept(code="heat", label="Heat", main_topic_id=seeded["mt2"].id)
-    session.add(mt2_concept)
+    ct2_concept = Concept(code="heat", label="Heat", content_id=seeded["ct2"].id, domain="Información")
+    session.add(ct2_concept)
     session.flush()
 
-    # Child belonging to mt1 but whose parent belongs to mt2
+    # Child belonging to ct1 chain but whose parent belongs to ct2 chain
     # (this shouldn't happen via add_concept but test robustness)
     orphan = Concept(
         code="orphan-node",
         label="Orphan",
-        main_topic_id=seeded["mt1"].id,
-        parent_id=mt2_concept.id,
+        content_id=seeded["ct1"].id,
+        domain="Información",
+        parent_id=ct2_concept.id,
     )
     session.add(orphan)
     session.commit()
@@ -269,14 +320,12 @@ def _collect_tree_codes(nodes: list[dict]) -> set[str]:
 
 def test_remove_concept_refuses_when_note_concept_rows(session, seeded):
     """HasReferences raised when NoteConcept rows reference the concept."""
-    # Create a Note first
     note = Note(
         zettel_id="note-001",
         filename="note-001.md",
         reference="note-001",
         title="Test Note",
         note_type="permanent",
-        main_topic_id=seeded["mt1"].id,
     )
     session.add(note)
     session.flush()
@@ -297,7 +346,6 @@ def test_remove_concept_force_cascades_note_concept(session, seeded):
         reference="note-002",
         title="Test Note 2",
         note_type="permanent",
-        main_topic_id=seeded["mt1"].id,
     )
     session.add(note)
     session.flush()
@@ -321,7 +369,8 @@ def test_remove_concept_force_reparents_children_to_grandparent(session, seeded)
     child = Concept(
         code="gravity",
         label="Gravity",
-        main_topic_id=seeded["mt1"].id,
+        content_id=seeded["ct1"].id,
+        domain="Información",
         parent_id=parent.id,
     )
     session.add(child)
@@ -351,9 +400,19 @@ def test_rename_concept_atomic(session, seeded):
 
 def test_rename_concept_collides_with_existing_raises(session, seeded):
     session.add(
-        Concept(code="gravity", label="Gravity", main_topic_id=seeded["mt1"].id)
+        Concept(code="gravity", label="Gravity", content_id=seeded["ct1"].id, domain="Información")
     )
     session.commit()
 
     with pytest.raises(DuplicateCode):
         rename_concept(session, "forces", "gravity")
+
+
+# ── concept_main_topic ────────────────────────────────────────────────────
+
+
+def test_concept_main_topic_traversal(session, seeded):
+    """concept_main_topic(concept) traverses content→topic→main_topic."""
+    c = seeded["concept"]
+    mt = concept_main_topic(c)
+    assert mt.code == "FI0006"

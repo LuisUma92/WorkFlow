@@ -8,9 +8,11 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from workflow.db.models.knowledge import Concept, MainTopic
+from workflow.db.models.academic import _TAXONOMY_DOMAINS
+from workflow.db.models.knowledge import Concept, Content, MainTopic, Topic
 from workflow.db.models.notes import NoteConcept
 
 __all__ = [
@@ -19,7 +21,9 @@ __all__ = [
     "UnknownCode",
     "ParentNotFound",
     "MainTopicNotFound",
+    "ContentNotFound",
     "HasReferences",
+    "concept_main_topic",
     "resolve_concepts",
     "list_concepts",
     "get_concept",
@@ -64,18 +68,15 @@ class MainTopicNotFound(ConceptError):
     """No MainTopic found for the given code."""
 
 
+class ContentNotFound(ConceptError):
+    """No Content found for the given id."""
+
+
 class HasReferences(ConceptError):
     """Concept is referenced by NoteConcept rows; use force=True to override."""
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────
-
-
-def _get_main_topic(session: Session, code: str) -> MainTopic:
-    mt = session.query(MainTopic).filter_by(code=code).first()
-    if mt is None:
-        raise MainTopicNotFound(f"MainTopic {code!r} not found.")
-    return mt
 
 
 def _get_concept_or_raise(session: Session, code: str) -> Concept:
@@ -85,7 +86,19 @@ def _get_concept_or_raise(session: Session, code: str) -> Concept:
     return c
 
 
+def _validate_domain(domain: str) -> None:
+    if domain not in _TAXONOMY_DOMAINS:
+        raise ConceptError(
+            f"domain {domain!r} is invalid; must be one of {list(_TAXONOMY_DOMAINS)}"
+        )
+
+
 # ── Public API ────────────────────────────────────────────────────────────
+
+
+def concept_main_topic(concept: Concept) -> MainTopic:
+    """Resolve the MainTopic for a concept via content -> topic -> main_topic."""
+    return concept.content.topic.main_topic
 
 
 def resolve_concepts(
@@ -131,13 +144,19 @@ def list_concepts(
     main_topic_code: str | None = None,
 ) -> list[Concept]:
     """List concepts, optionally filtered by MainTopic.code."""
-    q = session.query(Concept)
     if main_topic_code is not None:
         mt = session.query(MainTopic).filter_by(code=main_topic_code).first()
         if mt is None:
             raise MainTopicNotFound(f"MainTopic {main_topic_code!r} not found.")
-        q = q.filter(Concept.main_topic_id == mt.id)
-    return q.order_by(Concept.code).all()
+        stmt = (
+            select(Concept)
+            .join(Content, Concept.content_id == Content.id)
+            .join(Topic, Content.topic_id == Topic.id)
+            .where(Topic.main_topic_id == mt.id)
+            .order_by(Concept.code)
+        )
+        return list(session.scalars(stmt).all())
+    return session.query(Concept).order_by(Concept.code).all()
 
 
 def add_concept(
@@ -145,7 +164,8 @@ def add_concept(
     *,
     code: str,
     label: str,
-    main_topic_code: str,
+    content_id: int,
+    domain: str,
     parent_code: str | None = None,
     description: str | None = None,
 ) -> Concept:
@@ -153,29 +173,33 @@ def add_concept(
 
     Raises:
         ConceptError: code fails slug validation.
+        ConceptError: domain is not a valid taxonomy domain.
         DuplicateCode: code already exists.
-        MainTopicNotFound: main_topic_code not found.
+        ContentNotFound: content_id not found.
         ParentNotFound: parent_code not found.
-        ConceptError: parent belongs to a different MainTopic.
+        ConceptError: parent belongs to a different Content.
     """
     _validate_slug(code)
+    _validate_domain(domain)
 
     existing = session.query(Concept).filter_by(code=code).first()
     if existing is not None:
         raise DuplicateCode(f"Concept {code!r} already exists (id={existing.id}).")
 
-    mt = _get_main_topic(session, main_topic_code)
+    content = session.get(Content, content_id)
+    if content is None:
+        raise ContentNotFound(f"Content id={content_id!r} not found.")
 
     parent_id: int | None = None
     if parent_code is not None:
         parent = session.query(Concept).filter_by(code=parent_code).first()
         if parent is None:
             raise ParentNotFound(f"Parent concept {parent_code!r} not found.")
-        if parent.main_topic_id != mt.id:
+        if parent.content_id != content_id:
             raise ConceptError(
-                f"Parent {parent_code!r} belongs to main_topic_id="
-                f"{parent.main_topic_id}, but new concept targets "
-                f"main_topic_id={mt.id}. Parent must be in the same MainTopic."
+                f"Parent {parent_code!r} belongs to content_id="
+                f"{parent.content_id}, but new concept targets "
+                f"content_id={content_id}. Parent must be in the same Content."
             )
         # Cycle-safety: new concept doesn't have an id yet so no cycle possible
         parent_id = parent.id
@@ -183,7 +207,8 @@ def add_concept(
     concept = Concept(
         code=code,
         label=label,
-        main_topic_id=mt.id,
+        content_id=content_id,
+        domain=domain,
         parent_id=parent_id,
         description=description,
     )
