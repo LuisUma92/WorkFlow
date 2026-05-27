@@ -224,3 +224,4 @@ docs/.obsidian
 .~lock.biblatex-entries.ods#
 slipbox.db
 .claude/
+pytest-of-luis/

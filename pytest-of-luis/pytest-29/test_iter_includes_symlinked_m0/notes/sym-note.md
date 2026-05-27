@@ -1,1 +1,0 @@
-/home/luis/02-Projects/WorkFlow/pytest-of-luis/pytest-29/test_iter_includes_symlinked_m0/external.md
