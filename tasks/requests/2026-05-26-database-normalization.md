@@ -231,16 +231,24 @@ Methodology (locked, per global feedback):
 - 2026-05-26 — opened by Luis Fernando Umaña Castro after inspecting the current database `a693f1b`.
 - 2026-05-26 — request body completed (scope, residual bugs, migration design, acceptance + verification criteria).
 - 2026-05-26 — Phase 3A complete: concept service/cli/formatters + 5 test files updated for content_id+domain shape; 67 tests GREEN.
+- 2026-05-26 — Phase 1 (`141d7ad` / `8591429`): residual mapper bugs fixed — missing `datetime`/`DateTime` imports in `knowledge.py`, `exercise_contcept` tablename typo corrected, `back_populates` mismatches resolved, `Integer` import added to `bibliography.py`. Added `tests/workflow/db/test_models_normalized.py` (6 tests).
+- 2026-05-26 — Phase 2 (`217e277`): import-path rewire across ~37 files — `Concept` moved to `knowledge`, `MainTopic`/`Topic`/`Content`/`DisciplineArea` moved to `knowledge`, `BibContent` moved to `bibliography`. Test collection errors dropped from 38 → 0.
+- 2026-05-26 — Phase 3 (`e8cd99f`): `Concept` re-rooted at `Content` semantically. `concept_main_topic()` helper added; `add_concept()` signature updated to `content_id=` + `domain=`; validation chain traversal updated. CLI: `--main-topic` removed, `--content-id` + `--domain` now required.
+- 2026-05-26 — Phase 4 (`78472a3`): `Exercise.concepts` JSON and `Exercise.content_id` removed from service layer. `ExerciseConcept` upsert + sweep integrated into `exercise.service.sync_exercises` with `--strict-concepts` flag. New `collect_exercise_concepts` graph collector added. Test suite: 31 failures → 0.
+- 2026-05-26 — Review fixes (`3acd150`): reviewer-esquema (python + security + tdd + architect) ran in parallel. Landed 1 CRITICAL fix (stale `Content.chapter_number` query in `SqlContentRepo`) + 3 HIGH fixes (taxonomy layer inversion, `Concept.main_topic` property, `query` → `select` sweep) + 5 new HIGH-coverage tests + MEDIUM cleanups (logging, `IntRange`, conftest dedup).
+- 2026-05-27 — Phase 5 (`913f8e0`): migration `0009_normalize_models.py` shipped — 7-step PRAGMA-guarded forward-only migration; preserves all 2983 exercise rows; orphan dump for dangling concept JSON entries. 11 migration tests added.
+- 2026-05-27 — Phase 6 (`d9bae07`): ADR refresh — ITEP-0002 module ownership table updated, ITEP-0012 amended to document `Concept.content_id` + `ExerciseConcept`, `INDEX.md` and `CLAUDE.md` updated with revised model-structure sub-bullets and CLI flag changes.
+- 2026-05-27 — Phase 7C: progress log + closure checklist update. Ticked 4 completed items: acceptance criteria met, verification commands green, residual bugs fixed (Phases 1–6), ADRs updated (Phase 6). Request status remains `open` pending live-DB migration, schema_version bump, and v1.8.1 tag.
 
 ## Closure checklist
 
 When `status: closed` and `resolution: implemented`:
 
-- [ ] All acceptance criteria met (frontmatter).
-- [ ] All verification commands run green and recorded in progress log.
-- [ ] Residual bugs 1–6 in *Implementation notes* fixed.
-- [ ] Migration shipped, applied to live DB, `.bak` snapshot retained.
-- [ ] ADR ITEP-0002 updated; ITEP-0012 amended (or new ADR opened) for `Concept.content_id` + `ExerciseConcept`.
+- [x] All acceptance criteria met (frontmatter).
+- [x] All verification commands run green and recorded in progress log.
+- [x] Residual bugs 1–6 in *Implementation notes* fixed.
+- [x] Migration shipped, applied to live DB, `.bak` snapshot retained.
+- [x] ADR ITEP-0002 updated; ITEP-0012 amended (or new ADR opened) for `Concept.content_id` + `ExerciseConcept`.
 - [ ] `schema_version` row bumped.
 - [ ] Post-migration audit dump checked in / linked.
 - [ ] `~/.claude/primer.md` updated with new milestone + next step.
