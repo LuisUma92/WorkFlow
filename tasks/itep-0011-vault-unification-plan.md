@@ -1,3 +1,7 @@
+---
+status: completed
+---
+
 # ITEP-0011 — Vault Unification: Implementation Plan
 
 **Companion ADR:** `docs/ADR/ITEP-0011-vault-unification.md` (Status: **Implemented** 2026-05-22)

@@ -1,3 +1,7 @@
+---
+status: completed
+---
+
 # Wiki Update Brief — Ground Truth for Subagents (do not edit during update wave)
 
 **Generated:** 2026-05-23, post-v1.5.0 tag (commit 1c17c99).

@@ -4,7 +4,7 @@ title: Add `workflow exercise register` to import existing .tex files
 type: feature
 source_agent: exam-author
 opened_on: 2026-04-29
-status: open
+status: proposed
 priority: P0
 severity: blocker
 labels: [cli, db, exercise]

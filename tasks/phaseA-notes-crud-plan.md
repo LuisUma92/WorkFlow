@@ -1,3 +1,7 @@
+---
+status: completed
+---
+
 # Implementation Plan: Phase A — `workflow notes` CRUD
 
 ## Overview

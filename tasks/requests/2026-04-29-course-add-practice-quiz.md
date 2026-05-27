@@ -4,7 +4,7 @@ title: Add `workflow course add-practice` to register lab practices and quizzes
 type: feature
 source_agent: workflow-runner
 opened_on: 2026-04-29
-status: open
+status: proposed
 priority: P1
 severity: blocker
 labels: [cli, db]

@@ -4,7 +4,7 @@ title: Add NOT NULL FK from main_topic.discipline_area_id to discipline_area.id
 type: enhancement
 source_agent: user
 opened_on: 2026-04-29
-status: open
+status: proposed
 priority: P0
 severity: blocker
 labels: [db, validation]

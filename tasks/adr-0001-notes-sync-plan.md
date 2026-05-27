@@ -1,3 +1,7 @@
+---
+status: completed
+---
+
 # ADR-0001 Phase 1 Plan — `workflow notes sync`
 
 **Status:** in-progress

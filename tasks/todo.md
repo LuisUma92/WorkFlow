@@ -1,3 +1,7 @@
+---
+status: in-progress
+---
+
 # PRISMA P2 — Implementation Plan
 
 **Spec:** `docs/superpowers/specs/2026-04-09-prisma-p2-design.md`

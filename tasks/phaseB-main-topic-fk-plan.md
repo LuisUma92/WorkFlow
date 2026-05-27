@@ -1,3 +1,7 @@
+---
+status: completed
+---
+
 # Implementation Plan: Phase B — `main_topic` frontmatter FK
 
 ## RESOLVED (2026-05-04, user)

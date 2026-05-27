@@ -5,7 +5,7 @@ type:
 source_agent: None
 opened_on:
 
-status: open
+status: proposed
 resolution:
 priority:
 severity:

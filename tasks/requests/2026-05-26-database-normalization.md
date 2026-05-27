@@ -5,7 +5,7 @@ type: enhancement
 source_agent: None
 opened_on: 2026-05-26
 
-status: closed
+status: completed
 resolution: implemented
 priority: P1
 severity: bad-design

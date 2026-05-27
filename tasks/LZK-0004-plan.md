@@ -1,3 +1,7 @@
+---
+status: completed
+---
+
 # LZK-0004 — Remove latexzettel Peewee/SQLA shim
 
 > Deferred plan. Target release: v1.6.0 (after vault CLI + migration 0008 hotfix v1.5.1).

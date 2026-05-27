@@ -1,3 +1,7 @@
+---
+status: completed
+---
+
 # ITEP-0012 forward-dep closure — concept↔note DB linking
 
 ## Context

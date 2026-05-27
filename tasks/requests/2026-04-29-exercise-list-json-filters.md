@@ -4,7 +4,7 @@ title: Add `--json` and `--course` filters to `workflow exercise list`
 type: enhancement
 source_agent: workflow-runner
 opened_on: 2026-04-29
-status: open
+status: proposed
 priority: P2
 severity: polish
 labels: [cli, exercise]

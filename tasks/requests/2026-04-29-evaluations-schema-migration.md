@@ -4,7 +4,7 @@ title: Fix `workflow evaluations list` schema crash + add `db migrate` command
 type: bug
 source_agent: workflow-runner
 opened_on: 2026-04-29
-status: open
+status: proposed
 priority: P0
 severity: blocker
 labels: [cli, db, validation]

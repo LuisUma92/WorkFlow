@@ -5,7 +5,7 @@ type: enhancement
 source_agent: claude
 opened_on: 2026-05-23
 
-status: open
+status: proposed
 resolution:
 priority: P1
 severity: recurring-friction

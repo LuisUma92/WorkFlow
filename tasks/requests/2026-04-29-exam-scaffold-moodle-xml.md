@@ -4,7 +4,7 @@ title: Add `workflow exam scaffold-xml` to generate Moodle quiz skeletons
 type: feature
 source_agent: exam-author
 opened_on: 2026-04-29
-status: open
+status: proposed
 priority: P1
 severity: recurring-friction
 labels: [cli, exercise]
