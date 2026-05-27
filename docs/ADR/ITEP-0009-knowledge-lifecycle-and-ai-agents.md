@@ -3,7 +3,7 @@ id: ITEP-0009
 title: "Knowledge lifecycle, discipline taxonomy, and AI agent collaboration conventions"
 aliases:
   - ADR-ITEP-0009
-status: Implemented (partial)
+status: Implemented
 date: 2026-04-21
 implemented_at: 2026-04-29
 authors:
@@ -562,6 +562,7 @@ No filesystem changes are required before this ADR takes effect.
 | ---------- | ---------------------------------------------------------------------------------------------- |
 | 2026-04-21 | Initial ADR — discipline taxonomy, knowledge lifecycle, agent conventions, prompt rules H1–H10 |
 | 2026-04-29 | WorkFlow-side parts implemented (Phases A+B+C). Part III deferred to ~/Documents/01-U.         |
+| 2026-05-27 | Status flipped to `Implemented`. WorkFlow-repo scope (Parts I–II + MAY rule) is complete: all three phases (A/B/C) shipped, 38 tests green. Part III agent conventions remain deferred to `~/01-U/.claude/` workspace per the original plan; they are out of scope for this repo. |
 
 ## Implementation Notes (WorkFlow-side, 2026-04-29)
 
