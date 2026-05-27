@@ -7,7 +7,10 @@ Uses the exercise parser and ExerciseRepo for DB operations.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from workflow.db.models.bibliography import BibEntry
 
 import click
 from sqlalchemy.orm import Session
