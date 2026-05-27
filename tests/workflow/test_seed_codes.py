@@ -9,7 +9,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from workflow.db.base import GlobalBase
-from workflow.db.models.academic import DisciplineArea
+from workflow.db.models.knowledge import DisciplineArea
 from workflow.db import seed_codes
 
 

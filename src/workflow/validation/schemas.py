@@ -5,9 +5,8 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
+from workflow.db.models.knowledge import DisciplineArea, MainTopic
 from workflow.db.models.academic import (
-    DisciplineArea,
-    MainTopic,
     _TAXONOMY_DOMAINS,
     _TAXONOMY_LEVELS,
 )

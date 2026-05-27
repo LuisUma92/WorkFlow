@@ -20,8 +20,9 @@ from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session
 
 from workflow.db.base import GlobalBase
-from workflow.db.models.academic import DisciplineArea, MainTopic
-from workflow.db.models.notes import Concept, Note, NoteConcept
+from workflow.db.models.knowledge import DisciplineArea, MainTopic
+from workflow.db.models.knowledge import Concept
+from workflow.db.models.notes import Note, NoteConcept
 from workflow.notes.cli import notes
 from workflow.notes.sync import sync_vault
 

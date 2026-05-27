@@ -29,13 +29,11 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from workflow.db import taxonomy
+from workflow.db.models.knowledge import Content, MainTopic, Topic
+from workflow.db.models.bibliography import BibContent
 from workflow.db.models.academic import (
-    BibContent,
-    Content,
     Course,
     CourseContent,
-    MainTopic,
-    Topic,
 )
 from workflow.db.models.project import LectureInstance
 

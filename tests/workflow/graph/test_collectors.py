@@ -7,14 +7,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from workflow.db.base import GlobalBase, LocalBase
+from workflow.db.models.knowledge import Content, DisciplineArea, MainTopic, Topic
+from workflow.db.models.bibliography import BibContent
 from workflow.db.models.academic import (
-    BibContent,
-    Content,
     Course,
     CourseContent,
-    DisciplineArea,
-    MainTopic,
-    Topic,
     Institution,
 )
 

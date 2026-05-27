@@ -10,8 +10,8 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from workflow.db.models.academic import MainTopic
-from workflow.db.models.notes import Concept, NoteConcept
+from workflow.db.models.knowledge import Concept, MainTopic
+from workflow.db.models.notes import NoteConcept
 
 __all__ = [
     "ConceptError",

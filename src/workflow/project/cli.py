@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from workflow.db import maturation
 from workflow.db.errors import with_schema_guard
 from workflow.db.engine import get_engine_from_ctx
-from workflow.db.models.academic import MainTopic
+from workflow.db.models.knowledge import MainTopic
 
 
 _TICK = {True: "✓", False: "✗", None: "?"}

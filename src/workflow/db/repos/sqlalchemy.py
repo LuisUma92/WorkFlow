@@ -15,9 +15,9 @@ from pathlib import Path
 from sqlalchemy.orm import selectinload
 
 from workflow.db.models.bibliography import Author, BibEntry
+from workflow.db.models.knowledge import Content
+from workflow.db.models.bibliography import BibContent
 from workflow.db.models.academic import (
-    BibContent,
-    Content,
     Course,
     EvaluationItem,
     EvaluationTemplate,

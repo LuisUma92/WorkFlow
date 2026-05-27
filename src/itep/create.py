@@ -13,11 +13,10 @@ from pathlib import Path
 
 import click
 
+from workflow.db.models.knowledge import DisciplineArea, MainTopic
 from workflow.db.models.academic import (
-    Institution as InstitutionModel,
-    MainTopic,
-    DisciplineArea,
     Course,
+    Institution as InstitutionModel,
 )
 from workflow.db.models.project import (
     GeneralProject,

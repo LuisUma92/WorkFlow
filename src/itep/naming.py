@@ -22,7 +22,7 @@ from typing import Iterable
 
 from sqlalchemy.orm import Session
 
-from workflow.db.models.academic import MainTopic
+from workflow.db.models.knowledge import MainTopic
 from workflow.db.models.project import GeneralProject
 
 

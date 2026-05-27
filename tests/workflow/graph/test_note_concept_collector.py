@@ -4,8 +4,9 @@ from __future__ import annotations
 import pytest
 from sqlalchemy.orm import Session
 
-from workflow.db.models.academic import DisciplineArea, MainTopic
-from workflow.db.models.notes import Concept, Note, NoteConcept
+from workflow.db.models.knowledge import DisciplineArea, MainTopic
+from workflow.db.models.knowledge import Concept
+from workflow.db.models.notes import Note, NoteConcept
 from workflow.graph.collectors import build_knowledge_graph, collect_note_concepts
 from workflow.graph.domain import GraphEdge, GraphNode
 

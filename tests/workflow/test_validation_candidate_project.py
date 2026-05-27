@@ -7,7 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from workflow.db.base import GlobalBase
-from workflow.db.models.academic import DisciplineArea
+from workflow.db.models.knowledge import DisciplineArea
 from workflow.validation.schemas import (
     CANDIDATE_PROJECT_RE,
     check_candidate_project_against_db,

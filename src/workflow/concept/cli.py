@@ -96,7 +96,7 @@ def cmd_show(ctx: click.Context, code: str, as_json: bool) -> None:
         if c is None:
             raise click.ClickException(f"Concept {code!r} not found.")
 
-        from workflow.db.models.notes import Concept as _Concept
+        from workflow.db.models.knowledge import Concept as _Concept
 
         child_count = session.query(_Concept).filter(_Concept.parent_id == c.id).count()
 

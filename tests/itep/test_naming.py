@@ -7,7 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from workflow.db.base import GlobalBase
-from workflow.db.models.academic import DisciplineArea, MainTopic
+from workflow.db.models.knowledge import DisciplineArea, MainTopic
 from workflow.db.models.project import GeneralProject
 from itep import naming
 

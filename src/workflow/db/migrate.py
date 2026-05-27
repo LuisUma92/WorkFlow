@@ -21,18 +21,16 @@ from sqlalchemy.orm import Session
 
 from workflow.db.engine import get_global_engine, init_global_db, get_global_session
 from workflow.db.seed import seed_reference_data
+from workflow.db.models.knowledge import Content, MainTopic, Topic
+from workflow.db.models.bibliography import BibContent
 from workflow.db.models.academic import (
-    Institution,
-    MainTopic,
-    Topic,
-    Content,
-    BibContent,
     Course,
     CourseContent,
-    EvaluationTemplate,
-    Item,
-    EvaluationItem,
     CourseEvaluation,
+    EvaluationItem,
+    EvaluationTemplate,
+    Institution,
+    Item,
 )
 from workflow.db.models.bibliography import (
     Author,

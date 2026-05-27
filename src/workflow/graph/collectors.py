@@ -268,7 +268,8 @@ def collect_note_concepts(
     Edge type is ``"note_concept"``; label is concept.code.
     Concept nodes are deduplicated (multiple notes can share the same concept).
     """
-    from workflow.db.models.notes import Concept, NoteConcept
+    from workflow.db.models.knowledge import Concept
+    from workflow.db.models.notes import NoteConcept
 
     rows = session.scalars(select(NoteConcept)).all()
     if not rows:

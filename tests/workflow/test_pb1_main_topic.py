@@ -13,7 +13,7 @@ from workflow.db.base import GlobalBase
 from workflow.db.engine import init_global_db
 import workflow.db.models.academic  # noqa: F401
 import workflow.db.models.notes  # noqa: F401
-from workflow.db.models.academic import DisciplineArea, MainTopic
+from workflow.db.models.knowledge import DisciplineArea, MainTopic
 from workflow.db.models.notes import Note
 from workflow.validation.schemas import validate_note_frontmatter
 

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from workflow.db.base import GlobalBase
 import workflow.db.models.academic  # noqa: F401
 import workflow.db.models.notes  # noqa: F401
-from workflow.db.models.academic import DisciplineArea, MainTopic
+from workflow.db.models.knowledge import DisciplineArea, MainTopic
 from workflow.validation.schemas import (
     check_discipline_area_consistency,
     check_main_topic_against_db,

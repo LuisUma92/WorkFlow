@@ -12,15 +12,12 @@ from sqlalchemy.orm import Session
 from workflow.db.base import GlobalBase
 from workflow.db.cli import db  # noqa: F401  -- ensure registration
 from workflow.db import maturation
+from workflow.db.models.knowledge import Content, DisciplineArea, MainTopic, Topic
+from workflow.db.models.bibliography import BibContent
 from workflow.db.models.academic import (
-    BibContent,
-    Content,
     Course,
     CourseContent,
-    DisciplineArea,
     Institution,
-    MainTopic,
-    Topic,
 )
 from workflow.db.models.bibliography import BibEntry
 from workflow.db.models.project import LectureInstance
@@ -312,7 +309,7 @@ def test_propose_maturation_area_filter(cli_runner_engine):
 def test_create_general_blocks_when_no_maturation(tmp_path):
     """create_general aborts on `n` when area has zero queryable signals."""
     from itep.create import create_general
-    from workflow.db.models.academic import DisciplineArea
+    from workflow.db.models.knowledge import DisciplineArea
     import click as _click
 
     eng = create_engine("sqlite:///:memory:")

@@ -28,7 +28,8 @@ from typing import TYPE_CHECKING
 from workflow.db.base import GlobalBase
 
 if TYPE_CHECKING:
-    from workflow.db.models.academic import Course, MainTopic, Topic
+    from workflow.db.models.knowledge import MainTopic, Topic
+    from workflow.db.models.academic import Course
     from workflow.db.models.bibliography import BibEntry
 
 

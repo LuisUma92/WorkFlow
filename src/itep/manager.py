@@ -14,9 +14,9 @@ if TYPE_CHECKING:
 from sqlalchemy.orm import Session
 
 from workflow.db.models.bibliography import Author, BibEntry, BibAuthor
+from workflow.db.models.knowledge import Content, MainTopic, Topic
+from workflow.db.models.bibliography import BibContent
 from workflow.db.models.academic import (
-    BibContent,
-    Content,
     Course,
     CourseContent,
     CourseEvaluation,
@@ -24,8 +24,6 @@ from workflow.db.models.academic import (
     EvaluationTemplate,
     Institution,
     Item,
-    MainTopic,
-    Topic,
 )
 from workflow.db.models.project import (
     GeneralProject,

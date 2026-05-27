@@ -584,7 +584,8 @@ class TestCLILink:
         import workflow.db.models.notes  # noqa: F401
         import workflow.db.models.exercises  # noqa: F401
         from workflow.db.base import GlobalBase as _GB
-        from workflow.db.models.notes import Concept as _C, Note as _Note
+        from workflow.db.models.knowledge import Concept as _C
+        from workflow.db.models.notes import Note as _Note
         from workflow.db.models.academic import DisciplineArea as _DA, MainTopic as _MT
 
         eng = _ce("sqlite:///:memory:")

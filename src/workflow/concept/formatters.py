@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from workflow.db.models.notes import Concept
+from workflow.db.models.knowledge import Concept
 
 __all__ = [
     "format_concept_json",

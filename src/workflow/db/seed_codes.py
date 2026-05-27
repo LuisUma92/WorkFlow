@@ -20,7 +20,7 @@ from typing import Iterable
 
 from sqlalchemy.orm import Session
 
-from workflow.db.models.academic import DisciplineArea
+from workflow.db.models.knowledge import DisciplineArea
 
 
 CODE_FILE_GLOB = "[0-9][0-9]-*Codes.csv"

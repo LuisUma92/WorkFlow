@@ -12,8 +12,8 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 
 from workflow.db.models.bibliography import Author, BibEntry
+from workflow.db.models.knowledge import Content
 from workflow.db.models.academic import (
-    Content,
     Course,
     EvaluationTemplate,
     Item,

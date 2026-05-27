@@ -9,7 +9,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from workflow.db.engine import get_global_engine, get_global_session, init_global_db
-from workflow.db.models.academic import DisciplineArea, MainTopic
+from workflow.db.models.knowledge import DisciplineArea, MainTopic
 from workflow.db.models.project import GeneralProject
 
 
