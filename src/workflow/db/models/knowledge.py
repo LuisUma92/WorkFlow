@@ -2,14 +2,18 @@
 Knowledge structure models for the WorkFlow global database.
 
 Four layers:
-  1. Reference data  — AcademicArea, MainnTopic
-  2. Master entities — Topic, Content, Content
+  1. Reference data  — DisciplineArea, MainTopic
+  2. Master entities — Topic, Content, Concept
 """
 
 from __future__ import annotations
 
+from datetime import datetime
+from typing import TYPE_CHECKING
+
 from sqlalchemy import (
     CheckConstraint,
+    DateTime,
     Float,
     ForeignKey,
     Integer,
@@ -21,6 +25,9 @@ from sqlalchemy.orm import (
     relationship,
 )
 from workflow.db.base import GlobalBase
+
+if TYPE_CHECKING:
+    from workflow.db.models.project import GeneralProject, GeneralProjectTopic
 
 from workflow.db.models.academic import _TAXONOMY_DOMAINS
 
@@ -105,7 +112,7 @@ class Content(GlobalBase):
     topic: Mapped["Topic"] = relationship(back_populates="contents")
     bib_links: Mapped[list["BibContent"]] = relationship(back_populates="content")
     course_links: Mapped[list["CourseContent"]] = relationship(back_populates="content")
-    concepts: Mapped[list["Concept"]] = relationship(back_populates="main_topic")
+    concepts: Mapped[list["Concept"]] = relationship(back_populates="content")
 
 
 class Concept(GlobalBase):
@@ -114,7 +121,7 @@ class Concept(GlobalBase):
     __tablename__ = "concept"
     __table_args__ = (
         CheckConstraint(
-            "taxonomy_domain IN ({})".format(
+            "domain IN ({})".format(
                 ", ".join(f"'{v}'" for v in _TAXONOMY_DOMAINS)
             ),
             name="ck_taxonomy_domain",
@@ -135,5 +142,5 @@ class Concept(GlobalBase):
         ForeignKey("concept.id", ondelete="SET NULL")
     )  # optional hierarchy
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-    content: Mapped["MainTopic"] = relationship(back_populates="concepts")
+    content: Mapped["Content"] = relationship(back_populates="concepts")
     parent: Mapped["Concept | None"] = relationship(remote_side="Concept.id")

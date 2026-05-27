@@ -19,6 +19,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -34,8 +35,8 @@ from typing import TYPE_CHECKING
 from workflow.db.base import GlobalBase
 
 if TYPE_CHECKING:
-    from workflow.db.models.academic import Content
     from workflow.db.models.bibliography import BibEntry
+    from workflow.db.models.knowledge import Concept
 
 
 class Exercise(GlobalBase):
@@ -144,6 +145,10 @@ class Exercise(GlobalBase):
         order_by="ExerciseOption.sort_order",
     )
     book: Mapped["BibEntry | None"] = relationship()
+    concept_links: Mapped[list["ExerciseConcept"]] = relationship(
+        back_populates="exercise",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<Exercise {self.exercise_id} [{self.status}]>"
@@ -184,9 +189,9 @@ class ExerciseOption(GlobalBase):
 
 
 class ExerciseConcept(GlobalBase):
-    __tablename__ = "exercise_contcept"
+    """M2M link: exercise ↔ concept."""
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    __tablename__ = "exercise_concept"
 
     exercise_id: Mapped[int] = mapped_column(
         ForeignKey("exercise.id", ondelete="CASCADE"), primary_key=True
@@ -194,6 +199,16 @@ class ExerciseConcept(GlobalBase):
     concept_id: Mapped[int] = mapped_column(
         ForeignKey("concept.id", ondelete="CASCADE"), primary_key=True
     )
+
+    exercise: Mapped["Exercise"] = relationship(back_populates="concept_links")
+    concept: Mapped["Concept"] = relationship()
+
+    __table_args__ = (
+        Index("ix_exercise_concept_concept", "concept_id"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ExerciseConcept exercise={self.exercise_id} concept={self.concept_id}>"
 
 
 __all__ = [
