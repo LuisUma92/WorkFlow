@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-import sys
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -22,6 +22,8 @@ from workflow.prisma.service import get_bib_entry_by_bibkey
 
 if TYPE_CHECKING:
     from workflow.exercise.domain import ParsedExercise
+
+logger = logging.getLogger(__name__)
 
 
 _MAX_FILE_BYTES = 10 * 1024 * 1024
@@ -138,7 +140,7 @@ def sync_exercises(
         for issue in issues:
             if issue["severity"] == "error":
                 raise ValueError(issue["message"])
-            print(f"  [WARN] {issue['message']}", file=sys.stderr)
+            logger.warning("%s", issue['message'])
         desired_ids = {c.id for c in found_concepts}
         existing_ids = {ec.concept_id for ec in result_record.concept_links}
         for c in found_concepts:

@@ -29,7 +29,15 @@ from workflow.db.base import GlobalBase
 if TYPE_CHECKING:
     from workflow.db.models.project import GeneralProject, GeneralProjectTopic
 
-from workflow.db.models.academic import _TAXONOMY_DOMAINS
+# Taxonomy domain enum values.
+# Defined here (master-entity layer) so academic.py can import upward without
+# creating a layer inversion (ADR ITEP-0002).
+_TAXONOMY_DOMAINS = (
+    "Información",
+    "Procedimiento Mental",
+    "Procedimiento Psicomotor",
+    "Metacognitivo",
+)
 
 
 class DisciplineArea(GlobalBase):
@@ -144,3 +152,13 @@ class Concept(GlobalBase):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     content: Mapped["Content"] = relationship(back_populates="concepts")
     parent: Mapped["Concept | None"] = relationship(remote_side="Concept.id")
+
+    @property
+    def main_topic(self) -> "MainTopic | None":
+        """The MainTopic this concept belongs to (via content → topic → main_topic).
+
+        Returns None if any link in the chain is missing.
+        """
+        if self.content is None or self.content.topic is None:
+            return None
+        return self.content.topic.main_topic

@@ -379,7 +379,7 @@ def check_concepts_against_db(
 
     Mirrors ``check_main_topic_against_db`` strict-vs-lenient pattern (PB.2).
     """
-    from workflow.concept.service import concept_main_topic, resolve_concepts
+    from workflow.concept.service import resolve_concepts
 
     if not fm.concepts:
         return []
@@ -391,17 +391,26 @@ def check_concepts_against_db(
         note_mt, _ = check_main_topic_against_db(fm.main_topic, session)
         if note_mt is not None:
             for concept in found:
-                concept_mt = concept_main_topic(concept)
-                concept_mt_id = concept_mt.id if concept_mt is not None else None
-                concept_mt_code = concept_mt.code if concept_mt is not None else "?"
-                if concept_mt_id != note_mt.id:
+                concept_mt = concept.main_topic
+                if concept_mt is None:
+                    issues.append(
+                        {
+                            "severity": "warning",
+                            "message": (
+                                f"concept {concept.code!r} has no resolved "
+                                "main_topic chain (content → topic → main_topic)."
+                            ),
+                        }
+                    )
+                    continue
+                if concept_mt.id != note_mt.id:
                     severity = "error" if strict else "warning"
                     issues.append(
                         {
                             "severity": severity,
                             "message": (
                                 f"concept {concept.code!r} belongs to "
-                                f"main_topic {concept_mt_code!r}"
+                                f"main_topic {concept_mt.code!r}"
                                 f" but note declares main_topic={note_mt.code!r}."
                             ),
                         }

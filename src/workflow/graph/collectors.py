@@ -14,6 +14,17 @@ from sqlalchemy import select
 
 from workflow.graph.domain import GraphEdge, GraphNode, KnowledgeGraph
 
+__all__ = [
+    "collect_notes",
+    "collect_exercises",
+    "collect_academic",
+    "collect_bibliography",
+    "collect_note_edges",
+    "collect_note_concepts",
+    "collect_exercise_concepts",
+    "build_knowledge_graph",
+]
+
 
 # ── Notes collector (GlobalBase, ITEP-0011 P3) ─────────────────────────────
 
@@ -387,15 +398,3 @@ def build_knowledge_graph(
             deduped_nodes.append(node)
 
     return KnowledgeGraph(nodes=tuple(deduped_nodes), edges=tuple(all_edges))
-
-
-__all__ = [
-    "collect_notes",
-    "collect_exercises",
-    "collect_academic",
-    "collect_bibliography",
-    "collect_note_edges",
-    "collect_note_concepts",
-    "collect_exercise_concepts",
-    "build_knowledge_graph",
-]

@@ -408,6 +408,39 @@ class TestParseAndFilter:
         assert "paf-004" not in ids
         assert skipped == 0
 
+    def test_parse_and_filter_oversized_file_increments_skipped(
+        self, tmp_path: Path
+    ) -> None:
+        """A file exceeding max_file_bytes increments skipped; valid file is parsed."""
+        valid = self._write_tex(tmp_path / "valid.tex", "paf-005")
+
+        oversized = tmp_path / "big.tex"
+        oversized.write_bytes(b"x" * 2000)
+
+        exercises, _, skipped = parse_and_filter(
+            [valid, oversized], status="complete", tag=(), max_file_bytes=1000
+        )
+
+        assert skipped == 1
+        ids = [ex.metadata.id for ex in exercises if ex.metadata]
+        assert "paf-005" in ids
+
+    def test_parse_and_filter_tag_with_no_metadata_excludes_exercise(
+        self, tmp_path: Path
+    ) -> None:
+        """Exercise that parses but has no metadata is excluded (not skipped) when tag filter set."""
+        no_meta = tmp_path / "no_meta.tex"
+        no_meta.write_text(
+            "\\question{No metadata here.}{answer}\n", encoding="utf-8"
+        )
+
+        exercises, _, skipped = parse_and_filter(
+            [no_meta], status="complete", tag=("physics",)
+        )
+
+        assert skipped == 0
+        assert exercises == []
+
 
 # ── ExerciseConcept upsert ────────────────────────────────────────────────────
 

@@ -117,8 +117,8 @@ def cmd_show(ctx: click.Context, code: str, as_json: bool) -> None:
     "--content-id",
     "content_id",
     required=True,
-    type=int,
-    help="Numeric FK to Content.id this concept belongs to.",
+    type=click.IntRange(min=1),
+    help="Numeric FK to Content.id this concept belongs to (must be ≥ 1).",
 )
 @click.option(
     "--domain",

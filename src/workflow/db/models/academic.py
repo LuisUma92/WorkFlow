@@ -26,6 +26,7 @@ from sqlalchemy.orm import (
 from typing import TYPE_CHECKING
 
 from workflow.db.base import GlobalBase
+from workflow.db.models.knowledge import _TAXONOMY_DOMAINS  # noqa: F401 (re-exported)
 
 if TYPE_CHECKING:
     from workflow.db.models.bibliography import BibEntry
@@ -45,13 +46,6 @@ _TAXONOMY_LEVELS = (
     "Usar-Crear",
     "Metacognitivo",
     "Sistema interno",
-)
-
-_TAXONOMY_DOMAINS = (
-    "Información",
-    "Procedimiento Mental",
-    "Procedimiento Psicomotor",
-    "Metacognitivo",
 )
 
 

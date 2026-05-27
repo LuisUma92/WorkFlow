@@ -296,3 +296,19 @@ def test_concept_list_json_shape_matches_sibling(runner):
     assert len(data) > 0
     expected_keys = {"id", "code", "label", "content", "domain", "parent", "description"}
     assert set(data[0].keys()) == expected_keys
+
+
+def test_cmd_add_concept_json_flag_emits_valid_json(runner):
+    """concept add --json emits valid JSON containing the new concept's code."""
+    seed = _seed()
+    result = runner.invoke(concept, [
+        "add",
+        "--code", "my-concept",
+        "--label", "My",
+        "--content-id", str(seed["content_id"]),
+        "--domain", "Información",
+        "--json",
+    ])
+    assert result.exit_code == 0, result.output
+    data = json.loads(result.output)
+    assert data["code"] == "my-concept"

@@ -8,11 +8,16 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
-from workflow.db.models.academic import _TAXONOMY_DOMAINS
-from workflow.db.models.knowledge import Concept, Content, MainTopic, Topic
+from workflow.db.models.knowledge import (
+    _TAXONOMY_DOMAINS,
+    Concept,
+    Content,
+    MainTopic,
+    Topic,
+)
 from workflow.db.models.notes import NoteConcept
 
 __all__ = [
@@ -80,7 +85,7 @@ class HasReferences(ConceptError):
 
 
 def _get_concept_or_raise(session: Session, code: str) -> Concept:
-    c = session.query(Concept).filter_by(code=code).first()
+    c = session.scalars(select(Concept).where(Concept.code == code)).first()
     if c is None:
         raise UnknownCode(f"Concept {code!r} not found.")
     return c
@@ -96,9 +101,9 @@ def _validate_domain(domain: str) -> None:
 # ── Public API ────────────────────────────────────────────────────────────
 
 
-def concept_main_topic(concept: Concept) -> MainTopic:
-    """Resolve the MainTopic for a concept via content -> topic -> main_topic."""
-    return concept.content.topic.main_topic
+def concept_main_topic(concept: Concept) -> "MainTopic | None":
+    """Deprecated thin forwarder. Use `concept.main_topic` directly."""
+    return concept.main_topic
 
 
 def resolve_concepts(
@@ -120,7 +125,7 @@ def resolve_concepts(
     issues: list[dict[str, str]] = []
 
     for code in codes:
-        c = session.query(Concept).filter_by(code=code).first()
+        c = session.scalars(select(Concept).where(Concept.code == code)).first()
         if c is None:
             severity = "error" if strict else "warning"
             issues.append({
@@ -135,7 +140,7 @@ def resolve_concepts(
 
 def get_concept(session: Session, code: str) -> Concept | None:
     """Return a Concept by code, or None."""
-    return session.query(Concept).filter_by(code=code).first()
+    return session.scalars(select(Concept).where(Concept.code == code)).first()
 
 
 def list_concepts(
@@ -145,7 +150,9 @@ def list_concepts(
 ) -> list[Concept]:
     """List concepts, optionally filtered by MainTopic.code."""
     if main_topic_code is not None:
-        mt = session.query(MainTopic).filter_by(code=main_topic_code).first()
+        mt = session.scalars(
+            select(MainTopic).where(MainTopic.code == main_topic_code)
+        ).first()
         if mt is None:
             raise MainTopicNotFound(f"MainTopic {main_topic_code!r} not found.")
         stmt = (
@@ -156,7 +163,7 @@ def list_concepts(
             .order_by(Concept.code)
         )
         return list(session.scalars(stmt).all())
-    return session.query(Concept).order_by(Concept.code).all()
+    return list(session.scalars(select(Concept).order_by(Concept.code)).all())
 
 
 def add_concept(
@@ -182,7 +189,7 @@ def add_concept(
     _validate_slug(code)
     _validate_domain(domain)
 
-    existing = session.query(Concept).filter_by(code=code).first()
+    existing = session.scalars(select(Concept).where(Concept.code == code)).first()
     if existing is not None:
         raise DuplicateCode(f"Concept {code!r} already exists (id={existing.id}).")
 
@@ -192,7 +199,9 @@ def add_concept(
 
     parent_id: int | None = None
     if parent_code is not None:
-        parent = session.query(Concept).filter_by(code=parent_code).first()
+        parent = session.scalars(
+            select(Concept).where(Concept.code == parent_code)
+        ).first()
         if parent is None:
             raise ParentNotFound(f"Parent concept {parent_code!r} not found.")
         if parent.content_id != content_id:
@@ -236,11 +245,11 @@ def remove_concept(
     """
     concept = _get_concept_or_raise(session, code)
 
-    nc_count = (
-        session.query(NoteConcept)
-        .filter_by(concept_id=concept.id)
-        .count()
-    )
+    nc_count = session.execute(
+        select(func.count()).select_from(NoteConcept).where(
+            NoteConcept.concept_id == concept.id
+        )
+    ).scalar_one()
 
     if nc_count > 0 and not force:
         raise HasReferences(
@@ -250,14 +259,16 @@ def remove_concept(
 
     if force:
         # Delete NoteConcept rows
-        session.query(NoteConcept).filter_by(concept_id=concept.id).delete()
+        session.execute(
+            delete(NoteConcept).where(NoteConcept.concept_id == concept.id)
+        )
 
         # Reparent children to grandparent (Q4 resolution)
         grandparent_id = concept.parent_id  # may be None
-        (
-            session.query(Concept)
-            .filter(Concept.parent_id == concept.id)
-            .update({"parent_id": grandparent_id})
+        session.execute(
+            update(Concept)
+            .where(Concept.parent_id == concept.id)
+            .values(parent_id=grandparent_id)
         )
 
     session.delete(concept)
@@ -279,7 +290,7 @@ def rename_concept(
 
     concept = _get_concept_or_raise(session, old_code)
 
-    collision = session.query(Concept).filter_by(code=new_code).first()
+    collision = session.scalars(select(Concept).where(Concept.code == new_code)).first()
     if collision is not None:
         raise DuplicateCode(
             f"Concept {new_code!r} already exists (id={collision.id})."
@@ -302,9 +313,11 @@ def build_concept_tree(
     Each node: ``{"code": str, "label": str, "children": list}``.
     Cycle-safe via visited set.
     """
-    concepts = list_concepts(session, main_topic_code=main_topic_code) \
-        if main_topic_code \
-        else session.query(Concept).order_by(Concept.code).all()
+    concepts = (
+        list_concepts(session, main_topic_code=main_topic_code)
+        if main_topic_code
+        else list(session.scalars(select(Concept).order_by(Concept.code)).all())
+    )
 
     # Build id → node mapping
     in_scope_ids = {c.id for c in concepts}

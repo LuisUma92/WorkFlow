@@ -128,8 +128,8 @@ class SqlContentRepo:
             .join(BibContent, BibContent.content_id == Content.id)
             .where(
                 BibContent.bib_entry_id == bib_entry_id,
-                Content.chapter_number == chapter,
-                Content.first_exercise.is_not(None),
+                BibContent.chapter_number == chapter,
+                BibContent.first_exercise.is_not(None),
             )
         )
         return list(self._session.scalars(stmt).all())

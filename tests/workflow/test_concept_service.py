@@ -21,6 +21,7 @@ from workflow.concept.service import (
     MainTopicNotFound,
     ParentNotFound,
     UnknownCode,
+    _get_concept_or_raise,
     add_concept,
     build_concept_tree,
     concept_main_topic,
@@ -416,3 +417,21 @@ def test_concept_main_topic_traversal(session, seeded):
     c = seeded["concept"]
     mt = concept_main_topic(c)
     assert mt.code == "FI0006"
+
+
+# ── _get_concept_or_raise ─────────────────────────────────────────────────
+
+
+def test_get_concept_or_raise_raises_unknown_code_for_missing_slug(session):
+    """_get_concept_or_raise raises UnknownCode when slug not in DB."""
+    with pytest.raises(UnknownCode):
+        _get_concept_or_raise(session, "no-such-slug")
+
+
+# ── list_concepts error path ──────────────────────────────────────────────
+
+
+def test_list_concepts_raises_main_topic_not_found_for_unknown_code(session):
+    """list_concepts raises MainTopicNotFound for unknown main_topic_code."""
+    with pytest.raises(MainTopicNotFound):
+        list_concepts(session, main_topic_code="ghost")
