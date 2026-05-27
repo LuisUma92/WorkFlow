@@ -1,3 +1,38 @@
+---
+id:
+title:
+type:
+source_agent: None
+opened_on:
+
+status: open
+resolution:
+priority:
+severity:
+
+labels: []
+
+components: []
+
+adr_refs: []
+related_requests: []
+related_gaps: []
+duplicates: []
+blocked_by: []
+
+assignee: unassigned
+target_release:
+implementation: []
+closed_on:
+closed_by:
+
+acceptance_criteria:
+  -
+
+verification:
+  -
+---
+
 # Zettelkasten `main_topic` bundle — notes CRUD + frontmatter FK + graph filters
 
 **Date filed:** 2026-05-04

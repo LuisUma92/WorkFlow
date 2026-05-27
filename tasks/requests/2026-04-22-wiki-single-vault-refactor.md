@@ -1,3 +1,38 @@
+---
+id:
+title:
+type:
+source_agent: None
+opened_on:
+
+status: open
+resolution:
+priority:
+severity:
+
+labels: []
+
+components: []
+
+adr_refs: []
+related_requests: []
+related_gaps: []
+duplicates: []
+blocked_by: []
+
+assignee: unassigned
+target_release:
+implementation: []
+closed_on:
+closed_by:
+
+acceptance_criteria:
+  -
+
+verification:
+  -
+---
+
 # [docs] Refactor Zettelkasten-Notes wiki to single-vault model
 
 **Priority:** Low
