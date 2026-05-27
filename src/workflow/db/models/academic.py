@@ -187,12 +187,19 @@ class CourseEvaluation(GlobalBase):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     course_id: Mapped[int] = mapped_column(ForeignKey("course.id"))
-    evaluation_id: Mapped[int] = mapped_column(ForeignKey("evaluation_template.id"))
+    evaluation_id: Mapped[int | None] = mapped_column(
+        ForeignKey("evaluation_template.id"), nullable=True, default=None
+    )
     serial_number: Mapped[int] = mapped_column(Integer, default=1)
     percentage: Mapped[float] = mapped_column(Float, default=0.0)
     evaluation_week: Mapped[int] = mapped_column(Integer, default=1)
 
+    # Practice / quiz registration columns (migration 0010)
+    practice_type: Mapped[str | None] = mapped_column(String(20), default=None)
+    practice_name: Mapped[str | None] = mapped_column(String(200), default=None)
+    source_file: Mapped[str | None] = mapped_column(String(300), default=None)
+
     course: Mapped["Course"] = relationship(back_populates="course_evaluations")
-    evaluation: Mapped["EvaluationTemplate"] = relationship(
+    evaluation: Mapped["EvaluationTemplate | None"] = relationship(
         back_populates="course_evaluations"
     )

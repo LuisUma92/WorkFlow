@@ -27,12 +27,17 @@ from workflow.evaluation.formatters import (
     format_eval_table,
     format_item_json,
     format_item_table,
+    format_practice_json,
+    format_practice_single_json,
+    format_practice_table,
 )
 from workflow.evaluation.service import (
     add_evaluation_item,
+    add_practice,
     create_course,
     create_evaluation_template,
     create_item,
+    list_practices,
     remove_evaluation_item,
     rename_evaluation_template,
 )
@@ -350,6 +355,80 @@ def course_list(ctx: click.Context, inst: str | None, as_json: bool) -> None:
             click.echo(format_course_json(courses))
         else:
             click.echo(format_course_table(courses))
+
+
+@course.command(name="add-practice")
+@click.argument("course_code")
+@click.option("--name", required=True, help="Practice/quiz title.")
+@click.option("--week", required=True, type=int, help="Evaluation week number.")
+@click.option(
+    "--type",
+    "practice_type",
+    required=True,
+    type=click.Choice(["practice", "quiz"], case_sensitive=False),
+    help="Assessment type.",
+)
+@click.option("--serial", type=int, default=None, help="Serial number (auto-assigned if omitted).")
+@click.option("--file", "source_file", default=None, help="Path to source .xml/.tex file.")
+@click.option("--json", "as_json", is_flag=True, help="JSON output.")
+@click.pass_context
+@with_schema_guard
+def course_add_practice(
+    ctx: click.Context,
+    course_code: str,
+    name: str,
+    week: int,
+    practice_type: str,
+    serial: int | None,
+    source_file: str | None,
+    as_json: bool,
+) -> None:
+    """Register a lab practice or quiz to a course."""
+    engine = _get_engine(ctx)
+
+    with Session(engine) as session:
+        try:
+            ce = add_practice(
+                session,
+                course_code=course_code,
+                name=name,
+                week=week,
+                practice_type=practice_type,
+                serial=serial,
+                source_file=source_file,
+            )
+            session.commit()
+        except ValueError as e:
+            raise click.ClickException(str(e))
+
+        if as_json:
+            click.echo(format_practice_single_json(ce, course_code))
+        else:
+            click.echo(
+                f"Registered {practice_type} #{ce.serial_number} for {course_code} "
+                f"— {name} (week {week}, id={ce.id})"
+            )
+
+
+@course.command(name="practices")
+@click.argument("course_code")
+@click.option("--json", "as_json", is_flag=True, help="JSON output.")
+@click.pass_context
+@with_schema_guard
+def course_practices(ctx: click.Context, course_code: str, as_json: bool) -> None:
+    """List registered practices/quizzes for a course."""
+    engine = _get_engine(ctx)
+
+    with Session(engine) as session:
+        try:
+            rows = list_practices(session, course_code=course_code)
+        except ValueError as e:
+            raise click.ClickException(str(e))
+
+        if as_json:
+            click.echo(format_practice_json(rows, course_code))
+        else:
+            click.echo(format_practice_table(rows, course_code))
 
 
 @course.command(name="add")

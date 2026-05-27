@@ -10,6 +10,7 @@ from typing import Any
 
 from workflow.db.models.academic import (
     Course,
+    CourseEvaluation,
     EvaluationTemplate,
     Item,
 )
@@ -143,3 +144,50 @@ def format_course_table(courses: list[Course]) -> str:
 def format_course_json(courses: list[Course]) -> str:
     data = [_course_to_dict(c) for c in courses]
     return json.dumps(data, ensure_ascii=False, indent=2)
+
+
+# ── Course practices ──────────────────────────────────────────────────────
+
+
+def _practice_to_dict(
+    ce: CourseEvaluation,
+    course_code: str,
+) -> dict[str, Any]:
+    return {
+        "id": ce.id,
+        "course": course_code,
+        "type": ce.practice_type,
+        "serial": ce.serial_number,
+        "name": ce.practice_name or "",
+        "week": ce.evaluation_week,
+        "file": ce.source_file or "",
+    }
+
+
+def format_practice_json(
+    rows: list[CourseEvaluation],
+    course_code: str,
+) -> str:
+    data = [_practice_to_dict(ce, course_code) for ce in rows]
+    return json.dumps(data, ensure_ascii=False, indent=2)
+
+
+def format_practice_single_json(ce: CourseEvaluation, course_code: str) -> str:
+    return json.dumps(_practice_to_dict(ce, course_code), ensure_ascii=False, indent=2)
+
+
+def format_practice_table(
+    rows: list[CourseEvaluation],
+    course_code: str,
+) -> str:
+    if not rows:
+        return f"No practices/quizzes found for {course_code}."
+    lines: list[str] = []
+    for ce in rows:
+        d = _practice_to_dict(ce, course_code)
+        file_part = f"  [{d['file']}]" if d["file"] else ""
+        lines.append(
+            f"  {d['type']:8s}  #{d['serial']:3d}  wk{d['week']:2d}  "
+            f"{d['name']:40s}{file_part}"
+        )
+    return "\n".join(lines)

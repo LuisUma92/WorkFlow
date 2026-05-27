@@ -4,7 +4,17 @@ title: Add `workflow course add-practice` to register lab practices and quizzes
 type: feature
 source_agent: workflow-runner
 opened_on: 2026-04-29
-status: proposed
+status: completed
+resolution: implemented
+closed_on: 2026-05-27
+closed_by: Luis Fernando Umaña Castro
+implementation:
+  - src/workflow/db/migrations/global/0010_course_evaluation_practice_cols.py
+  - src/workflow/db/models/academic.py
+  - src/workflow/evaluation/service.py
+  - src/workflow/evaluation/formatters.py
+  - src/workflow/evaluation/cli.py
+  - tests/workflow/test_course_practices.py
 priority: P1
 severity: blocker
 labels: [cli, db]
@@ -21,7 +31,9 @@ acceptance_criteria:
   - "exit 1 on unknown course code with 'course not found'"
   - "tests under tests/workflow/evaluation/ for register, list, collision, auto-serial, unknown-course"
 verification:
-  - "pytest tests/workflow/evaluation/test_course_practices.py -v"
+  - "pytest tests/workflow/test_course_practices.py -v"
+progress_log:
+  - "2026-05-27: Implemented. Migration 0010 adds practice_type/practice_name/source_file columns + makes evaluation_id nullable. 16 new tests green. Full suite: 1286 passed."
 ---
 
 # Add `workflow course add-practice` to register lab practices and quizzes

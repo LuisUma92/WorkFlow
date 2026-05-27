@@ -5,11 +5,12 @@ Business logic for evaluation templates, taxonomy items, and their links.
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from workflow.db.models.academic import (
     Course,
+    CourseEvaluation,
     EvaluationItem,
     EvaluationTemplate,
     Institution,
@@ -17,6 +18,8 @@ from workflow.db.models.academic import (
     _TAXONOMY_DOMAINS,
     _TAXONOMY_LEVELS,
 )
+
+_PRACTICE_TYPES = ("practice", "quiz")
 
 
 def create_item(
@@ -167,6 +170,90 @@ def rename_evaluation_template(
     tmpl.name = new_name
     session.flush()
     return tmpl
+
+
+def _resolve_course_by_code(session: Session, code: str) -> Course:
+    """Look up a Course by code (any institution), raise ValueError if not found."""
+    stmt = select(Course).where(Course.code == code)
+    course = session.scalars(stmt).first()
+    if course is None:
+        raise ValueError(f"course not found: '{code}'")
+    return course
+
+
+def add_practice(
+    session: Session,
+    *,
+    course_code: str,
+    name: str,
+    week: int,
+    practice_type: str,
+    serial: int | None = None,
+    source_file: str | None = None,
+) -> CourseEvaluation:
+    """Register a lab practice or quiz to a course.
+
+    If *serial* is None, auto-increments from the current maximum serial_number
+    for (course, practice_type). Raises ValueError on unknown course code or
+    serial collision.
+    """
+    if practice_type not in _PRACTICE_TYPES:
+        raise ValueError(
+            f"Invalid practice_type '{practice_type}'. Valid: {', '.join(_PRACTICE_TYPES)}"
+        )
+
+    course = _resolve_course_by_code(session, course_code)
+
+    # Determine serial number
+    if serial is None:
+        max_stmt = select(func.max(CourseEvaluation.serial_number)).where(
+            CourseEvaluation.course_id == course.id,
+            CourseEvaluation.practice_type == practice_type,
+        )
+        current_max = session.scalar(max_stmt)
+        serial = (current_max or 0) + 1
+    else:
+        # Check for collision
+        collision_stmt = select(CourseEvaluation).where(
+            CourseEvaluation.course_id == course.id,
+            CourseEvaluation.practice_type == practice_type,
+            CourseEvaluation.serial_number == serial,
+        )
+        if session.scalars(collision_stmt).first() is not None:
+            raise ValueError(
+                f"serial {serial} already registered for {course_code} {practice_type}"
+            )
+
+    ce = CourseEvaluation(
+        course_id=course.id,
+        serial_number=serial,
+        evaluation_week=week,
+        practice_type=practice_type,
+        practice_name=name,
+        source_file=source_file,
+    )
+    session.add(ce)
+    session.flush()
+    return ce
+
+
+def list_practices(
+    session: Session,
+    *,
+    course_code: str,
+) -> list[CourseEvaluation]:
+    """Return all practice/quiz rows for a course ordered by type then serial."""
+    course = _resolve_course_by_code(session, course_code)
+
+    stmt = (
+        select(CourseEvaluation)
+        .where(
+            CourseEvaluation.course_id == course.id,
+            CourseEvaluation.practice_type.is_not(None),
+        )
+        .order_by(CourseEvaluation.practice_type, CourseEvaluation.serial_number)
+    )
+    return list(session.scalars(stmt).all())
 
 
 def create_course(
