@@ -5,7 +5,8 @@ type:
 source_agent: None
 opened_on:
 
-status: proposed
+status: in_progress
+phase_a_status: completed
 resolution:
 priority:
 severity:
@@ -120,5 +121,14 @@ Spec: `~/Documents/01-U/.claude/gaps/requests/2026-05-03-graph-export-tikz-filte
 
 ## Status
 
-`pending` — no implementation started. Filed under low token budget; do not
-auto-execute. Pick up next session, start Phase A.
+`in_progress` — Phase A shipped. Phases B and C remain; B blocked on Topic
+re-root migration (Phase 4D roadmap), C blocked on B.
+
+## Progress Log
+
+- **2026-05-27** — Phase A (`workflow notes` CRUD subcommands) shipped. [tbd]
+  All five subcommands (`new`, `list`, `show`, `tag`, `link`) implemented with
+  59 passing tests in `tests/workflow/test_notes.py`. Full service layer in
+  `src/workflow/notes/service.py`; CLI in `src/workflow/notes/cli.py`.
+  Re-validation before write is enforced. JSON shape mirrors `course list --json`.
+  `phase_a_status: completed` set in frontmatter above.
