@@ -5,9 +5,11 @@ type:
 source_agent: None
 opened_on:
 
-status: in_progress
+status: completed
 phase_a_status: completed
-resolution:
+phase_b_status: completed
+phase_c_status: completed
+resolution: All three phases shipped (4C = Phase A, 4D = Phase B, 4E = Phase C). Closed 2026-05-28.
 priority:
 severity:
 
@@ -121,8 +123,7 @@ Spec: `~/Documents/01-U/.claude/gaps/requests/2026-05-03-graph-export-tikz-filte
 
 ## Status
 
-`in_progress` — Phase A shipped. Phases B and C remain; B blocked on Topic
-re-root migration (Phase 4D roadmap), C blocked on B.
+`completed` — All three phases shipped. Phase A (notes CRUD), Phase B (main_topic FK + validation), Phase C (graph filter flags) all implemented and committed.
 
 ## Progress Log
 

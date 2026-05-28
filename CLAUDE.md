@@ -97,7 +97,7 @@ Defined in `pyproject.toml` under `[project.scripts]`:
 - PRISMA CLI: `workflow prisma bib list|show`, `workflow prisma keyword list`, `workflow prisma review list`, `workflow prisma checklist show`, `workflow prisma rationale add|list`, `workflow prisma tag add|list` (ADR PRISMA-0005)
 - Vault CLI: `workflow vault info|validate|unify` (ITEP-0011, Implemented P0–P7). Migrates per-project `slipbox.db` notes into the global vault; idempotent via `.vault_pointer` marker. `lectures split` defaults output to `<vault_root>/notes/permanent/` (override with `--output-dir`). Vault root resolved by `workflow.vault.paths.resolve_vault_root()` (env `WORKFLOW_VAULT_ROOT`). Per-project note model: `ProjectNote` in `db/models/project_layer.py` (LocalBase, ITEP-0011 P5) — no CLI command yet.
 - Concept CLI: `workflow concept list|show|add|tree|rm|rename` (ITEP-0012). Manages the concept taxonomy (code slugs, parent hierarchy, content affiliation). `workflow concept add --code SLUG --label TEXT --content-id INT --domain DOMAIN [--parent CODE] [--description TEXT]`. Valid `--domain` values: `Información`, `Procedimiento Mental`, `Procedimiento Psicomotor`, `Metacognitivo` (from `_TAXONOMY_DOMAINS` in `workflow.db.models.knowledge`). `rm --force` reparents children to grandparent. Concept is now rooted at `Content` (not `MainTopic`); use `concept.main_topic` property for chain traversal. `resolve_concepts(codes, session, *, strict)` in `src/workflow/concept/service.py` is reused by the validator and MUST be reused by any future `notes link --concept` command. ADR: [ITEP-0012](docs/ADR/ITEP-0012-concept-orm.md). `notes link --concept CODE [--remove] [--strict]` materializes `NoteConcept` rows (P1, `dc79b59`). `notes sync` builds `NoteConcept` rows per-note from frontmatter `concepts:` list via Pass 5 `_sync_note_concepts` (`--strict-concepts` flag; P2, `2340d38`).
-- Validation CLI: `workflow validate notes [--strict-main-topic] [--strict-concepts]` (Phase B / ITEP-0009 Part II + ITEP-0012). Resolves frontmatter `main_topic` against `MainTopic`, enforces `discipline_area` consistency, and optionally validates `concepts:` slugs against the Concept table.
+- Validation CLI: `workflow validate notes [--strict-main-topic] [--strict-concepts]` (ITEP-0009 + ITEP-0012, Implemented). Resolves frontmatter `main_topic` against `MainTopic`, enforces `discipline_area` consistency, and optionally validates `concepts:` slugs against the Concept table.
 - Disciplines + maturation CLI: `workflow db disciplines list [--json]`, `workflow project propose-maturation [--json] [--area DDTTAA]` (ADR ITEP-0009). Bloom enums: `workflow item taxonomy --levels|--domains [--json]` (ADR ITEP-0006).
 - Shared `get_engine_from_ctx()` in `workflow.db.engine` for all Click commands
 - Project types: `GeneralProject` and `LectureProject` (see `itep/models.py`)
@@ -157,7 +157,7 @@ Architecture decisions in `docs/ADR/` (see [INDEX.md](docs/ADR/INDEX.md) for ful
 - CI: GitHub Actions on push/PR to `master`, tests on Python 3.12/3.13/3.14
 - Linter: flake8 (max line length 127, max complexity 10)
 - Test framework: pytest (pythonpath configured to `"."`)
-- Dependencies: sqlalchemy, click, pyyaml, appdirs, bibtexparser, peewee (legacy, being removed)
+- Dependencies: sqlalchemy, click, pyyaml, appdirs, bibtexparser
 
 # context-mode — MANDATORY routing rules
 

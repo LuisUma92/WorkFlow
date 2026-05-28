@@ -106,7 +106,7 @@ Esto crea:
 ```
 ~/Documents/01-U/
   .workflow/config.yaml              # Marcador de workspace
-  00ZZ-Vault/                        # Zona de triage global
+  0000AA-Vault/                      # Zona de triage global
     inbox/                           # Notas fugaces sin asignar a un proyecto
     templates/
       permanent.md                   # Template para notas permanentes
