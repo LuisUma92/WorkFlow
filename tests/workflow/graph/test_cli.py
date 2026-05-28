@@ -51,7 +51,7 @@ class TestOrphansCommand:
     def test_orphans_shows_orphan_nodes(self):
         runner = CliRunner()
         kg = _make_kg_with_orphan()
-        with patch("workflow.graph.cli._build_graph", return_value=kg):
+        with patch("workflow.graph.cli._build_graph_with_filter", return_value=kg):
             result = runner.invoke(graph, ["orphans", "--project", "."])
         assert result.exit_code == 0
         assert "note:3" in result.output
@@ -60,7 +60,7 @@ class TestOrphansCommand:
     def test_orphans_empty_shows_message(self):
         runner = CliRunner()
         kg = _make_kg_simple()
-        with patch("workflow.graph.cli._build_graph", return_value=kg):
+        with patch("workflow.graph.cli._build_graph_with_filter", return_value=kg):
             result = runner.invoke(graph, ["orphans", "--project", "."])
         assert result.exit_code == 0
         assert "No orphaned nodes" in result.output
@@ -68,7 +68,7 @@ class TestOrphansCommand:
     def test_orphans_filtered_by_type(self):
         runner = CliRunner()
         kg = _make_kg_with_orphan()
-        with patch("workflow.graph.cli._build_graph", return_value=kg):
+        with patch("workflow.graph.cli._build_graph_with_filter", return_value=kg):
             result = runner.invoke(graph, ["orphans", "--type", "exercise", "--project", "."])
         assert result.exit_code == 0
         # note:3 is exercise type
@@ -77,7 +77,7 @@ class TestOrphansCommand:
     def test_orphans_type_filter_excludes_other_types(self):
         runner = CliRunner()
         kg = _make_kg_with_orphan()
-        with patch("workflow.graph.cli._build_graph", return_value=kg):
+        with patch("workflow.graph.cli._build_graph_with_filter", return_value=kg):
             result = runner.invoke(graph, ["orphans", "--type", "note", "--project", "."])
         assert result.exit_code == 0
         # orphan is exercise type, so no note orphans
@@ -91,7 +91,7 @@ class TestStatsCommand:
     def test_stats_shows_node_count(self):
         runner = CliRunner()
         kg = _make_kg_with_orphan()
-        with patch("workflow.graph.cli._build_graph", return_value=kg):
+        with patch("workflow.graph.cli._build_graph_with_filter", return_value=kg):
             result = runner.invoke(graph, ["stats", "--project", "."])
         assert result.exit_code == 0
         assert "Nodes: 3" in result.output
@@ -99,7 +99,7 @@ class TestStatsCommand:
     def test_stats_shows_edge_count(self):
         runner = CliRunner()
         kg = _make_kg_with_orphan()
-        with patch("workflow.graph.cli._build_graph", return_value=kg):
+        with patch("workflow.graph.cli._build_graph_with_filter", return_value=kg):
             result = runner.invoke(graph, ["stats", "--project", "."])
         assert result.exit_code == 0
         assert "Edges: 1" in result.output
@@ -107,7 +107,7 @@ class TestStatsCommand:
     def test_stats_shows_orphan_count(self):
         runner = CliRunner()
         kg = _make_kg_with_orphan()
-        with patch("workflow.graph.cli._build_graph", return_value=kg):
+        with patch("workflow.graph.cli._build_graph_with_filter", return_value=kg):
             result = runner.invoke(graph, ["stats", "--project", "."])
         assert result.exit_code == 0
         assert "Orphans:" in result.output
@@ -115,7 +115,7 @@ class TestStatsCommand:
     def test_stats_shows_node_types(self):
         runner = CliRunner()
         kg = _make_kg_simple()
-        with patch("workflow.graph.cli._build_graph", return_value=kg):
+        with patch("workflow.graph.cli._build_graph_with_filter", return_value=kg):
             result = runner.invoke(graph, ["stats", "--project", "."])
         assert result.exit_code == 0
         assert "note" in result.output
@@ -129,7 +129,7 @@ class TestExportDotCommand:
     def test_export_dot_to_stdout(self):
         runner = CliRunner()
         kg = _make_kg_simple()
-        with patch("workflow.graph.cli._build_graph", return_value=kg):
+        with patch("workflow.graph.cli._build_graph_with_filter", return_value=kg):
             result = runner.invoke(graph, ["export-dot", "--project", "."])
         assert result.exit_code == 0
         assert "digraph" in result.output
@@ -139,7 +139,7 @@ class TestExportDotCommand:
         kg = _make_kg_simple()
         with tempfile.TemporaryDirectory() as tmpdir:
             out = Path(tmpdir) / "graph.dot"
-            with patch("workflow.graph.cli._build_graph", return_value=kg):
+            with patch("workflow.graph.cli._build_graph_with_filter", return_value=kg):
                 result = runner.invoke(
                     graph, ["export-dot", "--project", ".", "--output", str(out)]
                 )
@@ -152,7 +152,7 @@ class TestExportDotCommand:
     def test_export_dot_highlight_orphans_flag(self):
         runner = CliRunner()
         kg = _make_kg_with_orphan()
-        with patch("workflow.graph.cli._build_graph", return_value=kg):
+        with patch("workflow.graph.cli._build_graph_with_filter", return_value=kg):
             result = runner.invoke(
                 graph, ["export-dot", "--project", ".", "--highlight-orphans"]
             )
@@ -167,7 +167,7 @@ class TestExportTikzCommand:
     def test_export_tikz_to_stdout(self):
         runner = CliRunner()
         kg = _make_kg_simple()
-        with patch("workflow.graph.cli._build_graph", return_value=kg):
+        with patch("workflow.graph.cli._build_graph_with_filter", return_value=kg):
             result = runner.invoke(graph, ["export-tikz", "--project", "."])
         assert result.exit_code == 0
         assert "tikzpicture" in result.output
@@ -177,7 +177,7 @@ class TestExportTikzCommand:
         kg = _make_kg_simple()
         with tempfile.TemporaryDirectory() as tmpdir:
             out = Path(tmpdir) / "graph.tex"
-            with patch("workflow.graph.cli._build_graph", return_value=kg):
+            with patch("workflow.graph.cli._build_graph_with_filter", return_value=kg):
                 result = runner.invoke(
                     graph, ["export-tikz", "--project", ".", "--output", str(out)]
                 )
@@ -189,7 +189,7 @@ class TestExportTikzCommand:
     def test_export_tikz_no_standalone(self):
         runner = CliRunner()
         kg = _make_kg_simple()
-        with patch("workflow.graph.cli._build_graph", return_value=kg):
+        with patch("workflow.graph.cli._build_graph_with_filter", return_value=kg):
             result = runner.invoke(
                 graph, ["export-tikz", "--project", ".", "--no-standalone"]
             )
@@ -205,7 +205,7 @@ class TestClustersCommand:
     def test_clusters_no_networkx_shows_install_message(self):
         runner = CliRunner()
         kg = _make_kg_simple()
-        with patch("workflow.graph.cli._build_graph", return_value=kg):
+        with patch("workflow.graph.cli._build_graph_with_filter", return_value=kg):
             with patch(
                 "workflow.graph.clustering.detect_communities", return_value=None
             ):
@@ -216,7 +216,7 @@ class TestClustersCommand:
     def test_clusters_empty_graph(self):
         runner = CliRunner()
         kg = _make_kg_empty()
-        with patch("workflow.graph.cli._build_graph", return_value=kg):
+        with patch("workflow.graph.cli._build_graph_with_filter", return_value=kg):
             with patch(
                 "workflow.graph.clustering.detect_communities", return_value=()
             ):
@@ -230,7 +230,7 @@ class TestClustersCommand:
         n2 = _node("note:2", "note")
         kg = KnowledgeGraph(nodes=(n1, n2), edges=(_edge("note:1", "note:2"),))
         communities = ((n1, n2),)
-        with patch("workflow.graph.cli._build_graph", return_value=kg):
+        with patch("workflow.graph.cli._build_graph_with_filter", return_value=kg):
             with patch(
                 "workflow.graph.clustering.detect_communities", return_value=communities
             ):
@@ -251,7 +251,7 @@ class TestNeighborsCommand:
         e1 = _edge("note:1", "note:2")
         e2 = _edge("note:2", "note:3")
         kg = KnowledgeGraph(nodes=(n1, n2, n3), edges=(e1, e2))
-        with patch("workflow.graph.cli._build_graph", return_value=kg):
+        with patch("workflow.graph.cli._build_graph_with_filter", return_value=kg):
             result = runner.invoke(
                 graph, ["neighbors", "note:1", "--depth", "1", "--project", "."]
             )
@@ -262,7 +262,7 @@ class TestNeighborsCommand:
     def test_neighbors_node_not_found_raises_error(self):
         runner = CliRunner()
         kg = _make_kg_simple()
-        with patch("workflow.graph.cli._build_graph", return_value=kg):
+        with patch("workflow.graph.cli._build_graph_with_filter", return_value=kg):
             result = runner.invoke(
                 graph, ["neighbors", "does_not_exist", "--project", "."]
             )
@@ -275,7 +275,7 @@ class TestNeighborsCommand:
         n2 = _node("note:2", "note")
         e = _edge("note:1", "note:2")
         kg = KnowledgeGraph(nodes=(n1, n2), edges=(e,))
-        with patch("workflow.graph.cli._build_graph", return_value=kg):
+        with patch("workflow.graph.cli._build_graph_with_filter", return_value=kg):
             result = runner.invoke(
                 graph, ["neighbors", "note:1", "--project", "."]
             )
@@ -288,7 +288,7 @@ class TestNeighborsCommand:
         n2 = _node("note:2", "note")
         e = _edge("note:1", "note:2")
         kg = KnowledgeGraph(nodes=(n1, n2), edges=(e,))
-        with patch("workflow.graph.cli._build_graph", return_value=kg):
+        with patch("workflow.graph.cli._build_graph_with_filter", return_value=kg):
             result = runner.invoke(
                 graph, ["neighbors", "note:1", "--project", "."]
             )
