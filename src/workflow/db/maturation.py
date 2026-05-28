@@ -14,8 +14,8 @@ The discipline-aware bib threshold per ADR Part II:
 
 Counting rules:
 
-* ``MainTopic`` ids considered = the area itself + all its children
-  (``parent_id == area_id``).
+* Topics considered = all ``Topic`` rows whose ``discipline_area_id`` matches
+  the area ``MainTopic``'s own ``discipline_area_id``.
 * Bibliographic sources are counted as **distinct** ``BibEntry.id`` values
   reachable via ``Topic → Content → BibContent → BibEntry``.
 * Courses / lecture instances are likewise counted distinct.
@@ -49,13 +49,15 @@ class MaturationSignal:
     evidence: str
 
 
-def _topic_ids_for_area(session: Session, area_id: int) -> list[int]:
-    """Return MainTopic ids covering the area and its direct children."""
+def _topic_ids_for_area(session: Session, discipline_area_id: int) -> list[int]:
+    """Return Topic.id values whose discipline_area_id matches the given DA.
+
+    Post Phase 4B: Topic roots at DisciplineArea (not MainTopic). All Topics
+    belonging to the same DisciplineArea are canonical chapters for that area.
+    """
     rows = (
         session.execute(
-            select(MainTopic.id).where(
-                (MainTopic.id == area_id) | (MainTopic.parent_id == area_id)
-            )
+            select(Topic.id).where(Topic.discipline_area_id == discipline_area_id)
         )
         .scalars()
         .all()
@@ -63,35 +65,33 @@ def _topic_ids_for_area(session: Session, area_id: int) -> list[int]:
     return list(rows)
 
 
-def _bib_count(session: Session, main_topic_ids: list[int]) -> int:
-    if not main_topic_ids:
+def _bib_count(session: Session, topic_ids: list[int]) -> int:
+    if not topic_ids:
         return 0
     stmt = (
         select(func.count(func.distinct(BibContent.bib_entry_id)))
         .select_from(BibContent)
         .join(Content, Content.id == BibContent.content_id)
-        .join(Topic, Topic.id == Content.topic_id)
-        .where(Topic.main_topic_id.in_(main_topic_ids))
+        .where(Content.topic_id.in_(topic_ids))
     )
     return int(session.execute(stmt).scalar_one() or 0)
 
 
-def _course_count(session: Session, main_topic_ids: list[int]) -> int:
-    if not main_topic_ids:
+def _course_count(session: Session, topic_ids: list[int]) -> int:
+    if not topic_ids:
         return 0
     stmt = (
         select(func.count(func.distinct(Course.id)))
         .select_from(Course)
         .join(CourseContent, CourseContent.course_id == Course.id)
         .join(Content, Content.id == CourseContent.content_id)
-        .join(Topic, Topic.id == Content.topic_id)
-        .where(Topic.main_topic_id.in_(main_topic_ids))
+        .where(Content.topic_id.in_(topic_ids))
     )
     return int(session.execute(stmt).scalar_one() or 0)
 
 
-def _lecture_instance_count(session: Session, main_topic_ids: list[int]) -> int:
-    if not main_topic_ids:
+def _lecture_instance_count(session: Session, topic_ids: list[int]) -> int:
+    if not topic_ids:
         return 0
     stmt = (
         select(func.count(func.distinct(LectureInstance.id)))
@@ -99,8 +99,7 @@ def _lecture_instance_count(session: Session, main_topic_ids: list[int]) -> int:
         .join(Course, Course.id == LectureInstance.course_id)
         .join(CourseContent, CourseContent.course_id == Course.id)
         .join(Content, Content.id == CourseContent.content_id)
-        .join(Topic, Topic.id == Content.topic_id)
-        .where(Topic.main_topic_id.in_(main_topic_ids))
+        .where(Content.topic_id.in_(topic_ids))
     )
     return int(session.execute(stmt).scalar_one() or 0)
 
@@ -136,10 +135,10 @@ def evaluate_area(
         hobby = dd is not None and taxonomy.is_hobby(dd)
     bib_threshold = HOBBY_BIB_THRESHOLD if hobby else DEFAULT_BIB_THRESHOLD
 
-    main_topic_ids = _topic_ids_for_area(session, area.id)
-    bib_n = _bib_count(session, main_topic_ids)
-    course_n = _course_count(session, main_topic_ids)
-    lecture_n = _lecture_instance_count(session, main_topic_ids)
+    topic_ids = _topic_ids_for_area(session, area.discipline_area_id)
+    bib_n = _bib_count(session, topic_ids)
+    course_n = _course_count(session, topic_ids)
+    lecture_n = _lecture_instance_count(session, topic_ids)
 
     signals: list[MaturationSignal] = [
         MaturationSignal(

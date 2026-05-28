@@ -15,6 +15,7 @@ from workflow.db.models.knowledge import (
     _TAXONOMY_DOMAINS,
     Concept,
     Content,
+    DisciplineArea,
     MainTopic,
     Topic,
 )
@@ -29,6 +30,7 @@ __all__ = [
     "ContentNotFound",
     "HasReferences",
     "concept_main_topic",
+    "concept_discipline_area",
     "resolve_concepts",
     "list_concepts",
     "get_concept",
@@ -102,8 +104,37 @@ def _validate_domain(domain: str) -> None:
 
 
 def concept_main_topic(concept: Concept) -> "MainTopic | None":
-    """Deprecated thin forwarder. Use `concept.main_topic` directly."""
-    return concept.main_topic
+    """Return the MainTopic associated with a Concept via its content chain.
+
+    Deprecated: ``Concept.main_topic`` now always returns ``None`` because
+    ``Topic.main_topic_id`` was removed in Phase 4B (Topic re-root). The
+    concept→content→topic chain no longer carries a direct MainTopic FK.
+    Use :func:`concept_discipline_area` instead to resolve the discipline area.
+
+    Kept for back-compat; callers should migrate to ``concept_discipline_area``.
+    """
+    return concept.main_topic  # always None post-reroot
+
+
+def concept_discipline_area(concept: Concept) -> "DisciplineArea | None":
+    """Return the DisciplineArea for a Concept via content → topic → discipline_area.
+
+    This is the recommended replacement for the deprecated
+    :func:`concept_main_topic` after the Topic re-root (Phase 4B).
+
+    Returns ``None`` if any link in the chain is missing (unloaded relationship
+    or orphaned record). Callers must ensure the session is still open.
+    """
+    try:
+        content: Content | None = concept.content
+        if content is None:
+            return None
+        topic: Topic | None = content.topic
+        if topic is None:
+            return None
+        return topic.discipline_area  # type: ignore[return-value]
+    except Exception:
+        return None
 
 
 def resolve_concepts(
@@ -155,11 +186,12 @@ def list_concepts(
         ).first()
         if mt is None:
             raise MainTopicNotFound(f"MainTopic {main_topic_code!r} not found.")
+        # Post-Phase-4B: Topic is rooted at DisciplineArea; filter by the MT's DA.
         stmt = (
             select(Concept)
             .join(Content, Concept.content_id == Content.id)
             .join(Topic, Content.topic_id == Topic.id)
-            .where(Topic.main_topic_id == mt.id)
+            .where(Topic.discipline_area_id == mt.discipline_area_id)
             .order_by(Concept.code)
         )
         return list(session.scalars(stmt).all())

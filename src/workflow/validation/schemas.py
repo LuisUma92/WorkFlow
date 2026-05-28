@@ -372,46 +372,52 @@ def check_concepts_against_db(
     - Each code in ``fm.concepts`` is looked up by ``Concept.code``.
     - Unknown codes produce a warning (lenient) or error (strict).
     - When ``fm.main_topic`` resolves to a ``MainTopic``, each found concept's
-      MainTopic (via ``concept.content.topic.main_topic``) is compared.
+      DisciplineArea (via ``concept.content.topic.discipline_area_id``) is compared
+      against the note's MainTopic DisciplineArea (``note_mt.discipline_area_id``).
       A mismatch produces an issue at the same severity level as an unknown code.
-    - When ``fm.main_topic`` is None the mt-mismatch check is skipped silently.
+      NOTE: The ``strict`` flag (originally named ``--strict-main-topic`` at the CLI)
+      now gates a *discipline-area* check, not a main_topic check. The CLI flag name
+      is preserved for backwards compatibility; its semantics changed post-Topic-reroot.
+    - When ``fm.main_topic`` is None the discipline-area mismatch check is skipped.
     - Empty ``concepts`` list returns ``[]`` immediately (no DB hits).
 
     Mirrors ``check_main_topic_against_db`` strict-vs-lenient pattern (PB.2).
     """
-    from workflow.concept.service import resolve_concepts
+    from workflow.concept.service import concept_discipline_area, resolve_concepts
 
     if not fm.concepts:
         return []
 
     found, issues = resolve_concepts(list(fm.concepts), session, strict=strict)
 
-    # mt-mismatch: only when note has a resolvable main_topic
+    # discipline-area mismatch: only when note has a resolvable main_topic
     if fm.main_topic is not None and found:
         note_mt, _ = check_main_topic_against_db(fm.main_topic, session)
         if note_mt is not None:
+            note_da_id: int | None = note_mt.discipline_area_id
             for concept in found:
-                concept_mt = concept.main_topic
-                if concept_mt is None:
+                concept_da = concept_discipline_area(concept)
+                if concept_da is None:
                     issues.append(
                         {
                             "severity": "warning",
                             "message": (
                                 f"concept {concept.code!r} has no resolved "
-                                "main_topic chain (content → topic → main_topic)."
+                                "discipline_area chain (content → topic → discipline_area)."
                             ),
                         }
                     )
                     continue
-                if concept_mt.id != note_mt.id:
+                if concept_da.id != note_da_id:
                     severity = "error" if strict else "warning"
                     issues.append(
                         {
                             "severity": severity,
                             "message": (
                                 f"concept {concept.code!r} belongs to "
-                                f"main_topic {concept_mt.code!r}"
-                                f" but note declares main_topic={note_mt.code!r}."
+                                f"discipline_area {concept_da.code!r}"
+                                f" but note's main_topic {note_mt.code!r} belongs to"
+                                f" discipline_area_id={note_da_id}."
                             ),
                         }
                     )
