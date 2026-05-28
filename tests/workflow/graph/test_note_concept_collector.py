@@ -36,7 +36,7 @@ def _topic(session: Session, name: str = "Physics") -> tuple[MainTopic, Content]
     mt = MainTopic(code=f"MT{suffix:04d}", name=name, discipline_area_id=da.id)
     session.add(mt)
     session.flush()
-    tp = Topic(main_topic_id=mt.id, name=f"{name} subtopic", serial_number=1)
+    tp = Topic(discipline_area_id=da.id, name=f"{name} subtopic", serial_number=1)
     session.add(tp)
     session.flush()
     ct = Content(topic_id=tp.id, name=f"{name} content")

@@ -40,7 +40,7 @@ def _seed_concept_chain(session: Session, code: str = "test-concept") -> Concept
     main_topic = MainTopic(name="Test Topic", code="TST-001", discipline_area_id=area.id)
     session.add(main_topic)
     session.flush()
-    subtopic = Topic(name="Sub Topic", serial_number=1, main_topic_id=main_topic.id)
+    subtopic = Topic(name="Sub Topic", serial_number=1, discipline_area_id=area.id)
     session.add(subtopic)
     session.flush()
     content = Content(name="Test Content", topic_id=subtopic.id)

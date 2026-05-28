@@ -602,7 +602,7 @@ class TestCLILink:
             mt = _MT(code="XX0001", name="X Topic", discipline_area_id=da.id)
             s.add(mt)
             s.flush()
-            tp = _T(main_topic_id=mt.id, name="X Sub", serial_number=1)
+            tp = _T(discipline_area_id=da.id, name="X Sub", serial_number=1)
             s.add(tp)
             s.flush()
             ct = _Ct(topic_id=tp.id, name="X Content")

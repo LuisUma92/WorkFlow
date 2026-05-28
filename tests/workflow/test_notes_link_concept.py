@@ -96,7 +96,7 @@ def seeded(session, notes_dir):
     session.add(mt)
     session.flush()
 
-    tp = Topic(main_topic_id=mt.id, name="Dinamica", serial_number=1)
+    tp = Topic(discipline_area_id=da.id, name="Dinamica", serial_number=1)
     session.add(tp)
     session.flush()
 
@@ -296,7 +296,7 @@ class TestLinkCmdCLI:
         mt = MainTopic(code="CL0001", name="CLI Topic", discipline_area_id=da.id)
         session.add(mt)
         session.flush()
-        tp = Topic(main_topic_id=mt.id, name="CLI Subtopic", serial_number=1)
+        tp = Topic(discipline_area_id=da.id, name="CLI Subtopic", serial_number=1)
         session.add(tp)
         session.flush()
         ct = Content(topic_id=tp.id, name="CLI Content")

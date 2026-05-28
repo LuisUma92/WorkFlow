@@ -46,23 +46,37 @@ def session(engine):
 
 @pytest.fixture()
 def seeded_session(session):
-    """Seed two MainTopics, Topic+Content chain under mt1, and one Concept."""
-    da = DisciplineArea(
+    """Seed two DisciplineAreas + MainTopics, Topic+Content chain under da1, and one Concept.
+
+    Post-Phase-4B: Topic is rooted at DisciplineArea, not MainTopic.
+    mt1 and mt2 belong to *different* DisciplineAreas so that the
+    discipline-area mismatch check (the new strict semantics) fires
+    when the note declares mt2 but the concept belongs to da1/mt1.
+    """
+    da1 = DisciplineArea(
         code="FI0006",
         name="Fisica",
         discipline_num=1,
         topic_num=6,
         area_initials="FI",
     )
-    session.add(da)
+    da2 = DisciplineArea(
+        code="FI0007",
+        name="Termo",
+        discipline_num=1,
+        topic_num=7,
+        area_initials="FI",
+    )
+    session.add_all([da1, da2])
     session.flush()
 
-    mt1 = MainTopic(code="FI0006", name="Mecanica", discipline_area_id=da.id)
-    mt2 = MainTopic(code="FI0007", name="Termo", discipline_area_id=da.id)
+    mt1 = MainTopic(code="FI0006", name="Mecanica", discipline_area_id=da1.id)
+    mt2 = MainTopic(code="FI0007", name="Termo", discipline_area_id=da2.id)
     session.add_all([mt1, mt2])
     session.flush()
 
-    tp = Topic(main_topic_id=mt1.id, name="Cinematica", serial_number=1)
+    # Topic is rooted at da1 (discipline_area_id), not main_topic_id
+    tp = Topic(discipline_area_id=da1.id, name="Cinematica", serial_number=1)
     session.add(tp)
     session.flush()
 
@@ -73,7 +87,7 @@ def seeded_session(session):
     c = Concept(code="forces", label="Forces", content_id=ct.id, domain="Información")
     session.add(c)
     session.commit()
-    return {"mt1": mt1, "mt2": mt2, "concept": c}
+    return {"da1": da1, "da2": da2, "mt1": mt1, "mt2": mt2, "concept": c}
 
 
 def _make_fm(concepts=(), main_topic=None):
@@ -117,14 +131,18 @@ def test_validate_concepts_known_code_clean(session, seeded_session):
 
 
 def test_validate_concepts_main_topic_mismatch_strict_errors(session, seeded_session):
-    """Concept belongs to mt1 but note declares mt2 → mismatch error under strict."""
+    """Concept belongs to da1 but note declares mt2 (da2) → discipline-area mismatch error under strict.
+
+    Post-Phase-4B: the strict check compares concept.discipline_area vs note.main_topic.discipline_area_id.
+    mt2 belongs to da2; concept 'forces' belongs to da1 → mismatch.
+    """
     fm = _make_fm(concepts=["forces"], main_topic="FI0007")
     issues = check_concepts_against_db(fm, session, strict=True)
     errors = [i for i in issues if i["severity"] == "error"]
     assert len(errors) >= 1
-    # Error message should name both topics
+    # Error message should mention the concept or a DA code
     msg = errors[0]["message"]
-    assert "FI0006" in msg or "forces" in msg
+    assert "forces" in msg or "FI0006" in msg or "discipline_area" in msg
 
 
 def test_validate_concepts_no_main_topic_mismatch_check_skipped(
@@ -158,6 +176,10 @@ def _isolated_global_db(tmp_path_factory, monkeypatch):
 
 
 def _seed_global():
+    """Seed a single-DA/MT chain for CLI tests.
+
+    Post-Phase-4B: Topic is rooted at DisciplineArea, not MainTopic.
+    """
     engine = init_global_db()
     with Session(engine) as session:
         da = DisciplineArea(
@@ -172,7 +194,8 @@ def _seed_global():
         mt = MainTopic(code="FI0006", name="Mecanica", discipline_area_id=da.id)
         session.add(mt)
         session.flush()
-        tp = Topic(main_topic_id=mt.id, name="Cinematica", serial_number=1)
+        # Topic rooted at DisciplineArea (Phase 4B)
+        tp = Topic(discipline_area_id=da.id, name="Cinematica", serial_number=1)
         session.add(tp)
         session.flush()
         ct = Content(topic_id=tp.id, name="Movimiento rectilineo")

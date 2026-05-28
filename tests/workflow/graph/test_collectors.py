@@ -159,7 +159,7 @@ def test_collect_exercises_no_content_edge(global_session):
     global_session.add(main_topic)
     global_session.flush()
 
-    topic = Topic(main_topic_id=main_topic.id, name="Mechanics", serial_number=1)
+    topic = Topic(discipline_area_id=da.id, name="Mechanics", serial_number=1)
     global_session.add(topic)
     global_session.flush()
 
@@ -216,7 +216,7 @@ def test_collect_academic_content_topic(global_session):
     global_session.add(main_topic)
     global_session.flush()
 
-    topic = Topic(main_topic_id=main_topic.id, name="Calculus", serial_number=1)
+    topic = Topic(discipline_area_id=da.id, name="Calculus", serial_number=1)
     global_session.add(topic)
     global_session.flush()
 
@@ -263,7 +263,7 @@ def test_collect_academic_bib_content_edge(global_session):
     global_session.add(main_topic)
     global_session.flush()
 
-    topic = Topic(main_topic_id=main_topic.id, name="Calculus", serial_number=1)
+    topic = Topic(discipline_area_id=da.id, name="Calculus", serial_number=1)
     global_session.add(topic)
     global_session.flush()
 
@@ -305,7 +305,7 @@ def test_collect_academic_course_content_edge(global_session):
     global_session.add(main_topic)
     global_session.flush()
 
-    topic = Topic(main_topic_id=main_topic.id, name="Electricity", serial_number=1)
+    topic = Topic(discipline_area_id=da.id, name="Electricity", serial_number=1)
     global_session.add(topic)
     global_session.flush()
 

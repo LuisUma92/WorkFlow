@@ -35,7 +35,10 @@ def _isolated_global_db(tmp_path_factory, monkeypatch):
 
 
 def _seed(*, mt_code: str = "FI0006") -> dict:
-    """Seed a DisciplineArea + MainTopic + Topic + Content chain and one Concept."""
+    """Seed a DisciplineArea + MainTopic + Topic (rooted at DA) + Content + Concept.
+
+    Post-Phase-4B: Topic.discipline_area_id replaces Topic.main_topic_id.
+    """
     engine = init_global_db()
     with Session(engine) as session:
         da = DisciplineArea(
@@ -47,7 +50,8 @@ def _seed(*, mt_code: str = "FI0006") -> dict:
         mt = MainTopic(code=mt_code, name="Mecanica", discipline_area_id=da.id)
         session.add(mt)
         session.flush()
-        tp = Topic(main_topic_id=mt.id, name="Cinematica", serial_number=1)
+        # Topic rooted at DisciplineArea (Phase 4B)
+        tp = Topic(discipline_area_id=da.id, name="Cinematica", serial_number=1)
         session.add(tp)
         session.flush()
         ct = Content(topic_id=tp.id, name="Movimiento rectilineo")
@@ -106,7 +110,8 @@ def test_cli_list_filtered_by_main_topic(runner):
         mt2 = MainTopic(code="MA0001", name="Calculo", discipline_area_id=da2.id)
         session.add(mt2)
         session.flush()
-        tp2 = Topic(main_topic_id=mt2.id, name="Integracion", serial_number=1)
+        # Topic rooted at DisciplineArea (Phase 4B)
+        tp2 = Topic(discipline_area_id=da2.id, name="Integracion", serial_number=1)
         session.add(tp2)
         session.flush()
         ct2 = Content(topic_id=tp2.id, name="Integracion definida")

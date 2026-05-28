@@ -98,7 +98,7 @@ def seeded(session, vault):
     session.add(mt)
     session.flush()
 
-    tp = Topic(main_topic_id=mt.id, name="Mechanics", serial_number=1)
+    tp = Topic(discipline_area_id=da.id, name="Mechanics", serial_number=1)
     session.add(tp)
     session.flush()
 
@@ -219,7 +219,7 @@ class TestSyncConceptCLI:
         mt = MainTopic(code="TC0001", name="Test Topic", discipline_area_id=da.id)
         session.add(mt)
         session.flush()
-        tp = Topic(main_topic_id=mt.id, name="Test Subtopic", serial_number=1)
+        tp = Topic(discipline_area_id=da.id, name="Test Subtopic", serial_number=1)
         session.add(tp)
         session.flush()
         ct = Content(topic_id=tp.id, name="Test Content")

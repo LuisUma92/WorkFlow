@@ -24,6 +24,7 @@ from workflow.concept.service import (
     _get_concept_or_raise,
     add_concept,
     build_concept_tree,
+    concept_discipline_area,
     concept_main_topic,
     get_concept,
     list_concepts,
@@ -63,7 +64,12 @@ def _seed_concept_chain(
     mt_code: str = "FI0006",
     domain: str = "Información",
 ) -> tuple[DisciplineArea, MainTopic, Topic, Content]:
-    """Create DisciplineArea → MainTopic → Topic → Content chain."""
+    """Create DisciplineArea → MainTopic + Topic (rooted at DA) → Content chain.
+
+    Post-Phase-4B: Topic is rooted at DisciplineArea via discipline_area_id FK.
+    MainTopic is still created for tests that exercise MT-based queries, but
+    Topic no longer carries main_topic_id.
+    """
     da = DisciplineArea(
         code=da_code, name="Fisica", discipline_num=10, topic_num=0, area_initials="FI"
     )
@@ -72,7 +78,8 @@ def _seed_concept_chain(
     mt = MainTopic(code=mt_code, name="Mecanica", discipline_area_id=da.id)
     session.add(mt)
     session.flush()
-    tp = Topic(main_topic_id=mt.id, name="Cinematica", serial_number=1)
+    # Topic is now rooted at DisciplineArea, not MainTopic (Phase 4B)
+    tp = Topic(discipline_area_id=da.id, name="Cinematica", serial_number=1)
     session.add(tp)
     session.flush()
     ct = Content(topic_id=tp.id, name="Movimiento rectilineo")
@@ -83,15 +90,21 @@ def _seed_concept_chain(
 
 @pytest.fixture()
 def seeded(session):
-    """Seed chain + two MainTopics + one Concept."""
+    """Seed chain + two MainTopics + one Concept.
+
+    Post-Phase-4B: both Topics are rooted at DisciplineArea via discipline_area_id.
+    """
     da, mt1, tp1, ct1 = _seed_concept_chain(
         session, da_code="FI0000", mt_code="FI0006"
     )
-    # Second main topic with its own chain
-    mt2 = MainTopic(code="FI0007", name="Termodinamica", discipline_area_id=da.id)
+    # Second DisciplineArea + MainTopic for ct2 (different DA to allow filter tests)
+    da2 = DisciplineArea(code="QU0000", name="Quimica", discipline_num=20, topic_num=0, area_initials="QU")
+    session.add(da2)
+    session.flush()
+    mt2 = MainTopic(code="FI0007", name="Termodinamica", discipline_area_id=da2.id)
     session.add(mt2)
     session.flush()
-    tp2 = Topic(main_topic_id=mt2.id, name="Calor", serial_number=1)
+    tp2 = Topic(discipline_area_id=da2.id, name="Calor", serial_number=1)
     session.add(tp2)
     session.flush()
     ct2 = Content(topic_id=tp2.id, name="Calor especifico")
@@ -102,7 +115,7 @@ def seeded(session):
     session.add(c)
     session.commit()
     return {
-        "da": da,
+        "da": da, "da2": da2,
         "mt1": mt1, "tp1": tp1, "ct1": ct1,
         "mt2": mt2, "tp2": tp2, "ct2": ct2,
         "concept": c,
@@ -409,14 +422,37 @@ def test_rename_concept_collides_with_existing_raises(session, seeded):
         rename_concept(session, "forces", "gravity")
 
 
-# ── concept_main_topic ────────────────────────────────────────────────────
+# ── concept_main_topic (deprecated) ──────────────────────────────────────
 
 
-def test_concept_main_topic_traversal(session, seeded):
-    """concept_main_topic(concept) traverses content→topic→main_topic."""
+def test_concept_main_topic_returns_none_post_reroot(session, seeded):
+    """concept_main_topic() returns None post-Phase-4B (Topic no longer carries main_topic_id).
+
+    The function is deprecated; concept.main_topic always returns None now.
+    This test documents the expected (changed) behaviour.
+    """
     c = seeded["concept"]
     mt = concept_main_topic(c)
-    assert mt.code == "FI0006"
+    assert mt is None
+
+
+# ── concept_discipline_area ───────────────────────────────────────────────
+
+
+def test_concept_discipline_area_traversal(session, seeded):
+    """concept_discipline_area() resolves content→topic→discipline_area."""
+    c = seeded["concept"]
+    da = concept_discipline_area(c)
+    assert da is not None
+    assert da.code == "FI0000"
+
+
+def test_concept_discipline_area_returns_none_for_detached(session):
+    """concept_discipline_area() returns None when concept has no content."""
+    orphan = Concept(code="orphan", label="Orphan", content_id=None, domain="Información")
+    # Don't persist; test pure chain traversal guard
+    result = concept_discipline_area(orphan)
+    assert result is None
 
 
 # ── _get_concept_or_raise ─────────────────────────────────────────────────

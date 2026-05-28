@@ -57,8 +57,9 @@ def _make_area(session, code: str = "0010MC", name: str = "Mecánica") -> MainTo
     return a
 
 
-def _make_topic(session, area: MainTopic, name: str = "T") -> Topic:
-    t = Topic(main_topic_id=area.id, name=name, serial_number=1)
+def _make_topic(session, area: MainTopic, name: str = "T", serial_number: int = 1) -> Topic:
+    # Post Phase 4B: Topic roots at DisciplineArea, not MainTopic.
+    t = Topic(discipline_area_id=area.discipline_area_id, name=name, serial_number=serial_number)
     session.add(t)
     session.commit()
     return t
@@ -202,6 +203,9 @@ def test_multi_semester_continuity_signal(session):
 
 
 def test_children_topics_count_toward_bib(session):
+    # Post Phase 4B: child MainTopic shares the same DisciplineArea. Topics root
+    # at DA, so a Topic with the same discipline_area_id as the area MainTopic is
+    # automatically counted by maturation queries.
     area = _make_area(session)
     child = MainTopic(
         code="0010MC26ST",
@@ -211,7 +215,7 @@ def test_children_topics_count_toward_bib(session):
     )
     session.add(child)
     session.flush()
-    topic = Topic(main_topic_id=child.id, name="Sub", serial_number=1)
+    topic = Topic(discipline_area_id=area.discipline_area_id, name="Sub", serial_number=2)
     session.add(topic)
     session.flush()
     content = _make_content(session, topic)
