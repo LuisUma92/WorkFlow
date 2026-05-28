@@ -34,7 +34,7 @@ These decisions establish the physical and logical organization of projects.
 | [ITEP-0004](ITEP-0004-two-project-types.md)                 | Two project types: Lecture & General                                                                                                                      | ITeP         | Accepted                 | ITEP-0000                        |
 | [ITEP-0005](ITEP-0005-symlink-based-config.md)              | Symlink-based shared resource distribution                                                                                                                | ITeP         | Accepted                 | ITEP-0000                        |
 | [ITEP-0003](ITEP-0003-config-yaml-as-db-pointer.md)         | config.yaml as minimal DB pointer                                                                                                                         | ITeP         | Accepted                 | ITEP-0001                        |
-| [ITEP-0008](ITEP-0008-general-project-nomenclature.md)      | General project nomenclature: discipline, area, year and project initials                                                                                 | ITeP         | Implemented              | ITEP-0000, ITEP-0004             |
+| [ITEP-0008](ITEP-0008-general-project-nomenclature.md)      | General project nomenclature: discipline, area, year and project initials; amended 2026-05-27 to clarify Topic DB root change (filesystem layout unchanged) | ITeP         | Implemented (amended 2026-05-27) | ITEP-0000, ITEP-0004             |
 | [ITEP-0009](ITEP-0009-knowledge-lifecycle-and-ai-agents.md) | Knowledge lifecycle, discipline taxonomy, and AI agent collaboration conventions                                                                          | ITeP         | Implemented              | ITEP-0000, ITEP-0008, 0002, 0015 |
 | [ITEP-0010](ITEP-0010-schema-versioning-and-migrations.md)  | Schema versioning and forward-only migrations for GlobalBase + LocalBase                                                                                  | ITeP         | Implemented              | 0003, 0007, ITEP-0001, ITEP-0008 |
 | [ITEP-0011](ITEP-0011-vault-unification.md)                 | Vault unification: notes layer relocates LocalBase → GlobalBase; per-project `.md` files unify under `<vault_root>/notes/{permanent,literature,fleeting}` | ITeP         | Implemented              | 0003, 0004, ITEP-0001, ITEP-0010 |
@@ -45,7 +45,7 @@ These decisions establish the physical and logical organization of projects.
 | ADR                                              | Title                                | Domain       | Status   | Depends On |
 | ------------------------------------------------ | ------------------------------------ | ------------ | -------- | ---------- |
 | [ITEP-0001](ITEP-0001-sqlalchemy-persistence.md) | SQLAlchemy as persistence layer      | ITeP         | Accepted | —          |
-| [ITEP-0002](ITEP-0002-four-layer-schema.md)      | Four-layer database schema — module ownership updated for normalization (migration 0009) | ITeP | Accepted (updated 2026-05-27) | ITEP-0001 |
+| [ITEP-0002](ITEP-0002-four-layer-schema.md)      | Four-layer database schema — module ownership updated for normalization (migration 0009); Topic re-rooted at DisciplineArea + MainTopicSyllabus added (migration 0011, Phase 4B, amended 2026-05-27) | ITeP | Accepted (amended 2026-05-27) | ITEP-0001 |
 | [ITEP-0006](ITEP-0006-taxonomy-enums.md)         | Bloom taxonomy enums                 | ITeP         | Accepted | ITEP-0002  |
 | [ITEP-0007](ITEP-0007-crud-manager-layer.md)     | CRUD manager abstraction             | ITeP         | Accepted | ITEP-0001  |
 | [0003](0003-hybrid-database.md)                  | Hybrid database (global + local)     | Zettelkasten | Accepted | ITEP-0001  |
@@ -78,7 +78,7 @@ These ADRs document the custom LaTeX packages in `shared/sty/`.
 | [0001](0001-Zettelkasten-system.md)      | Zettelkasten note semantic layer                         | Zettelkasten | Superseded by 0015 | —          |
 | [0002](0002-Unified-knowledge.md)        | Markdown as canonical knowledge layer                    | Zettelkasten | Accepted           | 0001       |
 | [0015](0015-zettelkasten-dailly-work.md) | Zettelkasten daily work: notes, demos, images, exercises | Zettelkasten | Accepted | 0001, 0002 |
-| [ITEP-0012](ITEP-0012-concept-orm.md)   | Concept ORM surface: taxonomy tree, `concepts:` resolver, `--strict-concepts` validator; amended for `content_id` re-rooting, `domain` column, `ExerciseConcept` M2M (migration 0009) | ITeP | Implemented (Phase 5, 2026-05-27) | ITEP-0002, ITEP-0006, ITEP-0009, ITEP-0011 |
+| [ITEP-0012](ITEP-0012-concept-orm.md)   | Concept ORM surface: taxonomy tree, `concepts:` resolver, `--strict-concepts` validator; amended for `content_id` re-rooting, `domain` column, `ExerciseConcept` M2M (migration 0009); amended 2026-05-27 for `Concept.main_topic` chain post-Topic re-root (Phase 4B, migration 0011) | ITeP | Implemented (Phase 5, amended 2026-05-27) | ITEP-0002, ITEP-0006, ITEP-0009, ITEP-0011 |
 | [ITEP-0013](ITEP-0013-note-relation-graph.md) | Note relation graph: directed lineage + associative edges, DAG traversal, `note_edge` table | ITeP | Proposed | 0002, 0010, LZK-0003, ITEP-0009, ITEP-0011 |
 
 ## Exercise System

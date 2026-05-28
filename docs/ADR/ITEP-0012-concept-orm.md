@@ -261,6 +261,51 @@ human-friendly alias. Until then, callers must look up the integer PK from
 1. **`Content.code` slug** — deferred. CLI uses numeric `--content-id` until a slug column is
    added to `Content` and a resolver is wired in.
 2. **`Concept.domain` derivation rule** — independently assigned per concept vs. derived from
-   `content.topic`. Policy not yet decided; currently caller-supplied.
+   `content.topic`. Policy not yet decided; currently caller-supplied. See also Amendment
+   2026-05-27 below — after Phase 4B the chain terminates at `DisciplineArea`, not `MainTopic`.
 3. **`workflow exercise sync` auto-create policy** — current policy: warn-and-skip (lenient) or
    raise (strict). Auto-creation of unknown concept slugs is explicitly NOT supported.
+
+---
+
+## Amendment 2026-05-27 — Concept.main_topic chain post-Topic re-root (Phase 4B)
+
+After migration `0011_topic_root_discipline_area` (Phase 4B), the canonical chain for
+a Concept changes:
+
+```
+Before: Concept → Content → Topic → MainTopic
+After:  Concept → Content → Topic → DisciplineArea
+```
+
+`MainTopic` is no longer in the chain. It is now project-context-dependent, reachable
+only via `MainTopicSyllabus(main_topic_id, topic_id)`.
+
+### `Concept.main_topic` property
+
+The `@property` `Concept.main_topic` (introduced in Amendment 2026-05-27 / migration
+0009) traversed `content → topic → main_topic`. After Phase 4B the `topic.main_topic`
+attribute no longer exists. The property **returns `None` gracefully** — it does not
+raise. Callers that need a MainTopic context must query `MainTopicSyllabus` explicitly,
+passing the relevant `main_topic_id`.
+
+### `workflow.concept.service.concept_main_topic()` deprecated
+
+The thin forwarder `concept_main_topic(concept)` in `workflow.concept.service` is
+**deprecated** as of Phase 4B. It will return `None` unconditionally until removed.
+All callers must be updated to traverse `MainTopicSyllabus` when MainTopic context
+is required.
+
+### Validation: strict-main-topic → strict-discipline-area
+
+`check_concepts_against_db()` in `workflow.validation.schemas` previously checked
+that each resolved concept's `main_topic_id` matched the note's `main_topic_id`
+(mt-mismatch detection). After Phase 4B this check is reframed as a
+**strict-discipline-area check**: verify that the concept's
+`content.topic.discipline_area_id` matches the note's own discipline area. This check
+is cheaper (no project context needed) and does not require `MainTopicSyllabus` lookup.
+
+The note's own `main_topic` frontmatter field continues to be validated against the
+`MainTopic` table independently — that validation path is unchanged.
+
+Reference: `tasks/requests/2026-05-27-topic-reroot-discipline-area.md`, migration `0011`.

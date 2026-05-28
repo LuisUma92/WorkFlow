@@ -441,12 +441,50 @@ No existing rows require data updates at migration time.
 
 ---
 
+## Amendment 2026-05-27 — DB-level clarification: Topic rooted at DisciplineArea
+
+ITEP-0008's **"two-layer directory" rule is a filesystem statement** and remains
+unchanged: each `DDTTAA` area directory contains `DDTTAA-YYPP` project directories.
+The filesystem layout described in the Decision section above is unaffected by this
+amendment.
+
+At the **DB layer**, the Phase 4B migration (`0011_topic_root_discipline_area`,
+see `tasks/requests/2026-05-27-topic-reroot-discipline-area.md`) changes where
+`Topic` is rooted:
+
+- **Before (migration 0010 and earlier):** `Topic.main_topic_id` (FK→`MainTopic`)
+  meant every Topic belonged to a single project instance (`DDTTAA-YYPP`).
+- **After (migration 0011+):** `Topic.discipline_area_id` (FK→`DisciplineArea`,
+  RESTRICT) means Topic is a **canonical chapter/section in a field**, independent
+  of any project iteration. `serial_number` is the canonical chapter index within
+  the area, with a `UNIQUE(discipline_area_id, serial_number)` constraint.
+
+**`MainTopic` keeps project-iteration state.** The area directory corresponds to
+an area-level `MainTopic` (parent_id=NULL); each sub-project directory corresponds
+to a child `MainTopic` (`DDTTAA-YYPP`, parent_id→area row). Per-iteration syllabus
+ordering is now in `MainTopicSyllabus(main_topic_id, topic_id, week_no, order_no)`
+rather than encoded by the direct `Topic.main_topic_id` FK.
+
+This change makes the DB shape consistent with the mental model:
+_"a chapter is canonical knowledge; a project picks which chapters it covers."_
+Previously, two project iterations covering the same topic area required duplicate
+`Content`/`Concept` rows; after Phase 4B they share the same `Topic` rows.
+
+The "Catalog vs State: why two tables" section above (DisciplineArea vs MainTopic)
+and all filesystem-naming rules (MUST/SHOULD/MAY under Architectural Rules) are
+**unchanged**.
+
+Reference: ITEP-0002 amendment 2026-05-27 and migration `0011`.
+
+---
+
 ## Change Log
 
 | Date       | Change                                                                     |
 | ---------- | -------------------------------------------------------------------------- |
 | 2026-04-21 | Initial ADR — design phase, pre-implementation                             |
 | 2026-04-28 | Implemented across three phases (commits `6964d87`, `f5cf015`, `56bbacd`). |
+| 2026-05-27 | DB-level clarification: `Topic` re-rooted at `DisciplineArea` (migration 0011, Phase 4B). Filesystem two-layer rule unchanged. |
 
 ## Implementation Notes (2026-04-28)
 
