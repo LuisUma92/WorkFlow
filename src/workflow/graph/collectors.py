@@ -5,12 +5,17 @@ Each collector queries one database (global or local) and returns
 
 build_knowledge_graph() merges all sources into a single KnowledgeGraph,
 deduplicating nodes by node_id.
+
+filter_graph_by_taxonomy() restricts a KnowledgeGraph to nodes reachable
+from a taxonomy filter (MainTopic, DisciplineArea, or Topic).
 """
 
 from __future__ import annotations
 
-from sqlalchemy.orm import Session
+from dataclasses import dataclass
+
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from workflow.graph.domain import GraphEdge, GraphNode, KnowledgeGraph
 
@@ -23,6 +28,9 @@ __all__ = [
     "collect_note_concepts",
     "collect_exercise_concepts",
     "build_knowledge_graph",
+    "resolve_taxonomy_filter",
+    "filter_graph_by_taxonomy",
+    "TaxonomyFilter",
 ]
 
 
@@ -398,3 +406,268 @@ def build_knowledge_graph(
             deduped_nodes.append(node)
 
     return KnowledgeGraph(nodes=tuple(deduped_nodes), edges=tuple(all_edges))
+
+
+# ── Taxonomy filter ──────────────────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class TaxonomyFilter:
+    """Resolved taxonomy filter — integer ID sets after slug resolution.
+
+    Any field left as an empty frozenset means "no restriction on that axis".
+    The AND-intersection is computed in filter_graph_by_taxonomy().
+    """
+
+    topic_ids: frozenset[int] = frozenset()
+    discipline_area_ids: frozenset[int] = frozenset()
+    main_topic_ids: frozenset[int] = frozenset()
+
+    def is_empty(self) -> bool:
+        """True when no filter is active — graph should pass through unchanged."""
+        return not (self.topic_ids or self.discipline_area_ids or self.main_topic_ids)
+
+
+def resolve_taxonomy_filter(
+    session: Session,
+    *,
+    main_topic: str | None = None,
+    discipline_area: str | None = None,
+    topic: str | None = None,
+) -> TaxonomyFilter:
+    """Resolve slug-or-numeric-id strings to a TaxonomyFilter.
+
+    Each argument is either a string slug (``code`` column) or a numeric id
+    string.  Unknown slugs raise ``ValueError`` with a descriptive message.
+    Numeric ids that do not exist also raise ``ValueError``.
+
+    Returns a :class:`TaxonomyFilter` with resolved integer ID sets.
+    """
+    from workflow.db.models.knowledge import DisciplineArea, MainTopic, Topic
+
+    def _resolve_main_topic(slug_or_id: str) -> int:
+        if slug_or_id.isdigit():
+            mt = session.get(MainTopic, int(slug_or_id))
+            if mt is None:
+                raise ValueError(f"MainTopic id={slug_or_id!r} not found")
+            return mt.id
+        mt = session.scalars(
+            select(MainTopic).where(MainTopic.code == slug_or_id)
+        ).first()
+        if mt is None:
+            raise ValueError(f"MainTopic code={slug_or_id!r} not found")
+        return mt.id
+
+    def _resolve_discipline_area(slug_or_id: str) -> int:
+        if slug_or_id.isdigit():
+            da = session.get(DisciplineArea, int(slug_or_id))
+            if da is None:
+                raise ValueError(f"DisciplineArea id={slug_or_id!r} not found")
+            return da.id
+        da = session.scalars(
+            select(DisciplineArea).where(DisciplineArea.code == slug_or_id)
+        ).first()
+        if da is None:
+            raise ValueError(f"DisciplineArea code={slug_or_id!r} not found")
+        return da.id
+
+    def _resolve_topic(slug_or_id: str) -> int:
+        if slug_or_id.isdigit():
+            tp = session.get(Topic, int(slug_or_id))
+            if tp is None:
+                raise ValueError(f"Topic id={slug_or_id!r} not found")
+            return tp.id
+        # Topic has no unique slug column — fall back to name (case-insensitive)
+        tp = session.scalars(
+            select(Topic).where(Topic.name == slug_or_id)
+        ).first()
+        if tp is None:
+            raise ValueError(
+                f"Topic name={slug_or_id!r} not found "
+                "(Topic has no slug column; pass numeric id or exact name)"
+            )
+        return tp.id
+
+    mt_ids: frozenset[int] = frozenset()
+    da_ids: frozenset[int] = frozenset()
+    tp_ids: frozenset[int] = frozenset()
+
+    if main_topic is not None:
+        mt_ids = frozenset([_resolve_main_topic(main_topic)])
+    if discipline_area is not None:
+        da_ids = frozenset([_resolve_discipline_area(discipline_area)])
+    if topic is not None:
+        tp_ids = frozenset([_resolve_topic(topic)])
+
+    return TaxonomyFilter(
+        topic_ids=tp_ids,
+        discipline_area_ids=da_ids,
+        main_topic_ids=mt_ids,
+    )
+
+
+def _collect_topic_ids_for_filter(
+    session: Session,
+    tf: TaxonomyFilter,
+) -> frozenset[int]:
+    """Expand a TaxonomyFilter to the set of concrete Topic ids to retain.
+
+    Traversal:
+      MainTopic  → MainTopicSyllabus → Topic
+      DisciplineArea → Topic (discipline_area_id FK)
+      Topic      → Topic (direct)
+
+    Returns the intersection if multiple axes are set, so that only topics
+    that satisfy ALL active filters survive.
+    """
+    from workflow.db.models.knowledge import MainTopicSyllabus, Topic
+
+    axis_sets: list[frozenset[int]] = []
+
+    if tf.main_topic_ids:
+        rows = session.scalars(
+            select(MainTopicSyllabus).where(
+                MainTopicSyllabus.main_topic_id.in_(tf.main_topic_ids)
+            )
+        ).all()
+        axis_sets.append(frozenset(r.topic_id for r in rows))
+
+    if tf.discipline_area_ids:
+        rows = session.scalars(
+            select(Topic).where(
+                Topic.discipline_area_id.in_(tf.discipline_area_ids)
+            )
+        ).all()
+        axis_sets.append(frozenset(r.id for r in rows))
+
+    if tf.topic_ids:
+        axis_sets.append(tf.topic_ids)
+
+    if not axis_sets:
+        return frozenset()
+
+    result = axis_sets[0]
+    for s in axis_sets[1:]:
+        result = result & s
+    return result
+
+
+def filter_graph_by_taxonomy(
+    kg: KnowledgeGraph,
+    session: Session,
+    tf: TaxonomyFilter,
+) -> KnowledgeGraph:
+    """Return a subgraph containing only nodes reachable from the taxonomy filter.
+
+    If *tf* is empty (no filter active) the original graph is returned unchanged.
+
+    Reachability is defined as:
+    - ``content:{id}``   where content.topic_id in allowed_topic_ids
+    - ``topic:{id}``     where topic.id in allowed_topic_ids
+    - ``concept:{id}``   where concept.content.topic_id in allowed_topic_ids
+    - ``note:{id}``      where note.main_topic_id resolves to an allowed topic
+                         (via MainTopicSyllabus) OR note has a NoteConcept
+                         linking to an allowed concept
+    - ``exercise:{id}``  via ExerciseConcept → concept → content → topic
+    - All edges whose BOTH endpoints are in the surviving node set.
+
+    Notes whose ``main_topic_id`` is NULL are included only when they link
+    to a surviving concept (via NoteConcept).
+    """
+    if tf.is_empty():
+        return kg
+
+    from workflow.db.models.exercises import Exercise, ExerciseConcept
+    from workflow.db.models.knowledge import Concept, Content, Topic
+    from workflow.db.models.notes import Note, NoteConcept
+
+    allowed_topic_ids = _collect_topic_ids_for_filter(session, tf)
+
+    # Empty intersection → empty graph (valid AND-filter result)
+    if not allowed_topic_ids:
+        return KnowledgeGraph(nodes=(), edges=())
+
+    # Allowed content ids
+    allowed_content_ids: frozenset[int] = frozenset(
+        c.id
+        for c in session.scalars(
+            select(Content).where(Content.topic_id.in_(allowed_topic_ids))
+        ).all()
+    )
+
+    # Allowed concept ids
+    allowed_concept_ids: frozenset[int] = frozenset(
+        c.id
+        for c in session.scalars(
+            select(Concept).where(Concept.content_id.in_(allowed_content_ids))
+        ).all()
+    )
+
+    # Allowed note ids (via main_topic_id OR via NoteConcept → concept)
+    note_ids_via_concept: frozenset[int] = frozenset(
+        row.note_id
+        for row in session.scalars(
+            select(NoteConcept).where(
+                NoteConcept.concept_id.in_(allowed_concept_ids)
+            )
+        ).all()
+    )
+    # Notes with direct main_topic_id — main_topic_id resolves to a MainTopic
+    # whose syllabus covers an allowed topic.
+    allowed_note_ids = note_ids_via_concept
+    if tf.main_topic_ids or tf.discipline_area_ids:
+        # Include notes that have a main_topic_id in the syllabus intersection
+        from workflow.db.models.knowledge import MainTopicSyllabus
+        from workflow.db.models.notes import Note as _Note
+
+        mt_ids_for_notes: set[int] = set()
+        if tf.main_topic_ids:
+            mt_ids_for_notes.update(tf.main_topic_ids)
+        if tf.discipline_area_ids:
+            # Collect MainTopics whose discipline_area is in the filter
+            from workflow.db.models.knowledge import MainTopic
+            mts = session.scalars(
+                select(MainTopic).where(
+                    MainTopic.discipline_area_id.in_(tf.discipline_area_ids)
+                )
+            ).all()
+            mt_ids_for_notes.update(m.id for m in mts)
+
+        if mt_ids_for_notes:
+            direct_notes = session.scalars(
+                select(_Note).where(_Note.main_topic_id.in_(mt_ids_for_notes))
+            ).all()
+            allowed_note_ids = allowed_note_ids | frozenset(n.id for n in direct_notes)
+
+    # Allowed exercise ids (via ExerciseConcept → concept)
+    ec_rows = session.scalars(
+        select(ExerciseConcept).where(
+            ExerciseConcept.concept_id.in_(allowed_concept_ids)
+        )
+    ).all()
+    allowed_exercise_int_ids: frozenset[int] = frozenset(r.exercise_id for r in ec_rows)
+    exercise_id_to_str: dict[int, str] = {}
+    if allowed_exercise_int_ids:
+        exes = session.scalars(
+            select(Exercise).where(Exercise.id.in_(allowed_exercise_int_ids))
+        ).all()
+        exercise_id_to_str = {ex.id: ex.exercise_id for ex in exes}
+
+    # Build allowed node_id set
+    allowed_node_ids: set[str] = set()
+    allowed_node_ids.update(f"topic:{tid}" for tid in allowed_topic_ids)
+    allowed_node_ids.update(f"content:{cid}" for cid in allowed_content_ids)
+    allowed_node_ids.update(f"concept:{cid}" for cid in allowed_concept_ids)
+    allowed_node_ids.update(f"note:{nid}" for nid in allowed_note_ids)
+    allowed_node_ids.update(
+        f"exercise:{eid_str}" for eid_str in exercise_id_to_str.values()
+    )
+
+    filtered_nodes = tuple(n for n in kg.nodes if n.node_id in allowed_node_ids)
+    surviving = frozenset(n.node_id for n in filtered_nodes)
+    filtered_edges = tuple(
+        e for e in kg.edges
+        if e.source_id in surviving and e.target_id in surviving
+    )
+
+    return KnowledgeGraph(nodes=filtered_nodes, edges=filtered_edges)
