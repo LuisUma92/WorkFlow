@@ -1,14 +1,14 @@
 ---
-id:
-title:
-type:
+id: 20260422-wiki-single-vault-refactor
+title: Refactor Zettelkasten-Notes wiki to single-vault model
+type: docs
 source_agent: None
-opened_on:
+opened_on: 2026-04-22
 
-status: proposed
-resolution:
-priority:
-severity:
+status: completed
+resolution: substantially implemented — main stale block resolved in commits 6cb2086 + 5d37305 (vault P7 closeout + wiki vault model). One residual 00ZZ-Vault ref tracked in roadmap Phase 5; closed 2026-05-28.
+priority: low
+severity: tech-debt
 
 labels: []
 
@@ -23,8 +23,8 @@ blocked_by: []
 assignee: unassigned
 target_release:
 implementation: []
-closed_on:
-closed_by:
+closed_on: 2026-05-28
+closed_by: roadmap 2026-05-27 Phase 5
 
 acceptance_criteria:
   -

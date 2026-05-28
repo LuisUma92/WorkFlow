@@ -38,10 +38,10 @@ Defined in `pyproject.toml` under `[project.scripts]`:
 ### Module Structure
 
 - **`src/workflow/db/`** — Unified database module (SQLAlchemy 2.0). Owns ALL ORM models and repository interfaces. Two-base architecture: `GlobalBase` (`~/.local/share/workflow/workflow.db`) and `LocalBase` (`<project>/slipbox.db`). See ADR-0003, ADR-0004, ADR-0007.
-  - **`src/workflow/db/models/knowledge.py`** — Knowledge taxonomy reference + master entities: `DisciplineArea`, `MainTopic`, `Topic`, `Content`, `Concept`. Owns `_TAXONOMY_DOMAINS` (`Información`, `Procedimiento Mental`, `Procedimiento Psicomotor`, `Metacognitivo`).
+  - **`src/workflow/db/models/knowledge.py`** — Knowledge taxonomy reference + master entities: `DisciplineArea`, `MainTopic`, `Topic`, `Content`, `Concept`, `MainTopicSyllabus`. `Topic` is now rooted at `DisciplineArea` (not `MainTopic`); `MainTopicSyllabus(main_topic_id, topic_id, week_no, order_no)` is the join table. Owns `_TAXONOMY_DOMAINS` (`Información`, `Procedimiento Mental`, `Procedimiento Psicomotor`, `Metacognitivo`).
   - **`src/workflow/db/models/academic.py`** — Academic/evaluation entities: `Institution`, `Course`, `CourseContent`, `EvaluationTemplate`, `Item`, `EvaluationItem`, `CourseEvaluation`. Owns `_TAXONOMY_LEVELS`.
   - **`src/workflow/db/models/bibliography.py`** — Bibliography entities including `BibContent` (with `chapter_number`, `section_number`, `first_page`/`last_page` locus columns).
-  - **`src/workflow/db/models/notes.py`** — Note entities: `Note`, `Citation`, `Label`, `Link`, `Tag`, `NoteTag`, `NoteConcept`, `NoteEdge`. `Concept` is no longer defined here.
+  - **`src/workflow/db/models/notes.py`** — Note entities: `Note`, `Citation`, `Label`, `Link`, `Tag`, `NoteTag`, `NoteConcept`, `NoteEdge`. `Note.main_topic_id` FK → `MainTopic` (nullable, links note to project-context MainTopic). `Concept` is no longer defined here.
   - **`src/workflow/db/models/exercises.py`** — Exercise entities: `Exercise`, `ExerciseOption`, `ExerciseConcept`. No `Exercise.concepts` JSON column; no `Exercise.content_id`; concept links use the `ExerciseConcept` M2M table.
 
 - **`src/workflow/tikz/`** — TikZ standalone asset pipeline. Compiles `.tex` diagrams to PDF/SVG with incremental builds. See ADR-0006.
@@ -54,7 +54,7 @@ Defined in `pyproject.toml` under `[project.scripts]`:
 
 - **`src/workflow/lecture/`** — Lectures integration. `scanner.py` (discover .tex files, register as notes), `note_splitter.py` (split notes at `%>` markers), `linker.py` (extract `\cite`/`\ref`/`\label`, update Link/Citation tables), `eval_builder.py` (bridge EvaluationTemplate to exercise bank), `cli.py` (4 CLI commands: scan, split, link, build-eval).
 
-- **`src/workflow/graph/`** — Knowledge graph analysis and export. `domain.py` (GraphNode, GraphEdge, KnowledgeGraph), `collectors.py` (query global+local DBs), `analysis.py` (orphans, hubs, components, neighbors, stats), `dot_export.py` (Graphviz DOT), `tikz_export.py` (TikZ with spring layout), `clustering.py` (optional networkx communities), `cli.py` (6 CLI commands: orphans, stats, export-dot, export-tikz, clusters, neighbors).
+- **`src/workflow/graph/`** — Knowledge graph analysis and export. `domain.py` (GraphNode, GraphEdge, KnowledgeGraph), `collectors.py` (query global+local DBs), `analysis.py` (orphans, hubs, components, neighbors, stats), `dot_export.py` (Graphviz DOT), `tikz_export.py` (TikZ with spring layout), `clustering.py` (optional networkx communities), `cli.py` (6 CLI commands: orphans, stats, export-dot, export-tikz, clusters, neighbors). Graph commands support `--main-topic`, `--discipline-area`, and `--topic` filter flags (Phase 4E, v1.11.0).
 
 - **`src/workflow/evaluation/`** — Evaluation CLI. `cli.py` (3 Click groups: evaluations, item, course), `service.py` (business logic, validation), `formatters.py` (table + JSON output). Commands: evaluations list|show|add|edit, item list|add, course list|add. Neovim Telescope pickers in nvim-plugin. See ADR-0016.
 
@@ -92,11 +92,11 @@ Defined in `pyproject.toml` under `[project.scripts]`:
 - Exercise CLI: `workflow exercise parse|list|sync|gc|export-moodle|create|create-range|build-exam`. `workflow exercise sync` supports `--strict-concepts` and writes `ExerciseConcept` M2M rows (no JSON column).
 - LaTeX normalization: custom macros expanded to standard LaTeX before Moodle export (ADR-0012)
 - Lectures CLI: `workflow lectures scan|split|link|build-eval`
-- Graph CLI: `workflow graph orphans|stats|export-dot|export-tikz|clusters|neighbors`
+- Graph CLI: `workflow graph orphans|stats|export-dot|export-tikz|clusters|neighbors` — all commands accept `--main-topic CODE`, `--discipline-area CODE`, `--topic NAME` filters (Phase 4E).
 - Evaluation CLI: `workflow evaluations list|show|add|edit`, `workflow item list|add`, `workflow course list|add` (ADR-0016)
 - PRISMA CLI: `workflow prisma bib list|show`, `workflow prisma keyword list`, `workflow prisma review list`, `workflow prisma checklist show`, `workflow prisma rationale add|list`, `workflow prisma tag add|list` (ADR PRISMA-0005)
 - Vault CLI: `workflow vault info|validate|unify` (ITEP-0011, Implemented P0–P7). Migrates per-project `slipbox.db` notes into the global vault; idempotent via `.vault_pointer` marker. `lectures split` defaults output to `<vault_root>/notes/permanent/` (override with `--output-dir`). Vault root resolved by `workflow.vault.paths.resolve_vault_root()` (env `WORKFLOW_VAULT_ROOT`). Per-project note model: `ProjectNote` in `db/models/project_layer.py` (LocalBase, ITEP-0011 P5) — no CLI command yet.
-- Concept CLI: `workflow concept list|show|add|tree|rm|rename` (ITEP-0012). Manages the concept taxonomy (code slugs, parent hierarchy, content affiliation). `workflow concept add --code SLUG --label TEXT --content-id INT --domain DOMAIN [--parent CODE] [--description TEXT]`. Valid `--domain` values: `Información`, `Procedimiento Mental`, `Procedimiento Psicomotor`, `Metacognitivo` (from `_TAXONOMY_DOMAINS` in `workflow.db.models.knowledge`). `rm --force` reparents children to grandparent. Concept is now rooted at `Content` (not `MainTopic`); use `concept.main_topic` property for chain traversal. `resolve_concepts(codes, session, *, strict)` in `src/workflow/concept/service.py` is reused by the validator and MUST be reused by any future `notes link --concept` command. ADR: [ITEP-0012](docs/ADR/ITEP-0012-concept-orm.md). `notes link --concept CODE [--remove] [--strict]` materializes `NoteConcept` rows (P1, `dc79b59`). `notes sync` builds `NoteConcept` rows per-note from frontmatter `concepts:` list via Pass 5 `_sync_note_concepts` (`--strict-concepts` flag; P2, `2340d38`).
+- Concept CLI: `workflow concept list|show|add|tree|rm|rename` (ITEP-0012). Manages the concept taxonomy (code slugs, parent hierarchy, content affiliation). `workflow concept add --code SLUG --label TEXT --content-id INT --domain DOMAIN [--parent CODE] [--description TEXT]`. Valid `--domain` values: `Información`, `Procedimiento Mental`, `Procedimiento Psicomotor`, `Metacognitivo` (from `_TAXONOMY_DOMAINS` in `workflow.db.models.knowledge`). `rm --force` reparents children to grandparent. Concept is now rooted at `Content` (not `MainTopic`); use `concept.main_topic` property for chain traversal. `resolve_concepts(codes, session, *, strict)` in `src/workflow/concept/service.py` is reused by the validator and MUST be reused by any future `notes link --concept` command. ADR: [ITEP-0012](docs/ADR/ITEP-0012-concept-orm.md). `notes link --concept CODE [--remove] [--strict]` materializes `NoteConcept` rows (P1, `dc79b59`). `notes link --main-topic CODE [--remove]` sets `Note.main_topic_id` FK (Phase 4D, v1.11.0). `notes sync` builds `NoteConcept` rows per-note from frontmatter `concepts:` list via Pass 5 `_sync_note_concepts` (`--strict-concepts` flag; P2, `2340d38`).
 - Validation CLI: `workflow validate notes [--strict-main-topic] [--strict-concepts]` (ITEP-0009 + ITEP-0012, Implemented). Resolves frontmatter `main_topic` against `MainTopic`, enforces `discipline_area` consistency, and optionally validates `concepts:` slugs against the Concept table.
 - Disciplines + maturation CLI: `workflow db disciplines list [--json]`, `workflow project propose-maturation [--json] [--area DDTTAA]` (ADR ITEP-0009). Bloom enums: `workflow item taxonomy --levels|--domains [--json]` (ADR ITEP-0006).
 - Shared `get_engine_from_ctx()` in `workflow.db.engine` for all Click commands
@@ -117,10 +117,10 @@ Architecture decisions in `docs/ADR/` (see [INDEX.md](docs/ADR/INDEX.md) for ful
 | ITEP-0006 | Bloom taxonomy enums | Accepted |
 | ITEP-0007 | CRUD manager abstraction | Accepted |
 | ITEP-0008 | General project nomenclature (DDTTAA-YYPP-title) | Implemented |
-| ITEP-0009 | Knowledge lifecycle and AI agent conventions | Implemented (partial) |
+| ITEP-0009 | Knowledge lifecycle and AI agent conventions | Implemented |
 | ITEP-0010 | Schema versioning and forward-only migrations | Implemented |
 | ITEP-0011 | Vault unification: notes layer → GlobalBase; per-project `.md` under `<vault_root>` | Implemented |
-| ITEP-0012 | Concept ORM surface: CLI + validator + note↔concept DB linking | Implemented (Phase 5) |
+| ITEP-0012 | Concept ORM surface: CLI + validator + note↔concept DB linking | Implemented (amended 2026-05-27 for Topic re-root) |
 | STY-0000..0011 | LaTeX style file ADRs (12 total) | Accepted |
 | 0001 | Zettelkasten note semantic layer | Accepted |
 | 0002 | Markdown as canonical knowledge layer | Accepted |

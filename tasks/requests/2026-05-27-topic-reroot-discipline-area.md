@@ -5,8 +5,8 @@ type: enhancement
 source_agent: None
 opened_on: 2026-05-27
 
-status: proposed
-resolution:
+status: completed
+resolution: implemented
 priority: P1
 severity: bad-design
 
@@ -39,8 +39,8 @@ blocked_by: []
 assignee: unassigned
 target_release: v1.11.0
 implementation: []
-closed_on:
-closed_by:
+closed_on: 2026-05-28
+closed_by: v1.11.0
 
 acceptance_criteria:
   - New `MainTopicSyllabus` ORM in `workflow.db.models.knowledge` with composite PK `(main_topic_id, topic_id)`, both FKs `ON DELETE CASCADE`, `week_no INTEGER NULL`, `order_no INTEGER NOT NULL`.
@@ -185,3 +185,6 @@ FK on `Topic`.
 
 - 2026-05-27 — opened by Luis Fernando Umaña Castro; scope, locked decisions,
   integration map, acceptance + verification criteria written.
+- 2026-05-28 — all phases shipped in v1.11.0: migration 0011, ORM re-root,
+  MainTopicSyllabus, integration rewires, graph filters (Phase 4E), notes link
+  --main-topic (Phase 4D), ADR amendments (Phase 5). Request closed.
