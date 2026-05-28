@@ -500,6 +500,8 @@ def edges_resolve_cmd(ctx: click.Context, dry_run: bool, as_json: bool) -> None:
 @click.option("--concept", "concept", default=None)
 @click.option("--reference", "reference", default=None)
 @click.option("--exercise", "exercise", default=None)
+@click.option("--main-topic", "main_topic", default=None,
+              help="Rewrite frontmatter main_topic: key and set Note.main_topic_id FK.")
 @click.option(
     "--dir",
     "root_dir",
@@ -510,7 +512,7 @@ def edges_resolve_cmd(ctx: click.Context, dry_run: bool, as_json: bool) -> None:
 @click.option("--remove", "remove", is_flag=True, default=False,
               help="Remove the link instead of adding it.")
 @click.option("--strict", "strict", is_flag=True, default=False,
-              help="Treat unknown concept codes as errors.")
+              help="Treat unknown concept/main_topic codes as errors.")
 @click.pass_context
 @with_schema_guard
 def link_cmd(
@@ -519,23 +521,24 @@ def link_cmd(
     concept: str | None,
     reference: str | None,
     exercise: str | None,
+    main_topic: str | None,
     root_dir: str,
     as_json: bool,
     remove: bool,
     strict: bool,
 ) -> None:
-    """Append (or remove) a concept, reference, or exercise link to a note."""
+    """Append (or remove) a concept, reference, exercise, or main_topic link to a note."""
     from sqlalchemy.orm import Session
 
     from workflow.db.engine import get_engine_from_ctx
 
     _validate_cli_id(note_id)
 
-    # Mutex: exactly one of --concept/--reference/--exercise required
-    targets = [x for x in (concept, reference, exercise) if x is not None]
+    # Mutex: exactly one of --concept/--reference/--exercise/--main-topic required
+    targets = [x for x in (concept, reference, exercise, main_topic) if x is not None]
     if len(targets) != 1:
         raise click.UsageError(
-            "Exactly one of --concept, --reference, or --exercise is required."
+            "Exactly one of --concept, --reference, --exercise, or --main-topic is required."
         )
 
     root = Path(root_dir).resolve()
@@ -545,6 +548,7 @@ def link_cmd(
             path, new_fm, issues = add_link(
                 root, note_id,
                 concept=concept, reference=reference, exercise=exercise,
+                main_topic=main_topic,
                 session=session, strict=strict, remove=remove,
             )
             session.commit()

@@ -375,6 +375,120 @@ def update_tags(
     return path, new_fm
 
 
+def _apply_link_to_frontmatter(
+    fm: NoteFrontmatter,
+    *,
+    concept: str | None,
+    reference: str | None,
+    exercise: str | None,
+    main_topic: str | None,
+    remove: bool,
+) -> NoteFrontmatter:
+    """Return updated NoteFrontmatter after adding/removing one link target."""
+    if concept is not None:
+        if remove:
+            new_concepts = tuple(c for c in fm.concepts if c != concept)
+        else:
+            new_concepts = (
+                tuple(list(fm.concepts) + [concept])
+                if concept not in fm.concepts
+                else fm.concepts
+            )
+        return dataclasses.replace(fm, concepts=new_concepts)
+    if reference is not None:
+        if remove:
+            new_refs = tuple(r for r in fm.references if r != reference)
+        else:
+            new_refs = (
+                tuple(list(fm.references) + [reference])
+                if reference not in fm.references
+                else fm.references
+            )
+        return dataclasses.replace(fm, references=new_refs)
+    if main_topic is not None:
+        return dataclasses.replace(fm, main_topic=None if remove else main_topic)
+    # exercise
+    if remove:
+        new_exs = tuple(e for e in fm.exercises if e != exercise)
+    else:
+        new_exs = (
+            tuple(list(fm.exercises) + [exercise])
+            if exercise not in fm.exercises
+            else fm.exercises
+        )
+    return dataclasses.replace(fm, exercises=new_exs)
+
+
+def _apply_link_to_db(
+    session,
+    *,
+    note_row,
+    concept_row,
+    mt_row,
+    concept: str | None,
+    main_topic: str | None,
+    remove: bool,
+) -> None:
+    """Persist concept-link or main_topic FK changes to session (no commit)."""
+    if session is None or note_row is None:
+        return
+    if concept is not None:
+        from workflow.notes.linker_ops import delete_note_concept, upsert_note_concept
+
+        if remove:
+            if concept_row is not None:
+                delete_note_concept(session, note_id=note_row.id, concept_id=concept_row.id)
+        else:
+            if concept_row is not None:
+                upsert_note_concept(session, note_id=note_row.id, concept_id=concept_row.id)
+    if main_topic is not None:
+        if remove:
+            note_row.main_topic_id = None
+        elif mt_row is not None:
+            note_row.main_topic_id = mt_row.id
+
+
+def _resolve_main_topic_link(
+    fm: NoteFrontmatter,
+    note_id: str,
+    main_topic: str,
+    session,
+    *,
+    strict: bool,
+    remove: bool,
+    issues: list[dict],
+) -> tuple:
+    """Resolve main_topic slug against DB; return (note_row, mt_row, issues, early_return).
+
+    ``early_return=True`` means caller should return early without writing.
+    """
+    from sqlalchemy import select as sa_select
+
+    from workflow.db.models.notes import Note as NoteModel
+    from workflow.validation.schemas import check_main_topic_against_db
+
+    note_row = session.scalars(
+        sa_select(NoteModel).where(NoteModel.zettel_id == fm.id)
+    ).first()
+    if note_row is None:
+        raise NoteNotFound(
+            f"Note {note_id!r} is on disk but not in the DB. "
+            "Run `workflow notes sync` first."
+        )
+
+    mt_row, mt_msgs = check_main_topic_against_db(main_topic, session)
+
+    if mt_msgs:
+        severity = "error" if strict else "warning"
+        issues = issues + [{"severity": severity, "message": m} for m in mt_msgs]
+
+    if strict and mt_row is None:
+        raise NoteValidationError("; ".join(mt_msgs))
+
+    early_return = not remove and mt_row is None
+    return note_row, mt_row, issues, early_return
+
+
 def add_link(
     root: Path,
     note_id: str,
@@ -382,14 +496,15 @@ def add_link(
     concept: str | None = None,
     reference: str | None = None,
     exercise: str | None = None,
+    main_topic: str | None = None,
     session=None,
     strict: bool = False,
     remove: bool = False,
 ) -> tuple[Path, NoteFrontmatter, list[dict]]:
-    """Append (or remove) an entry from ``concepts``/``references``/``exercises`` (idempotent).
+    """Append (or remove) an entry from ``concepts``/``references``/``exercises``/``main_topic`` (idempotent).
 
     Returns ``(path, updated_fm, issues)`` where ``issues`` is a list of
-    ``{"severity": ..., "message": ...}`` dicts from concept resolution (may be empty).
+    ``{"severity": ..., "message": ...}`` dicts from resolution (may be empty).
 
     When ``concept`` is given and ``session`` is not None:
     - Resolves the Concept via ``resolve_concepts()``.
@@ -397,13 +512,19 @@ def add_link(
     - On lenient + concept not found → returns without modifying frontmatter or DB.
     - On found → upserts a ``NoteConcept(note_id, concept_id)`` row.
 
+    When ``main_topic`` is given and ``session`` is not None:
+    - Resolves the MainTopic via ``check_main_topic_against_db()``.
+    - On strict + miss → raises ``NoteValidationError`` before any write.
+    - On lenient + miss → returns without modifying frontmatter or DB.
+    - On found → sets ``Note.main_topic_id`` FK.
+
     When ``remove=True``:
     - Drops the target from the frontmatter tuple (idempotent).
-    - If ``concept`` + session given: deletes the matching ``NoteConcept`` row (idempotent).
+    - If ``concept`` + session given: deletes the matching ``NoteConcept`` row.
+    - If ``main_topic`` + session given: clears ``Note.main_topic_id`` FK.
 
     Raises ``NoteNotFound`` if note file is absent.
-    Raises ``NoteValidationError`` if on-disk frontmatter is already invalid, or on strict
-    concept miss.
+    Raises ``NoteValidationError`` if on-disk frontmatter is already invalid, or on strict miss.
     Raises ``NoteNotFound`` (DB) if note not in DB but session provided (user must sync first).
     """
     from sqlalchemy import select as sa_select
@@ -420,9 +541,11 @@ def add_link(
     # ── resolve DB objects when session is provided ─────────────────────────
     note_row = None
     concept_row = None
+    mt_row = None
+
     if session is not None and concept is not None:
-        from workflow.db.models.notes import Note as NoteModel
         from workflow.concept.service import resolve_concepts
+        from workflow.db.models.notes import Note as NoteModel
 
         note_row = session.scalars(
             sa_select(NoteModel).where(NoteModel.zettel_id == fm.id)
@@ -447,49 +570,21 @@ def add_link(
         if found:
             concept_row = found[0]
 
-    # ── build updated frontmatter ────────────────────────────────────────────
-    if concept is not None:
-        if remove:
-            new_concepts = tuple(c for c in fm.concepts if c != concept)
-        else:
-            new_concepts = (
-                tuple(list(fm.concepts) + [concept])
-                if concept not in fm.concepts
-                else fm.concepts
-            )
-        new_fm = dataclasses.replace(fm, concepts=new_concepts)
-    elif reference is not None:
-        if remove:
-            new_refs = tuple(r for r in fm.references if r != reference)
-        else:
-            new_refs = (
-                tuple(list(fm.references) + [reference])
-                if reference not in fm.references
-                else fm.references
-            )
-        new_fm = dataclasses.replace(fm, references=new_refs)
-    else:  # exercise
-        if remove:
-            new_exs = tuple(e for e in fm.exercises if e != exercise)
-        else:
-            new_exs = (
-                tuple(list(fm.exercises) + [exercise])
-                if exercise not in fm.exercises
-                else fm.exercises
-            )
-        new_fm = dataclasses.replace(fm, exercises=new_exs)
+    if session is not None and main_topic is not None:
+        note_row, mt_row, issues, early_return = _resolve_main_topic_link(
+            fm, note_id, main_topic, session, strict=strict, remove=remove, issues=issues
+        )
+        if early_return:
+            return path, fm, issues
 
-    # ── DB operation ─────────────────────────────────────────────────────────
-    if session is not None and concept is not None and note_row is not None:
-        from workflow.notes.linker_ops import delete_note_concept, upsert_note_concept
-
-        if remove:
-            if concept_row is not None:
-                delete_note_concept(session, note_id=note_row.id, concept_id=concept_row.id)
-        else:
-            if concept_row is not None:
-                upsert_note_concept(session, note_id=note_row.id, concept_id=concept_row.id)
-
+    new_fm = _apply_link_to_frontmatter(
+        fm, concept=concept, reference=reference,
+        exercise=exercise, main_topic=main_topic, remove=remove,
+    )
+    _apply_link_to_db(
+        session, note_row=note_row, concept_row=concept_row,
+        mt_row=mt_row, concept=concept, main_topic=main_topic, remove=remove,
+    )
     _write_note_file(path, new_fm, body)
     return path, new_fm, issues
 
