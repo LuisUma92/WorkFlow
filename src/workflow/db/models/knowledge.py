@@ -18,6 +18,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -58,6 +59,8 @@ class DisciplineArea(GlobalBase):
     topic_num: Mapped[int] = mapped_column(Integer)
     area_initials: Mapped[str] = mapped_column(String(2))
 
+    topics: Mapped[list["Topic"]] = relationship(back_populates="discipline_area")
+
     def __repr__(self) -> str:
         return f"<DisciplineArea {self.code} {self.name}>"
 
@@ -77,7 +80,9 @@ class MainTopic(GlobalBase):
         ForeignKey("discipline_area.id"), nullable=False
     )
 
-    topics: Mapped[list["Topic"]] = relationship(back_populates="main_topic")
+    syllabus_entries: Mapped[list["MainTopicSyllabus"]] = relationship(
+        back_populates="main_topic", cascade="all, delete-orphan"
+    )
     general_project: Mapped["GeneralProject | None"] = relationship(
         back_populates="main_topic"
     )
@@ -94,13 +99,21 @@ class MainTopic(GlobalBase):
 
 class Topic(GlobalBase):
     __tablename__ = "topic"
+    __table_args__ = (
+        UniqueConstraint("discipline_area_id", "serial_number", name="uq_topic_da_serial"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    main_topic_id: Mapped[int] = mapped_column(ForeignKey("main_topic.id"))
+    discipline_area_id: Mapped[int] = mapped_column(
+        ForeignKey("discipline_area.id", ondelete="RESTRICT"), nullable=False
+    )
     name: Mapped[str] = mapped_column(String(120))
     serial_number: Mapped[int] = mapped_column(Integer)
 
-    main_topic: Mapped["MainTopic"] = relationship(back_populates="topics")
+    discipline_area: Mapped["DisciplineArea"] = relationship(back_populates="topics")
+    syllabus_entries: Mapped[list["MainTopicSyllabus"]] = relationship(
+        back_populates="topic", cascade="all, delete-orphan"
+    )
     contents: Mapped[list["Content"]] = relationship(back_populates="topic")
     general_project_links: Mapped[list["GeneralProjectTopic"]] = relationship(
         back_populates="topic"
@@ -108,6 +121,31 @@ class Topic(GlobalBase):
 
     def __repr__(self) -> str:
         return f"<Topic {self.serial_number}: {self.name}>"
+
+
+class MainTopicSyllabus(GlobalBase):
+    """Join table linking a MainTopic to a Topic with syllabus ordering metadata.
+
+    Composite PK (main_topic_id, topic_id). Both FKs ON DELETE CASCADE so that
+    removing either end automatically removes the syllabus entry.
+    """
+
+    __tablename__ = "main_topic_syllabus"
+
+    main_topic_id: Mapped[int] = mapped_column(
+        ForeignKey("main_topic.id", ondelete="CASCADE"), primary_key=True
+    )
+    topic_id: Mapped[int] = mapped_column(
+        ForeignKey("topic.id", ondelete="CASCADE"), primary_key=True
+    )
+    week_no: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    order_no: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    main_topic: Mapped["MainTopic"] = relationship(back_populates="syllabus_entries")
+    topic: Mapped["Topic"] = relationship(back_populates="syllabus_entries")
+
+    def __repr__(self) -> str:
+        return f"<MainTopicSyllabus mt={self.main_topic_id} topic={self.topic_id} week={self.week_no}>"
 
 
 class Content(GlobalBase):
@@ -155,10 +193,13 @@ class Concept(GlobalBase):
 
     @property
     def main_topic(self) -> "MainTopic | None":
-        """The MainTopic this concept belongs to (via content → topic → main_topic).
+        """Deprecated: always returns None after Phase 4B re-root.
 
-        Returns None if any link in the chain is missing.
+        Topic is now rooted at DisciplineArea, not MainTopic.  The MainTopic
+        for a concept is project-context-dependent and requires an explicit
+        MainTopicSyllabus lookup.  This property is preserved for API stability
+        but returns None unconditionally.
+
+        Use ``concept.content.topic.discipline_area`` for the canonical chain.
         """
-        if self.content is None or self.content.topic is None:
-            return None
-        return self.content.topic.main_topic
+        return None

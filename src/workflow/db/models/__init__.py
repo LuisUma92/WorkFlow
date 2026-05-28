@@ -20,6 +20,7 @@ from workflow.db.models.bibliography import (
 from workflow.db.models.knowledge import (
     DisciplineArea,
     MainTopic,
+    MainTopicSyllabus,
     Topic,
     Content,
     Concept,
@@ -71,7 +72,9 @@ __all__ = [
     "ReferencedDatabase",
     # academic
     "Institution",
+    "DisciplineArea",
     "MainTopic",
+    "MainTopicSyllabus",
     "Topic",
     "Content",
     "BibContent",

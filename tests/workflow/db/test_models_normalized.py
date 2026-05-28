@@ -1,5 +1,5 @@
 """
-Normalization tests for workflow.db models — Phase 1A.
+Normalization tests for workflow.db models — Phase 1A + Phase 4B.
 
 Validates:
 - GlobalBase.metadata.create_all succeeds
@@ -8,6 +8,9 @@ Validates:
 - BibContent canonical location (bibliography.py, not knowledge.py)
 - ExerciseConcept tablename has no typo
 - Content ↔ Concept bidirectional relationship wiring
+- Topic rooted at DisciplineArea (not MainTopic) — Phase 4B
+- MainTopicSyllabus composite PK + cascade — Phase 4B
+- Concept.main_topic returns None gracefully after re-root — Phase 4B
 """
 
 from __future__ import annotations
@@ -18,6 +21,7 @@ import pathlib
 
 import pytest
 from sqlalchemy import create_engine
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, configure_mappers
 
 from workflow.db.base import GlobalBase
@@ -169,7 +173,7 @@ def test_concept_content_relationship():
         session.add(mt)
         session.flush()
 
-        topic = Topic(main_topic_id=mt.id, name="Kinematics", serial_number=1)
+        topic = Topic(discipline_area_id=da.id, name="Kinematics", serial_number=1)
         session.add(topic)
         session.flush()
 
@@ -189,5 +193,239 @@ def test_concept_content_relationship():
         # Verify bidirectional relationship
         assert concept.content.id == content.id
         assert concept in content.concepts
+
+    engine.dispose()
+
+
+# ---------------------------------------------------------------------------
+# Phase 4B — Topic re-root at DisciplineArea
+# ---------------------------------------------------------------------------
+
+def _make_engine_with_schema():
+    """Return a fresh in-memory engine with the full GlobalBase schema."""
+    import workflow.db.models  # noqa: F401
+
+    engine = create_engine("sqlite:///:memory:")
+    GlobalBase.metadata.create_all(engine)
+    return engine
+
+
+def test_topic_rooted_at_discipline_area():
+    """Topic must have discipline_area_id and must NOT have main_topic_id."""
+    from workflow.db.models.knowledge import DisciplineArea, Topic
+
+    engine = _make_engine_with_schema()
+    with Session(engine) as session:
+        da = DisciplineArea(
+            code="FI0101", name="Physics", dewey="530",
+            discipline_num=1, topic_num=1, area_initials="FI",
+        )
+        session.add(da)
+        session.flush()
+
+        topic = Topic(discipline_area_id=da.id, name="Kinematics", serial_number=1)
+        session.add(topic)
+        session.flush()
+
+        assert topic.discipline_area_id == da.id
+
+        # main_topic_id must NOT exist as a mapped column
+        assert not hasattr(topic, "main_topic_id"), (
+            "Topic.main_topic_id must be removed after Phase 4B re-root"
+        )
+
+    engine.dispose()
+
+
+def test_topic_unique_serial_per_area():
+    """Two Topics with same (discipline_area_id, serial_number) must raise IntegrityError."""
+    from workflow.db.models.knowledge import DisciplineArea, Topic
+
+    engine = _make_engine_with_schema()
+
+    with Session(engine) as session:
+        da1 = DisciplineArea(
+            code="FI0101", name="Physics", dewey="530",
+            discipline_num=1, topic_num=1, area_initials="FI",
+        )
+        da2 = DisciplineArea(
+            code="MA0201", name="Mathematics", dewey="510",
+            discipline_num=2, topic_num=2, area_initials="MA",
+        )
+        session.add_all([da1, da2])
+        session.flush()
+
+        # Two topics in same area, same serial → IntegrityError
+        t1 = Topic(discipline_area_id=da1.id, name="Kinematics", serial_number=1)
+        t2 = Topic(discipline_area_id=da1.id, name="Dynamics", serial_number=1)
+        session.add_all([t1, t2])
+        with pytest.raises(IntegrityError):
+            session.flush()
+
+    # Different area, same serial → OK
+    engine2 = _make_engine_with_schema()
+    with Session(engine2) as session:
+        da1 = DisciplineArea(
+            code="FI0101", name="Physics", dewey="530",
+            discipline_num=1, topic_num=1, area_initials="FI",
+        )
+        da2 = DisciplineArea(
+            code="MA0201", name="Mathematics", dewey="510",
+            discipline_num=2, topic_num=2, area_initials="MA",
+        )
+        session.add_all([da1, da2])
+        session.flush()
+
+        t1 = Topic(discipline_area_id=da1.id, name="Kinematics", serial_number=1)
+        t2 = Topic(discipline_area_id=da2.id, name="Algebra", serial_number=1)
+        session.add_all([t1, t2])
+        session.flush()  # must not raise
+
+    engine.dispose()
+    engine2.dispose()
+
+
+def test_main_topic_syllabus_composite_pk():
+    """MainTopicSyllabus composite PK (main_topic_id, topic_id) enforced."""
+    from workflow.db.models.knowledge import DisciplineArea, MainTopic, MainTopicSyllabus, Topic
+
+    engine = _make_engine_with_schema()
+    with Session(engine) as session:
+        da = DisciplineArea(
+            code="FI0101", name="Physics", dewey="530",
+            discipline_num=1, topic_num=1, area_initials="FI",
+        )
+        session.add(da)
+        session.flush()
+
+        mt = MainTopic(name="Mechanics", code="FI01", ddc_mds="", discipline_area_id=da.id)
+        session.add(mt)
+        session.flush()
+
+        topic = Topic(discipline_area_id=da.id, name="Kinematics", serial_number=1)
+        session.add(topic)
+        session.flush()
+
+        syl = MainTopicSyllabus(main_topic_id=mt.id, topic_id=topic.id, week_no=1, order_no=1)
+        session.add(syl)
+        session.flush()
+
+        # Re-insert same composite PK → IntegrityError
+        syl2 = MainTopicSyllabus(main_topic_id=mt.id, topic_id=topic.id, week_no=2, order_no=2)
+        session.add(syl2)
+        with pytest.raises(IntegrityError):
+            session.flush()
+
+    engine.dispose()
+
+
+def test_main_topic_syllabus_cascade_delete_main_topic():
+    """Deleting a MainTopic must cascade-delete its MainTopicSyllabus rows."""
+    from workflow.db.models.knowledge import DisciplineArea, MainTopic, MainTopicSyllabus, Topic
+
+    engine = _make_engine_with_schema()
+    with Session(engine) as session:
+        da = DisciplineArea(
+            code="FI0101", name="Physics", dewey="530",
+            discipline_num=1, topic_num=1, area_initials="FI",
+        )
+        session.add(da)
+        session.flush()
+
+        mt = MainTopic(name="Mechanics", code="FI01", ddc_mds="", discipline_area_id=da.id)
+        session.add(mt)
+        session.flush()
+
+        topic = Topic(discipline_area_id=da.id, name="Kinematics", serial_number=1)
+        session.add(topic)
+        session.flush()
+
+        syl = MainTopicSyllabus(main_topic_id=mt.id, topic_id=topic.id, week_no=1, order_no=1)
+        session.add(syl)
+        session.flush()
+        syl_id = (mt.id, topic.id)
+
+        session.delete(mt)
+        session.flush()
+
+        remaining = session.query(MainTopicSyllabus).filter_by(
+            main_topic_id=syl_id[0], topic_id=syl_id[1]
+        ).first()
+        assert remaining is None, "Syllabus row must be cascade-deleted with MainTopic"
+
+    engine.dispose()
+
+
+def test_main_topic_syllabus_cascade_delete_topic():
+    """Deleting a Topic must cascade-delete its MainTopicSyllabus rows."""
+    from workflow.db.models.knowledge import DisciplineArea, MainTopic, MainTopicSyllabus, Topic
+
+    engine = _make_engine_with_schema()
+    with Session(engine) as session:
+        da = DisciplineArea(
+            code="FI0101", name="Physics", dewey="530",
+            discipline_num=1, topic_num=1, area_initials="FI",
+        )
+        session.add(da)
+        session.flush()
+
+        mt = MainTopic(name="Mechanics", code="FI01", ddc_mds="", discipline_area_id=da.id)
+        session.add(mt)
+        session.flush()
+
+        topic = Topic(discipline_area_id=da.id, name="Kinematics", serial_number=1)
+        session.add(topic)
+        session.flush()
+
+        syl = MainTopicSyllabus(main_topic_id=mt.id, topic_id=topic.id, week_no=1, order_no=1)
+        session.add(syl)
+        session.flush()
+        mt_id = mt.id
+        topic_id = topic.id
+
+        session.delete(topic)
+        session.flush()
+
+        remaining = session.query(MainTopicSyllabus).filter_by(
+            main_topic_id=mt_id, topic_id=topic_id
+        ).first()
+        assert remaining is None, "Syllabus row must be cascade-deleted with Topic"
+
+    engine.dispose()
+
+
+def test_concept_main_topic_property_returns_none_post_reroot():
+    """Concept.main_topic must return None gracefully when Topic has no main_topic_id."""
+    from workflow.db.models.knowledge import Concept, Content, DisciplineArea, Topic
+
+    engine = _make_engine_with_schema()
+    with Session(engine) as session:
+        da = DisciplineArea(
+            code="FI0101", name="Physics", dewey="530",
+            discipline_num=1, topic_num=1, area_initials="FI",
+        )
+        session.add(da)
+        session.flush()
+
+        topic = Topic(discipline_area_id=da.id, name="Kinematics", serial_number=1)
+        session.add(topic)
+        session.flush()
+
+        content = Content(topic_id=topic.id, name="Linear motion")
+        session.add(content)
+        session.flush()
+
+        concept = Concept(
+            content_id=content.id, domain="Información",
+            code="linear-motion-2", label="Linear Motion",
+        )
+        session.add(concept)
+        session.flush()
+
+        # After re-root, Topic has no main_topic_id → Concept.main_topic must be None
+        result = concept.main_topic
+        assert result is None, (
+            f"Concept.main_topic must return None after re-root, got {result!r}"
+        )
 
     engine.dispose()
