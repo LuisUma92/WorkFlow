@@ -264,3 +264,52 @@ def test_unlink_bib_not_linked_exits_1(runner):
         "--bibkey", "gamma2024",
     ])
     assert result.exit_code == 1
+
+
+def test_link_bib_duplicate_link_exits_nonzero(runner):
+    """Second identical link-bib call exits non-zero (BibLinkAlreadyExists → UsageError)."""
+    tid = _seed_topic()
+    cid = _seed_content(tid)
+    _seed_bib("dup_link2024")
+
+    from workflow.content.cli import content
+
+    args = [
+        "link-bib",
+        "--content-id", str(cid),
+        "--bibkey", "dup_link2024",
+        "--chapter", "1",
+        "--section", "1",
+        "--first-page", "1",
+        "--last-page", "10",
+    ]
+    first = runner.invoke(content, args)
+    assert first.exit_code == 0, first.output
+    second = runner.invoke(content, args)
+    assert second.exit_code != 0
+
+
+def test_link_bib_with_exercise_range_json(runner):
+    """link-bib with --first-exercise/--last-exercise exits 0 and reflects exercise range in JSON."""
+    tid = _seed_topic()
+    cid = _seed_content(tid)
+    _seed_bib("exrange2024")
+
+    from workflow.content.cli import content
+
+    result = runner.invoke(content, [
+        "link-bib",
+        "--content-id", str(cid),
+        "--bibkey", "exrange2024",
+        "--chapter", "2",
+        "--section", "1",
+        "--first-page", "5",
+        "--last-page", "15",
+        "--first-exercise", "1",
+        "--last-exercise", "5",
+        "--json",
+    ])
+    assert result.exit_code == 0, result.output
+    data = json.loads(result.output)
+    assert data["first_exercise"] == 1
+    assert data["last_exercise"] == 5

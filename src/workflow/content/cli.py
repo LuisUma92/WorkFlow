@@ -160,9 +160,8 @@ def cmd_link_bib(
             )
             session.commit()
             session.refresh(bc)
-        except (BibEntryNotFound, ContentNotFound) as exc:
-            raise click.ClickException(str(exc))
-        except BibKeyAmbiguous as exc:
+            _ = bc.bib_entry  # materialise relationship while session is open
+        except (BibEntryNotFound, ContentNotFound, BibKeyAmbiguous) as exc:
             raise click.ClickException(str(exc))
         except BibLinkAlreadyExists as exc:
             raise click.UsageError(str(exc))
@@ -209,9 +208,7 @@ def cmd_unlink_bib(ctx: click.Context, content_id: int, bibkey: str) -> None:
         try:
             unlink_bib_from_content(session, content_id=content_id, bibkey=bibkey)
             session.commit()
-        except (BibEntryNotFound, BibKeyAmbiguous) as exc:
-            raise click.ClickException(str(exc))
-        except BibLinkNotFound as exc:
+        except (BibEntryNotFound, BibKeyAmbiguous, BibLinkNotFound) as exc:
             raise click.ClickException(str(exc))
 
         click.echo(f"Unlinked bibkey={bibkey!r} from content id={content_id}.")

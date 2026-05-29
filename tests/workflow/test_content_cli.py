@@ -139,3 +139,12 @@ def test_content_show_not_found_exits_1(runner):
 
     result = runner.invoke(content, ["show", "99999"])
     assert result.exit_code == 1
+
+
+def test_content_list_empty_returns_empty_array(runner):
+    """list --json against an empty DB exits 0 and returns an empty JSON array."""
+    from workflow.content.cli import content
+
+    result = runner.invoke(content, ["list", "--json"])
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output) == []

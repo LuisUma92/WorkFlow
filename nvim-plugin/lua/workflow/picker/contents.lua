@@ -41,6 +41,11 @@ function M.pick(opts)
 			})
 		end
 
+		if not _G.Snacks or not _G.Snacks.picker then
+			vim.notify("snacks.nvim picker not loaded", vim.log.levels.ERROR, { title = "workflow" })
+			return
+		end
+
 		Snacks.picker({
 			title = "Contents",
 			items = items,

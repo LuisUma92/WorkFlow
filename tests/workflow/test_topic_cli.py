@@ -141,3 +141,20 @@ def test_topic_show_not_found_exits_1(runner):
 
     result = runner.invoke(topic, ["show", "99999"])
     assert result.exit_code == 1
+
+
+def test_topic_list_unknown_discipline_area_exits_1(runner):
+    """list --discipline-area UNKNOWN exits 1 (DisciplineAreaNotFound mapped to ClickException)."""
+    from workflow.topic.cli import topic
+
+    result = runner.invoke(topic, ["list", "--discipline-area", "UNKNOWN", "--json"])
+    assert result.exit_code == 1
+
+
+def test_topic_list_empty_returns_empty_array(runner):
+    """list --json against an empty DB exits 0 and returns an empty JSON array."""
+    from workflow.topic.cli import topic
+
+    result = runner.invoke(topic, ["list", "--json"])
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output) == []

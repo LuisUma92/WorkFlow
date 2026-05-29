@@ -12,7 +12,17 @@ local M = {}
 ---@param config table workspace config
 ---@param on_done fun(ok: boolean, output: string)|nil
 function M.run_cli(args, config, on_done)
-	local cmd = { vim.fn.expand(config.workflow_cmd or "~/.local/bin/workflow") }
+	local cmd_path = vim.fn.expand(config.workflow_cmd or "~/.local/bin/workflow")
+	local basename = vim.fn.fnamemodify(cmd_path, ":t")
+	if basename ~= "workflow" then
+		vim.notify(
+			"workflow_cmd basename must be 'workflow' (got '" .. basename .. "')",
+			vim.log.levels.ERROR,
+			{ title = "workflow" }
+		)
+		return
+	end
+	local cmd = { cmd_path }
 	for _, a in ipairs(args) do
 		table.insert(cmd, a)
 	end

@@ -66,11 +66,14 @@ def format_bib_link_list_json(links: list[BibContent]) -> str:
 def format_bib_link_list_table(links: list[BibContent]) -> str:
     if not links:
         return "No bib links found."
-    lines = [f"{'BibKey':<20}  {'Content':<8}  Ch   Sec  Pages", "-" * 52]
-    for bc in links:
-        bk = bc.bib_entry.bibkey if bc.bib_entry else str(bc.bib_entry_id)
+    bkeys = [bc.bib_entry.bibkey if bc.bib_entry else str(bc.bib_entry_id) for bc in links]
+    bk_w = max((len(bk) for bk in bkeys), default=6)
+    header = f"{'BibKey':<{bk_w}}  {'Content':<8}  Ch   Sec  Pages"
+    sep = "-" * (bk_w + 2 + 8 + 2 + 4 + 1 + 4 + 1 + 9)
+    lines = [header, sep]
+    for bc, bk in zip(links, bkeys):
         lines.append(
-            f"{bk:<20}  {bc.content_id:<8}  {bc.chapter_number:<4} {bc.section_number:<4} "
+            f"{bk:<{bk_w}}  {bc.content_id:<8}  {bc.chapter_number:<4} {bc.section_number:<4} "
             f"{bc.first_page}-{bc.last_page}"
         )
     return "\n".join(lines)

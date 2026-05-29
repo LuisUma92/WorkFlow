@@ -11,6 +11,7 @@ Commands:
 
 from __future__ import annotations
 
+import json as _json
 from pathlib import Path
 
 import click
@@ -155,7 +156,6 @@ def orphans(
     orphan_nodes = find_orphans(kg, node_type=node_type)
 
     if as_json:
-        import json as _json
         click.echo(
             _json.dumps(
                 [
@@ -195,7 +195,6 @@ def stats(
     s = compute_stats(kg)
 
     if as_json:
-        import json as _json
         click.echo(
             _json.dumps(
                 {

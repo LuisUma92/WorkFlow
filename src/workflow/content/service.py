@@ -1,12 +1,11 @@
 """Content service — add, list, get, bib-link."""
 from __future__ import annotations
 
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import Session, joinedload
 
 from workflow.db.models.bibliography import BibContent, BibEntry
 from workflow.db.models.knowledge import Content, Topic
-from workflow.prisma.service import get_bib_entry_by_bibkey
 
 __all__ = [
     "ContentServiceError",
@@ -99,18 +98,19 @@ def get_content(session: Session, content_id: int) -> Content | None:
     return session.get(Content, content_id)
 
 
-def _resolve_bib_entry(session: Session, bibkey: str):
-    """Resolve a bibkey to a single BibEntry; raise on ambiguity or missing."""
-    count = session.scalar(
-        select(func.count()).select_from(BibEntry).where(BibEntry.bibkey == bibkey)
-    )
-    if count == 0 or count is None:
+def _resolve_bib_entry(session: Session, bibkey: str) -> BibEntry:
+    """Resolve a bibkey to exactly one BibEntry row.
+
+    Raises BibEntryNotFound on zero matches, BibKeyAmbiguous on 2+.
+    """
+    rows = list(session.scalars(select(BibEntry).where(BibEntry.bibkey == bibkey)).all())
+    if not rows:
         raise BibEntryNotFound(f"BibEntry with bibkey {bibkey!r} not found.")
-    if count > 1:
+    if len(rows) > 1:
         raise BibKeyAmbiguous(
             f"Multiple BibEntry rows match bibkey {bibkey!r}; disambiguate at DB layer."
         )
-    return get_bib_entry_by_bibkey(session, bibkey)
+    return rows[0]
 
 
 def link_bib_to_content(
@@ -156,7 +156,11 @@ def list_bib_links(
     *,
     content_id: int,
 ) -> list[BibContent]:
-    q = select(BibContent).where(BibContent.content_id == content_id)
+    q = (
+        select(BibContent)
+        .where(BibContent.content_id == content_id)
+        .options(joinedload(BibContent.bib_entry))
+    )
     return list(session.scalars(q).all())
 
 
