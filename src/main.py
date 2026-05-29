@@ -17,6 +17,8 @@ from workflow.project.cli import project
 from workflow.vault.cli import vault
 from workflow.concept.cli import concept
 from workflow.exam.cli import exam
+from workflow.topic.cli import topic
+from workflow.content.cli import content
 
 
 @click.group("workflow")
@@ -39,6 +41,8 @@ cli.add_command(project)
 cli.add_command(vault)
 cli.add_command(concept)
 cli.add_command(exam)
+cli.add_command(topic)
+cli.add_command(content)
 
 
 if __name__ == "__main__":
