@@ -151,6 +151,36 @@ function M.edges_check(opts)
 	require("workflow.notes").edges_check(opts)
 end
 
+-- Taxonomy pickers (v1.12.0)
+
+function M.pick_topics(opts)
+	require("workflow.picker.topics").pick(opts)
+end
+
+function M.pick_contents(opts)
+	require("workflow.picker.contents").pick(opts)
+end
+
+function M.pick_concepts(opts)
+	require("workflow.picker.concepts").pick(opts)
+end
+
+function M.graph_stats(opts)
+	require("workflow.graph").stats(opts)
+end
+
+function M.graph_orphans(opts)
+	require("workflow.graph").orphans(opts)
+end
+
+function M.lecture_scan(opts)
+	require("workflow.lectures").scan(opts)
+end
+
+function M.lecture_link(opts)
+	require("workflow.lectures").link(opts)
+end
+
 -- Statusline component
 function M.statusline()
 	return require("workflow.statusline").component()

@@ -35,6 +35,26 @@
 ---@class WorkflowEdgesCycleJSON
 ---@field cycles string[][]   Array of cycle paths, each path is a list of zettel_id strings
 
+---@class WorkflowTopicJSON
+---@field id integer                 DB primary key
+---@field discipline_area_code string  Code of the parent DisciplineArea
+---@field name string                Topic name
+---@field serial_number integer      Topic serial number within the discipline area
+
+---@class WorkflowContentJSON
+---@field id integer       DB primary key
+---@field topic_id integer  FK to parent Topic
+---@field name string       Content name
+
+---@class WorkflowConceptJSON
+---@field id integer              DB primary key
+---@field code string             Unique slug identifier
+---@field label string            Human-readable label
+---@field content_id integer      FK to parent Content
+---@field domain string           Taxonomy domain (Información | Procedimiento Mental | Procedimiento Psicomotor | Metacognitivo)
+---@field parent_id integer|nil   FK to parent Concept (nil if root)
+---@field description string|nil  Optional free-text description
+
 local M = {}
 
 return M

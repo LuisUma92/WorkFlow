@@ -150,6 +150,87 @@ function M.setup(workflow)
 	vim.api.nvim_create_user_command("WorkflowEdgesCheck", function()
 		workflow.edges_check({})
 	end, { nargs = 0 })
+
+	-- Taxonomy pickers (v1.12.0)
+
+	-- :WorkflowTopicPicker [discipline-area=CODE]
+	vim.api.nvim_create_user_command("WorkflowTopicPicker", function(cmd_opts)
+		local opts = {}
+		for _, arg in ipairs(cmd_opts.fargs) do
+			local k, v = arg:match("^([%w%-]+)=(.+)$")
+			if k and v then
+				opts[k] = v
+			end
+		end
+		workflow.pick_topics({ discipline_area = opts["discipline-area"] })
+	end, { nargs = "*" })
+
+	-- :WorkflowContentPicker [topic-id=N]
+	vim.api.nvim_create_user_command("WorkflowContentPicker", function(cmd_opts)
+		local opts = {}
+		for _, arg in ipairs(cmd_opts.fargs) do
+			local k, v = arg:match("^([%w%-]+)=(.+)$")
+			if k and v then
+				opts[k] = v
+			end
+		end
+		workflow.pick_contents({ topic_id = tonumber(opts["topic-id"]) })
+	end, { nargs = "*" })
+
+	-- :WorkflowConceptPicker [main-topic=CODE]
+	vim.api.nvim_create_user_command("WorkflowConceptPicker", function(cmd_opts)
+		local opts = {}
+		for _, arg in ipairs(cmd_opts.fargs) do
+			local k, v = arg:match("^([%w%-]+)=(.+)$")
+			if k and v then
+				opts[k] = v
+			end
+		end
+		workflow.pick_concepts({ main_topic = opts["main-topic"] })
+	end, { nargs = "*" })
+
+	-- :WorkflowGraphStats [main-topic=CODE] [discipline-area=CODE] [topic=SLUG]
+	vim.api.nvim_create_user_command("WorkflowGraphStats", function(cmd_opts)
+		local opts = {}
+		for _, arg in ipairs(cmd_opts.fargs) do
+			local k, v = arg:match("^([%w%-]+)=(.+)$")
+			if k and v then
+				opts[k] = v
+			end
+		end
+		workflow.graph_stats({
+			main_topic = opts["main-topic"],
+			discipline_area = opts["discipline-area"],
+			topic = opts["topic"],
+		})
+	end, { nargs = "*" })
+
+	-- :WorkflowGraphOrphans [type=TYPE] [main-topic=CODE] [discipline-area=CODE] [topic=SLUG]
+	vim.api.nvim_create_user_command("WorkflowGraphOrphans", function(cmd_opts)
+		local opts = {}
+		for _, arg in ipairs(cmd_opts.fargs) do
+			local k, v = arg:match("^([%w%-]+)=(.+)$")
+			if k and v then
+				opts[k] = v
+			end
+		end
+		workflow.graph_orphans({
+			type = opts["type"],
+			main_topic = opts["main-topic"],
+			discipline_area = opts["discipline-area"],
+			topic = opts["topic"],
+		})
+	end, { nargs = "*" })
+
+	-- :WorkflowLectureScan
+	vim.api.nvim_create_user_command("WorkflowLectureScan", function()
+		workflow.lecture_scan({})
+	end, { nargs = 0 })
+
+	-- :WorkflowLectureLink
+	vim.api.nvim_create_user_command("WorkflowLectureLink", function()
+		workflow.lecture_link({})
+	end, { nargs = 0 })
 end
 
 return M

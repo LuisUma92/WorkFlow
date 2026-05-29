@@ -120,6 +120,59 @@ continue to function normally.
 *:WorkflowPrismaReviewPicker* {keyword-id} [status]
   Browse PRISMA article reviews for a keyword.  `status` is optional.
 
+------------------------------------------------------------------------------
+2.6 Taxonomy pickers (v1.12.0)                          *workflow-taxonomy-cmds*
+
+*:WorkflowTopicPicker* [discipline-area=CODE]
+  Open a Snacks picker over all topics.  <CR> inserts the topic id at cursor.
+  Example: >
+    :WorkflowTopicPicker discipline-area=FIS
+<
+
+*:WorkflowContentPicker* [topic-id=N]
+  Open a Snacks picker over all contents.  <CR> inserts the content id at cursor.
+  Example: >
+    :WorkflowContentPicker topic-id=3
+<
+
+*:WorkflowConceptPicker* [main-topic=CODE]
+  Open a Snacks picker over all concepts.  <CR> inserts the concept code slug
+  at cursor (suitable for `concepts:` frontmatter lists).
+  Example: >
+    :WorkflowConceptPicker main-topic=MECA-I
+<
+
+------------------------------------------------------------------------------
+2.7 Graph commands                                        *workflow-graph-cmds*
+
+*:WorkflowGraphStats* [main-topic=CODE] [discipline-area=CODE] [topic=SLUG]
+  Run `workflow graph stats --json` and display the result in a horizontal-
+  split scratch buffer (filetype=json, readable via vim.inspect).
+  Example: >
+    :WorkflowGraphStats main-topic=MECA-I
+<
+
+*:WorkflowGraphOrphans* [type=TYPE] [main-topic=CODE] [discipline-area=CODE] [topic=SLUG]
+  Run `workflow graph orphans --json` and display orphan nodes in a scratch
+  buffer.  `type` filters by node type (e.g. `concept`, `note`).
+  Example: >
+    :WorkflowGraphOrphans type=concept discipline-area=FIS
+<
+
+------------------------------------------------------------------------------
+2.8 Lecture commands                                    *workflow-lecture-cmds*
+
+*:WorkflowLectureScan*
+  Run `workflow lectures scan` against the current project and display stdout
+  in a horizontal-split scratch buffer.
+
+*:WorkflowLectureLink*
+  Run `workflow lectures link` against the current project and display stdout
+  in a horizontal-split scratch buffer.
+
+Note: After adding new commands, run `:helptags ALL` once to regenerate tag
+indexes so `:help :WorkflowXxx` resolves correctly.
+
 ==============================================================================
 3. KEYMAPS                                                   *workflow-keymaps*
 
