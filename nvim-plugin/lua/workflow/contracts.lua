@@ -55,6 +55,17 @@
 ---@field parent_id integer|nil   FK to parent Concept (nil if root)
 ---@field description string|nil  Optional free-text description
 
+---@class WorkflowBibLinkJSON
+---@field content_id integer          FK to parent Content
+---@field bib_entry_id integer        FK to BibEntry row
+---@field bib_entry_bibkey string     BibTeX cite key (e.g. "Smith2020")
+---@field chapter_number integer|nil  Chapter locus (nil if unset)
+---@field section_number integer|nil  Section locus (nil if unset)
+---@field first_page integer|nil      First page of the referenced locus
+---@field last_page integer|nil       Last page of the referenced locus
+---@field first_exercise integer|nil  Optional exercise range start
+---@field last_exercise integer|nil   Optional exercise range end
+
 local M = {}
 
 return M

@@ -49,6 +49,9 @@ check_json  "workflow graph stats --json"      workflow graph stats --json
 check_json  "workflow graph orphans --json"    workflow graph orphans --json
 check_help  "workflow lectures scan --help"    workflow lectures scan --help
 check_help  "workflow lectures link --help"    workflow lectures link --help
+check_help  "workflow content link-bib --help"   workflow content link-bib --help
+check_help  "workflow content bib-links --help"  workflow content bib-links --help
+check_help  "workflow content unlink-bib --help" workflow content unlink-bib --help
 
 echo ""
 echo "=== Results: $PASS passed, $FAIL failed ==="

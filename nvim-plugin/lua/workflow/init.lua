@@ -181,6 +181,20 @@ function M.lecture_link(opts)
 	require("workflow.lectures").link(opts)
 end
 
+-- Bib-link wrappers (v1.13.0)
+
+function M.pick_content_bib(opts)
+	require("workflow.picker.content_bib").pick(opts)
+end
+
+function M.content_link_bib(content_id, bibkey, chapter, section, first_page, last_page, first_exercise, last_exercise, opts)
+	require("workflow.content_bib").link(content_id, bibkey, chapter, section, first_page, last_page, first_exercise, last_exercise, opts)
+end
+
+function M.content_unlink_bib(content_id, bibkey, opts)
+	require("workflow.content_bib").unlink(content_id, bibkey, opts)
+end
+
 -- Statusline component
 function M.statusline()
 	return require("workflow.statusline").component()

@@ -173,6 +173,33 @@ continue to function normally.
 Note: After adding new commands, run `:helptags ALL` once to regenerate tag
 indexes so `:help :WorkflowXxx` resolves correctly.
 
+------------------------------------------------------------------------------
+2.9 Bib-link commands (v1.13.0)                          *workflow-biblink-cmds*
+
+*:WorkflowContentBibPicker*
+  :WorkflowContentBibPicker [content-id=N]
+  Open a Snacks picker over all bib links for a content node.  <CR> inserts
+  the bibkey at cursor.  Falls back to `content_id:` in buffer frontmatter
+  when the argument is omitted.
+  Example: >
+    :WorkflowContentBibPicker content-id=7
+<
+
+*:WorkflowContentLinkBib*
+  :WorkflowContentLinkBib {content-id} {bibkey} {chapter} {section} {first-page} {last-page} [first-exercise] [last-exercise]
+  Attach a bib entry to a content node with locus information.  The last two
+  exercise-range arguments are optional.
+  Example: >
+    :WorkflowContentLinkBib 7 Smith2020 3 2 45 67
+<
+
+*:WorkflowContentUnlinkBib*
+  :WorkflowContentUnlinkBib {content-id} {bibkey}
+  Remove a bib link from a content node.
+  Example: >
+    :WorkflowContentUnlinkBib 7 Smith2020
+<
+
 ==============================================================================
 3. KEYMAPS                                                   *workflow-keymaps*
 

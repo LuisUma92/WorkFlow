@@ -231,6 +231,58 @@ function M.setup(workflow)
 	vim.api.nvim_create_user_command("WorkflowLectureLink", function()
 		workflow.lecture_link({})
 	end, { nargs = 0 })
+
+	-- Bib-link commands (v1.13.0)
+
+	-- :WorkflowContentBibPicker [content-id=N]
+	vim.api.nvim_create_user_command("WorkflowContentBibPicker", function(cmd_opts)
+		local opts = {}
+		for _, arg in ipairs(cmd_opts.fargs) do
+			local k, v = arg:match("^([%w%-]+)=(.+)$")
+			if k and v then
+				opts[k] = v
+			end
+		end
+		workflow.pick_content_bib({ content_id = tonumber(opts["content-id"]) })
+	end, { nargs = "*" })
+
+	-- :WorkflowContentLinkBib {content-id} {bibkey} {chapter} {section} {first-page} {last-page} [first-exercise] [last-exercise]
+	vim.api.nvim_create_user_command("WorkflowContentLinkBib", function(cmd_opts)
+		local f = cmd_opts.fargs
+		if #f < 6 then
+			vim.notify(
+				"Usage: :WorkflowContentLinkBib {content-id} {bibkey} {chapter} {section} {first-page} {last-page} [first-exercise] [last-exercise]",
+				vim.log.levels.ERROR,
+				{ title = "workflow" }
+			)
+			return
+		end
+		local content_id = tonumber(f[1])
+		local bibkey = f[2]
+		local chapter = tonumber(f[3])
+		local section = tonumber(f[4])
+		local first_page = tonumber(f[5])
+		local last_page = tonumber(f[6])
+		local first_exercise = f[7] and tonumber(f[7]) or nil
+		local last_exercise = f[8] and tonumber(f[8]) or nil
+		workflow.content_link_bib(content_id, bibkey, chapter, section, first_page, last_page, first_exercise, last_exercise, {})
+	end, { nargs = "+" })
+
+	-- :WorkflowContentUnlinkBib {content-id} {bibkey}
+	vim.api.nvim_create_user_command("WorkflowContentUnlinkBib", function(cmd_opts)
+		local f = cmd_opts.fargs
+		if #f < 2 then
+			vim.notify(
+				"Usage: :WorkflowContentUnlinkBib {content-id} {bibkey}",
+				vim.log.levels.ERROR,
+				{ title = "workflow" }
+			)
+			return
+		end
+		local content_id = tonumber(f[1])
+		local bibkey = f[2]
+		workflow.content_unlink_bib(content_id, bibkey, {})
+	end, { nargs = "+" })
 end
 
 return M
