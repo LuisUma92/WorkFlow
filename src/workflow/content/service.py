@@ -8,6 +8,8 @@ from workflow.db.models.knowledge import Content, Topic
 
 __all__ = [
     "ContentServiceError",
+    "EntityNotFoundError",
+    "UniquenessError",
     "TopicNotFound",
     "DuplicateContent",
     "ContentNotFound",
@@ -21,15 +23,23 @@ class ContentServiceError(Exception):
     pass
 
 
-class TopicNotFound(ContentServiceError):
+class EntityNotFoundError(ContentServiceError):
+    """Base for 'looked-up entity does not exist' errors."""
+
+
+class UniquenessError(ContentServiceError):
+    """Base for 'entity/link already exists' errors."""
+
+
+class TopicNotFound(EntityNotFoundError):
     pass
 
 
-class DuplicateContent(ContentServiceError):
+class DuplicateContent(UniquenessError):
     pass
 
 
-class ContentNotFound(ContentServiceError):
+class ContentNotFound(EntityNotFoundError):
     pass
 
 

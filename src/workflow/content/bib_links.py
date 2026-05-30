@@ -16,7 +16,12 @@ from workflow.bibliography.service import (
     BibKeyAmbiguous as BibBibKeyAmbiguous,
     get_bib_entry_by_bibkey,
 )
-from workflow.content.service import ContentNotFound, ContentServiceError
+from workflow.content.service import (
+    ContentNotFound,
+    ContentServiceError,
+    EntityNotFoundError,
+    UniquenessError,
+)
 from workflow.db.models.bibliography import BibContent, BibEntry
 from workflow.db.models.knowledge import Content
 
@@ -31,7 +36,7 @@ __all__ = [
 ]
 
 
-class BibEntryNotFound(ContentServiceError):
+class BibEntryNotFound(EntityNotFoundError):
     pass
 
 
@@ -43,7 +48,7 @@ class BibLinkNotFound(ContentServiceError):
     pass
 
 
-class BibLinkAlreadyExists(ContentServiceError):
+class BibLinkAlreadyExists(UniquenessError):
     pass
 
 

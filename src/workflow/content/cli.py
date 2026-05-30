@@ -15,18 +15,17 @@ from workflow.content.formatters import (
     format_content_list_table,
 )
 from workflow.content.service import (
-    ContentNotFound,
     DuplicateContent,
+    EntityNotFoundError,
     TopicNotFound,
     add_content,
     get_content,
     list_contents,
 )
 from workflow.content.bib_links import (
-    BibEntryNotFound,
     BibKeyAmbiguous,
-    BibLinkAlreadyExists,
     BibLinkNotFound,
+    BibLinkAlreadyExists,
     link_bib_to_content,
     list_bib_links,
     unlink_bib_from_content,
@@ -163,7 +162,7 @@ def cmd_link_bib(
             session.commit()
             session.refresh(bc)
             _ = bc.bib_entry  # materialise relationship while session is open
-        except (BibEntryNotFound, ContentNotFound, BibKeyAmbiguous) as exc:
+        except (EntityNotFoundError, BibKeyAmbiguous) as exc:
             raise click.ClickException(str(exc))
         except BibLinkAlreadyExists as exc:
             raise click.UsageError(str(exc))
@@ -210,7 +209,7 @@ def cmd_unlink_bib(ctx: click.Context, content_id: int, bibkey: str) -> None:
         try:
             unlink_bib_from_content(session, content_id=content_id, bibkey=bibkey)
             session.commit()
-        except (BibEntryNotFound, BibKeyAmbiguous, BibLinkNotFound) as exc:
+        except (EntityNotFoundError, BibKeyAmbiguous, BibLinkNotFound) as exc:
             raise click.ClickException(str(exc))
 
         click.echo(f"Unlinked bibkey={bibkey!r} from content id={content_id}.")

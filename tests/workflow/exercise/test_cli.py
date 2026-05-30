@@ -792,8 +792,8 @@ def _seed_duplicate_bibkey(session: Session, bibkey: str = "DUPKEY") -> None:
     """Insert two BibEntry rows with the same bibkey to simulate a duplicate."""
     from workflow.db.models.bibliography import BibEntry
 
-    session.add(BibEntry(bibkey=bibkey, title="Book Alpha", year="2020", volume="1"))
-    session.add(BibEntry(bibkey=bibkey, title="Book Beta", year="2021", volume="2"))
+    session.add(BibEntry(bibkey=bibkey, title="Book Alpha", year=2020, volume="1"))
+    session.add(BibEntry(bibkey=bibkey, title="Book Beta", year=2021, volume="2"))
     session.commit()
 
 

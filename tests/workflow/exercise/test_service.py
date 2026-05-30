@@ -615,8 +615,8 @@ def _make_bibkey_tex(path: Path, ex_id: str, bibkey: str) -> Path:
 def _seed_dup_bibkey(session: Session, bibkey: str = "DUPKEY") -> None:
     from workflow.db.models.bibliography import BibEntry
 
-    session.add(BibEntry(bibkey=bibkey, title="Book Alpha", year="2020", volume="1"))
-    session.add(BibEntry(bibkey=bibkey, title="Book Beta", year="2021", volume="2"))
+    session.add(BibEntry(bibkey=bibkey, title="Book Alpha", year=2020, volume="1"))
+    session.add(BibEntry(bibkey=bibkey, title="Book Beta", year=2021, volume="2"))
     session.flush()
 
 
