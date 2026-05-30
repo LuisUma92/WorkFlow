@@ -189,6 +189,24 @@ function M.setup(workflow)
 		workflow.pick_concepts({ main_topic = opts["main-topic"] })
 	end, { nargs = "*" })
 
+	-- :WorkflowGraphNeighbors {node-id} [depth=N]
+	vim.api.nvim_create_user_command("WorkflowGraphNeighbors", function(cmd_opts)
+		local fargs = cmd_opts.fargs
+		if #fargs < 1 then
+			vim.notify("Usage: :WorkflowGraphNeighbors {node-id} [depth=N]", vim.log.levels.ERROR, { title = "workflow" })
+			return
+		end
+		local node_id = fargs[1]
+		local depth = nil
+		for i = 2, #fargs do
+			local d = fargs[i]:match("^depth=(%d+)$")
+			if d then
+				depth = tonumber(d)
+			end
+		end
+		workflow.pick_graph_neighbors({ node_id = node_id, depth = depth })
+	end, { nargs = "+" })
+
 	-- :WorkflowGraphStats [main-topic=CODE] [discipline-area=CODE] [topic=SLUG]
 	vim.api.nvim_create_user_command("WorkflowGraphStats", function(cmd_opts)
 		local opts = {}

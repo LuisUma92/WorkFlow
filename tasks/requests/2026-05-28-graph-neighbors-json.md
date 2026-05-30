@@ -1,5 +1,13 @@
 # Add `--json` to `workflow graph neighbors`
 
+> **Status: RESOLVED — v1.16.0 (2026-05-30).** `workflow graph neighbors NODE_ID --json`
+> emits `{source, neighbors[]}` per the contract pinned in **ADR-0017**. Note neighbors
+> carry real abs paths (`resolve_vault_root()/notes/<note_type>/<filename>`); non-note
+> nodes → `path:null`. `edge_class:null`, `relation_type:<edge_type>`, `depth` from BFS.
+> Unknown id → exit 1. 24 tests in `tests/workflow/graph/test_neighbors_json.py`.
+> Unblocked `:WorkflowGraphNeighbors` (4b). Two follow-ups filed (node_ids helper +
+> relation_type discriminator) in `2026-05-29-v1.14.0-reviewer-esquema-followups.md`.
+
 ## Summary
 
 `workflow graph stats` and `workflow graph orphans` both accept `--json` and

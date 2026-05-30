@@ -12,6 +12,21 @@ from workflow.graph.domain import GraphNode, KnowledgeGraph
 
 
 @dataclass(frozen=True)
+class NeighborInfo:
+    """A single neighbor entry from BFS traversal.
+
+    node:       the neighboring GraphNode
+    depth:      BFS hop distance from the source (>= 1)
+    edge_type:  edge_type of the edge that connects this neighbor to its BFS
+                predecessor, or None if not determinable
+    """
+
+    node: GraphNode
+    depth: int
+    edge_type: str | None
+
+
+@dataclass(frozen=True)
 class GraphStats:
     """Summary statistics for a KnowledgeGraph."""
 
@@ -158,6 +173,76 @@ def neighbors(
     return KnowledgeGraph(nodes=sub_nodes, edges=sub_edges)
 
 
+# ── Detailed neighbourhood (for JSON output) ──────────────────────────────
+
+
+def _build_edge_map(graph: KnowledgeGraph) -> dict[tuple[str, str], str]:
+    """Return undirected (src, tgt) → edge_type lookup (last-write wins)."""
+    em: dict[tuple[str, str], str] = {}
+    for e in graph.edges:
+        em[(e.source_id, e.target_id)] = e.edge_type
+        em[(e.target_id, e.source_id)] = e.edge_type
+    return em
+
+
+def _bfs_with_parents(
+    start: str,
+    depth: int,
+    adj: dict[str, list[str]],
+    node_ids: frozenset[str],
+) -> dict[str, tuple[int, str | None]]:
+    """BFS from *start* up to *depth* hops.
+
+    Returns  {node_id: (hop_depth, parent_id_or_None)}.
+    """
+    visited: dict[str, tuple[int, str | None]] = {start: (0, None)}
+    queue: deque[str] = deque([start])
+    while queue:
+        current = queue.popleft()
+        current_depth, _ = visited[current]
+        if current_depth >= depth:
+            continue
+        for neighbour in adj.get(current, []):
+            if neighbour not in visited and neighbour in node_ids:
+                visited[neighbour] = (current_depth + 1, current)
+                queue.append(neighbour)
+    return visited
+
+
+def neighbors_detailed(
+    graph: KnowledgeGraph,
+    node_id: str,
+    depth: int = 1,
+) -> list[NeighborInfo]:
+    """Return a list of NeighborInfo for every node within `depth` hops of node_id.
+
+    The source node itself is excluded from the result.
+    Nodes are ordered by depth (ascending), then insertion order within each level.
+
+    ``edge_type`` on each NeighborInfo is the edge_type of the edge linking that
+    neighbor to its BFS predecessor (best-effort; None if not determinable).
+
+    Returns an empty list when node_id is not in the graph.
+    """
+    node_ids = graph.node_ids()
+    if node_id not in node_ids:
+        return []
+
+    edge_map = _build_edge_map(graph)
+    node_map = {n.node_id: n for n in graph.nodes}
+    visited = _bfs_with_parents(node_id, depth, graph.adjacency(), node_ids)
+
+    result: list[NeighborInfo] = []
+    for nid, (d, parent) in visited.items():
+        if nid == node_id or nid not in node_map:
+            continue
+        etype: str | None = edge_map.get((parent, nid)) if parent else None
+        result.append(NeighborInfo(node=node_map[nid], depth=d, edge_type=etype))
+
+    result.sort(key=lambda ni: ni.depth)
+    return result
+
+
 # ── Summary statistics ─────────────────────────────────────────────────────
 
 
@@ -182,9 +267,11 @@ def compute_stats(graph: KnowledgeGraph) -> GraphStats:
 
 __all__ = [
     "GraphStats",
+    "NeighborInfo",
     "find_orphans",
     "find_hubs",
     "connected_components",
     "neighbors",
+    "neighbors_detailed",
     "compute_stats",
 ]

@@ -151,6 +151,7 @@ Architecture decisions in `docs/ADR/` (see [INDEX.md](docs/ADR/INDEX.md) for ful
 | PRISMA-0004 | Data model: 30+ Django models for systematic review | Accepted |
 | PRISMA-0005 | PRISMA CLI: SQLAlchemy migration and unified workflow.db | Accepted |
 | 0016 | Evaluation CLI: Template, Item, and Course Management | Accepted |
+| 0017 | `graph neighbors --json` output contract | Accepted |
 
 ## Build & CI
 

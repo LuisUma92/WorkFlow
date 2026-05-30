@@ -1,5 +1,10 @@
 # Add nvim-plugin coverage for taxonomy + graph CLI surface
 
+> **Tier-2 update — v1.16.0 (2026-05-30):** the blocked `:WorkflowGraphNeighbors {node-id}`
+> is now shipped (Snacks picker, `<CR>` opens the neighbor's note path, plenary spec) on top
+> of `graph neighbors --json` (ADR-0017). Earlier taxonomy pickers landed in v1.12.0. Any
+> remaining Tier-3 items (e.g. `:WorkflowLectureBuildEval`) stay as the open portion.
+
 ## Summary
 
 The Neovim plugin (`nvim-plugin/`) currently exposes 19 `:Workflow*` user

@@ -15,11 +15,12 @@ import json as _json
 from pathlib import Path
 
 import click
+from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
 from workflow.db.engine import init_global_db
 from workflow.db.errors import with_schema_guard
-from workflow.graph.analysis import compute_stats, find_orphans, neighbors
+from workflow.graph.analysis import compute_stats, find_orphans, neighbors, neighbors_detailed
 from workflow.graph.collectors import (
     TaxonomyFilter,
     build_knowledge_graph,
@@ -27,6 +28,7 @@ from workflow.graph.collectors import (
     resolve_taxonomy_filter,
 )
 from workflow.graph.domain import KnowledgeGraph
+from workflow.vault.paths import resolve_vault_root
 
 
 # ── Graph builder ───────────────────────────────────────────────────────────
@@ -76,10 +78,11 @@ def _build_graph_with_filter(
     main_topic: str | None,
     discipline_area: str | None,
     topic: str | None,
+    engine: Engine | None = None,
 ) -> KnowledgeGraph:
     """Build + filter the knowledge graph in a single DB session."""
     del project  # reserved for ITEP-0011 P5 routing
-    global_engine = init_global_db()
+    global_engine = engine or init_global_db()
     with Session(global_engine) as gsession:
         tf = _resolve_filter(gsession, main_topic, discipline_area, topic)
         kg = build_knowledge_graph(gsession)
@@ -314,28 +317,126 @@ def clusters(
             click.echo(f"  [{node.node_type}] {node.label}")
 
 
+# ── neighbors helpers ────────────────────────────────────────────────────────
+
+
+def _fetch_note_rows(
+    note_node_ids: list[str],
+    engine: Engine,
+) -> dict[str, dict[str, str]]:
+    """Batch-query Note rows for a list of note-type node ids.
+
+    Returns a dict  node_id → {"title": ..., "note_type": ..., "filename": ...}.
+    Only ``note:<int>`` ids are considered; any other id is ignored, so the
+    helper is safe regardless of caller filtering.
+    """
+    from workflow.db.models.notes import Note
+
+    int_ids: list[int] = []
+    for nid in note_node_ids:
+        if not nid.startswith("note:"):
+            continue
+        try:
+            int_ids.append(int(nid.split(":", 1)[1]))
+        except (IndexError, ValueError):
+            continue
+
+    if not int_ids:
+        return {}
+
+    with Session(engine) as session:
+        rows = session.scalars(select(Note).where(Note.id.in_(int_ids))).all()
+        return {
+            f"note:{r.id}": {
+                "title": r.title or r.filename,
+                "note_type": r.note_type or "permanent",
+                "filename": r.filename,
+            }
+            for r in rows
+        }
+
+
+def _note_path(vault: Path, note_info: dict[str, str]) -> str:
+    """Build absolute path string for a note row dict (note_type pre-coalesced)."""
+    return str(vault / "notes" / note_info["note_type"] / note_info["filename"])
+
+
 # ── neighbors ────────────────────────────────────────────────────────────────
 
 
 @graph.command(name="neighbors")
 @click.argument("node_id")
 @click.option("--depth", default=1, help="Hop distance.")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
 @click.option("--project", type=click.Path(exists=True), default=".")
 @_filter_options
 @with_schema_guard
 def neighbors_cmd(
     node_id: str,
     depth: int,
+    as_json: bool,
     project: str,
     main_topic: str | None,
     discipline_area: str | None,
     topic: str | None,
 ) -> None:
     """Show neighbours of a node."""
-    kg = _build_graph_with_filter(project, main_topic, discipline_area, topic)
+    global_engine = init_global_db()
+    kg = _build_graph_with_filter(
+        project, main_topic, discipline_area, topic, engine=global_engine
+    )
 
     if node_id not in kg.node_ids():
         raise click.ClickException(f"Node not found: {node_id}")
+
+    if as_json:
+        infos = neighbors_detailed(kg, node_id, depth=depth)
+        vault = resolve_vault_root()
+
+        # Collect all note-type ids (source + note neighbors) for ONE batch query.
+        note_ids: list[str] = []
+        if node_id.startswith("note:"):
+            note_ids.append(node_id)
+        for ni in infos:
+            if ni.node.node_id.startswith("note:"):
+                note_ids.append(ni.node.node_id)
+        note_rows = _fetch_note_rows(note_ids, global_engine)
+
+        # Build source object.
+        src_node_map = {n.node_id: n for n in kg.nodes}
+        src_node = src_node_map[node_id]
+        if node_id.startswith("note:") and node_id in note_rows:
+            src_info = note_rows[node_id]
+            src_title = src_info["title"]
+            src_path: str | None = _note_path(vault, src_info)
+        else:
+            src_title = src_node.label
+            src_path = None
+
+        source_obj = {"id": node_id, "title": src_title, "path": src_path}
+
+        # Build neighbor list.
+        neighbor_list = []
+        for ni in infos:
+            nid = ni.node.node_id
+            if nid.startswith("note:") and nid in note_rows:
+                nr = note_rows[nid]
+                n_title: str | None = nr["title"]
+                n_path: str | None = _note_path(vault, nr)
+            else:
+                n_title = ni.node.label
+                n_path = None
+            neighbor_list.append({
+                "id": nid,
+                "title": n_title,
+                "path": n_path,
+                "edge_class": None,
+                "relation_type": ni.edge_type,
+                "depth": ni.depth,
+            })
+
+        click.echo(_json.dumps({"source": source_obj, "neighbors": neighbor_list}))
+        return
 
     subgraph = neighbors(kg, node_id, depth=depth)
 

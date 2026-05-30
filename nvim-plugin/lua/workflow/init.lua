@@ -165,6 +165,10 @@ function M.pick_concepts(opts)
 	require("workflow.picker.concepts").pick(opts)
 end
 
+function M.pick_graph_neighbors(opts)
+	require("workflow.picker.graph_neighbors").pick(opts)
+end
+
 function M.graph_stats(opts)
 	require("workflow.graph").stats(opts)
 end

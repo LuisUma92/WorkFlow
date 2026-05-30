@@ -51,6 +51,7 @@ check_json  "workflow content list --json"     workflow content list --json
 check_json  "workflow concept list --json"     workflow concept list --json
 check_json  "workflow graph stats --json"      workflow graph stats --json
 check_json  "workflow graph orphans --json"    workflow graph orphans --json
+check_help  "workflow graph neighbors --help"  workflow graph neighbors --help
 check_help  "workflow lectures scan --help"    workflow lectures scan --help
 check_help  "workflow lectures link --help"    workflow lectures link --help
 check_help  "workflow content link-bib --help"   workflow content link-bib --help
