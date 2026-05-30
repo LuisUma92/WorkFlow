@@ -591,3 +591,73 @@ class TestSyncExerciseConcepts:
         ex = repo.get_by_exercise_id("ec-005")
         assert ex is not None
         assert len(ex.concept_links) == 0
+
+
+# ── BibKeyAmbiguous — service layer ─────────────────────────────────────────
+
+
+def _make_bibkey_tex(path: Path, ex_id: str, bibkey: str) -> Path:
+    content = f"""\
+% ---
+% id: {ex_id}
+% type: essay
+% difficulty: easy
+% taxonomy_level: Recordar
+% taxonomy_domain: Información
+% status: complete
+% ---
+\\question{{A question with an ambiguous bibkey \\cite{{{bibkey}}}.}}{{Solution.}}
+"""
+    path.write_text(content)
+    return path
+
+
+def _seed_dup_bibkey(session: Session, bibkey: str = "DUPKEY") -> None:
+    from workflow.db.models.bibliography import BibEntry
+
+    session.add(BibEntry(bibkey=bibkey, title="Book Alpha", year="2020", volume="1"))
+    session.add(BibEntry(bibkey=bibkey, title="Book Beta", year="2021", volume="2"))
+    session.flush()
+
+
+class TestSyncAmbiguousBibkeyService:
+    """sync_exercises must survive a BibKeyAmbiguous exception (no full abort)."""
+
+    def test_ambiguous_bibkey_does_not_abort_sync(
+        self, session: Session, tmp_path: Path
+    ) -> None:
+        """sync_exercises returns normally when one exercise has an ambiguous bibkey."""
+        _seed_dup_bibkey(session)
+        tex = _make_bibkey_tex(tmp_path / "amb.tex", "svc-amb-001", "DUPKEY")
+
+        result, messages = sync_exercises(session, [tex])
+
+        # Must not raise; exercise must be counted (new or skipped, not an exception)
+        assert isinstance(result, SyncResult)
+
+    def test_ambiguous_bibkey_exercise_has_null_book_id(
+        self, session: Session, tmp_path: Path
+    ) -> None:
+        """Exercise is inserted with book_id=None when bibkey resolves ambiguously."""
+        _seed_dup_bibkey(session)
+        tex = _make_bibkey_tex(tmp_path / "amb.tex", "svc-amb-002", "DUPKEY")
+
+        sync_exercises(session, [tex])
+
+        from workflow.db.repos.sqlalchemy import SqlExerciseRepo
+        repo = SqlExerciseRepo(session)
+        ex = repo.get_by_exercise_id("svc-amb-002")
+        assert ex is not None
+        assert ex.book_id is None
+
+    def test_ambiguous_bibkey_warning_message_emitted(
+        self, session: Session, tmp_path: Path
+    ) -> None:
+        """A warning message is emitted when a bibkey is ambiguous."""
+        _seed_dup_bibkey(session)
+        tex = _make_bibkey_tex(tmp_path / "amb.tex", "svc-amb-003", "DUPKEY")
+
+        _result, messages = sync_exercises(session, [tex])
+
+        combined = " ".join(messages)
+        assert "DUPKEY" in combined or "ambiguous" in combined.lower()

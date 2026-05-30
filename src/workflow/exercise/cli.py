@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from workflow.db.models.exercises import Exercise
 from workflow.db.repos.sqlalchemy import SqlExerciseRepo
 from workflow.db.errors import with_schema_guard
-from workflow.prisma.service import get_bib_entry_by_bibkey
+from workflow.bibliography.service import get_bib_entry_by_bibkey, BibKeyAmbiguous
 from workflow.exercise.exam_builder import build_exam
 from workflow.exercise.generator import generate_exercise_file, generate_from_content
 from workflow.exercise.moodle import exercises_to_quiz_xml
@@ -86,7 +86,12 @@ def _test_bib_entry_existence(
         return None
 
     with Session(engine) as session:
-        entry = get_bib_entry_by_bibkey(session, bibkey)
+        try:
+            entry = get_bib_entry_by_bibkey(session, bibkey)
+        except BibKeyAmbiguous as exc:
+            raise click.ClickException(
+                f"Ambiguous bibkey '{bibkey}': multiple bibliography entries match."
+            ) from exc
 
     if entry is None:
         raise click.ClickException(

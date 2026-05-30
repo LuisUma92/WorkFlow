@@ -770,3 +770,65 @@ class TestBuildExamCommand:
             obj={"engine": db_engine},
         )
         assert result.exit_code == 0, result.output
+
+
+# ── BibKeyAmbiguous — CLI surface ─────────────────────────────────────────────
+
+
+BIBKEY_TEX = """\
+% ---
+% id: bib-amb-001
+% type: essay
+% difficulty: easy
+% taxonomy_level: Recordar
+% taxonomy_domain: Información
+% status: complete
+% ---
+\\question{A question referencing a duplicated bibkey \\cite{DUPKEY}.}{Solution.}
+"""
+
+
+def _seed_duplicate_bibkey(session: Session, bibkey: str = "DUPKEY") -> None:
+    """Insert two BibEntry rows with the same bibkey to simulate a duplicate."""
+    from workflow.db.models.bibliography import BibEntry
+
+    session.add(BibEntry(bibkey=bibkey, title="Book Alpha", year="2020", volume="1"))
+    session.add(BibEntry(bibkey=bibkey, title="Book Beta", year="2021", volume="2"))
+    session.commit()
+
+
+class TestSyncAmbiguousBibkey:
+    """sync command must not crash when a bibkey maps to multiple BibEntry rows."""
+
+    def test_sync_ambiguous_bibkey_does_not_crash(
+        self, runner, tmp_path, db_engine
+    ) -> None:
+        """sync does not raise or exit non-zero for an ambiguous bibkey."""
+        with Session(db_engine) as session:
+            _seed_duplicate_bibkey(session)
+
+        tex = tmp_path / "bib_amb.tex"
+        tex.write_text(BIBKEY_TEX)
+
+        result = runner.invoke(
+            exercise, ["sync", str(tmp_path)], obj={"engine": db_engine}
+        )
+        assert result.exit_code == 0, result.output
+
+    def test_sync_ambiguous_bibkey_exercise_inserted_with_null_book_id(
+        self, runner, tmp_path, db_engine
+    ) -> None:
+        """sync inserts the exercise with book_id=None when bibkey is ambiguous."""
+        with Session(db_engine) as session:
+            _seed_duplicate_bibkey(session)
+
+        tex = tmp_path / "bib_amb.tex"
+        tex.write_text(BIBKEY_TEX)
+
+        runner.invoke(exercise, ["sync", str(tmp_path)], obj={"engine": db_engine})
+
+        with Session(db_engine) as session:
+            repo = SqlExerciseRepo(session)
+            ex = repo.get_by_exercise_id("bib-amb-001")
+            assert ex is not None
+            assert ex.book_id is None  # ambiguous → null, not crash

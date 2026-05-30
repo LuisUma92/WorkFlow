@@ -15,18 +15,20 @@ from workflow.content.formatters import (
     format_content_list_table,
 )
 from workflow.content.service import (
-    BibEntryNotFound,
-    BibKeyAmbiguous,
-    BibLinkAlreadyExists,
-    BibLinkNotFound,
     ContentNotFound,
     DuplicateContent,
     TopicNotFound,
     add_content,
     get_content,
+    list_contents,
+)
+from workflow.content.bib_links import (
+    BibEntryNotFound,
+    BibKeyAmbiguous,
+    BibLinkAlreadyExists,
+    BibLinkNotFound,
     link_bib_to_content,
     list_bib_links,
-    list_contents,
     unlink_bib_from_content,
 )
 

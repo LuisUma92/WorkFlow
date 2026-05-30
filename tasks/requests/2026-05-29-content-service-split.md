@@ -1,5 +1,12 @@
 # Split `workflow.content.service` into CRUD + link-management modules
 
+> **Status: RESOLVED — v1.14.0 (2026-05-29).** `content/service.py` trimmed to
+> CRUD (180→74 LOC); new `content/bib_links.py` (134 LOC) owns the link funcs +
+> bib-link error classes. `content/cli.py` import block split accordingly.
+> `content/__init__` left intentionally empty (one-directional deps avoid a cycle;
+> the roadmap's `__init__` re-export note is superseded). Error-class consolidation
+> deferred to Phase 1.5 — see `2026-05-29-v1.14.0-reviewer-esquema-followups.md`.
+
 ## Summary
 
 `src/workflow/content/service.py` shipped in v1.11.0 as a focused

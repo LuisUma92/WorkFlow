@@ -10,6 +10,10 @@ from typing import TypedDict
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
+from workflow.bibliography.service import (  # noqa: F401  (re-export for back-compat)
+    _bib_entry_options,
+    get_bib_entry_by_bibkey,
+)
 from workflow.db.models.bibliography import (
     Author,
     BibAuthor,
@@ -49,14 +53,6 @@ class ChecklistItem(TypedDict):
 
 
 # ── Bibliography ─────────────────────────────────────────────────────────
-
-
-def _bib_entry_options():
-    """Standard eager-load options for BibEntry queries."""
-    return [
-        selectinload(BibEntry.author_links).selectinload(BibAuthor.author),
-        selectinload(BibEntry.author_links).selectinload(BibAuthor.author_type),
-    ]
 
 
 def list_bib_entries(
@@ -170,17 +166,6 @@ def search_bib_entries(
 
     stmt = stmt.order_by(BibEntry.year.desc(), BibEntry.title)
     return list(session.scalars(stmt).all())
-
-
-def get_bib_entry_by_bibkey(
-    session: Session,
-    bibkey: str,
-) -> BibEntry | None:
-    stmt = (
-        select(BibEntry).options(*_bib_entry_options()).where(BibEntry.bibkey == bibkey)
-    )
-
-    return session.scalar(stmt)
 
 
 # ── Keyword CRUD ─────────────────────────────────────────────────────────

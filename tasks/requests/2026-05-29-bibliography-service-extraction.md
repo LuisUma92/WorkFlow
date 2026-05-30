@@ -1,5 +1,12 @@
 # Extract `workflow.bibliography.service` from `workflow.prisma.service`
 
+> **Status: RESOLVED — v1.14.0 (2026-05-29).** New `src/workflow/bibliography/`
+> package owns `_bib_entry_options` + `get_bib_entry_by_bibkey` (hardened to raise
+> `BibKeyAmbiguous` on duplicate bibkeys). `prisma.service` re-imports for
+> back-compat; `content` + `exercise` consume the new module directly. Package
+> `__init__` promotes the public surface. Removal of the prisma re-export tracked
+> in `2026-05-29-v1.14.0-reviewer-esquema-followups.md`.
+
 ## Summary
 
 `src/workflow/content/service.py` (v1.13.0+, after v1.13.1 patch) currently

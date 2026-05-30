@@ -18,7 +18,7 @@ from workflow.concept.service import resolve_concepts
 from workflow.db.models.exercises import Exercise, ExerciseConcept, ExerciseOption
 from workflow.db.repos.sqlalchemy import SqlExerciseRepo
 from workflow.exercise.parser import parse_exercise
-from workflow.prisma.service import get_bib_entry_by_bibkey
+from workflow.bibliography.service import get_bib_entry_by_bibkey, BibKeyAmbiguous
 
 if TYPE_CHECKING:
     from workflow.exercise.domain import ParsedExercise
@@ -50,6 +50,31 @@ class SyncResult:
 def file_hash(path: Path) -> str:
     """SHA-256 hash of file contents."""
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _resolve_book_id(
+    session: Session,
+    bibkey: str | None,
+    filename: str,
+    messages: list[str],
+) -> int | None:
+    """Resolve a bibkey to a BibEntry id for the exercise's ``book_id``.
+
+    Treats a missing or ambiguous bibkey as a soft, non-fatal data-quality
+    warning (``messages`` collects it) and returns ``None`` so the exercise
+    record is still synced with a null ``book_id``.
+    """
+    if bibkey is None:
+        return None
+    try:
+        bib = get_bib_entry_by_bibkey(session, bibkey)
+    except BibKeyAmbiguous:
+        messages.append(
+            f"  [WARN] {filename}: ambiguous bibkey '{bibkey}'"
+            " — multiple entries match; book_id set to null."
+        )
+        return None
+    return bib.id if bib is not None else None
 
 
 def sync_exercises(
@@ -97,10 +122,9 @@ def sync_exercises(
             if content_unchanged and not path_changed:
                 unchanged_count += 1
                 continue
-        bib_entry_id = None
-        if ex.book_cite is not None:
-            bib = get_bib_entry_by_bibkey(session, ex.book_cite)
-            bib_entry_id = bib.id if bib is not None else None
+        bib_entry_id = _resolve_book_id(
+            session, ex.book_cite, filepath.name, messages
+        )
 
         tags_json = json.dumps(ex.metadata.tags) if ex.metadata.tags else None
 
