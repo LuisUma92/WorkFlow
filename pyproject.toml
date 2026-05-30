@@ -1,6 +1,6 @@
 [project]
 name = "workflow"
-version = "1.16.0"
+version = "1.17.0"
 description = "CLI toolkit for LaTeX projects, Zettelkasten notes, exercises, and knowledge graphs"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.12"

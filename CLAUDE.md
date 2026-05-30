@@ -152,6 +152,7 @@ Architecture decisions in `docs/ADR/` (see [INDEX.md](docs/ADR/INDEX.md) for ful
 | PRISMA-0005 | PRISMA CLI: SQLAlchemy migration and unified workflow.db | Accepted |
 | 0016 | Evaluation CLI: Template, Item, and Course Management | Accepted |
 | 0017 | `graph neighbors --json` output contract | Accepted |
+| 0018 | `workflow topic import` bulk-import contract | Accepted |
 
 ## Build & CI
 
