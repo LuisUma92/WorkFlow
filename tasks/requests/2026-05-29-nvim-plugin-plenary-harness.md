@@ -1,5 +1,16 @@
 # Add `plenary.busted` test harness to `nvim-plugin/`
 
+> **Status: P1 + P2 DONE — v1.15.0 (2026-05-29).** Harness live:
+> `nvim-plugin/tests/plenary/minimal_init.lua` + root `Makefile` `test-plugin` target
+> + 7 picker specs (topics, contents, concepts, content_bib, edges, notes,
+> evaluations) = **35 specs, `make test-plugin` exit 0**. smoke_taxonomy.sh still 10/10.
+> Architect review: specs verified meaningful (not false-green), no CRITICAL/HIGH.
+> **P3 + P4 still OPEN** (→ v1.15.1): frontmatter/commands/server specs + CI. Fold in the
+> 3 architect LOW findings: (1) centralize the per-spec `package.path` bootstrap into
+> `minimal_init.lua`; (2) standardize on the describe-level module-cache stub pattern
+> (drop topics' per-test `package.loaded` bust); (3) harden plenary-path resolution for CI
+> (no `~/.local/share/nvim/lazy` in CI — set `WORKFLOW_PLENARY_PATH` or vendor plenary).
+
 ## Summary
 
 The Neovim plugin (`nvim-plugin/`) has grown from 4 commands at
