@@ -1,0 +1,50 @@
+# Run the Neovim plugin's plenary.busted test suite in CI.
+# The harness lives in nvim-plugin/tests/plenary/ and is driven by
+# `make test-plugin`. minimal_init.lua resolves plenary from
+# WORKFLOW_PLENARY_PATH (set below, since CI has no lazy.nvim dir).
+
+name: Neovim plugin tests
+
+on:
+  push:
+    branches: ["master"]
+    paths:
+      - "nvim-plugin/**"
+      - "Makefile"
+      - ".github/workflows/nvim-plugin.yml"
+  pull_request:
+    branches: ["master"]
+    paths:
+      - "nvim-plugin/**"
+      - "Makefile"
+      - ".github/workflows/nvim-plugin.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        nvim_version: ["v0.10.3", "stable"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Neovim ${{ matrix.nvim_version }}
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: ${{ matrix.nvim_version }}
+
+      - name: Clone plenary.nvim
+        run: |
+          git clone --depth 1 https://github.com/nvim-lua/plenary.nvim "$HOME/.plenary"
+          echo "WORKFLOW_PLENARY_PATH=$HOME/.plenary" >> "$GITHUB_ENV"
+
+      - name: Neovim version
+        run: nvim --version
+
+      # PlenaryBustedDirectory exits non-zero when any spec fails, so a failing
+      # test fails this step (and the job) directly.
+      - name: Run plugin tests
+        run: make test-plugin

@@ -19,5 +19,11 @@ local plugin_dir = repo_root .. "/nvim-plugin"
 vim.opt.rtp:prepend(plenary_path)
 vim.opt.rtp:prepend(plugin_dir)
 
+-- plenary's busted runner loads spec files via loadfile() (standard Lua loader,
+-- not nvim's rtp loader), so require("workflow.*") must also resolve via
+-- package.path. Centralized here so specs need no per-file bootstrap.
+local lua_dir = plugin_dir .. "/lua"
+package.path = lua_dir .. "/?.lua;" .. lua_dir .. "/?/init.lua;" .. package.path
+
 -- Load plenary so :PlenaryBustedDirectory is defined.
 vim.cmd("runtime plugin/plenary.vim")

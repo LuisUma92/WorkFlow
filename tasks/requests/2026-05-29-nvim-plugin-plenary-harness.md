@@ -1,15 +1,19 @@
 # Add `plenary.busted` test harness to `nvim-plugin/`
 
-> **Status: P1 + P2 DONE — v1.15.0 (2026-05-29).** Harness live:
-> `nvim-plugin/tests/plenary/minimal_init.lua` + root `Makefile` `test-plugin` target
-> + 7 picker specs (topics, contents, concepts, content_bib, edges, notes,
-> evaluations) = **35 specs, `make test-plugin` exit 0**. smoke_taxonomy.sh still 10/10.
-> Architect review: specs verified meaningful (not false-green), no CRITICAL/HIGH.
-> **P3 + P4 still OPEN** (→ v1.15.1): frontmatter/commands/server specs + CI. Fold in the
-> 3 architect LOW findings: (1) centralize the per-spec `package.path` bootstrap into
-> `minimal_init.lua`; (2) standardize on the describe-level module-cache stub pattern
-> (drop topics' per-test `package.loaded` bust); (3) harden plenary-path resolution for CI
-> (no `~/.local/share/nvim/lazy` in CI — set `WORKFLOW_PLENARY_PATH` or vendor plenary).
+> **Status: ALL PHASES DONE — P1+P2 v1.15.0, P3+P4 v1.15.1 (2026-05-30).**
+> Harness: `minimal_init.lua` (now centralizes `package.path`) + root `Makefile`
+> `test-plugin` + GitHub Actions `.github/workflows/nvim-plugin.yml` (nvim 0.10.x +
+> stable matrix, clones plenary, sets `WORKFLOW_PLENARY_PATH`).
+> Specs (**55 total, `make test-plugin` exit 0**): 7 pickers (35) + frontmatter (10) +
+> server basename-allowlist (3) + commands kv-arg parser (7). smoke_taxonomy.sh still 10/10.
+> Architect review on P1+P2: specs meaningful (not false-green), no CRITICAL/HIGH.
+> **3 architect LOWs:** (1) centralize `package.path` — ✅ DONE in `minimal_init.lua`;
+> (3) CI plenary path — ✅ DONE via `WORKFLOW_PLENARY_PATH` + git clone. (2) standardize
+> the describe-level cache pattern — PARTIAL: new specs use it; the 7 existing P2 specs
+> keep their (guarded, harmless) per-file bootstrap + topics keeps its per-test bust —
+> deferred as cosmetic cleanup (no behavior impact).
+> **NOTE:** P3+P4 specs authored without an independent reviewer-esquema (sub-agent session
+> limit); verified against module source + green run. Re-review optional.
 
 ## Summary
 
