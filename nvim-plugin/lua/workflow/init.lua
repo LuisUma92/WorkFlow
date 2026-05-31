@@ -23,6 +23,16 @@ function M.setup(opts)
 	if M._config.keymaps then
 		require("workflow.keymaps").setup(M._config.keymap_prefix, M)
 	end
+
+	-- Register LuaSnip snippets (opt-out with snippets = false)
+	if M._config.snippets then
+		local ok, ls = pcall(require, "luasnip")
+		if ok then
+			ls.add_snippets("yaml", require("workflow.snippets.yml"))
+			ls.add_snippets("markdown", require("workflow.snippets.md"))
+			ls.add_snippets("tex", require("workflow.snippets.tex"))
+		end
+	end
 end
 
 -- Public actions
@@ -191,8 +201,28 @@ function M.pick_content_bib(opts)
 	require("workflow.picker.content_bib").pick(opts)
 end
 
-function M.content_link_bib(content_id, bibkey, chapter, section, first_page, last_page, first_exercise, last_exercise, opts)
-	require("workflow.content_bib").link(content_id, bibkey, chapter, section, first_page, last_page, first_exercise, last_exercise, opts)
+function M.content_link_bib(
+	content_id,
+	bibkey,
+	chapter,
+	section,
+	first_page,
+	last_page,
+	first_exercise,
+	last_exercise,
+	opts
+)
+	require("workflow.content_bib").link(
+		content_id,
+		bibkey,
+		chapter,
+		section,
+		first_page,
+		last_page,
+		first_exercise,
+		last_exercise,
+		opts
+	)
 end
 
 function M.content_unlink_bib(content_id, bibkey, opts)

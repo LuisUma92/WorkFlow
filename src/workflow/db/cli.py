@@ -9,9 +9,12 @@ from sqlalchemy.orm import Session
 
 import json as _json
 
+from sqlalchemy import select
+
 from workflow.db import migrations, seed_codes, taxonomy
 from workflow.db.errors import with_schema_guard
 from workflow.db.engine import get_engine_from_ctx
+from workflow.db.models.knowledge import DisciplineArea
 from workflow.db.schema_version import applied_revisions, current_version
 
 
@@ -254,6 +257,56 @@ def disciplines_list(as_json: bool, data_dir: Path | None) -> None:
         csv_label = e.csv_path.name if e.csv_path else "(missing)"
         hobby_flag = "yes" if e.hobby else "no"
         click.echo(f"{e.code_prefix}  {e.name:<31}  {hobby_flag:<5}  {csv_label}")
+
+
+def _parse_dd(dd: str | None) -> int | None:
+    if dd is None:
+        return None
+    if not dd.isdigit() or len(dd) > 2:
+        raise click.BadParameter(f"{dd!r} — must be a 1-2 digit string, e.g. '00' or '02'.")
+    return int(dd)
+
+
+def _render_discipline_areas_table(records: list[dict]) -> None:
+    if not records:
+        click.echo("No discipline areas found.")
+        return
+    click.echo(f"{'CODE':<8}  {'DD':<4}  NAME")
+    click.echo(f"{'------':<8}  {'--':<4}  ----------------------------------------")
+    for r in records:
+        click.echo(f"{r['code']:<8}  {r['discipline_num']:02d}    {r['name']}")
+
+
+@db.group("discipline-areas")
+def discipline_areas_group() -> None:
+    """List DisciplineArea rows from the DB (valid codes for `topic import`)."""
+
+
+@discipline_areas_group.command("list")
+@click.option("--json", "as_json", is_flag=True, default=False,
+              help="Emit machine-readable JSON instead of a table.")
+@click.option("--dd", "dd", type=str, default=None,
+              help="Filter by two-digit discipline prefix, e.g. '00' or '02'.")
+@click.pass_context
+@with_schema_guard
+def discipline_areas_list(ctx: click.Context, as_json: bool, dd: str | None) -> None:
+    """List discipline areas stored in the DB."""
+    dd_num = _parse_dd(dd)
+    engine = get_engine_from_ctx(ctx)
+    with Session(engine) as session:
+        stmt = select(DisciplineArea).order_by(DisciplineArea.code)
+        if dd_num is not None:
+            stmt = stmt.where(DisciplineArea.discipline_num == dd_num)
+        rows = session.scalars(stmt).all()
+        records = [
+            {"code": r.code, "discipline_num": r.discipline_num,
+             "name": r.name, "area_initials": r.area_initials}
+            for r in rows
+        ]
+    if as_json:
+        click.echo(_json.dumps(records, ensure_ascii=False, indent=2))
+    else:
+        _render_discipline_areas_table(records)
 
 
 # Deprecation alias: `db taxonomy list` → `db disciplines list`.

@@ -71,3 +71,66 @@ class TestImportCodesCli:
         result = runner.invoke(db, ["import-codes", "--csv", str(csv)])
         assert result.exit_code == 0, result.output
         assert "(no changes — already up to date)" in result.output
+
+
+class TestDisciplineAreasListCli:
+    def _seed(self, engine, rows):
+        from sqlalchemy.orm import Session as _Session
+        from workflow.db.models.knowledge import DisciplineArea
+        with _Session(engine) as s:
+            s.add_all([DisciplineArea(**r) for r in rows])
+            s.commit()
+
+    _MC = {"code": "0010MC", "name": "Mecánica Clásica", "discipline_num": 0,
+           "topic_num": 10, "area_initials": "MC"}
+    _PG = {"code": "0210PG", "name": "Programación", "discipline_num": 2,
+           "topic_num": 10, "area_initials": "PG"}
+
+    def test_empty_table(self, isolated_engine):
+        result = CliRunner().invoke(db, ["discipline-areas", "list"])
+        assert result.exit_code == 0, result.output
+        assert "No discipline areas found" in result.output
+
+    def test_empty_json(self, isolated_engine):
+        import json
+        result = CliRunner().invoke(db, ["discipline-areas", "list", "--json"])
+        assert result.exit_code == 0, result.output
+        assert json.loads(result.output) == []
+
+    def test_table_shows_rows_sorted(self, isolated_engine):
+        self._seed(isolated_engine, [self._PG, self._MC])
+        result = CliRunner().invoke(db, ["discipline-areas", "list"])
+        assert result.exit_code == 0, result.output
+        out = result.output
+        assert "0010MC" in out
+        assert "Mecánica Clásica" in out
+        assert "0210PG" in out
+        assert out.index("0010MC") < out.index("0210PG")
+
+    def test_json_shape(self, isolated_engine):
+        import json
+        self._seed(isolated_engine, [self._MC])
+        result = CliRunner().invoke(db, ["discipline-areas", "list", "--json"])
+        assert result.exit_code == 0, result.output
+        data = json.loads(result.output)
+        assert len(data) == 1
+        row = data[0]
+        assert row == {"code": "0010MC", "discipline_num": 0,
+                       "name": "Mecánica Clásica", "area_initials": "MC"}
+
+    def test_dd_filter(self, isolated_engine):
+        self._seed(isolated_engine, [self._MC, self._PG])
+        result = CliRunner().invoke(db, ["discipline-areas", "list", "--dd", "00"])
+        assert result.exit_code == 0, result.output
+        assert "0010MC" in result.output
+        assert "0210PG" not in result.output
+
+    def test_dd_unknown_prefix_empty(self, isolated_engine):
+        self._seed(isolated_engine, [self._MC])
+        result = CliRunner().invoke(db, ["discipline-areas", "list", "--dd", "99"])
+        assert result.exit_code == 0, result.output
+        assert "No discipline areas found" in result.output
+
+    def test_dd_malformed(self, isolated_engine):
+        result = CliRunner().invoke(db, ["discipline-areas", "list", "--dd", "xx"])
+        assert result.exit_code != 0

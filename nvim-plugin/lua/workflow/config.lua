@@ -11,6 +11,7 @@ M.defaults = {
 	vault_dir = "/home/luis/01-U/0000AA-Vault",
 	keymaps = true,
 	keymap_prefix = "<leader>z",
+	snippets = true,
 }
 
 function M.resolve(opts)

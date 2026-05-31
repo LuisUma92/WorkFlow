@@ -46,7 +46,9 @@ function M.setup(prefix, workflow)
 	end, vim.tbl_extend("force", opts, { desc = "workflow: new note" }))
 	vim.keymap.set("n", prefix .. "nt", function()
 		vim.ui.input({ prompt = "Tags (+add -remove): " }, function(input)
-			if not input or input == "" then return end
+			if not input or input == "" then
+				return
+			end
 			local add_tags, remove_tags = {}, {}
 			for token in input:gmatch("%S+") do
 				if token:sub(1, 1) == "+" then
@@ -62,9 +64,13 @@ function M.setup(prefix, workflow)
 	end, vim.tbl_extend("force", opts, { desc = "workflow: tag current note" }))
 	vim.keymap.set("n", prefix .. "nl", function()
 		vim.ui.input({ prompt = "Link kind (concept/reference/exercise): " }, function(kind)
-			if not kind or kind == "" then return end
+			if not kind or kind == "" then
+				return
+			end
 			vim.ui.input({ prompt = "Value: " }, function(value)
-				if not value or value == "" then return end
+				if not value or value == "" then
+					return
+				end
 				workflow.link_note(nil, kind, value, {})
 			end)
 		end)
