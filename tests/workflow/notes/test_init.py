@@ -91,6 +91,22 @@ class TestInitWorkspace:
         assert "images: []" in content
         assert "references: []" in content
 
+    def test_literature_template_has_bib_fence(self, tmp_path):
+        init_workspace(tmp_path)
+        content = (tmp_path / VAULT_NAME / "templates" / "literature.md").read_text()
+        assert "```bib" in content
+        assert ":WorkflowBibImport" in content
+
+    def test_fleeting_template_has_no_bib_fence(self, tmp_path):
+        init_workspace(tmp_path)
+        content = (tmp_path / VAULT_NAME / "templates" / "fleeting.md").read_text()
+        assert "```bib" not in content
+
+    def test_permanent_template_has_no_bib_fence(self, tmp_path):
+        init_workspace(tmp_path)
+        content = (tmp_path / VAULT_NAME / "templates" / "permanent.md").read_text()
+        assert "```bib" not in content
+
 
 class TestInitCLI:
     def test_init_command_succeeds(self, runner, tmp_path):

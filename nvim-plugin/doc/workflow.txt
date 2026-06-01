@@ -200,6 +200,37 @@ indexes so `:help :WorkflowXxx` resolves correctly.
     :WorkflowContentUnlinkBib 7 Smith2020
 <
 
+------------------------------------------------------------------------------
+2.10 Bib import (v1.18.0)                                *workflow-bib-import*
+
+*:WorkflowBibImport*
+  Extract the first ` ```bib ` fenced code block in the current buffer and
+  import its content into the PRISMA bibliography via:
+    `workflow prisma bib import --stdin --json`
+
+  The block must open with a line matching exactly ` ```bib ` (or `~~~bib`)
+  and close with ` ``` ` (or `~~~`).  Only the FIRST such block is used.
+  The inner text is sent as stdin; the command runs asynchronously.
+
+  On success a notification shows the counts returned by the CLI: >
+    bib import: 2 created, 1 skipped, 0 error(s)
+<
+  If no bib block is found in the buffer, an INFO notification is shown and
+  the CLI is not invoked.
+
+  Example buffer fragment: >
+    ```bib
+    @article{Smith2020,
+      author  = {Smith, J.},
+      title   = {A Great Paper},
+      year    = {2020},
+    }
+    ```
+<
+  Then run: >
+    :WorkflowBibImport
+<
+
 ==============================================================================
 3. KEYMAPS                                                   *workflow-keymaps*
 

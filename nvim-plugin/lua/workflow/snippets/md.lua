@@ -69,4 +69,70 @@ return {
 		t({ "", "" }),
 		i(0),
 	}),
+
+	-- biblatex blocks for `:WorkflowBibImport`. The cite key becomes `bibkey`
+	-- on import; fields below all map to BibEntry columns. NOTE: the importer
+	-- silently ignores any field it does not recognise (no warning), so keep
+	-- these field names in sync with importer.py's field sets.
+	s({ trig = "bib.book", wordTrig = true, name = "biblatex @book block" }, {
+		t("```bib"),
+		t({ "", "@book{" }), i(1, "key"), t(","),
+		t({ "", "  author    = {" }), i(2, ""), t("}," ),
+		t({ "", "  title     = {" }), i(3, ""), t("}," ),
+		t({ "", "  year      = {" }), i(4, ""), t("}," ),
+		t({ "", "  publisher = {" }), i(5, ""), t("}," ),
+		t({ "", "  location  = {" }), i(6, ""), t("}," ),
+		t({ "", "  edition   = {" }), i(7, ""), t("}," ),
+		t({ "", "}" }),
+		t({ "", "```" }),
+		t({ "", "" }),
+		i(0),
+	}),
+
+	s({ trig = "bib.article", wordTrig = true, name = "biblatex @article block" }, {
+		t("```bib"),
+		t({ "", "@article{" }), i(1, "key"), t(","),
+		t({ "", "  author  = {" }), i(2, ""), t("}," ),
+		t({ "", "  title   = {" }), i(3, ""), t("}," ),
+		t({ "", "  journal = {" }), i(4, ""), t("}," ),
+		t({ "", "  year    = {" }), i(5, ""), t("}," ),
+		t({ "", "  volume  = {" }), i(6, ""), t("}," ),
+		t({ "", "  number  = {" }), i(7, ""), t("}," ),
+		t({ "", "  pages   = {" }), i(8, ""), t("}," ),
+		t({ "", "  doi     = {" }), i(9, ""), t("}," ),
+		t({ "", "}" }),
+		t({ "", "```" }),
+		t({ "", "" }),
+		i(0),
+	}),
+
+	s({ trig = "bib.techreport", wordTrig = true, name = "biblatex @techreport block" }, {
+		t("```bib"),
+		t({ "", "@techreport{" }), i(1, "key"), t(","),
+		t({ "", "  author      = {" }), i(2, ""), t("}," ),
+		t({ "", "  title       = {" }), i(3, ""), t("}," ),
+		t({ "", "  institution = {" }), i(4, ""), t("}," ),
+		t({ "", "  year        = {" }), i(5, ""), t("}," ),
+		t({ "", "  number      = {" }), i(6, ""), t("}," ),
+		t({ "", "  url         = {" }), i(7, ""), t("}," ),
+		t({ "", "}" }),
+		t({ "", "```" }),
+		t({ "", "" }),
+		i(0),
+	}),
+
+	s({ trig = "bib.online", wordTrig = true, name = "biblatex @online block" }, {
+		t("```bib"),
+		t({ "", "@online{" }), i(1, "key"), t(","),
+		t({ "", "  author       = {" }), i(2, ""), t("}," ),
+		t({ "", "  title        = {" }), i(3, ""), t("}," ),
+		t({ "", "  organization = {" }), i(4, ""), t("}," ),
+		t({ "", "  year         = {" }), i(5, ""), t("}," ),
+		t({ "", "  url          = {" }), i(6, ""), t("}," ),
+		t({ "", "  urldate      = {" }), f(today, {}), t("}," ),
+		t({ "", "}" }),
+		t({ "", "```" }),
+		t({ "", "" }),
+		i(0),
+	}),
 }

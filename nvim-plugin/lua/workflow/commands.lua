@@ -301,6 +301,15 @@ function M.setup(workflow)
 		local bibkey = f[2]
 		workflow.content_unlink_bib(content_id, bibkey, {})
 	end, { nargs = "+" })
+
+	-- Bib import command (v1.18.0)
+
+	-- :WorkflowBibImport
+	-- Extract the first ```bib fenced block in the current buffer and import
+	-- it via `workflow prisma bib import --stdin --json`.
+	vim.api.nvim_create_user_command("WorkflowBibImport", function()
+		require("workflow.bib_import").import_current_buffer({})
+	end, { nargs = 0 })
 end
 
 return M

@@ -6,6 +6,7 @@ Groups: ``prisma`` with subgroups ``bib``, ``keyword``, ``review``, ``tag``, ``r
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import cast
 
@@ -35,7 +36,7 @@ from workflow.prisma.formatters import (
     format_tag_table,
 )
 from workflow.prisma.exporter import ReviewStatus, export_bib_entries
-from workflow.prisma.importer import import_bib_file
+from workflow.prisma.importer import import_bib_file, import_bib_text
 from workflow.prisma.service import (
     REVIEW_STATUS_LABELS,
     create_keyword,
@@ -146,8 +147,11 @@ def bib_search(
 @bib.command(name="import")
 @click.argument(
     "path",
-    type=click.Path(exists=True, dir_okay=False, readable=True),
+    required=False,
+    default=None,
+    type=click.Path(dir_okay=False, readable=True),
 )
+@click.option("--stdin", "use_stdin", is_flag=True, help="Read biblatex from stdin instead of a file.")
 @click.option(
     "--database-name",
     default=None,
@@ -159,17 +163,32 @@ def bib_search(
 @with_schema_guard
 def bib_import(
     ctx: click.Context,
-    path: str,
+    path: str | None,
+    use_stdin: bool,
     database_name: str | None,
     verbose: bool,
     as_json: bool,
 ) -> None:
-    """Import a BibTeX file into the bibliography."""
+    """Import a BibTeX file into the bibliography.
+
+    Provide a file PATH, or use --stdin to read biblatex from standard input.
+    """
+    if use_stdin and path is not None:
+        raise click.ClickException("--stdin cannot be combined with a file path")
+    if not use_stdin and path is None:
+        raise click.ClickException("Provide a file PATH or use --stdin to read from stdin.")
+
     engine = get_engine_from_ctx(ctx)
 
     try:
         with Session(engine) as session:
-            result = import_bib_file(session, path, database_name=database_name)
+            if use_stdin:
+                text = sys.stdin.read()
+                result = import_bib_text(session, text, database_name=database_name)
+            else:
+                if not Path(path).exists():
+                    raise FileNotFoundError(f"bib file not found: {path}")
+                result = import_bib_file(session, path, database_name=database_name)
     except (FileNotFoundError, ValueError) as exc:
         raise click.ClickException(str(exc))
 

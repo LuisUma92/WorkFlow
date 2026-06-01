@@ -14,6 +14,7 @@ from typing import Literal
 from urllib.parse import urlparse
 
 import bibtexparser
+from bibtexparser.bparser import BibTexParser
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -27,7 +28,7 @@ from workflow.db.models.bibliography import (
     ReferencedDatabase,
 )
 
-__all__ = ["ImportResult", "import_bib_file", "MAX_BIB_SIZE_BYTES"]
+__all__ = ["ImportResult", "import_bib_file", "import_bib_text", "MAX_BIB_SIZE_BYTES"]
 
 
 MAX_BIB_SIZE_BYTES: int = 50 * 1024 * 1024  # 50 MB hard cap on input
@@ -41,12 +42,13 @@ TRANSLATED_BIB_KEYS: dict[str, str] = {
     "bibkey": "ID",
     "journaltitle": "journal",
     "publication_date": "date",
+    "urldate": "urldate",
     "notes": "note",
     "abstract_text": "abstract",
     "file_path": "file",
 }
 
-_DATE_BIB_FIELDS: frozenset[str] = frozenset({"publication_date"})
+_DATE_BIB_FIELDS: frozenset[str] = frozenset({"publication_date", "urldate"})
 
 _STRING_BIB_FIELDS: frozenset[str] = frozenset(
     {
@@ -344,33 +346,29 @@ def _infer_database_name(path: Path) -> str | None:
     return None
 
 
-def import_bib_file(
+def import_bib_text(
     session: Session,
-    path: str | Path,
+    text: str,
+    *,
     database_name: str | None = None,
 ) -> ImportResult:
-    """Parse a .bib file and insert rows into the session.
+    """Parse biblatex *text* and insert rows into the session.
 
-    Commits the session on completion. Raises ``FileNotFoundError`` if
-    path does not exist and ``ValueError`` if the file exceeds
-    ``MAX_BIB_SIZE_BYTES``. Per-entry errors are isolated by savepoint
-    and collected into the result rather than raised.
+    Commits the session on completion. Raises ``ValueError`` if the
+    encoded text exceeds ``MAX_BIB_SIZE_BYTES``. Per-entry errors are
+    isolated by savepoint and collected into the result rather than raised.
     """
-    p = Path(path)
-    if not p.exists():
-        raise FileNotFoundError(f"bib file not found: {path}")
-
-    size = p.stat().st_size
+    size = len(text.encode("utf-8"))
     if size > MAX_BIB_SIZE_BYTES:
         raise ValueError(
-            f"bib file too large ({size} bytes > {MAX_BIB_SIZE_BYTES} cap)"
+            f"bib text too large ({size} bytes > {MAX_BIB_SIZE_BYTES} cap)"
         )
 
-    with p.open() as f:
-        parsed = bibtexparser.load(f)
-
-    if database_name is None:
-        database_name = _infer_database_name(p)
+    # Accept biblatex-only entry types (@online, @report, @thesis, …).
+    # bibtexparser's default parser silently drops "non-standard" types.
+    parser = BibTexParser(common_strings=True)
+    parser.ignore_nonstandard_types = False
+    parsed = bibtexparser.loads(text, parser=parser)
 
     created = 0
     skipped = 0
@@ -401,3 +399,34 @@ def import_bib_file(
         errors=tuple(errors),
         statuses=tuple(statuses),
     )
+
+
+def import_bib_file(
+    session: Session,
+    path: str | Path,
+    database_name: str | None = None,
+) -> ImportResult:
+    """Parse a .bib file and insert rows into the session.
+
+    Commits the session on completion. Raises ``FileNotFoundError`` if
+    path does not exist and ``ValueError`` if the file exceeds
+    ``MAX_BIB_SIZE_BYTES``. Delegates to ``import_bib_text`` after reading
+    the file. Per-entry errors are isolated by savepoint and collected into
+    the result rather than raised.
+    """
+    p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(f"bib file not found: {path}")
+
+    size = p.stat().st_size
+    if size > MAX_BIB_SIZE_BYTES:
+        raise ValueError(
+            f"bib file too large ({size} bytes > {MAX_BIB_SIZE_BYTES} cap)"
+        )
+
+    text = p.read_text(encoding="utf-8")
+
+    if database_name is None:
+        database_name = _infer_database_name(p)
+
+    return import_bib_text(session, text, database_name=database_name)

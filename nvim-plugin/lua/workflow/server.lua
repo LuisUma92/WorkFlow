@@ -7,9 +7,12 @@
 
 local M = {}
 
---- Run a workflow CLI command asynchronously
+--- Run a workflow CLI command asynchronously.
+--- Optional stdin: set config.stdin (string) to write text to the process's
+--- stdin and close it after jobstart.  Existing 3-arg callers are unaffected
+--- (nil config.stdin means no stdin is sent).
 ---@param args string[] CLI arguments after "workflow"
----@param config table workspace config
+---@param config table workspace config (may include config.stdin: string|nil)
 ---@param on_done fun(ok: boolean, output: string)|nil
 function M.run_cli(args, config, on_done)
 	local cmd_path = vim.fn.expand(config.workflow_cmd or "~/.local/bin/workflow")
@@ -67,7 +70,12 @@ function M.run_cli(args, config, on_done)
 	if expanded_cwd and vim.fn.isdirectory(expanded_cwd) == 1 then
 		job_opts.cwd = expanded_cwd
 	end
-	vim.fn.jobstart(cmd, job_opts)
+	local job = vim.fn.jobstart(cmd, job_opts)
+	-- If a stdin payload is present, send it and close the channel.
+	if job > 0 and config.stdin ~= nil then
+		vim.fn.chansend(job, config.stdin)
+		vim.fn.chanclose(job, "stdin")
+	end
 end
 
 --- Sync notes in the vault
