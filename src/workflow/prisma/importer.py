@@ -7,6 +7,7 @@ Uses per-item savepoint rollback on IntegrityError for dedup.
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -19,6 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from workflow.bibliography import dialect as _dialect
 from workflow.db.models.bibliography import (
     Author,
     AuthorType,
@@ -40,10 +42,12 @@ EntryStatus = Literal["created", "skipped"]
 TRANSLATED_BIB_KEYS: dict[str, str] = {
     "entry_type": "ENTRYTYPE",
     "bibkey": "ID",
-    "journaltitle": "journal",
+    # BibTeX → BibLaTeX field aliases — derived from canonical map (ADR-0019).
+    # Keys are BibLaTeX model column names; values are BibTeX raw field names.
+    **{biblatex: bibtex for bibtex, biblatex in _dialect.BIBTEX_TO_BIBLATEX.items()},
+    # Importer-private struct keys (not in the dialect alias map)
     "publication_date": "date",
     "urldate": "urldate",
-    "notes": "note",
     "abstract_text": "abstract",
     "file_path": "file",
 }
@@ -52,6 +56,11 @@ _DATE_BIB_FIELDS: frozenset[str] = frozenset({"publication_date", "urldate"})
 
 _STRING_BIB_FIELDS: frozenset[str] = frozenset(
     {
+        # BibLaTeX-native spellings that can also appear as raw fields when a
+        # .bib is already in biblatex format (ADR-0019 P1).
+        "journaltitle",
+        "notes",
+        # Other direct-pass string fields
         "institution",
         "organization",
         "publisher",
@@ -195,10 +204,31 @@ def _assign_translated(out: dict[str, object], model_key: str, raw_val: object) 
 
 
 def _parse_fields(raw: dict[str, object]) -> dict[str, object]:
-    """Map a ``bibtexparser`` entry to a BibEntry kwarg dict."""
+    """Map a ``bibtexparser`` entry to a BibEntry kwarg dict.
+
+    Collision rule (ADR-0019): if a raw entry contains *both* a BibTeX alias
+    (e.g. ``journal``) and its BibLaTeX target (e.g. ``journaltitle``), the
+    BibLaTeX-native value wins and a ``UserWarning`` is emitted — matching the
+    semantics of :func:`workflow.bibliography.dialect.to_biblatex`.
+    """
     out: dict[str, object] = {}
+    # Set of model_keys that are also BibLaTeX-native raw field names (the 5 alias targets).
+    _alias_model_keys: frozenset[str] = frozenset(_dialect.BIBTEX_TO_BIBLATEX.values())
     for model_key, bib_key in TRANSLATED_BIB_KEYS.items():
-        if bib_key in raw:
+        if bib_key not in raw:
+            continue
+        # For the 5 bibtex-alias entries, model_key IS the biblatex-native field name.
+        # If the raw entry also has model_key as a direct key, the native value wins.
+        if model_key in _alias_model_keys and model_key in raw:
+            # Both bibtex alias and biblatex-native present — prefer native, warn.
+            warnings.warn(
+                f"BibTeX field {bib_key!r} conflicts with already-present biblatex "
+                f"field {model_key!r}; keeping existing biblatex value.",
+                UserWarning,
+                stacklevel=4,
+            )
+            _assign_translated(out, model_key, raw[model_key])
+        else:
             _assign_translated(out, model_key, raw[bib_key])
     for key, val in raw.items():
         if key in _IGNORED_BIB_KEYS:

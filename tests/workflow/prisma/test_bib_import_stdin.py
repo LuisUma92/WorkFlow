@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import textwrap
+import warnings
 
 import pytest
 from click.testing import CliRunner
@@ -251,3 +252,168 @@ class TestSnippetFieldMapping:
         ).scalar_one()
         assert entry.urldate is not None
         assert entry.urldate.isoformat() == "2022-03-15"
+
+
+class TestBibtexDialectAliases:
+    """Integration: BibTeX-spelled fields are translated to BibLaTeX columns (ADR-0019 P1).
+
+    Uses bibtex field spellings (journal, address, school, annote, note) and
+    asserts the correct BibLaTeX column is populated on the persisted BibEntry.
+    Each test uses a UNIQUE bibkey, title, and volume so the (title, year, volume)
+    dedup constraint never collapses multiple tests into a single DB row.
+    """
+
+    def test_journal_maps_to_journaltitle(self, global_session):
+        bib = textwrap.dedent("""\
+            @article{alias_journal2024,
+              title   = {Alias Journal Test},
+              author  = {Doe, Jane},
+              journal = {Journal of Testing},
+              year    = {2024},
+              volume  = {101},
+            }
+        """)
+        import_bib_text(global_session, bib)
+        entry = global_session.execute(
+            select(BibEntry).where(BibEntry.bibkey == "alias_journal2024")
+        ).scalar_one()
+        assert entry.journaltitle == "Journal of Testing"
+
+    def test_address_maps_to_location(self, global_session):
+        bib = textwrap.dedent("""\
+            @article{alias_address2024,
+              title   = {Alias Address Test},
+              author  = {Doe, Jane},
+              year    = {2024},
+              volume  = {102},
+              address = {Cambridge},
+            }
+        """)
+        import_bib_text(global_session, bib)
+        entry = global_session.execute(
+            select(BibEntry).where(BibEntry.bibkey == "alias_address2024")
+        ).scalar_one()
+        assert entry.location == "Cambridge"
+
+    def test_school_maps_to_institution(self, global_session):
+        bib = textwrap.dedent("""\
+            @article{alias_school2024,
+              title   = {Alias School Test},
+              author  = {Doe, Jane},
+              year    = {2024},
+              volume  = {103},
+              school  = {Harvard University},
+            }
+        """)
+        import_bib_text(global_session, bib)
+        entry = global_session.execute(
+            select(BibEntry).where(BibEntry.bibkey == "alias_school2024")
+        ).scalar_one()
+        assert entry.institution == "Harvard University"
+
+    def test_annote_maps_to_annotation(self, global_session):
+        bib = textwrap.dedent("""\
+            @article{alias_annote2024,
+              title   = {Alias Annote Test},
+              author  = {Doe, Jane},
+              year    = {2024},
+              volume  = {104},
+              annote  = {A useful annotation},
+            }
+        """)
+        import_bib_text(global_session, bib)
+        entry = global_session.execute(
+            select(BibEntry).where(BibEntry.bibkey == "alias_annote2024")
+        ).scalar_one()
+        assert entry.annotation == "A useful annotation"
+
+    def test_note_maps_to_notes(self, global_session):
+        bib = textwrap.dedent("""\
+            @article{alias_note2024,
+              title   = {Alias Note Test},
+              author  = {Doe, Jane},
+              year    = {2024},
+              volume  = {105},
+              note    = {See supplementary material},
+            }
+        """)
+        import_bib_text(global_session, bib)
+        entry = global_session.execute(
+            select(BibEntry).where(BibEntry.bibkey == "alias_note2024")
+        ).scalar_one()
+        assert entry.notes == "See supplementary material"
+
+    def test_all_five_aliases_in_one_entry(self, global_session):
+        """All five BibTeX aliases populate BibLaTeX columns simultaneously."""
+        bib = textwrap.dedent("""\
+            @article{alias_all2024,
+              title   = {Alias All Fields Test},
+              author  = {Doe, Jane},
+              journal = {Journal of Testing},
+              year    = {2024},
+              volume  = {106},
+              address = {Cambridge},
+              school  = {Harvard University},
+              annote  = {A useful annotation},
+              note    = {See supplementary material},
+            }
+        """)
+        import_bib_text(global_session, bib)
+        entry = global_session.execute(
+            select(BibEntry).where(BibEntry.bibkey == "alias_all2024")
+        ).scalar_one()
+        assert entry.journaltitle == "Journal of Testing"
+        assert entry.location == "Cambridge"
+        assert entry.institution == "Harvard University"
+        assert entry.annotation == "A useful annotation"
+        assert entry.notes == "See supplementary material"
+
+    def test_biblatex_native_still_works(self, global_session):
+        """BibLaTeX-native spelling (journaltitle, location, ...) still persists."""
+        bib = textwrap.dedent("""\
+            @article{nativebiblatex2024,
+              title        = {Native BibLaTeX Article},
+              author       = {Smith, Alice},
+              journaltitle = {BibLaTeX Journal},
+              year         = {2024},
+              volume       = {42},
+              location     = {Berlin},
+              institution  = {TU Berlin},
+              annotation   = {Native annotation},
+              notes        = {Native notes},
+            }
+        """)
+        import_bib_text(global_session, bib)
+        entry = global_session.execute(
+            select(BibEntry).where(BibEntry.bibkey == "nativebiblatex2024")
+        ).scalar_one()
+        assert entry.journaltitle == "BibLaTeX Journal"
+        assert entry.location == "Berlin"
+        assert entry.institution == "TU Berlin"
+        assert entry.annotation == "Native annotation"
+        assert entry.notes == "Native notes"
+
+    def test_both_bibtex_and_biblatex_present_native_wins_with_warning(self, global_session):
+        """When both BibTeX alias and BibLaTeX-native key are present, native wins + warning."""
+        bib = textwrap.dedent("""\
+            @article{alias_collision2024,
+              title        = {Collision Test Article},
+              author       = {Doe, Jane},
+              year         = {2024},
+              volume       = {107},
+              journal      = {BibTeX Journal Name},
+              journaltitle = {BibLaTeX Journal Name},
+            }
+        """)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            import_bib_text(global_session, bib)
+
+        entry = global_session.execute(
+            select(BibEntry).where(BibEntry.bibkey == "alias_collision2024")
+        ).scalar_one()
+        # BibLaTeX-native value must win
+        assert entry.journaltitle == "BibLaTeX Journal Name"
+        # A UserWarning naming 'journal' must have been emitted
+        user_warnings = [w for w in caught if issubclass(w.category, UserWarning)]
+        assert any("journal" in str(w.message).lower() for w in user_warnings)
