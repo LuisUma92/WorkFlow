@@ -22,6 +22,7 @@ from typing import Literal
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
+from workflow.bibliography.dialect import downgrade_entry_type as _downgrade_entry_type
 from workflow.bibliography.dialect import to_bibtex as _dialect_to_bibtex
 from workflow.db.models.bibliography import (
     BibEntry,
@@ -38,56 +39,25 @@ ReviewStatus = Literal["included", "excluded", "pending"]
 # Constants
 # ---------------------------------------------------------------------------
 
-# Columns never emitted as bib fields.
+# Columns never emitted as bib fields (internal/metadata columns).
+# ``publication_date`` is a derived Python Date object — never a valid bib field.
 _SKIPPED_MODEL_FIELDS: frozenset[str] = frozenset(
     {
         "id",
         "created_at",
         "updated_at",
         "isn_type_id",
+        "publication_date",
     }
 )
 
 # In bibtex dialect the ``date`` column is suppressed; year/month columns
 # carry the date information instead.
-_BIBTEX_SUPPRESS_FIELDS: frozenset[str] = frozenset({"date"})
+# ``eventdate`` and ``urldate`` are biblatex-only fields — suppress in bibtex.
+_BIBTEX_SUPPRESS_FIELDS: frozenset[str] = frozenset({"date", "eventdate", "urldate"})
 
 _SAFE_BIBKEY_RE = re.compile(r"^[A-Za-z0-9_:\-]+$")
 _SAFE_ETYPE_RE = re.compile(r"^[A-Za-z]+$")
-
-# ---------------------------------------------------------------------------
-# Entry-type downgrade table (biblatex → bibtex).
-# Keys are lower-case biblatex entry types; values are bibtex equivalents.
-# Types absent from this table pass through unchanged (standard bibtex types).
-# ---------------------------------------------------------------------------
-_BIBLATEX_TO_BIBTEX_TYPES: dict[str, str] = {
-    # Electronic / web
-    "online": "misc",
-    "electronic": "misc",
-    "www": "misc",
-    # Reports
-    "report": "techreport",
-    # Multi-volume books
-    "mvbook": "book",
-    "mvcollection": "book",
-    "mvproceedings": "proceedings",
-    "mvreference": "book",
-    # In-container entries
-    "inreference": "inbook",
-    "suppbook": "inbook",
-    "suppcollection": "incollection",
-    "suppperiodical": "article",
-    # Periodicals
-    "periodical": "misc",
-    # Patents / other
-    "patent": "misc",
-    "software": "misc",
-    "dataset": "misc",
-    # @thesis is handled specially (→ phdthesis or mastersthesis)
-}
-
-# Keyword fragments in the ``type`` subfield that indicate a master's thesis.
-_MASTERS_KEYWORDS = ("master", "mathesis", "msc")
 
 
 # ---------------------------------------------------------------------------
@@ -124,7 +94,7 @@ def _fetch_entries(
     return list(session.scalars(stmt).unique().all())
 
 
-def _join_authors(bib_entry: BibEntry, author_type_name: str, dialect: Dialect) -> str | None:
+def _join_authors(bib_entry: BibEntry, author_type_name: str) -> str | None:
     """Format author list for a given role.
 
     Both dialects use the ``von Last, Jr, First`` / ``von Last, First``
@@ -192,28 +162,13 @@ def _safe_etype(raw: str | None) -> str:
     return "misc"
 
 
-def _downgrade_entry_type(entry_type: str, type_subfield: str | None) -> str:
-    """Downgrade a biblatex entry type to the nearest bibtex equivalent.
-
-    ``@thesis`` is special: if the ``type`` subfield contains a keyword
-    indicating a master's thesis, returns ``mastersthesis``; otherwise
-    ``phdthesis``.
-    """
-    lower = entry_type.lower()
-    if lower == "thesis":
-        if type_subfield:
-            t = type_subfield.lower()
-            if any(kw in t for kw in _MASTERS_KEYWORDS):
-                return "mastersthesis"
-        return "phdthesis"
-    return _BIBLATEX_TO_BIBTEX_TYPES.get(lower, entry_type)
-
-
 def _biblatex_field_pairs(entry: BibEntry) -> list[tuple[str, str]]:
     """Return (field_name, rendered_value) pairs for biblatex dialect.
 
     Emits canonical biblatex field names directly (no name translation).
     Skips internal/metadata columns.
+    ``isn`` is emitted under its ISN-type code (``isbn``/``issn``/``ismn``) when
+    ``entry.isn_type`` is set; falls back to ``isn`` when the type is unknown.
     """
     pairs: list[tuple[str, str]] = []
     for col in entry.__table__.columns:
@@ -225,7 +180,11 @@ def _biblatex_field_pairs(entry: BibEntry) -> list[tuple[str, str]]:
         val = getattr(entry, name, None)
         if val is None or val == "":
             continue
-        pairs.append((name, _render_value(val)))
+        if name == "isn":
+            field_name = entry.isn_type.code.lower() if entry.isn_type else "isn"
+            pairs.append((field_name, _render_value(val)))
+        else:
+            pairs.append((name, _render_value(val)))
     return pairs
 
 
@@ -234,9 +193,9 @@ def _bibtex_field_pairs(entry: BibEntry) -> list[tuple[str, str]]:
 
     - Reverse-maps biblatex field names to bibtex aliases via
       :func:`~workflow.bibliography.dialect.to_bibtex`.
-    - Suppresses ``date`` (bibtex uses ``year`` / ``month`` columns).
-    - ``isn`` is emitted as-is (bibtex has no standard isn field, but it
-      is preferable to silently dropping it).
+    - Suppresses ``date``, ``eventdate``, ``urldate`` (bibtex-unsupported).
+    - ``isn`` is emitted under its ISN-type code (``isbn``/``issn``/``ismn``)
+      when ``entry.isn_type`` is set; falls back to ``isn``.
     """
     raw: dict[str, object] = {}
     for col in entry.__table__.columns:
@@ -250,7 +209,11 @@ def _bibtex_field_pairs(entry: BibEntry) -> list[tuple[str, str]]:
         val = getattr(entry, name, None)
         if val is None or val == "":
             continue
-        raw[name] = val
+        if name == "isn":
+            field_name = entry.isn_type.code.lower() if entry.isn_type else "isn"
+            raw[field_name] = val
+        else:
+            raw[name] = val
 
     # Reverse-map biblatex field names → bibtex aliases.
     mapped = _dialect_to_bibtex(raw)
@@ -276,7 +239,7 @@ def _entry_to_biblatex(entry: BibEntry) -> str:
     lines: list[str] = [f"@{etype}{{{bibkey},"]
 
     for role in ("author", "editor", "translator"):
-        joined = _join_authors(entry, role, dialect="biblatex")
+        joined = _join_authors(entry, role)
         if joined:
             lines.append(f"  {role} = {{{_strip_braces(joined)}}},")
 
@@ -300,17 +263,30 @@ def _entry_to_bibtex(entry: BibEntry) -> str:
       ``von Last[, Jr][, First]`` form (valid in bibtex).
     """
     raw_etype = _safe_etype(entry.entry_type)
-    etype = _downgrade_entry_type(raw_etype, entry.type)
+    etype = _downgrade_entry_type(raw_etype, subtype=entry.type)
     bibkey = _safe_bibkey(entry.bibkey, entry.id)
 
     lines: list[str] = [f"@{etype}{{{bibkey},"]
 
     for role in ("author", "editor", "translator"):
-        joined = _join_authors(entry, role, dialect="bibtex")
+        joined = _join_authors(entry, role)
         if joined:
             lines.append(f"  {role} = {{{_strip_braces(joined)}}},")
 
-    for key, val in _bibtex_field_pairs(entry):
+    field_dict: dict[str, str] = dict(_bibtex_field_pairs(entry))
+
+    # When @online is downgraded to @misc, inject howpublished=\url{...}
+    # from the first available URL, unless howpublished is already present.
+    if raw_etype.lower() == "online" and "howpublished" not in field_dict:
+        url_str: str | None = None
+        if entry.urls:
+            # Prefer main_url=True; fall back to first URL.
+            main = next((u for u in entry.urls if u.main_url), None)
+            url_str = (main or entry.urls[0]).url_string
+        if url_str:
+            field_dict["howpublished"] = r"\url{" + _strip_braces(url_str) + "}"
+
+    for key, val in field_dict.items():
         lines.append(f"  {key} = {{{val}}},")
 
     lines.append("}")

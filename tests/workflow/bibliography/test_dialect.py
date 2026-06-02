@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import warnings
 
-from workflow.bibliography.dialect import BIBTEX_TO_BIBLATEX, to_biblatex, to_bibtex
+from workflow.bibliography.dialect import BIBTEX_TO_BIBLATEX, downgrade_entry_type, to_biblatex, to_bibtex
 
 
 # ---------------------------------------------------------------------------
@@ -175,6 +175,43 @@ class TestToBibtex:
 # ---------------------------------------------------------------------------
 # Round-trip
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# downgrade_entry_type
+# ---------------------------------------------------------------------------
+
+class TestDowngradeEntryType:
+    def test_online_becomes_misc(self):
+        assert downgrade_entry_type("online") == "misc"
+
+    def test_report_becomes_techreport(self):
+        assert downgrade_entry_type("report") == "techreport"
+
+    def test_thesis_default_phdthesis(self):
+        assert downgrade_entry_type("thesis") == "phdthesis"
+
+    def test_thesis_mastersthesis_by_mathesis(self):
+        assert downgrade_entry_type("thesis", subtype="mathesis") == "mastersthesis"
+
+    def test_thesis_mastersthesis_by_master_keyword(self):
+        assert downgrade_entry_type("thesis", subtype="Master Thesis") == "mastersthesis"
+
+    def test_thesis_phdthesis_explicit_keyword(self):
+        assert downgrade_entry_type("thesis", subtype="PhD Dissertation") == "phdthesis"
+
+    def test_mvbook_becomes_book(self):
+        assert downgrade_entry_type("mvbook") == "book"
+
+    def test_standard_type_passes_through(self):
+        assert downgrade_entry_type("article") == "article"
+
+    def test_unknown_type_passes_through(self):
+        assert downgrade_entry_type("customtype") == "customtype"
+
+    def test_case_insensitive(self):
+        assert downgrade_entry_type("Online") == "misc"
+        assert downgrade_entry_type("REPORT") == "techreport"
+
 
 class TestRoundTrip:
     def test_bibtex_roundtrip(self):

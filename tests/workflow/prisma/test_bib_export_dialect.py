@@ -18,7 +18,7 @@ from click.testing import CliRunner
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from workflow.db.models.bibliography import Author, AuthorType, BibAuthor, BibEntry
+from workflow.db.models.bibliography import Author, AuthorType, BibAuthor, BibEntry, IsnType
 from workflow.prisma.cli import prisma
 from workflow.prisma.exporter import _entry_to_biblatex, _entry_to_bibtex, export_bib_entries
 from workflow.prisma.importer import import_bib_text
@@ -27,19 +27,6 @@ from workflow.prisma.importer import import_bib_text
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-def _parse_fields(bib_block: str) -> dict[str, str]:
-    """Parse key=value pairs from a single @type{key, ...} block."""
-    result: dict[str, str] = {}
-    for line in bib_block.splitlines():
-        line = line.strip().rstrip(",")
-        if "=" in line and not line.startswith("@"):
-            k, _, v = line.partition("=")
-            k = k.strip()
-            v = v.strip().strip("{").strip("}")
-            if k:
-                result[k] = v
-    return result
 
 
 def _make_entry(session: Session, **kwargs) -> BibEntry:
@@ -120,11 +107,23 @@ class TestEntryToBiblatex:
         block = _entry_to_biblatex(e)
         assert block.startswith("@online{")
 
-    def test_isbn_emitted_as_isn(self, global_session):
-        """isn field is emitted; isn_type resolution tested separately."""
+    def test_isn_without_type_emitted_as_isn(self, global_session):
+        """isn without isn_type falls back to field name 'isn'."""
         e = _make_entry(global_session, bibkey="isn1", isn="978-3-16-148410-0", volume="11")
         block = _entry_to_biblatex(e)
-        assert "isn" in block
+        assert "isn = {978-3-16-148410-0}" in block
+
+    def test_isbn_dispatched_from_isn_type(self, global_session):
+        """isn + isn_type.code='isbn' → emitted as 'isbn = {...}'."""
+        isn_type = IsnType(code="isbn")
+        global_session.add(isn_type)
+        global_session.flush()
+        e = _make_entry(global_session, bibkey="isbn1", isn="978-3-16-148410-0",
+                        isn_type_id=isn_type.id, volume="11b")
+        e.isn_type = isn_type
+        block = _entry_to_biblatex(e)
+        assert "isbn = {978-3-16-148410-0}" in block
+        assert "isn =" not in block
 
 
 # ---------------------------------------------------------------------------
@@ -196,13 +195,21 @@ class TestEntryTypeDowngrade:
         assert block.startswith("@misc{")
 
     def test_online_gets_howpublished(self, global_session):
-        """@online with url field → howpublished=\\url{...} in bibtex output."""
+        """@online with url → howpublished=\\url{...} injected in bibtex output."""
+        from workflow.db.models.bibliography import BibUrl, ReferencedDatabase
         e = _make_entry(global_session, bibkey="on3", entry_type="online",
                         doi=None, volume="21")
-        # Manually patch a url on entry via BibUrl is complex; test that
-        # online→misc downgrade happens and the entry is valid bibtex.
+        db = ReferencedDatabase(name="TestDB")
+        global_session.add(db)
+        global_session.flush()
+        burl = BibUrl(bib_entry_id=e.id, database_id=db.id,
+                      url_string="https://example.com/article", main_url=True)
+        global_session.add(burl)
+        global_session.flush()
         block = _entry_to_bibtex(e)
         assert "@misc{" in block
+        assert "howpublished" in block
+        assert "https://example.com/article" in block
 
     def test_report_becomes_techreport(self, global_session):
         e = _make_entry(global_session, bibkey="rp1", entry_type="report", volume="22")

@@ -244,7 +244,7 @@ def bib_export(
         raise click.ClickException("--status requires --keyword-id")
 
     review_status = cast("ReviewStatus | None", status)
-    export_dialect = cast("Dialect", dialect.lower())
+    export_dialect = cast("Dialect", dialect)
 
     engine = get_engine_from_ctx(ctx)
     try:
