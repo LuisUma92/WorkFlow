@@ -159,6 +159,16 @@ def bib_search(
 )
 @click.option("--verbose", is_flag=True, help="Print per-entry status.")
 @click.option("--json", "as_json", is_flag=True, help="JSON output.")
+@click.option(
+    "--recompute-bibkeys",
+    "recompute_bibkeys",
+    is_flag=True,
+    default=False,
+    help=(
+        "Force bibkey recalculation for all imported entries, ignoring the source .bib ID. "
+        "By default, source IDs are kept verbatim and only missing/empty IDs are calculated."
+    ),
+)
 @click.pass_context
 @with_schema_guard
 def bib_import(
@@ -168,6 +178,7 @@ def bib_import(
     database_name: str | None,
     verbose: bool,
     as_json: bool,
+    recompute_bibkeys: bool,
 ) -> None:
     """Import a BibTeX file into the bibliography.
 
@@ -184,11 +195,19 @@ def bib_import(
         with Session(engine) as session:
             if use_stdin:
                 text = sys.stdin.read()
-                result = import_bib_text(session, text, database_name=database_name)
+                result = import_bib_text(
+                    session, text,
+                    database_name=database_name,
+                    recompute_bibkeys=recompute_bibkeys,
+                )
             else:
                 if not Path(path).exists():
                     raise FileNotFoundError(f"bib file not found: {path}")
-                result = import_bib_file(session, path, database_name=database_name)
+                result = import_bib_file(
+                    session, path,
+                    database_name=database_name,
+                    recompute_bibkeys=recompute_bibkeys,
+                )
     except (FileNotFoundError, ValueError) as exc:
         raise click.ClickException(str(exc))
 

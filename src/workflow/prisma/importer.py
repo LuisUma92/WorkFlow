@@ -7,6 +7,7 @@ Uses per-item savepoint rollback on IntegrityError for dedup.
 
 from __future__ import annotations
 
+import re
 import warnings
 from dataclasses import dataclass, field
 from datetime import date
@@ -21,6 +22,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from workflow.bibliography import dialect as _dialect
+from workflow.bibliography.bibkey import calculate_bibkey
 from workflow.db.models.bibliography import (
     Author,
     AuthorType,
@@ -30,7 +32,13 @@ from workflow.db.models.bibliography import (
     ReferencedDatabase,
 )
 
-__all__ = ["ImportResult", "import_bib_file", "import_bib_text", "MAX_BIB_SIZE_BYTES"]
+__all__ = [
+    "ImportResult",
+    "import_bib_file",
+    "import_bib_text",
+    "MAX_BIB_SIZE_BYTES",
+    "generate_bibkey_for_entry",
+]
 
 
 MAX_BIB_SIZE_BYTES: int = 50 * 1024 * 1024  # 50 MB hard cap on input
@@ -241,6 +249,69 @@ _IGNORED_BIB_KEYS: frozenset[str] = frozenset(
 )
 
 
+# ---------------------------------------------------------------------------
+# Bibkey generation helpers (ADR-0019, Phase 2)
+# ---------------------------------------------------------------------------
+
+def generate_bibkey_for_entry(fields: dict[str, object], author_string: str) -> str:
+    """Compute a calculated bibkey from parsed entry fields and the raw author string.
+
+    Extracts the first author's ``last_name`` and ``name_prefix`` (von-particle)
+    from :func:`_split_authors`, then delegates to
+    :func:`~workflow.bibliography.bibkey.calculate_bibkey` with year, volume,
+    edition, and entry_type from *fields*.
+
+    Parameters
+    ----------
+    fields:
+        The output of :func:`_parse_fields` (model-key → value mapping).
+    author_string:
+        Raw BibTeX ``author`` field value (may be empty or absent).
+
+    Returns
+    -------
+    str
+        Calculated bibkey string (never empty).
+    """
+    # Extract first author's surname + prefix from the raw author string.
+    surname: str | None = None
+    name_prefix: str | None = None
+    if author_string:
+        authors = _split_authors(author_string)
+        if authors:
+            _first_name, last, prefix, _suffix = authors[0]
+            surname = last or None
+            name_prefix = prefix
+
+    return calculate_bibkey(
+        surname=surname,
+        year=fields.get("year"),  # type: ignore[arg-type]
+        volume=fields.get("volume"),
+        edition=fields.get("edition"),  # type: ignore[arg-type]
+        entry_type=fields.get("entry_type"),  # type: ignore[arg-type]
+        name_prefix=name_prefix,
+    )
+
+
+def _disambiguate_bibkey(candidate: str, taken: set[str]) -> str:
+    """Append ``a``, ``b``, … to *candidate* until it is not in *taken*.
+
+    Only appends a suffix when *candidate* already appears in *taken*.
+    The first free suffix letter is used (``a`` → ``b`` → … → ``z``).
+    If all 26 are exhausted a ``RuntimeError`` is raised (extremely unlikely
+    in any real bibliography).
+    """
+    if candidate not in taken:
+        return candidate
+    for ch in "abcdefghijklmnopqrstuvwxyz":
+        suffixed = f"{candidate}{ch}"
+        if suffixed not in taken:
+            return suffixed
+    raise RuntimeError(
+        f"Cannot disambiguate bibkey {candidate!r}: all 26 suffixes are taken."
+    )
+
+
 def _assign_direct(out: dict[str, object], key: str, val: object) -> None:
     """Populate ``out[key]`` from a 1:1 BibTeX field (string or int)."""
     cleaned = _clean(val)
@@ -449,10 +520,49 @@ def _process_url(
         savepoint.rollback()
 
 
+def _resolve_bibkey(
+    raw: dict[str, object],
+    fields_dict: dict[str, object],
+    *,
+    recompute_bibkeys: bool,
+    taken_bibkeys: set[str] | None,
+) -> str:
+    """Pick the bibkey: source ID verbatim, else a disambiguated calculated key.
+
+    A sentinel ID from `_inject_keyless_ids` (key-less `.bib` entry) counts as
+    missing, so the calculated path fires. `--recompute-bibkeys` forces it.
+    """
+    source_id = _clean(raw.get("ID"))
+    if source_id and source_id.startswith(_KEYLESS_PREFIX):
+        source_id = None
+    if source_id and not recompute_bibkeys:
+        return source_id
+
+    author_string = raw.get("author", "")
+    if not isinstance(author_string, str):
+        author_string = ""
+    bibkey = generate_bibkey_for_entry(fields_dict, author_string)
+    if taken_bibkeys is not None:
+        bibkey = _disambiguate_bibkey(bibkey, taken_bibkeys)
+    return bibkey
+
+
 def _process_entry(
-    session: Session, raw: dict[str, object], database_name: str | None
+    session: Session,
+    raw: dict[str, object],
+    database_name: str | None,
+    *,
+    recompute_bibkeys: bool = False,
+    taken_bibkeys: set[str] | None = None,
 ) -> EntryStatus:
     fields_dict = _parse_fields(raw)
+    fields_dict["bibkey"] = _resolve_bibkey(
+        raw,
+        fields_dict,
+        recompute_bibkeys=recompute_bibkeys,
+        taken_bibkeys=taken_bibkeys,
+    )
+
     entry = BibEntry(**fields_dict)
 
     savepoint = session.begin_nested()
@@ -463,6 +573,10 @@ def _process_entry(
     except IntegrityError:
         savepoint.rollback()
         return "skipped"
+
+    # Track this key so later entries in the same batch can avoid collisions.
+    if taken_bibkeys is not None:
+        taken_bibkeys.add(entry.bibkey)
 
     for afield in _AUTHOR_FIELDS:
         val = raw.get(afield)
@@ -484,17 +598,54 @@ def _infer_database_name(path: Path) -> str | None:
     return None
 
 
+def _load_existing_bibkeys(session: Session) -> set[str]:
+    """Return the set of all non-null bibkeys already in the DB."""
+    rows = session.scalars(
+        select(BibEntry.bibkey).where(BibEntry.bibkey.is_not(None))
+    ).all()
+    return set(rows)
+
+
+# Sentinel citation key injected for key-less `.bib` entries (e.g. `@book{,`).
+# bibtexparser silently DROPS entries with an empty key, so we give each one a
+# unique placeholder before parsing, then treat it as "missing" in
+# `_process_entry` → the calculated bibkey path fires (request P2.2).
+_KEYLESS_PREFIX = "__keyless_"
+_KEYLESS_OPEN_RE = re.compile(r"(@\w+\s*\{)(\s*,)")
+
+
+def _inject_keyless_ids(text: str) -> str:
+    """Give every key-less entry (`@type{,`) a unique sentinel citation key."""
+    counter = [0]
+
+    def _repl(match: "re.Match[str]") -> str:
+        key = f"{_KEYLESS_PREFIX}{counter[0]}__"
+        counter[0] += 1
+        return f"{match.group(1)}{key}{match.group(2)}"
+
+    return _KEYLESS_OPEN_RE.sub(_repl, text)
+
+
 def import_bib_text(
     session: Session,
     text: str,
     *,
     database_name: str | None = None,
+    recompute_bibkeys: bool = False,
 ) -> ImportResult:
     """Parse biblatex *text* and insert rows into the session.
 
     Commits the session on completion. Raises ``ValueError`` if the
     encoded text exceeds ``MAX_BIB_SIZE_BYTES``. Per-entry errors are
     isolated by savepoint and collected into the result rather than raised.
+
+    Parameters
+    ----------
+    recompute_bibkeys:
+        When ``True``, ignore the source ``.bib`` entry ID and always
+        compute the canonical bibkey from author/year/volume/edition/type.
+        When ``False`` (default), source ID is kept verbatim; the
+        calculated key is only used when the source ID is missing/empty.
     """
     size = len(text.encode("utf-8"))
     if size > MAX_BIB_SIZE_BYTES:
@@ -502,11 +653,17 @@ def import_bib_text(
             f"bib text too large ({size} bytes > {MAX_BIB_SIZE_BYTES} cap)"
         )
 
+    # Inject sentinel keys so key-less entries survive parsing (request P2.2).
+    text = _inject_keyless_ids(text)
+
     # Accept biblatex-only entry types (@online, @report, @thesis, …).
     # bibtexparser's default parser silently drops "non-standard" types.
     parser = BibTexParser(common_strings=True)
     parser.ignore_nonstandard_types = False
     parsed = bibtexparser.loads(text, parser=parser)
+
+    # Gather existing bibkeys once for collision disambiguation.
+    taken_bibkeys: set[str] = _load_existing_bibkeys(session)
 
     created = 0
     skipped = 0
@@ -515,9 +672,17 @@ def import_bib_text(
 
     for raw in parsed.entries:
         bibkey = raw.get("ID", "<no-id>")
+        if isinstance(bibkey, str) and bibkey.startswith(_KEYLESS_PREFIX):
+            bibkey = "<no-id>"
         entry_savepoint = session.begin_nested()
         try:
-            status = _process_entry(session, raw, database_name)
+            status = _process_entry(
+                session,
+                raw,
+                database_name,
+                recompute_bibkeys=recompute_bibkeys,
+                taken_bibkeys=taken_bibkeys,
+            )
             entry_savepoint.commit()
             if status == "created":
                 created += 1
@@ -543,6 +708,8 @@ def import_bib_file(
     session: Session,
     path: str | Path,
     database_name: str | None = None,
+    *,
+    recompute_bibkeys: bool = False,
 ) -> ImportResult:
     """Parse a .bib file and insert rows into the session.
 
@@ -551,6 +718,12 @@ def import_bib_file(
     ``MAX_BIB_SIZE_BYTES``. Delegates to ``import_bib_text`` after reading
     the file. Per-entry errors are isolated by savepoint and collected into
     the result rather than raised.
+
+    Parameters
+    ----------
+    recompute_bibkeys:
+        Forwarded to :func:`import_bib_text`.  When ``True``, source ``.bib``
+        IDs are ignored and bibkeys are always calculated from entry metadata.
     """
     p = Path(path)
     if not p.exists():
@@ -567,4 +740,6 @@ def import_bib_file(
     if database_name is None:
         database_name = _infer_database_name(p)
 
-    return import_bib_text(session, text, database_name=database_name)
+    return import_bib_text(
+        session, text, database_name=database_name, recompute_bibkeys=recompute_bibkeys
+    )
