@@ -35,7 +35,7 @@ from workflow.prisma.formatters import (
     format_tag_json,
     format_tag_table,
 )
-from workflow.prisma.exporter import ReviewStatus, export_bib_entries
+from workflow.prisma.exporter import Dialect, ReviewStatus, export_bib_entries
 from workflow.prisma.importer import import_bib_file, import_bib_text
 from workflow.prisma.service import (
     REVIEW_STATUS_LABELS,
@@ -210,12 +210,19 @@ def bib_import(
     "--output",
     type=click.Path(dir_okay=False, writable=True),
     default=None,
-    help="Write BibTeX to this file instead of stdout.",
+    help="Write to this file instead of stdout.",
 )
 @click.option(
     "--force",
     is_flag=True,
     help="Overwrite --output if it exists.",
+)
+@click.option(
+    "--dialect",
+    type=click.Choice(["biblatex", "bibtex"], case_sensitive=False),
+    default="biblatex",
+    show_default=True,
+    help="Output dialect: 'biblatex' (canonical) or 'bibtex' (downgraded aliases).",
 )
 @click.pass_context
 @with_schema_guard
@@ -225,18 +232,28 @@ def bib_export(
     status: str | None,
     output: str | None,
     force: bool,
+    dialect: str,
 ) -> None:
-    """Export bibliography entries as BibTeX."""
+    """Export bibliography entries as BibLaTeX or BibTeX.
+
+    Default dialect is biblatex (canonical field names, no type downgrade).
+    Use --dialect bibtex for a bibtex-compatible export with downgraded entry
+    types and reversed field aliases (journaltitle→journal, etc.).
+    """
     if status is not None and keyword_id is None:
         raise click.ClickException("--status requires --keyword-id")
 
     review_status = cast("ReviewStatus | None", status)
+    export_dialect = cast("Dialect", dialect.lower())
 
     engine = get_engine_from_ctx(ctx)
     try:
         with Session(engine) as session:
-            bibtex = export_bib_entries(
-                session, keyword_id=keyword_id, status=review_status
+            bib_output = export_bib_entries(
+                session,
+                keyword_id=keyword_id,
+                status=review_status,
+                dialect=export_dialect,
             )
     except ValueError as exc:
         raise click.ClickException(str(exc))
@@ -245,9 +262,9 @@ def bib_export(
         out_path = Path(output)
         if out_path.exists() and not force:
             raise click.ClickException(f"{output} exists; pass --force to overwrite.")
-        out_path.write_text(bibtex, encoding="utf-8")
+        out_path.write_text(bib_output, encoding="utf-8")
     else:
-        click.echo(bibtex)
+        click.echo(bib_output)
 
 
 # ── keyword subgroup ─────────────────────────────────────────────────────
