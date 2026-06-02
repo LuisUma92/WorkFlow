@@ -7,7 +7,8 @@ rewritten as SQLAlchemy 2.0 mapped classes on GlobalBase.
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date as _date
+from datetime import datetime
 
 from sqlalchemy import (
     Boolean,
@@ -88,6 +89,8 @@ class Author(GlobalBase):
     id: Mapped[int] = mapped_column(primary_key=True)
     first_name: Mapped[str] = mapped_column(String(80))
     last_name: Mapped[str] = mapped_column(String(200))
+    name_prefix: Mapped[str | None] = mapped_column(String(80), default=None)
+    name_suffix: Mapped[str | None] = mapped_column(String(80), default=None)
     alias: Mapped[str | None] = mapped_column(String(80), default=None)
     affiliation: Mapped[str | None] = mapped_column(String(200), default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
@@ -105,6 +108,16 @@ class BibEntry(GlobalBase):
     """
     Full BibLaTeX entry — all standard fields plus workflow-specific metadata.
     Unique on (title, year, volume).
+
+    Date authority rule (ADR-0019 P2.2):
+      ``date`` (VARCHAR 50) holds the verbatim biblatex literal as the
+      *canonical* date for biblatex-native imports (e.g. ``"2010/2015"``).
+      ``year`` (SmallInteger) and ``month`` (VARCHAR 10) are *derived* from
+      the first EDTF component of ``date`` for backward compatibility.
+      ``publication_date`` (Date) is the parsed Python ``date`` object derived
+      from the raw ``date`` field via ``_parse_date`` — also for backward
+      compat.  If an explicit ``year=`` or ``month=`` BibTeX field is present
+      in the entry, it takes priority over the derived value.
     """
 
     __tablename__ = "bib_entry"
@@ -150,11 +163,11 @@ class BibEntry(GlobalBase):
     pagination: Mapped[str | None] = mapped_column(String(200), default=None)
 
     # ── Dates ──
-    publication_date: Mapped[date | None] = mapped_column(Date, default=None)
+    publication_date: Mapped[_date | None] = mapped_column(Date, default=None)
     month: Mapped[str | None] = mapped_column(String(10), default=None)
     year: Mapped[int | None] = mapped_column(SmallInteger, default=None)
-    eventdate: Mapped[date | None] = mapped_column(Date, default=None)
-    urldate: Mapped[date | None] = mapped_column(Date, default=None)
+    eventdate: Mapped[_date | None] = mapped_column(Date, default=None)
+    urldate: Mapped[_date | None] = mapped_column(Date, default=None)
 
     # ── Location / venue ──
     location: Mapped[str | None] = mapped_column(String(100), default=None)
@@ -165,6 +178,15 @@ class BibEntry(GlobalBase):
     eid: Mapped[str | None] = mapped_column(Text, default=None)
     eprint: Mapped[str | None] = mapped_column(Text, default=None)
     eprinttype: Mapped[str | None] = mapped_column(Text, default=None)
+
+    # ── BibLaTeX dialect additions (ADR-0019 P2.1) ──
+    date: Mapped[str | None] = mapped_column(String(50), default=None)
+    chapter: Mapped[str | None] = mapped_column(String(200), default=None)
+    # ``type`` maps the biblatex ``type`` field (entry subtype, e.g.
+    # "Technical Report").  The column name intentionally shadows the Python
+    # builtin ``type``; SQLAlchemy resolves it via descriptor protocol and
+    # there is no polymorphic inheritance in use on this model.
+    type: Mapped[str | None] = mapped_column(String(100), default=None)
 
     # ── Notes / misc ──
     addendum: Mapped[str | None] = mapped_column(Text, default=None)
@@ -337,7 +359,7 @@ class BibContent(GlobalBase):
     last_page: Mapped[int] = mapped_column(Integer)
     first_exercise: Mapped[int | None] = mapped_column(Integer, default=None)
     last_exercise: Mapped[int | None] = mapped_column(Integer, default=None)
-    content: Mapped["Content"] = relationship(back_populates="bib_links")
+    content: Mapped["Content"] = relationship(back_populates="bib_links")  # noqa: F821
 
 
 # ── PRISMA review tables ─────────────────────────────────────────────────

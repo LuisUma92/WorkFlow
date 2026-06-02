@@ -52,6 +52,11 @@ TRANSLATED_BIB_KEYS: dict[str, str] = {
     "file_path": "file",
 }
 
+# Raw biblatex ``date`` field → stored verbatim (ADR-0019 P2.2).
+# Separate from TRANSLATED_BIB_KEYS because it needs special dual handling:
+# the verbatim literal goes to BibEntry.date; year/month are derived from it.
+_RAW_DATE_BIB_FIELD: str = "date"
+
 _DATE_BIB_FIELDS: frozenset[str] = frozenset({"publication_date", "urldate"})
 
 _STRING_BIB_FIELDS: frozenset[str] = frozenset(
@@ -102,6 +107,9 @@ _STRING_BIB_FIELDS: frozenset[str] = frozenset(
         "keywords",
         "options",
         "ids",
+        # BibLaTeX dialect additions (ADR-0019 P2.2)
+        "chapter",
+        "type",
     }
 )
 
@@ -132,8 +140,14 @@ def _clean(s: object | None) -> str | None:
 
 
 def _parse_date(val: str) -> date | None:
-    """Parse BibLaTeX date strings (YYYY, YYYY-MM, YYYY-MM-DD)."""
-    parts = val.split("-")
+    """Parse BibLaTeX date strings (YYYY, YYYY-MM, YYYY-MM-DD).
+
+    Also accepts EDTF ranges like ``2010/2015`` or ``2010-03/2015``; in that
+    case the *first* component (before ``/``) is parsed and returned.
+    """
+    # Strip EDTF range: take only the start component.
+    first_component = val.split("/")[0].strip()
+    parts = first_component.split("-")
     try:
         year = int(parts[0])
         month = int(parts[1]) if len(parts) > 1 else 1
@@ -143,13 +157,24 @@ def _parse_date(val: str) -> date | None:
         return None
 
 
-def _split_authors(author_string: str) -> list[tuple[str, str]]:
-    """Split BibTeX author string into ``(first_name, last_name)`` tuples.
+def _split_authors(
+    author_string: str,
+) -> list[tuple[str, str, str | None, str | None]]:
+    """Split BibTeX author string into ``(first, last, prefix, suffix)`` tuples.
 
-    Supports forms: "Last, First", "First Last", "{Corporate Name}".
+    Supports forms:
+    - ``"Last, First"``         → prefix/suffix None
+    - ``"von Last, Jr, First"`` → prefix="von", suffix="Jr"
+    - ``"First Last"``          → prefix/suffix None
+    - ``"{Corporate Name}"``    → first="", prefix/suffix None
+
+    *prefix* captures the von-particle (lowercase word(s) before Last in
+    the ``Last, First`` form).  *suffix* captures the Jr-token in the
+    three-part ``Last, Jr, First`` BibTeX form.
+
     Returns empty list for empty/whitespace input.
     """
-    out: list[tuple[str, str]] = []
+    out: list[tuple[str, str, str | None, str | None]] = []
     for raw in author_string.split(" and "):
         token = raw.strip()
         if not token:
@@ -158,22 +183,61 @@ def _split_authors(author_string: str) -> list[tuple[str, str]]:
             # Corporate name — entire string is the last_name
             name = _strip_braces(token).strip()
             if name:
-                out.append(("", name))
+                out.append(("", name, None, None))
             continue
         cleaned = _strip_braces(token).strip()
-        if ", " in cleaned:
-            last, first = cleaned.split(", ", 1)
-            out.append((first.strip(), last.strip()))
+        comma_parts = [p.strip() for p in cleaned.split(",")]
+        if len(comma_parts) >= 3:
+            # BibTeX "von Last, Jr, First" form
+            last_part = comma_parts[0]
+            suffix = comma_parts[1] or None
+            first = ", ".join(comma_parts[2:]).strip()
+            # Split von prefix from last name (lowercase leading words)
+            last, prefix = _extract_von(last_part)
+            out.append((first, last, prefix or None, suffix))
+        elif len(comma_parts) == 2:
+            # "Last, First" or "von Last, First"
+            last_part = comma_parts[0]
+            first = comma_parts[1].strip()
+            last, prefix = _extract_von(last_part)
+            out.append((first, last, prefix or None, None))
         elif " " in cleaned:
-            first, last = cleaned.split(" ", 1)
-            out.append((first.strip(), last.strip()))
+            # "First Last" — no comma.  Split on the first space so everything
+            # to the right forms the last-name token, then run _extract_von on
+            # it to capture a lowercase leading particle (e.g. "van Beethoven").
+            first, last_token = cleaned.split(" ", 1)
+            last, prefix = _extract_von(last_token.strip())
+            out.append((first.strip(), last, prefix or None, None))
         else:
-            out.append(("", cleaned))
+            out.append(("", cleaned, None, None))
     return out
 
 
+def _extract_von(last_part: str) -> tuple[str, str]:
+    """Return ``(last_name, von_prefix)`` from a BibTeX last-name token.
+
+    Lowercase leading words are treated as the von-particle (e.g. "von der
+    Heide" → last="Heide", prefix="von der").  If no lowercase prefix exists
+    the whole string is the last name and prefix is "".
+    """
+    words = last_part.strip().split()
+    prefix_words: list[str] = []
+    for word in words[:-1]:  # keep at least the last word as last_name
+        if word and word[0].islower():
+            prefix_words.append(word)
+        else:
+            break
+    if prefix_words:
+        prefix = " ".join(prefix_words)
+        last = " ".join(words[len(prefix_words):])
+    else:
+        prefix = ""
+        last = last_part.strip()
+    return last, prefix
+
+
 _IGNORED_BIB_KEYS: frozenset[str] = frozenset(
-    {"ENTRYTYPE", "ID", "url", *_AUTHOR_FIELDS, *TRANSLATED_BIB_KEYS.values()}
+    {"ENTRYTYPE", "ID", "url", _RAW_DATE_BIB_FIELD, *_AUTHOR_FIELDS, *TRANSLATED_BIB_KEYS.values()}
 )
 
 
@@ -210,6 +274,11 @@ def _parse_fields(raw: dict[str, object]) -> dict[str, object]:
     (e.g. ``journal``) and its BibLaTeX target (e.g. ``journaltitle``), the
     BibLaTeX-native value wins and a ``UserWarning`` is emitted — matching the
     semantics of :func:`workflow.bibliography.dialect.to_biblatex`.
+
+    Raw ``date`` field (ADR-0019 P2.2): when present the verbatim literal is
+    stored in ``BibEntry.date``; ``year`` and ``month`` are derived from the
+    *first* EDTF component (before any ``/``) if not already set by a
+    dedicated ``year``/``month`` field in the entry.
     """
     out: dict[str, object] = {}
     # Set of model_keys that are also BibLaTeX-native raw field names (the 5 alias targets).
@@ -234,7 +303,35 @@ def _parse_fields(raw: dict[str, object]) -> dict[str, object]:
         if key in _IGNORED_BIB_KEYS:
             continue
         _assign_direct(out, key, val)
+
+    # Handle raw ``date`` → verbatim + derived year/month (ADR-0019 P2.2).
+    _apply_raw_date(raw, out)
+
     return out
+
+
+def _apply_raw_date(raw: dict[str, object], out: dict[str, object]) -> None:
+    """Store verbatim biblatex ``date`` and derive year/month from it.
+
+    Only fills ``year``/``month`` in *out* when they are not already present
+    (explicit ``year=`` / ``month=`` fields take priority).
+    """
+    raw_date_val = raw.get(_RAW_DATE_BIB_FIELD)
+    if raw_date_val is None:
+        return
+    cleaned_date = _clean(raw_date_val)
+    if not cleaned_date:
+        return
+    out["date"] = cleaned_date
+    first_component = cleaned_date.split("/")[0].strip()
+    parts = first_component.split("-")
+    if "year" not in out:
+        try:
+            out["year"] = int(parts[0])
+        except (ValueError, IndexError):
+            pass
+    if "month" not in out and len(parts) > 1:
+        out["month"] = parts[1]
 
 
 def _get_or_create_author_type(session: Session, name: str) -> AuthorType:
@@ -261,7 +358,13 @@ def _get_or_create_database(session: Session, name: str) -> ReferencedDatabase:
     return db
 
 
-def _upsert_author(session: Session, first_name: str, last_name: str) -> Author:
+def _upsert_author(
+    session: Session,
+    first_name: str,
+    last_name: str,
+    name_prefix: str | None = None,
+    name_suffix: str | None = None,
+) -> Author:
     existing = session.scalars(
         select(Author).where(
             Author.first_name == first_name, Author.last_name == last_name
@@ -269,7 +372,12 @@ def _upsert_author(session: Session, first_name: str, last_name: str) -> Author:
     ).first()
     if existing:
         return existing
-    a = Author(first_name=first_name, last_name=last_name)
+    a = Author(
+        first_name=first_name,
+        last_name=last_name,
+        name_prefix=name_prefix,
+        name_suffix=name_suffix,
+    )
     savepoint = session.begin_nested()
     try:
         session.add(a)
@@ -292,8 +400,8 @@ def _process_authors(
     author_type_name: str,
 ) -> None:
     at = _get_or_create_author_type(session, author_type_name)
-    for idx, (first, last) in enumerate(_split_authors(author_string)):
-        author = _upsert_author(session, first, last)
+    for idx, (first, last, prefix, suffix) in enumerate(_split_authors(author_string)):
+        author = _upsert_author(session, first, last, prefix, suffix)
         savepoint = session.begin_nested()
         try:
             link = BibAuthor(
