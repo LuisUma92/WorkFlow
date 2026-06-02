@@ -45,11 +45,9 @@ P2.2 Importer: store raw `date` literal when present; still derive `year`/`month
 P2.3 Migration `0008_bib_dialect_columns.py`: `ALTER TABLE bib_entry ADD date,
    chapter, type`; `author ADD name_prefix, name_suffix`; backfill
    `date = year[-month]` for existing rows.
-P2.4 Identity change (separate migration step or `0009_`): reconcile `bibkey`
-   (fill nulls from `(title,year)` slug, dedupe), then DROP `uq_bib_entry`, ADD
-   `UNIQUE(bibkey)`. **Demote `(title,year,volume)` to a non-unique dedup helper
-   in importer.** Test against a COPY of the live `~/01-U/workflow/workflow.db`
-   schema before applying.
+P2.4 ~~Identity change~~: **REJECTED 2026-06-02.** `UNIQUE(bibkey)` conflicts with
+   the intentional ambiguous-bibkey feature. Tracked in
+   `tasks/requests/2026-06-02-calculated-bibkey-enforcement.md`.
 P2.5 Tests: `date={2010/2015}` round-trips (stored verbatim, year derived);
    `chapter`/`type` persist; migration idempotency; bibkey-uniqueness post-migrate;
    PRISMA dedup still works on the new helper.

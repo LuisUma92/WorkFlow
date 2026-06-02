@@ -56,6 +56,12 @@ and a planned exporter all depend on what "compliant" means here.
    is nullable and not unique. Both bibtex and biblatex identify entries by the
    **citation key**. The current key can false-merge distinct works or
    false-split one work on volume formatting.
+   > **Note (2026-06-02):** Replacing `UNIQUE(title,year,volume)` with `UNIQUE(bibkey)`
+   > (Plan P2.4) was **rejected**. Duplicate bibkeys are an intentional, tested feature —
+   > `get_bib_entry_by_bibkey` raises `BibKeyAmbiguous` and consumers (exercise sync,
+   > content link-bib, maturation) tolerate ambiguity by design. A calculated-bibkey
+   > enforcement approach is tracked separately in
+   > `tasks/requests/2026-06-02-calculated-bibkey-enforcement.md`.
 6. **Folded identifiers (acceptable):** isbn/issn/ismn unified into `isn` +
    `isn_type` FK — representationally fine, but needs reverse-mapping on export.
 
