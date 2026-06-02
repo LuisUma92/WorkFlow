@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+import warnings
 
 from workflow.bibliography.dialect import classify_entry_type
 
@@ -37,8 +38,25 @@ __all__ = [
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+# Ligature / special-character substitution table applied BEFORE NFKD folding.
+# Order matters: longer sequences first where relevant.
+_LIGATURE_TABLE: list[tuple[str, str]] = [
+    ("ß", "ss"),
+    ("æ", "ae"),
+    ("œ", "oe"),
+    ("ø", "o"),
+    ("å", "a"),
+    ("ð", "d"),
+    ("þ", "th"),
+    ("ł", "l"),
+]
+
+
 def _strip_accents(text: str) -> str:
-    """Decompose unicode, drop combining marks, return ASCII-only chars."""
+    """Apply ligature substitutions then decompose unicode, drop combining marks."""
+    # Apply ligature table on lowercased copy (input is already lowercased by caller)
+    for src, dst in _LIGATURE_TABLE:
+        text = text.replace(src, dst)
     nfkd = unicodedata.normalize("NFKD", text)
     return "".join(ch for ch in nfkd if not unicodedata.combining(ch))
 
@@ -48,8 +66,9 @@ def _normalize_surname(surname: str | None, name_prefix: str | None) -> str:
 
     1. If *name_prefix* is provided (the von-particle, e.g. ``"van"``) the
        surname is used as-is (the particle is already separated).
-    2. If no *name_prefix* is given, strip any leading all-lowercase word from
-       *surname* (e.g. ``"van Beethoven"`` → ``"Beethoven"``).
+    2. If no *name_prefix* is given, strip ALL leading all-lowercase tokens from
+       *surname* (e.g. ``"van Beethoven"`` → ``"Beethoven"``,
+       ``"von der Leyen"`` → ``"Leyen"``).  Single-token names are left intact.
     3. Strip accents → ASCII, keep ``[a-z]`` only, lowercase.
     """
     if surname is None:
@@ -60,17 +79,24 @@ def _normalize_surname(surname: str | None, name_prefix: str | None) -> str:
         # Particle is already in name_prefix; surname itself is the real family name.
         base = surname
     else:
-        # Strip a leading all-lowercase particle from the surname string.
-        # "van Beethoven" → "Beethoven"; "Müller" → "Müller"
-        parts = surname.split(None, 1)
-        if len(parts) == 2 and parts[0] == parts[0].lower() and parts[0].isalpha():
-            base = parts[1]
-        else:
-            base = surname
+        # Strip ALL leading all-lowercase particles from the surname string.
+        # "von der Leyen" → "Leyen"; "van der Berg" → "Berg"; "Müller" → "Müller"
+        # Single-token or all-lowercase single name → unchanged.
+        tokens = surname.split()
+        while len(tokens) >= 2 and tokens[0].isalpha() and tokens[0] == tokens[0].lower():
+            tokens = tokens[1:]
+        base = " ".join(tokens)
 
-    ascii_base = _strip_accents(base)
-    letters_only = re.sub(r"[^a-z]", "", ascii_base.lower())
-    return letters_only if letters_only else "anon"
+    ascii_base = _strip_accents(base.lower())
+    letters_only = re.sub(r"[^a-z]", "", ascii_base)
+    if not letters_only:
+        warnings.warn(
+            f"surname {surname!r} reduced to empty after normalisation; using 'anon'.",
+            UserWarning,
+            stacklevel=3,
+        )
+        return "anon"
+    return letters_only
 
 
 def _coerce_volume(volume: object) -> int | None:
@@ -81,10 +107,15 @@ def _coerce_volume(volume: object) -> int | None:
     """
     if volume is None:
         return None
-    digits = re.sub(r"\D", "", str(volume))
+    raw = str(volume).strip()
+    negative = raw.startswith("-")
+    digits = re.sub(r"\D", "", raw)
     if not digits:
         return None
-    return int(digits)
+    val = int(digits)
+    if negative or val <= 0 or val > 9999:
+        return None
+    return val
 
 
 # ---------------------------------------------------------------------------
@@ -132,8 +163,13 @@ def calculate_bibkey(
     # 1. Surname token
     surname_tok = _normalize_surname(surname, name_prefix)
 
-    # 2. Year token
-    year_tok = f"{year:04d}" if year is not None else "0000"
+    # 2. Year token (clamp negatives to 0000; positives > 9999 rendered as-is)
+    if year is None:
+        year_tok = "0000"
+    elif year < 0:
+        year_tok = "0000"
+    else:
+        year_tok = f"{year:04d}"
 
     # 3. Volume token (shared between book and article forms)
     vol_int = _coerce_volume(volume)
@@ -143,7 +179,7 @@ def calculate_bibkey(
     kind = classify_entry_type(entry_type)  # "book" | "article"
 
     if kind == "book":
-        ed_int = edition if edition is not None else 1
+        ed_int = edition if (edition is not None and edition > 0) else 1
         return f"{surname_tok}{year_tok}{vol_seg}E{ed_int:02d}"
     else:
         # Article form: <surname><year>[V<vol>]

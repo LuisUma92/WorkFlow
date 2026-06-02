@@ -265,6 +265,10 @@ class TestClassifyEntryType:
     def test_none_is_article(self):
         assert classify_entry_type(None) == "article"
 
+    def test_whitespace_only_is_article(self):
+        """Whitespace-only string strips to '' → not in _BOOK_TYPES → article."""
+        assert classify_entry_type("   ") == "article"
+
 
 class TestRoundTrip:
     def test_bibtex_roundtrip(self):

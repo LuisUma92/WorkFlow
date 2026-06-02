@@ -6,6 +6,8 @@ Covers every locked rule from ADR-0019 Phase 1.
 
 from __future__ import annotations
 
+import pytest
+
 from workflow.bibliography.bibkey import calculate_bibkey
 
 
@@ -265,3 +267,129 @@ class TestIntVolume:
         result = calculate_bibkey(surname="Author", year=2000, volume=3,
                                   edition=1, entry_type="book")
         assert "V03" in result
+
+
+# ---------------------------------------------------------------------------
+# Fix 1 + 2: volume <= 0 or > 9999 → absent
+# ---------------------------------------------------------------------------
+
+class TestVolumeEdgeCases:
+    def test_volume_zero_int_is_absent(self):
+        result = calculate_bibkey(surname="Smith", year=2020, volume=0,
+                                  edition=1, entry_type="book")
+        assert "V" not in result
+        assert result == "smith2020E01"
+
+    def test_volume_zero_string_is_absent(self):
+        result = calculate_bibkey(surname="Smith", year=2020, volume="0",
+                                  edition=1, entry_type="book")
+        assert "V" not in result
+
+    def test_volume_negative_is_absent(self):
+        result = calculate_bibkey(surname="Smith", year=2020, volume=-3,
+                                  entry_type="article")
+        assert "V" not in result
+        assert result == "smith2020"
+
+    def test_volume_100_is_valid(self):
+        """Normal multi-digit volume stays valid."""
+        result = calculate_bibkey(surname="Smith", year=2020, volume=100,
+                                  entry_type="article")
+        assert "V100" in result
+
+    def test_volume_oversized_99999_is_absent(self):
+        result = calculate_bibkey(surname="Smith", year=2020, volume="99999",
+                                  entry_type="article")
+        assert "V" not in result
+
+
+# ---------------------------------------------------------------------------
+# Fix 3: multi-particle von strip
+# ---------------------------------------------------------------------------
+
+class TestMultiParticleVon:
+    def test_von_der_leyen(self):
+        result = calculate_bibkey(surname="von der Leyen", year=2020,
+                                  entry_type="article")
+        assert result == "leyen2020"
+
+    def test_van_der_berg(self):
+        result = calculate_bibkey(surname="van der Berg", year=2015,
+                                  entry_type="article")
+        assert result == "berg2015"
+
+    def test_van_morrison_capital_v_not_stripped(self):
+        """Capital V → not a particle → kept."""
+        result = calculate_bibkey(surname="Van Morrison", year=1970,
+                                  entry_type="article")
+        assert result == "vanmorrison1970"
+
+
+# ---------------------------------------------------------------------------
+# Fix 4: ligature / sharp-s substitution
+# ---------------------------------------------------------------------------
+
+class TestLigatures:
+    def test_sharp_s_weiss(self):
+        result = calculate_bibkey(surname="Weiß", year=2020, entry_type="article")
+        assert result == "weiss2020"
+
+    def test_sharp_s_strasse(self):
+        result = calculate_bibkey(surname="Straße", year=2020, entry_type="article")
+        assert result == "strasse2020"
+
+    def test_ae_ligature_kjaer(self):
+        result = calculate_bibkey(surname="Kjær", year=2010, entry_type="article")
+        assert result == "kjaer2010"
+
+    def test_oe_ligature(self):
+        result = calculate_bibkey(surname="Møller", year=2010, entry_type="article")
+        assert result == "moller2010"
+
+
+# ---------------------------------------------------------------------------
+# Fix 5: warn on empty surname fold (non-Latin scripts)
+# ---------------------------------------------------------------------------
+
+class TestEmptySurnameWarn:
+    def test_cyrillic_surname_falls_back_to_anon_with_warning(self):
+        with pytest.warns(UserWarning, match="Толстой"):
+            result = calculate_bibkey(surname="Толстой", year=1890, entry_type="article")
+        assert result == "anon1890"
+
+    def test_cjk_surname_falls_back_to_anon_with_warning(self):
+        with pytest.warns(UserWarning, match="李"):
+            result = calculate_bibkey(surname="李", year=2000, entry_type="article")
+        assert result == "anon2000"
+
+
+# ---------------------------------------------------------------------------
+# Fix 6: edition <= 0 → E01
+# ---------------------------------------------------------------------------
+
+class TestEditionEdgeCases:
+    def test_edition_zero_falls_back_to_e01(self):
+        result = calculate_bibkey(surname="Smith", year=2020, volume=None,
+                                  edition=0, entry_type="book")
+        assert result == "smith2020E01"
+
+    def test_edition_negative_falls_back_to_e01(self):
+        result = calculate_bibkey(surname="Smith", year=2020, volume=None,
+                                  edition=-2, entry_type="book")
+        assert result == "smith2020E01"
+
+
+# ---------------------------------------------------------------------------
+# Fix 7: negative / missing year
+# ---------------------------------------------------------------------------
+
+class TestYearEdgeCases:
+    def test_negative_year_becomes_0000(self):
+        result = calculate_bibkey(surname="Doe", year=-1, entry_type="article")
+        assert result == "doe0000"
+
+    def test_year_large_no_crash(self):
+        """Year > 9999 is rendered as-is (no crash, no sign)."""
+        result = calculate_bibkey(surname="Doe", year=10000, entry_type="article")
+        assert "10000" in result
+        assert "-" not in result
