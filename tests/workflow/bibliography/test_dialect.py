@@ -8,7 +8,13 @@ from __future__ import annotations
 
 import warnings
 
-from workflow.bibliography.dialect import BIBTEX_TO_BIBLATEX, downgrade_entry_type, to_biblatex, to_bibtex
+from workflow.bibliography.dialect import (
+    BIBTEX_TO_BIBLATEX,
+    classify_entry_type,
+    downgrade_entry_type,
+    to_biblatex,
+    to_bibtex,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -211,6 +217,53 @@ class TestDowngradeEntryType:
     def test_case_insensitive(self):
         assert downgrade_entry_type("Online") == "misc"
         assert downgrade_entry_type("REPORT") == "techreport"
+
+
+# ---------------------------------------------------------------------------
+# classify_entry_type
+# ---------------------------------------------------------------------------
+
+class TestClassifyEntryType:
+    def test_book_is_book(self):
+        assert classify_entry_type("book") == "book"
+
+    def test_inbook_is_book(self):
+        assert classify_entry_type("inbook") == "book"
+
+    def test_incollection_is_book(self):
+        assert classify_entry_type("incollection") == "book"
+
+    def test_collection_is_book(self):
+        assert classify_entry_type("collection") == "book"
+
+    def test_book_case_insensitive(self):
+        assert classify_entry_type("BOOK") == "book"
+        assert classify_entry_type("InBook") == "book"
+
+    def test_at_prefix_tolerated(self):
+        assert classify_entry_type("@book") == "book"
+        assert classify_entry_type("@inbook") == "book"
+
+    def test_article_is_article(self):
+        assert classify_entry_type("article") == "article"
+
+    def test_report_is_article(self):
+        assert classify_entry_type("report") == "article"
+
+    def test_thesis_is_article(self):
+        assert classify_entry_type("thesis") == "article"
+
+    def test_online_is_article(self):
+        assert classify_entry_type("online") == "article"
+
+    def test_misc_is_article(self):
+        assert classify_entry_type("misc") == "article"
+
+    def test_unknown_is_article(self):
+        assert classify_entry_type("customtype") == "article"
+
+    def test_none_is_article(self):
+        assert classify_entry_type(None) == "article"
 
 
 class TestRoundTrip:

@@ -14,6 +14,7 @@ __all__ = [
     "to_biblatex",
     "to_bibtex",
     "downgrade_entry_type",
+    "classify_entry_type",
 ]
 
 # Canonical alias map: bibtex field name → biblatex field name.
@@ -103,6 +104,26 @@ BIBLATEX_TO_BIBTEX_TYPES: dict[str, str] = {
 
 # Keyword fragments in the ``type`` subfield that indicate a master's thesis.
 _MASTERS_KEYWORDS = ("master", "mathesis", "msc")
+
+
+# Book-like entry types for bibkey classification (ADR-0019, Phase 1).
+# Locked set: {book, inbook, incollection, collection} (case-insensitive, leading @ tolerated).
+_BOOK_TYPES: frozenset[str] = frozenset({"book", "inbook", "incollection", "collection"})
+
+
+def classify_entry_type(entry_type: str | None) -> str:
+    """Classify a bib entry type as ``"book"`` or ``"article"`` for bibkey generation.
+
+    Book-like types: ``{book, inbook, incollection, collection}`` (case-insensitive;
+    a leading ``@`` is tolerated).  Everything else — including ``None``, unknown, or
+    article/report/thesis/online — returns ``"article"``.
+
+    Pure function; no DB access.
+    """
+    if entry_type is None:
+        return "article"
+    normalised = entry_type.strip().lstrip("@").lower()
+    return "book" if normalised in _BOOK_TYPES else "article"
 
 
 def downgrade_entry_type(entry_type: str, *, subtype: str | None = None) -> str:
