@@ -30,7 +30,7 @@ local CONTRACT_JSON = vim.json.encode({
 			title = "FBD",
 			path = "/abs/vault/notes/permanent/fbd.md",
 			edge_class = nil,
-			relation_type = "link",
+			edge_type = "link",
 			depth = 1,
 		},
 		{
@@ -38,7 +38,7 @@ local CONTRACT_JSON = vim.json.encode({
 			title = "Force",
 			path = nil, -- non-note neighbor: no file
 			edge_class = "concept",
-			relation_type = nil,
+			edge_type = nil,
 			depth = 2,
 		},
 	},
@@ -132,13 +132,13 @@ describe("workflow.picker.graph_neighbors", function()
 		assert.equals(2, #captured_spec.items)
 
 		local item1 = captured_spec.items[1]
-		-- depth=1, title="FBD", relation_type="link"
+		-- depth=1, title="FBD", edge_type="link"
 		assert.equals("[d1] FBD  (link)", item1.text)
 		assert.equals(1, item1.item.depth)
 		assert.equals("/abs/vault/notes/permanent/fbd.md", item1.item.path)
 
 		local item2 = captured_spec.items[2]
-		-- depth=2, title="Force", edge_class="concept", relation_type=nil → fallback to edge_class
+		-- depth=2, title="Force", edge_class="concept", edge_type=nil → fallback to edge_class
 		assert.equals("[d2] Force  (concept)", item2.text)
 		assert.equals(2, item2.item.depth)
 		-- path is JSON null → vim.NIL or nil after decode (nvim version-dependent)

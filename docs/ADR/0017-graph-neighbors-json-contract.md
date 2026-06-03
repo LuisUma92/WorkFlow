@@ -33,7 +33,7 @@ subsystem's `edge_class/relation_type`. The decisions below reconcile that.
   "source":   {"id": "<node_id>", "title": "<str>", "path": "<abs str|null>"},
   "neighbors": [
     {"id": "<node_id>", "title": "<str>", "path": "<abs str|null>",
-     "edge_class": null, "relation_type": "<str|null>", "depth": <int>}
+     "edge_class": null, "edge_type": "<str|null>", "depth": <int>}
   ]
 }
 ```
@@ -52,11 +52,11 @@ subsystem's `edge_class/relation_type`. The decisions below reconcile that.
 - **`title`** — best-effort human label: note nodes use `note.title or
   note.filename`; other nodes use `GraphNode.label`.
 - **`edge_class`** — always `null`. The knowledge graph has no edge-class concept.
-- **`relation_type`** — the connecting edge's `GraphEdge.edge_type` (e.g. `link`,
-  `citation`, `note_concept`), best-effort `null`. **Caveat:** this is the
-  *knowledge-graph* edge type, NOT the NoteEdge semantic relation
-  (`supports`/`contradicts`) emitted by `notes edges`. Consumers must not conflate
-  the two vocabularies.
+- **`edge_type`** — the connecting edge's `GraphEdge.edge_type` (e.g. `link`,
+  `citation`, `note_concept`), best-effort `null`. Renamed from `relation_type`
+  (2026-06-03, see Amendment) precisely so it cannot be conflated with the NoteEdge
+  semantic relation (`supports`/`contradicts`) emitted by `notes edges`. These are
+  two distinct vocabularies.
 - **`depth`** — BFS hop distance from the source (int ≥ 1). The `source` object
   carries no depth.
 
@@ -72,8 +72,17 @@ text and `--json`).
 - The `note:<int>` id convention is currently parsed in several spots in
   `graph/cli.py`. **Follow-up:** extract a `workflow.graph.node_ids` helper
   (`is_note`, `parse_note_id`) before a third consumer appears.
-- `relation_type = edge_type` is a deliberate best-effort overload. **Follow-up:**
-  consider renaming the key to `edge_type`, or adding a `"graph": "knowledge"`
-  discriminator to the envelope, to remove the NoteEdge-vocabulary trap.
+- ✅ `relation_type = edge_type` was a deliberate best-effort overload. **Resolved**
+  (2026-06-03, Amendment): the key is renamed to `edge_type`, removing the
+  NoteEdge-vocabulary trap.
 - Path enrichment lives in the presentation layer; if a second consumer needs
   node paths, lift it into `graph/collectors.py` at that point (not before).
+
+## Amendment (2026-06-03 — Wave 4 reviewer-followup #7)
+
+**BREAKING:** the neighbor key `relation_type` is renamed to **`edge_type`** (its value
+was always `GraphEdge.edge_type`). This removes the overload with the NoteEdge semantic
+`relation_type` (`supports`/`contradicts`) emitted by `notes edges`. All three surfaces
+were updated in one commit: the CLI emitter (`graph/cli.py`), the Python contract test
+(`test_neighbors_json.py`), and the Neovim picker + plenary stub
+(`graph_neighbors.lua` / `graph_neighbors_spec.lua`). `edge_class` remains always `null`.

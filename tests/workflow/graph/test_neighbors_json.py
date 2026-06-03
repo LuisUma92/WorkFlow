@@ -4,7 +4,7 @@ RED phase — all tests written before implementation.
 
 Covers:
 1. Success shape: exits 0, object with source + neighbors keys, each neighbor has
-   id, title, path, edge_class, relation_type, depth.
+   id, title, path, edge_class, edge_type, depth.
 2. Note neighbor has path as non-null abs str; non-note neighbor has path == null.
 3. Unknown id + --json exits 1 (error on stderr).
 4. --depth 2 returns a 2-hop neighbor with depth == 2.
@@ -159,7 +159,7 @@ class TestNeighborsJsonShape:
             result = runner.invoke(graph, ["neighbors", "note:1", "--json"])
         data = json.loads(result.output)
         n = data["neighbors"][0]
-        for key in ("id", "title", "path", "edge_class", "relation_type", "depth"):
+        for key in ("id", "title", "path", "edge_class", "edge_type", "depth"):
             assert key in n, f"missing key: {key}"
 
     def test_edge_class_is_always_null(self, tmp_path):
@@ -173,7 +173,7 @@ class TestNeighborsJsonShape:
         for n in data["neighbors"]:
             assert n["edge_class"] is None
 
-    def test_relation_type_is_edge_type_string(self, tmp_path):
+    def test_edge_type_is_edge_type_string(self, tmp_path):
         kg = _make_linear_kg()
         vault = _fake_vault_root(tmp_path)
         runner = CliRunner()
@@ -181,7 +181,7 @@ class TestNeighborsJsonShape:
              patch("workflow.graph.cli.resolve_vault_root", return_value=vault):
             result = runner.invoke(graph, ["neighbors", "note:1", "--json"])
         data = json.loads(result.output)
-        assert data["neighbors"][0]["relation_type"] == "link"
+        assert data["neighbors"][0]["edge_type"] == "link"
 
     def test_depth_is_integer_1_for_direct_neighbor(self, tmp_path):
         kg = _make_linear_kg()

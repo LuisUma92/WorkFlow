@@ -42,7 +42,7 @@ function M.pick(opts)
 
 		local items = {}
 		for _, n in ipairs(neighbors) do
-			local rel = n.relation_type or n.edge_class or "?"
+			local rel = n.edge_type or n.edge_class or "?"
 			table.insert(items, {
 				text = string.format("[d%d] %s  (%s)", n.depth, n.title or n.id, rel),
 				item = n,

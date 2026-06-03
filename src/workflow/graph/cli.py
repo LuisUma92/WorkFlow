@@ -430,7 +430,7 @@ def neighbors_cmd(
                 "title": n_title,
                 "path": n_path,
                 "edge_class": None,
-                "relation_type": ni.edge_type,
+                "edge_type": ni.edge_type,
                 "depth": ni.depth,
             })
 
