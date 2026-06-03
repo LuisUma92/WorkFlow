@@ -51,6 +51,34 @@ class TestNoteFrontmatterValidation:
         assert result is not None
         assert errors == []
 
+    def test_aliases_parsed(self):
+        from workflow.validation.schemas import validate_note_frontmatter
+        data = {"id": "n1", "title": "T", "aliases": ["alt", "other"]}
+        result, errors = validate_note_frontmatter(data)
+        assert errors == []
+        assert result is not None
+        assert result.aliases == ("alt", "other")
+
+    def test_aliases_default_empty(self):
+        from workflow.validation.schemas import validate_note_frontmatter
+        result, _ = validate_note_frontmatter({"id": "n1", "title": "T"})
+        assert result is not None
+        assert result.aliases == ()
+
+    def test_aliases_must_be_string_list(self):
+        from workflow.validation.schemas import validate_note_frontmatter
+        result, errors = validate_note_frontmatter(
+            {"id": "n1", "title": "T", "aliases": [1, 2]}
+        )
+        assert result is None
+        assert any("aliases" in e for e in errors)
+
+    def test_aliases_survive_yaml_roundtrip(self):
+        from workflow.notes.service import _fm_to_yaml
+        from workflow.validation.schemas import NoteFrontmatter
+        fm = NoteFrontmatter(id="n1", title="T", aliases=("a", "b"))
+        assert "aliases" in _fm_to_yaml(fm)
+
 
 class TestTexMetadataParser:
     def test_parse_tex_with_yaml(self, tmp_path):

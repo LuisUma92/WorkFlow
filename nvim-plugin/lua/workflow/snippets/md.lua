@@ -52,7 +52,6 @@ return {
 		t({ "", "title: " }), i(2, ""),
 		t({ "", "aliases: []" }),
 		t({ "", "type: literature" }),
-		t({ "", "bibkey: " }), i(3, ""),
 		t({ "", "created: " }), f(today, {}),
 		t({ "", "tags: []" }),
 		t({ "", "concepts: []" }),

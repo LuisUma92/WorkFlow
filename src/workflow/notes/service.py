@@ -76,6 +76,7 @@ def _fm_to_yaml(fm: NoteFrontmatter) -> str:
     d: dict = {
         "id": fm.id,
         "title": fm.title,
+        "aliases": list(fm.aliases),
         "type": fm.type,
         "tags": list(fm.tags),
         "concepts": list(fm.concepts),
@@ -104,6 +105,7 @@ def _write_note_file(path: Path, fm: NoteFrontmatter, body: str) -> None:
     fm_dict = {
         "id": fm.id,
         "title": fm.title,
+        "aliases": list(fm.aliases),
         "type": fm.type,
         "tags": list(fm.tags),
         "concepts": list(fm.concepts),

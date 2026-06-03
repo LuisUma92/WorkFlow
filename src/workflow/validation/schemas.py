@@ -44,6 +44,7 @@ _VALID_TAXONOMY_DOMAINS = set(_TAXONOMY_DOMAINS)
 class NoteFrontmatter:
     id: str
     title: str
+    aliases: tuple[str, ...] = ()
     tags: tuple[str, ...] = ()
     created: str | None = None
     concepts: tuple[str, ...] = ()
@@ -111,6 +112,7 @@ def validate_note_frontmatter(data: dict) -> tuple[NoteFrontmatter | None, list[
     if not title or not isinstance(title, str):
         errors.append("'title' is required and must be a non-empty string")
 
+    aliases = _string_list(data, "aliases", errors)
     tags = _string_list(data, "tags", errors)
     concepts = _string_list(data, "concepts", errors)
     references = _string_list(data, "references", errors)
@@ -140,6 +142,7 @@ def validate_note_frontmatter(data: dict) -> tuple[NoteFrontmatter | None, list[
         NoteFrontmatter(
             id=note_id,
             title=title,
+            aliases=tuple(aliases),
             tags=tuple(tags),
             created=created,
             concepts=tuple(concepts),
