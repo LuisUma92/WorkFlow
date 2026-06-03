@@ -2,163 +2,166 @@
 
 [![Python package](https://github.com/LuisUma92/WorkFlow/actions/workflows/python-package.yml/badge.svg)](https://github.com/LuisUma92/WorkFlow/actions/workflows/python-package.yml)
 
-Toolkit CLI en Python para gestionar proyectos LaTeX y un sistema unificado de Zettelkasten para escritura academica (tesis, cursos, ejercicios). Integra notas en Markdown, renderizado LaTeX, diagramas TikZ, banco de ejercicios, exportacion a Moodle, y gestion bibliografica a traves de multiples instituciones (UCR, UFide, UCIMED).
+Python CLI toolkit for managing LaTeX projects and a unified Zettelkasten knowledge system for academic writing (thesis, lectures, exercises). Integrates Markdown note-taking, LaTeX rendering, TikZ diagrams, exercise management, Moodle export, and bibliography management across multiple institutions (UCR, UFide, UCIMED).
 
 **Wiki**: [Getting Started](docs/wiki/Getting-Started.md) | [Zettelkasten](docs/wiki/Zettelkasten-Notes.md) | [Exercises](docs/wiki/Exercise-Workflow.md) | [Lectures](docs/wiki/Lectures-Workflow.md) | [Graph](docs/wiki/Knowledge-Graph.md) | [Macros](docs/wiki/LaTeX-Macros.md) | [Architecture](docs/wiki/Architecture.md)
 
-## Instalacion
+## Installation
 
 ```bash
-# Con uv (recomendado)
+# Recommended: install as a uv tool (editable, CLI available globally)
+uv tool install -e .
+
+# Or as a project virtual environment
 uv sync
 
-# O con pip (editable)
+# Or with pip (editable)
 pip install -e .
 ```
 
-### Dependencias
+### Dependencies
 
 `appdirs`, `bibtexparser`, `click`, `pyyaml`, `sqlalchemy`
 
-Opcional: `networkx` (para clustering en el grafo de conocimiento)
+Optional: `networkx` (for knowledge graph clustering)
 
 Python >= 3.12
 
-## Vista general
+## Overview
 
-WorkFlow organiza el trabajo academico en torno a seis pilares:
+WorkFlow organizes academic work around six pillars:
 
-1. **Zettelkasten** (`workflow notes`) — Notas en Markdown (Obsidian-compatible), inicializacion de workspace, enlaces wiki
-2. **Proyectos LaTeX** (`inittex`, `relink`) — Scaffolding y gestion de directorios para cursos y tesis
-3. **Banco de ejercicios** (`workflow exercise`) — Parseo, indexacion, generacion, seleccion y exportacion de ejercicios
-4. **Gestion de cursos** (`workflow lectures`) — Escaneo de archivos, enlaces cruzados, construccion de evaluaciones
-5. **Grafo de conocimiento** (`workflow graph`) — Analisis de conexiones entre notas, ejercicios, bibliografia y cursos
-6. **Pipeline TikZ** (`workflow tikz`) — Compilacion incremental de diagramas standalone a PDF/SVG
+1. **Zettelkasten** (`workflow notes`) — Markdown notes (Obsidian-compatible), workspace initialization, wiki-links
+2. **LaTeX Projects** (`inittex`, `relink`) — Scaffolding and directory management for courses and theses
+3. **Exercise Bank** (`workflow exercise`) — Parsing, indexing, generation, selection, and export of exercises
+4. **Course Management** (`workflow lectures`) — File scanning, cross-linking, evaluation building
+5. **Knowledge Graph** (`workflow graph`) — Analysis of connections between notes, exercises, bibliography, and courses
+6. **TikZ Pipeline** (`workflow tikz`) — Incremental compilation of standalone diagrams to PDF/SVG
 
-## Arquitectura
+## Architecture
 
-### Base de datos hibrida
+### Hybrid Database
 
-WorkFlow usa una arquitectura de dos bases de datos SQLite:
+WorkFlow uses a two-database SQLite architecture:
 
-- **Global** (`~/.local/share/workflow/workflow.db`) — Datos de referencia: instituciones, cursos, libros, ejercicios, evaluaciones, bibliografia
-- **Local** (`<proyecto>/slipbox.db`) — Notas, enlaces, etiquetas y citas por proyecto
+- **Global** (`~/.local/share/workflow/workflow.db`) — Reference data: institutions, courses, books, exercises, evaluations, bibliography
+- **Local** (`<project>/slipbox.db`) — Notes, links, tags, and citations per project
 
-SQLAlchemy 2.0 con `Mapped[]` es el unico ORM. El acceso a datos pasa por interfaces Protocol (`workflow.db.repos.protocols`).
+SQLAlchemy 2.0 with `Mapped[]` is the single ORM. Data access goes through Protocol interfaces (`workflow.db.repos.protocols`).
 
-### Principios clave
+### Key Principles
 
-- **Archivo como fuente de verdad**: Los archivos `.tex` contienen el contenido de ejercicios y notas. La DB almacena solo metadatos e indices (ADR-0010)
-- **Markdown como capa canonica**: Las notas se escriben en Markdown con YAML frontmatter; LaTeX es formato derivado (ADR-0002)
-- **Extender, nunca reemplazar**: Los macros de ejercicio (`\question`, `\qpart`, `\pts`) extienden los existentes en `shared/latex/sty/` (ADR-0005). `\zlink` es alias de `\excref` (ADR-0014)
-- **Normalizacion LaTeX**: Macros personalizados se expanden a LaTeX estandar antes de exportar a Moodle (ADR-0012)
-- **Layout XDG**: Configuracion en `~/.config/workflow/`, datos en `~/.local/share/workflow/` (ADR-0008)
-- **Inmutabilidad**: Todos los tipos de dominio usan `@dataclass(frozen=True)` con `tuple` en lugar de `list`
+- **File as source of truth**: `.tex` files contain exercise and note content. The DB stores only metadata and indexes (ADR-0010)
+- **Markdown as canonical layer**: Notes are written in Markdown with YAML frontmatter; LaTeX is a derived format (ADR-0002)
+- **Extend, never replace**: Exercise macros (`\question`, `\qpart`, `\pts`) extend existing ones in `shared/latex/sty/` (ADR-0005). `\zlink` is an alias for `\excref` (ADR-0014)
+- **LaTeX normalization**: Custom macros are expanded to standard LaTeX before Moodle export (ADR-0012)
+- **XDG layout**: Configuration in `~/.config/workflow/`, data in `~/.local/share/workflow/` (ADR-0008)
+- **Immutability**: All domain types use `@dataclass(frozen=True)` with `tuple` instead of `list`
 
-## Comandos CLI
+## CLI Commands
 
-### Entry points directos
+### Direct Entry Points
 
-| Comando    | Modulo              | Descripcion                                                      |
-| ---------- | ------------------- | ---------------------------------------------------------------- |
-| `workflow` | `main:cli`          | CLI principal (notes, exercise, lectures, graph, tikz, validate) |
-| `inittex`  | `itep.create:cli`   | Crear o clonar un proyecto LaTeX                                 |
-| `relink`   | `itep.links:cli`    | Recrear symlinks desde la base de datos                          |
-| `cleta`    | `lectkit.cleta:cli` | Limpiar archivos auxiliares de TeX                               |
+| Command    | Module              | Description                                                        |
+| ---------- | ------------------- | ------------------------------------------------------------------ |
+| `workflow` | `main:cli`          | Main CLI (notes, exercise, lectures, graph, tikz, validate, import, concept, evaluations, prisma, vault) |
+| `inittex`  | `itep.create:cli`   | Create or clone a LaTeX project                                    |
+| `relink`   | `itep.links:cli`    | Recreate symlinks from the database                                |
+| `cleta`    | `lectkit.cleta:cli` | Clean TeX auxiliary files                                          |
 
 ### workflow notes — Zettelkasten
 
-Inicializacion del workspace y gestion de notas en Markdown (Obsidian-compatible).
+Workspace initialization and Markdown note management (Obsidian-compatible).
 
 ```bash
-# Inicializar workspace con directorios de notas por proyecto
+# Initialize workspace with per-project note directories
 workflow notes init ~/Documents/01-U/
 ```
 
-Crea la estructura:
+Creates the structure:
 
 ```
 ~/Documents/01-U/
-  .workflow/config.yaml              # Marcador de workspace
-  00ZZ-Vault/                        # Zona de triage global
-    inbox/                           # Notas fugaces sin asignar
+  .workflow/config.yaml              # Workspace marker
+  00ZZ-Vault/                        # Global triage zone
+    inbox/                           # Unassigned fleeting notes
     templates/                       # Templates: permanent.md, literature.md, fleeting.md
   10MC-ClassicalMechanics/
-    notes/                           # Vault Obsidian por proyecto
-    slipbox.db                       # DB local de notas
+    notes/                           # Obsidian vault per project
+    slipbox.db                       # Local note DB
   40EM-Electromagnetism/
     notes/
     slipbox.db
 ```
 
-Cada `MainTopic` (10MC, 40EM, 50MQ) funciona como:
+Each `MainTopic` (10MC, 40EM, 50MQ) functions as:
 
-- Un **GeneralProject** de ITeP (salida LaTeX)
-- Un **vault Zettelkasten** (notas Markdown que alimentan los documentos)
+- A **GeneralProject** in ITeP (LaTeX output)
+- A **Zettelkasten vault** (Markdown notes that feed the documents)
 
-#### Macros Zettelkasten
+#### Zettelkasten Macros
 
-| Macro                            | Archivo             | Uso                                                 |
+| Macro                            | File                | Usage                                               |
 | -------------------------------- | ------------------- | --------------------------------------------------- |
-| `\zlink{id}`                     | SetZettelkasten.sty | Referencia cruzada entre notas (alias de `\excref`) |
-| `\zlabel{id}`                    | SetZettelkasten.sty | Ancla ligera para un punto de referencia            |
-| `\begin{zettelnote}{id}{Titulo}` | SetZettelkasten.sty | Entorno semantico de nota                           |
+| `\zlink{id}`                     | SetZettelkasten.sty | Cross-reference between notes (alias of `\excref`)  |
+| `\zlabel{id}`                    | SetZettelkasten.sty | Lightweight anchor for a reference point            |
+| `\begin{zettelnote}{id}{Title}`  | SetZettelkasten.sty | Semantic note environment                           |
 
-En Markdown, las referencias usan wiki-links: `[[20260326-gauss-law]]` o `[[id|texto]]`.
-El pipeline Pandoc convierte `[[id]]` → `\zlink{id}` al compilar a LaTeX.
+In Markdown, references use wiki-links: `[[20260326-gauss-law]]` or `[[id|text]]`.
+The Pandoc pipeline converts `[[id]]` → `\zlink{id}` when compiling to LaTeX.
 
-#### Tipos de nota
+#### Note Types
 
-| Tipo         | Uso                                   | Formato frontmatter                      |
-| ------------ | ------------------------------------- | ---------------------------------------- |
-| `permanent`  | Ideas propias, conceptos consolidados | `type: permanent`                        |
-| `literature` | Notas sobre lecturas y articulos      | `type: literature`, `bibkey: serway2019` |
-| `fleeting`   | Ideas rapidas, pendientes de procesar | `type: fleeting`                         |
+| Type         | Usage                                    | Frontmatter format                       |
+| ------------ | ---------------------------------------- | ---------------------------------------- |
+| `permanent`  | Own ideas, consolidated concepts         | `type: permanent`                        |
+| `literature` | Reading notes and article summaries      | `type: literature`, `bibkey: serway2019` |
+| `fleeting`   | Quick ideas, pending processing          | `type: fleeting`                         |
 
-### workflow exercise — Banco de ejercicios
+### workflow exercise — Exercise Bank
 
-Gestion completa del banco de ejercicios: parseo de archivos `.tex`, sincronizacion con la DB, generacion de placeholders, seleccion por taxonomia, ensamblaje de examenes y exportacion a Moodle XML.
+Full exercise bank management: parsing `.tex` files, syncing with the DB, generating placeholders, selecting by taxonomy, building exams, and exporting to Moodle XML.
 
 ```bash
-# Parsear archivos .tex y mostrar estructura
-workflow exercise parse ruta/a/ejercicios/
+# Parse .tex files and display structure
+workflow exercise parse path/to/exercises/
 
-# Listar ejercicios en la DB con filtros
+# List exercises in the DB with filters
 workflow exercise list --status complete --difficulty medium --type multichoice
 
-# Sincronizar archivos .tex con la DB (crear/actualizar registros)
-workflow exercise sync ruta/a/ejercicios/
+# Sync .tex files with the DB (create/update records)
+workflow exercise sync path/to/exercises/
 
-# Limpiar registros huerfanos (archivos borrados)
+# Remove orphaned records (deleted files)
 workflow exercise gc --yes
 
-# Exportar a Moodle XML
-workflow exercise export-moodle ruta/ --output quiz.xml --status complete --tag physics
+# Export to Moodle XML
+workflow exercise export-moodle path/ --output quiz.xml --status complete --tag physics
 
-# Crear un archivo placeholder de ejercicio
-workflow exercise create mi-ejercicio-001 -d ruta/salida/ --type multichoice --tag physics
+# Create a placeholder exercise file
+workflow exercise create my-exercise-001 -d path/output/ --type multichoice --tag physics
 
-# Crear multiples placeholders desde un rango de libro
-workflow exercise create-range -d ruta/salida/ --book serway --chapter 1 --first 1 --last 20
+# Create multiple placeholders from a book range
+workflow exercise create-range -d path/output/ --book serway --chapter 1 --first 1 --last 20
 
-# Construir un examen seleccionando del banco
-workflow exercise build-exam -l "Usar-Aplicar" -n 5 -p 10 --title "Parcial 1" -o examen.tex
+# Build an exam by selecting from the bank
+workflow exercise build-exam -l "Usar-Aplicar" -n 5 -p 10 --title "Parcial 1" -o exam.tex
 ```
 
-#### Flujo de trabajo tipico de ejercicios
+#### Typical Exercise Workflow
 
 ```
-1. Crear placeholders     →  workflow exercise create-range ...
-2. Editar archivos .tex   →  (editor de texto / Neovim)
-3. Sincronizar con DB     →  workflow exercise sync ruta/
-4. Verificar estado       →  workflow exercise list --status complete
-5. Construir examen       →  workflow exercise build-exam ...
-6. Exportar a Moodle      →  workflow exercise export-moodle ruta/ -o quiz.xml
+1. Create placeholders     →  workflow exercise create-range ...
+2. Edit .tex files         →  (text editor / Neovim)
+3. Sync with DB            →  workflow exercise sync path/
+4. Check status            →  workflow exercise list --status complete
+5. Build exam              →  workflow exercise build-exam ...
+6. Export to Moodle        →  workflow exercise export-moodle path/ -o quiz.xml
 ```
 
-#### Formato de archivo de ejercicio
+#### Exercise File Format
 
-Cada ejercicio es un archivo `.tex` con metadatos YAML en comentarios:
+Each exercise is a `.tex` file with YAML metadata in comments:
 
 ```latex
 % ---
@@ -175,157 +178,247 @@ Cada ejercicio es un archivo `.tex` con metadatos YAML en comentarios:
 }{
 }
 \question{
-  Dado un campo electrico $\vec{E}$, calcule el flujo.
+  Given an electric field $\vec{E}$, calculate the flux.
   \begin{enumerate}[a)]
-    \qpart{\rightoption \pts{5} Opcion correcta}{
-      Solucion detallada aqui.
+    \qpart{\rightoption \pts{5} Correct option}{
+      Detailed solution here.
     }
-    \qpart{\pts{5} Opcion incorrecta}{
-      Por que esta opcion es incorrecta.
+    \qpart{\pts{5} Incorrect option}{
+      Why this option is wrong.
     }
   \end{enumerate}
 }{
-  Solucion general del ejercicio.
+  General exercise solution.
 }
-\qfeedback{Retroalimentacion despues de contestar.}
+\qfeedback{Feedback shown after answering.}
 ```
 
-#### Exportacion a Moodle XML
+#### Moodle XML Export
 
-La exportacion normaliza automaticamente los macros personalizados:
+The export automatically normalizes custom macros:
 
-- `\vc{E}` se expande a `\vec{\mathbf{E}}`
-- `\scrp{enc}` se expande a `_{\mbox{\scriptsize{enc}}}`
-- `$...$` se convierte a `\(...\)` (MathJax compatible)
-- Colores (`\textcolor{red}{texto}`) se eliminan, conservando el contenido
-- Imagenes se codifican en base64 e incrustan en el XML
+- `\vc{E}` expands to `\vec{\mathbf{E}}`
+- `\scrp{enc}` expands to `_{\mbox{\scriptsize{enc}}}`
+- `$...$` converts to `\(...\)` (MathJax compatible)
+- Colors (`\textcolor{red}{text}`) are stripped, preserving content
+- Images are base64-encoded and embedded in the XML
 
-Esto asegura que el XML funcione en **cualquier** instancia de Moodle, sin depender de configuracion institucional de MathJax.
+This ensures the XML works on **any** Moodle instance, without relying on institutional MathJax configuration.
 
-### workflow lectures — Gestion de cursos
+### workflow lectures — Course Management
 
-Herramientas para integrar proyectos de cursos con el sistema de notas y el banco de ejercicios.
+Tools for integrating course projects with the note system and exercise bank.
 
 ```bash
-# Escanear directorio de curso y registrar archivos .tex como notas
-workflow lectures scan ruta/al/curso/ --project-root .
+# Scan course directory and register .tex files as notes
+workflow lectures scan path/to/course/ --project-root .
 
-# Dividir un archivo de notas en subarchivos (marcadores %>)
-workflow lectures split archivo.tex --output-dir tex/
+# Split a notes file into sub-files (using %> markers)
+workflow lectures split file.tex --output-dir tex/
 
-# Escanear referencias (\cite, \ref, \label) y actualizar enlaces en DB
-workflow lectures link ruta/al/curso/ --project-root .
+# Scan references (\cite, \ref, \label) and update links in DB
+workflow lectures link path/to/course/ --project-root .
 
-# Construir evaluacion desde el banco de ejercicios
-workflow lectures build-eval -l "Usar-Aplicar" -n 5 -p 10 --title "Parcial 1" -o examen.tex --moodle
+# Build an evaluation from the exercise bank
+workflow lectures build-eval -l "Usar-Aplicar" -n 5 -p 10 --title "Parcial 1" -o exam.tex --moodle
 ```
 
-#### Flujo de trabajo tipico de curso
+#### Typical Course Workflow
 
 ```
-1. Crear proyecto         →  inittex (seleccionar lecture, institucion, curso)
-2. Escribir notas/clases  →  Editar archivos .tex en lect/tex/
-3. Registrar notas        →  workflow lectures scan ruta/
-4. Construir enlaces      →  workflow lectures link ruta/
-5. Preparar evaluacion    →  workflow lectures build-eval ...
-6. Exportar a Moodle      →  workflow exercise export-moodle ...
+1. Create project          →  inittex (select lecture, institution, course)
+2. Write notes/lectures    →  Edit .tex files in lect/tex/
+3. Register notes          →  workflow lectures scan path/
+4. Build links             →  workflow lectures link path/
+5. Prepare evaluation      →  workflow lectures build-eval ...
+6. Export to Moodle        →  workflow exercise export-moodle ...
 ```
 
-### workflow graph — Grafo de conocimiento
+### workflow graph — Knowledge Graph
 
-Analiza las conexiones entre todos los elementos del sistema: notas, ejercicios, bibliografia, contenidos y cursos.
+Analyzes connections between all system elements: notes, exercises, bibliography, content, and courses. All commands accept `--main-topic CODE`, `--discipline-area CODE`, and `--topic NAME` filter flags.
 
 ```bash
-# Ver estadisticas del grafo
+# View graph statistics
 workflow graph stats --project .
 
-# Encontrar nodos huerfanos (sin conexiones)
+# Find orphan nodes (no connections)
 workflow graph orphans --type note --project .
 
-# Exportar a Graphviz DOT
-workflow graph export-dot --project . -o grafo.dot --highlight-orphans
+# Export to Graphviz DOT
+workflow graph export-dot --project . -o graph.dot --highlight-orphans
 
-# Exportar a TikZ para LaTeX
-workflow graph export-tikz --project . -o grafo.tex --standalone
+# Export to TikZ for LaTeX
+workflow graph export-tikz --project . -o graph.tex --standalone
 
-# Ver clusters tematicos (requiere networkx)
+# View thematic clusters (requires networkx)
 workflow graph clusters --project .
 
-# Ver vecinos de un nodo especifico
+# View neighbors of a specific node
 workflow graph neighbors note:42 --depth 2 --project .
 ```
 
-#### Fuentes del grafo
+#### Graph Sources
 
-El grafo unifica datos de ambas bases de datos:
+The graph unifies data from both databases:
 
-| Fuente                     | Tipo de nodo       | Tipo de arista                      |
-| -------------------------- | ------------------ | ----------------------------------- |
-| Notas (slipbox.db)         | `note`             | `link` (nota→nota via Label)        |
-| Citas (slipbox.db)         | —                  | `citation` (nota→bib_entry)         |
-| Ejercicios (workflow.db)   | `exercise`         | `exercise_content`, `exercise_book` |
-| Contenidos (workflow.db)   | `content`, `topic` | `bib_content`, `course_content`     |
-| Bibliografia (workflow.db) | `bib_entry`        | —                                   |
-| Cursos (workflow.db)       | `course`           | —                                   |
+| Source                      | Node type          | Edge type                           |
+| --------------------------- | ------------------ | ----------------------------------- |
+| Notes (slipbox.db)          | `note`             | `link` (note→note via Label)        |
+| Citations (slipbox.db)      | —                  | `citation` (note→bib_entry)         |
+| Exercises (workflow.db)     | `exercise`         | `exercise_content`, `exercise_book` |
+| Content (workflow.db)       | `content`, `topic` | `bib_content`, `course_content`     |
+| Bibliography (workflow.db)  | `bib_entry`        | —                                   |
+| Courses (workflow.db)       | `course`           | —                                   |
 
-### workflow tikz — Pipeline de diagramas
+### workflow tikz — Diagram Pipeline
 
-Compilacion incremental de diagramas TikZ standalone a PDF y SVG.
+Incremental compilation of standalone TikZ diagrams to PDF and SVG.
 
 ```bash
-# Compilar todos los diagramas en assets/tikz/
+# Compile all diagrams in assets/tikz/
 workflow tikz build --assets-dir assets/tikz --output-dir assets/figures
 
-# Listar fuentes TikZ
+# List TikZ sources
 workflow tikz list --assets-dir assets/tikz
 
-# Limpiar artefactos compilados
+# Clean compiled artifacts
 workflow tikz clean --output-dir assets/figures
 ```
 
-### workflow validate — Validacion de metadatos
+### workflow validate — Metadata Validation
 
-Valida la estructura de frontmatter YAML en notas Markdown y ejercicios LaTeX.
+Validates YAML frontmatter structure in Markdown notes and LaTeX exercises.
 
 ```bash
-# Validar notas
-workflow validate notes ruta/a/notas/
+# Validate notes (with optional strict checks)
+workflow validate notes path/to/notes/
+workflow validate notes path/to/notes/ --strict-main-topic --strict-concepts
 
-# Validar ejercicios
-workflow validate exercises ruta/a/ejercicios/
+# Validate exercises
+workflow validate exercises path/to/exercises/
 ```
+
+### workflow import — Bulk Hierarchy Import
+
+Bulk-imports a `DisciplineArea → Topic → Content → Concept` hierarchy from a YAML file.
+
+```bash
+# Import hierarchy (dry run first)
+workflow import file.yaml --dry-run
+workflow import file.yaml --discipline-area CODE --json
+
+# Note: `workflow topic import` is a deprecated alias (notice sent to stderr)
+```
+
+### workflow concept — Concept Taxonomy
+
+Manages the concept taxonomy (code slugs, parent hierarchy, content affiliation).
+
+```bash
+workflow concept list
+workflow concept show SLUG
+workflow concept add --code SLUG --label TEXT --content-id INT --domain DOMAIN [--parent CODE]
+workflow concept tree
+workflow concept rename OLD NEW
+workflow concept rm SLUG [--force]
+```
+
+Valid `--domain` values: `Información`, `Procedimiento Mental`, `Procedimiento Psicomotor`, `Metacognitivo`.
+
+### workflow evaluations / item / course
+
+Manage evaluation templates, items (with Bloom taxonomy), and courses.
+
+```bash
+workflow evaluations list
+workflow evaluations show ID
+workflow evaluations add --title TEXT --course-id INT
+workflow evaluations edit ID
+
+workflow item list
+workflow item add --description TEXT --taxonomy-level LEVEL
+
+workflow course list
+workflow course add --name TEXT --institution-id INT
+```
+
+### workflow prisma — PRISMA Systematic Review
+
+CLI for managing a systematic literature review workflow backed by the global database.
+
+```bash
+# Bibliography
+workflow prisma bib list
+workflow prisma bib show ID
+workflow prisma bib import path/to/file.bib
+workflow prisma bib import path/to/file.bib --recompute-bibkeys
+workflow prisma bib export [--dialect biblatex|bibtex]
+workflow prisma bib recompute-keys [--dry-run] [--all] [--yes]
+
+# Keywords and review
+workflow prisma keyword list
+workflow prisma review list
+workflow prisma checklist show
+workflow prisma rationale add|list
+workflow prisma tag add|list
+```
+
+The `bib export` command defaults to biblatex dialect; `--dialect bibtex` downgrades biblatex-only types and reverse-maps field names (ADR-0019). `recompute-keys` fills missing calculated bibkeys by default; `--all` normalizes every key after confirmation and backs up the DB first.
+
+### workflow content — Content Bib-Links
+
+Links bibliography entries to content nodes with locus information.
+
+```bash
+workflow content link-bib --content-id INT --bib-id INT [--chapter N] [--section N]
+workflow content bib-links --content-id INT
+workflow content unlink-bib --content-id INT --bib-id INT
+```
+
+### workflow vault — Vault Unification
+
+Migrates per-project `slipbox.db` notes into the unified global vault.
+
+```bash
+workflow vault info
+workflow vault validate
+workflow vault unify
+```
+
+Vault root resolved from `WORKFLOW_VAULT_ROOT` env (default `~/Documents/01-U/0000AA-Vault`). Migration is idempotent via `.vault_pointer` marker.
 
 ## ITeP — Init TeX Project
 
-Modulo para crear y administrar proyectos LaTeX. Usa la base de datos global como fuente de verdad para instituciones, cursos, temas y evaluaciones.
+Module for creating and managing LaTeX projects. Uses the global database as the source of truth for institutions, courses, topics, and evaluations.
 
 ```bash
-# Crear un proyecto nuevo (interactivo)
+# Create a new project (interactive)
 inittex
 
-# Clonar un ciclo existente
+# Clone an existing cycle
 inittex --clone 42
 
-# Recrear symlinks
+# Recreate symlinks
 relink
 ```
 
-### Estructura de proyecto lecture
+### Lecture Project Structure
 
 ```
 UCR-FS0121/
-  config.yaml          # Puntero a DB: {project_type: lecture, project_id: 42}
-  admin/               # Documentos administrativos
-  eval/                # Evaluaciones
+  config.yaml          # DB pointer: {project_type: lecture, project_id: 42}
+  admin/               # Administrative documents
+  eval/                # Evaluations
     config/ img/ tex/
       001-Cinematica/
-  lect/                # Material de clase
+  lect/                # Lecture material
     bib/ config/ img/ svg/
     tex/
       001-Cinematica/
 ```
 
-### Estructura de proyecto general
+### General Project Structure
 
 ```
 10MC-MecanicaClasica/
@@ -337,140 +430,153 @@ UCR-FS0121/
     001-Cinematica/
 ```
 
-## Esquema de base de datos
+## Database Schema
 
-### Base global (workflow.db) — 4 capas
+### Global database (workflow.db) — 4 layers
 
-**Capa 1 — Datos de referencia:**
+**Layer 1 — Reference data:**
 
 - `institution` — UCR (18 sem), UFide (15 cuatri), UCIMED (24 sem)
-- `main_topic` — Temas principales con codigo Dewey
+- `main_topic` — Main topics with Dewey code
 
-**Capa 2 — Entidades maestras:**
+**Layer 2 — Master entities:**
 
-- `bib_entry`, `bib_author` — Bibliografia completa (40+ campos BibLaTeX)
-- `topic`, `content`, `bib_content` — Contenido academico
+- `bib_entry`, `bib_author` — Full bibliography (40+ BibLaTeX fields)
+- `topic`, `content`, `bib_content` — Academic content
+- `concept` — Concept taxonomy (code slugs, domain, parent hierarchy)
 
-**Capa 3 — Templates de curso:**
+**Layer 3 — Course templates:**
 
-- `course`, `course_content` — Cursos con contenidos por semana
-- `evaluation_template`, `item`, `evaluation_item` — Evaluaciones con taxonomia Bloom
-- `exercise`, `exercise_option` — Indice de metadatos del banco de ejercicios
+- `course`, `course_content` — Courses with weekly content
+- `evaluation_template`, `item`, `evaluation_item` — Evaluations with Bloom taxonomy
+- `exercise`, `exercise_option`, `exercise_concept` — Exercise bank metadata index
 
-**Capa 4 — Instancias:**
+**Layer 4 — Instances:**
 
-- `lecture_instance` — Curso en ciclo/anno concreto
-- `general_project` — Proyecto asociado a un tema principal
+- `lecture_instance` — Course in a specific cycle/year
+- `general_project` — Project associated with a main topic
 
-### Base local (slipbox.db) — por proyecto
+### Local database (slipbox.db) — per project
 
-- `note` — Archivo registrado con referencia unica
-- `citation` — Citas bibliograficas en notas
-- `label`, `link` — Etiquetas y enlaces entre notas
-- `tag`, `note_tag` — Sistema de etiquetas M2M
+- `note` — Registered file with unique reference
+- `citation` — Bibliographic citations in notes
+- `label`, `link` — Labels and links between notes
+- `tag`, `note_tag` — M2M tag system
 
-## Macros LaTeX
+## LaTeX Macros
 
-Los macros de ejercicio se definen en `shared/sty/`:
+Exercise macros are defined in `shared/latex/sty/`:
 
-| Macro                           | Archivo             | Uso                             |
+| Macro                           | File                | Usage                           |
 | ------------------------------- | ------------------- | ------------------------------- |
-| `\question{stem}{solution}`     | SetCommands.sty     | Pregunta con stem y solucion    |
-| `\qpart{instruccion}{solucion}` | SetCommands.sty     | Parte de pregunta               |
-| `\pts{n}`                       | PartialCommands.sty | Puntos asignados                |
-| `\rightoption`                  | PartialCommands.sty | Marca opcion correcta           |
-| `\exa[ch]{num}`                 | SetCommands.sty     | Referencia a ejercicio de libro |
-| `\qfeedback{texto}`             | SetExercises.sty    | Retroalimentacion (para Moodle) |
-| `\qdiagram{id}`                 | SetExercises.sty    | Referencia a diagrama TikZ      |
+| `\question{stem}{solution}`     | SetCommands.sty     | Question with stem and solution |
+| `\qpart{instruction}{solution}` | SetCommands.sty     | Question part                   |
+| `\pts{n}`                       | PartialCommands.sty | Assigned points                 |
+| `\rightoption`                  | PartialCommands.sty | Marks the correct option        |
+| `\exa[ch]{num}`                 | SetCommands.sty     | Reference to a book exercise    |
+| `\qfeedback{text}`              | SetExercises.sty    | Feedback (for Moodle)           |
+| `\qdiagram{id}`                 | SetExercises.sty    | Reference to a TikZ diagram     |
 
-### Normalizacion para Moodle
+### Normalization for Moodle
 
-Los macros personalizados se expanden a LaTeX estandar antes de exportar:
+Custom macros are expanded to standard LaTeX before export:
 
-| Original                 | Expandido                    |
+| Original                 | Expanded                     |
 | ------------------------ | ---------------------------- |
 | `\vc{E}`                 | `\vec{\mathbf{E}}`           |
 | `\scrp{enc}`             | `_{\mbox{\scriptsize{enc}}}` |
 | `\ncm{2}{H}`             | `^{2}\text{H}`               |
 | `\pts{5}`                | `(5 pts.)`                   |
-| `\textcolor{red}{texto}` | `texto`                      |
+| `\textcolor{red}{text}`  | `text`                       |
 | `$x^2$`                  | `\(x^2\)`                    |
 
-## Decisiones de arquitectura (ADRs)
+## Architecture Decisions (ADRs)
 
-Documentadas en `docs/ADR/` (ver [INDEX.md](docs/ADR/INDEX.md)):
+Documented in `docs/ADR/` (see [INDEX.md](docs/ADR/INDEX.md)):
 
-| ADR               | Titulo                                                                 | Estado   |
-| ----------------- | ---------------------------------------------------------------------- | -------- |
-| 0001              | Capa semantica de notas Zettelkasten                                   | Aceptado |
-| 0002              | Markdown como capa canonica de conocimiento                            | Aceptado |
-| 0003              | Base de datos hibrida (global + local)                                 | Aceptado |
-| 0004              | SQLAlchemy 2.0 como unico ORM                                          | Aceptado |
-| 0005              | DSL de ejercicios extiende macros existentes                           | Aceptado |
-| 0006              | Pipeline de activos TikZ standalone                                    | Aceptado |
-| 0007              | Modulo de DB compartido con API de repositorio                         | Aceptado |
-| 0008              | Layout de directorios XDG                                              | Aceptado |
-| 0009              | Frontera del modulo de ejercicios + parsing LaTeX compartido           | Aceptado |
-| 0010              | Persistencia: archivo como verdad, DB como indice                      | Aceptado |
-| 0011              | Parser LaTeX con extraccion por conteo de llaves                       | Aceptado |
-| 0012              | Exportacion Moodle XML con normalizacion LaTeX                         | Aceptado |
-| 0013              | Consolidacion: sesiones, desacople, CLI split                          | Aceptado |
-| 0014              | Implementacion Zettelkasten: macros, modelo Note, workspace init       | Aceptado |
-| LZK-0000..0004    | Motor LaTeXZettel (5 ADRs: arquitectura, RPC, Pandoc, refs, DI)        | Aceptado |
-| PRISMA-0000..0004 | PRISMAreview (5 ADRs: arquitectura, router, import, screening, modelo) | Aceptado |
+| ADR               | Title                                                                  | Status      |
+| ----------------- | ---------------------------------------------------------------------- | ----------- |
+| 0001              | Zettelkasten note semantic layer                                        | Accepted    |
+| 0002              | Markdown as canonical knowledge layer                                   | Accepted    |
+| 0003              | Hybrid database (global + local)                                        | Accepted    |
+| 0004              | SQLAlchemy 2.0 as single ORM                                            | Accepted    |
+| 0005              | Exercise DSL extends existing macros                                    | Accepted    |
+| 0006              | TikZ standalone asset pipeline                                          | Accepted    |
+| 0007              | Shared DB module with repository API                                    | Accepted    |
+| 0008              | XDG directory layout                                                    | Accepted    |
+| 0009              | Exercise module boundary + shared LaTeX parsing                         | Accepted    |
+| 0010              | Persistence: file as truth, DB as index                                 | Accepted    |
+| 0011              | LaTeX parser: brace-counting extractor                                  | Accepted    |
+| 0012              | Moodle XML export with LaTeX normalization                              | Accepted    |
+| 0013              | Consolidation: sessions, decoupling, CLI split                          | Accepted    |
+| 0014              | Zettelkasten implementation: macros, note model, workspace init         | Accepted    |
+| 0015              | Zettelkasten daily work: notes, demos, images, exercises                | Accepted    |
+| 0016              | Evaluation CLI: Template, Item, and Course Management                   | Accepted    |
+| 0017              | `graph neighbors --json` output contract                                | Accepted    |
+| 0018              | Bulk-import contract (`workflow import`; `topic import` alias)          | Accepted    |
+| 0019              | Bibliography dialect: biblatex-native model + bibtex compat layer       | Accepted    |
+| 0020              | Bibliography module boundary: foundation layer + lookup contract        | Accepted    |
+| LZK-0000..0004    | LaTeXZettel engine (5 ADRs: architecture, RPC, Pandoc, refs, DI)        | Accepted    |
+| PRISMA-0000..0004 | PRISMAreview (5 ADRs: architecture, router, import, screening, model)   | Accepted    |
+| ITEP-0000..0012   | ITeP project structure, DB, config, types, symlinks, schema, vault, concepts | Accepted/Implemented |
 
-## Estructura del modulo
+## Module Structure
 
 ```
 src/
   workflow/
-    db/           # Base de datos unificada (SQLAlchemy 2.0, repos Protocol)
-    notes/        # Zettelkasten: inicializacion de workspace, gestion de notas
-    exercise/     # Banco de ejercicios (parser, moodle, generator, selector, exam_builder, service)
-    lecture/      # Integracion de cursos (scanner, splitter, linker, eval_builder)
-    graph/        # Grafo de conocimiento (dominio, collectors, analisis, DOT, TikZ, clustering)
-    latex/        # Parsing compartido (llaves, comentarios, normalizacion)
-    tikz/         # Pipeline de diagramas TikZ
-    validation/   # Validacion de frontmatter
-  itep/           # Scaffolding de proyectos LaTeX
-  latexzettel/    # Motor Zettelkasten + servidor JSONL/RPC (24 rutas) + cliente Neovim
-  lectkit/        # Utilidades (cleta)
-  PRISMAreview/   # App web Django para revision sistematica PRISMA
-  appfunc/        # Utilidades compartidas
+    db/           # Unified database (SQLAlchemy 2.0, Protocol repos)
+    notes/        # Zettelkasten: workspace init, note management
+    exercise/     # Exercise bank (parser, moodle, generator, selector, exam_builder, service)
+    lecture/      # Course integration (scanner, splitter, linker, eval_builder)
+    graph/        # Knowledge graph (domain, collectors, analysis, DOT, TikZ, clustering)
+    latex/        # Shared parsing (braces, comments, normalization)
+    tikz/         # TikZ diagram pipeline
+    validation/   # Frontmatter validation
+    importer/     # Bulk hierarchy import engine (engine, types, formatters, cli)
+    concept/      # Concept taxonomy CLI and service
+    evaluation/   # Evaluation CLI (evaluations, item, course)
+    prisma/       # PRISMA systematic review CLI
+    vault/        # Vault unification (unify, paths, cli)
+  itep/           # LaTeX project scaffolding
+  latexzettel/    # Zettelkasten engine + JSONL/RPC server (24 routes) + Neovim client
+  lectkit/        # Utilities (cleta)
+  PRISMAreview/   # Django web app for PRISMA systematic review
+  appfunc/        # Shared utilities
 shared/
   latex/
-    sty/          # 18 archivos de estilo LaTeX (incl. SetZettelkasten.sty)
-    cls/          # texnote.cls y preambulos
-    templates/    # Templates para notas, ejercicios, clases
-    pandoc/       # Pipeline Pandoc: filter.lua, template.tex, preprocess.py
+    sty/          # 18 LaTeX style files (incl. SetZettelkasten.sty)
+    cls/          # texnote.cls and preambles
+    templates/    # Templates for notes, exercises, lectures
+    pandoc/       # Pandoc pipeline: filter.lua, template.tex, preprocess.py
 ```
 
 ## Tests
 
 ```bash
-# Todos los tests (484 tests)
+# All tests
 uv run pytest
 
-# Solo un modulo
+# Single module
 uv run pytest tests/workflow/exercise/
 uv run pytest tests/workflow/graph/
 uv run pytest tests/workflow/lecture/
 uv run pytest tests/workflow/notes/
 
-# Con cobertura
+# With coverage
 uv run pytest --cov=src/workflow --cov-report=term-missing
 ```
 
 ## Lint
 
 ```bash
-# Errores criticos (CI gate)
+# Critical errors (CI gate)
 uv run flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
 
-# Completo (informativo)
+# Full (informational)
 uv run flake8 src/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 ```
 
 ## CI
 
-GitHub Actions en push/PR a `master`. Tests en Python 3.12, 3.13, 3.14.
+GitHub Actions on push/PR to `master`. Tests on Python 3.12, 3.13, 3.14.

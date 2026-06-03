@@ -166,6 +166,10 @@ Architecture decisions in `docs/ADR/` (see [INDEX.md](docs/ADR/INDEX.md) for ful
 - Test framework: pytest (pythonpath configured to `"."`)
 - Dependencies: sqlalchemy, click, pyyaml, appdirs, bibtexparser
 
+## Testing conventions
+
+- **All test-generated output files MUST be written under `tests/outputs/`.** Any artifact a test produces (exported `.tex`/`.bib`/Moodle XML, generated fixtures, snapshots, DOT/TikZ dumps) goes there — never the cwd, repo root, or an ad-hoc path. Prefer a `tests/outputs/` subdir per area. Database/`WORKFLOW_DATA_DIR` isolation is unchanged: the autouse fixture in `tests/conftest.py` still routes the live DB to a per-test tmp dir.
+
 # context-mode — MANDATORY routing rules
 
 You have context-mode MCP tools available. These rules are NOT optional — they protect your context window from flooding. A single unrouted command can dump 56 KB into context and waste the entire session.
