@@ -28,6 +28,8 @@ from sqlalchemy.orm import (
 from workflow.db.base import GlobalBase
 
 if TYPE_CHECKING:
+    from workflow.db.models.academic import CourseContent
+    from workflow.db.models.bibliography import BibContent
     from workflow.db.models.project import GeneralProject, GeneralProjectTopic
 
 # Taxonomy domain enum values.

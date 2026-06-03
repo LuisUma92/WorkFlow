@@ -10,6 +10,7 @@ Models:
 from __future__ import annotations
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     CheckConstraint,
@@ -25,6 +26,9 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from workflow.db.base import GlobalBase
+
+if TYPE_CHECKING:
+    from workflow.db.models.knowledge import MainTopic
 
 
 class Note(GlobalBase):

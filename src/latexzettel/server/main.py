@@ -37,7 +37,7 @@ import json
 import os
 import sys
 import traceback
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from workflow.db.engine import init_global_db, get_global_engine
 
