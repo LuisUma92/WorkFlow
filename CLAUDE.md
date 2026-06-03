@@ -170,7 +170,18 @@ Architecture decisions in `docs/ADR/` (see [INDEX.md](docs/ADR/INDEX.md) for ful
 
 - **All test-generated output files MUST be written under `tests/outputs/`.** Any artifact a test produces (exported `.tex`/`.bib`/Moodle XML, generated fixtures, snapshots, DOT/TikZ dumps) goes there — never the cwd, repo root, or an ad-hoc path. Prefer a `tests/outputs/` subdir per area. Database/`WORKFLOW_DATA_DIR` isolation is unchanged: the autouse fixture in `tests/conftest.py` still routes the live DB to a per-test tmp dir.
 
-# context-mode — MANDATORY routing rules
+## `tasks/` directory conventions
+
+Working docs live in `tasks/<kind>/`. **Every new doc MUST be started from its template in `data/templates/`** — copy the template, fill the placeholders, do not invent ad-hoc structure. Filenames are date-prefixed: `YYYY-MM-DD-<slug>[-<kind>].md`.
+
+| Subdir | Purpose | Template |
+|--------|---------|----------|
+| `tasks/requests/` | Feature/bug/gap requests (GitHub-issue style, with lifecycle frontmatter) | `data/templates/request-template.md` |
+| `tasks/plans/` | Implementation plans (TDD phases, verified anchors, locked decisions) | `data/templates/plan-template.md` |
+| `tasks/audit/` | Audits verifying an artifact against code truth-sources (verdict tables) | `data/templates/audit-template.md` |
+| `tasks/security/` | Security reviews (findings by OWASP severity, fixes) | `data/templates/security-template.md` |
+
+Other `tasks/` paths: `tasks/roadmap/` (dated roadmap snapshots), plus the root logs `tasks/todo.md` and `tasks/lessons.md` (no template — append-only). Gap-mining input uses `data/templates/raw-gap-log.md`.
 
 You have context-mode MCP tools available. These rules are NOT optional — they protect your context window from flooding. A single unrouted command can dump 56 KB into context and waste the entire session.
 
