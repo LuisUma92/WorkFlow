@@ -28,6 +28,7 @@ from workflow.graph.collectors import (
     resolve_taxonomy_filter,
 )
 from workflow.graph.domain import KnowledgeGraph
+from workflow.graph.node_ids import is_note, parse_note_id
 from workflow.vault.paths import resolve_vault_root
 
 
@@ -334,12 +335,10 @@ def _fetch_note_rows(
 
     int_ids: list[int] = []
     for nid in note_node_ids:
-        if not nid.startswith("note:"):
+        note_int_id = parse_note_id(nid)
+        if note_int_id is None:
             continue
-        try:
-            int_ids.append(int(nid.split(":", 1)[1]))
-        except (IndexError, ValueError):
-            continue
+        int_ids.append(note_int_id)
 
     if not int_ids:
         return {}
@@ -395,17 +394,17 @@ def neighbors_cmd(
 
         # Collect all note-type ids (source + note neighbors) for ONE batch query.
         note_ids: list[str] = []
-        if node_id.startswith("note:"):
+        if is_note(node_id):
             note_ids.append(node_id)
         for ni in infos:
-            if ni.node.node_id.startswith("note:"):
+            if is_note(ni.node.node_id):
                 note_ids.append(ni.node.node_id)
         note_rows = _fetch_note_rows(note_ids, global_engine)
 
         # Build source object.
         src_node_map = {n.node_id: n for n in kg.nodes}
         src_node = src_node_map[node_id]
-        if node_id.startswith("note:") and node_id in note_rows:
+        if is_note(node_id) and node_id in note_rows:
             src_info = note_rows[node_id]
             src_title = src_info["title"]
             src_path: str | None = _note_path(vault, src_info)
@@ -419,7 +418,7 @@ def neighbors_cmd(
         neighbor_list = []
         for ni in infos:
             nid = ni.node.node_id
-            if nid.startswith("note:") and nid in note_rows:
+            if is_note(nid) and nid in note_rows:
                 nr = note_rows[nid]
                 n_title: str | None = nr["title"]
                 n_path: str | None = _note_path(vault, nr)
