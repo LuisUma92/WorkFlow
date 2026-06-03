@@ -28,6 +28,8 @@ from workflow.prisma.formatters import (
     format_keyword_table,
     format_rationale_json,
     format_rationale_table,
+    format_recompute_json,
+    format_recompute_table,
     format_review_json,
     format_review_table,
     format_stats_json,
@@ -38,7 +40,6 @@ from workflow.prisma.formatters import (
 from workflow.prisma.exporter import Dialect, ReviewStatus, export_bib_entries
 from workflow.prisma.importer import import_bib_file, import_bib_text
 from workflow.prisma.recompute import (
-    BibkeyChange,
     apply_recompute,
     backup_database,
     compute_recompute_plan,
@@ -295,45 +296,17 @@ def bib_export(
 # ── bib recompute-keys ───────────────────────────────────────────────────
 
 
-def _fmt_recompute_table(changes: list[BibkeyChange], dry_run: bool) -> str:
-    """Return a human-readable table of recompute changes."""
-    mode = "DRY RUN — " if dry_run else ""
-    if not changes:
-        return f"{mode}No changes needed."
-
-    header = f"{mode}{len(changes)} key(s) to update:\n"
-    rows = [
-        f"  [{c.entry_id}] {(c.title or '')[:50]!r:52s}  "
-        f"{(c.old_bibkey or 'NULL'):30s} → {c.new_bibkey}"
-        for c in changes
-    ]
-    return header + "\n".join(rows)
-
-
-def _fmt_recompute_json(
-    changes: list[BibkeyChange],
-    dry_run: bool,
-    backup: Path | None,
-) -> str:
-    import json as _json
-
-    return _json.dumps(
-        {
-            "dry_run": dry_run,
-            "backup": str(backup) if backup else None,
-            "count": len(changes),
-            "changes": [
-                {
-                    "entry_id": c.entry_id,
-                    "title": c.title,
-                    "old": c.old_bibkey,
-                    "new": c.new_bibkey,
-                }
-                for c in changes
-            ],
-        },
-        indent=2,
-    )
+def _guard_recompute_all(*, as_json: bool, confirmed: bool) -> None:
+    """Enforce the --all confirmation contract (raises on abort/missing --yes)."""
+    if as_json:
+        if not confirmed:
+            raise click.ClickException("--all in --json mode requires --yes")
+    elif not confirmed:
+        click.confirm(
+            "--all recomputes EVERY bibkey; keys referenced in review "
+            "rationales / external .bib exports may go stale. Continue?",
+            abort=True,
+        )
 
 
 @bib.command(name="recompute-keys")
@@ -349,6 +322,12 @@ def _fmt_recompute_json(
     help="Recompute every entry (normalize). Default fills only missing keys.",
 )
 @click.option("--json", "as_json", is_flag=True, help="JSON output.")
+@click.option(
+    "--yes",
+    "confirmed",
+    is_flag=True,
+    help="Skip the --all confirmation prompt (required for --json --all).",
+)
 @click.pass_context
 @with_schema_guard
 def bib_recompute_keys(
@@ -356,33 +335,46 @@ def bib_recompute_keys(
     dry_run: bool,
     recompute_all: bool,
     as_json: bool,
+    confirmed: bool,
 ) -> None:
     """Assign or recompute calculated bibkeys for bibliography entries.
 
     Default mode fills only entries whose bibkey is NULL or empty.
     Use --all to recompute every entry (normalize existing keys too).
     Use --dry-run to preview changes without writing.
+    Use --yes to skip the --all confirmation prompt (required with --json).
     """
+    # FIX 1: Guard --all in write mode.
+    if recompute_all and not dry_run:
+        _guard_recompute_all(as_json=as_json, confirmed=confirmed)
+
     engine = get_engine_from_ctx(ctx)
+
+    # FIX 2: Backup BEFORE any mutation; abort if backup fails.
+    backup: Path | None = None
+    if not dry_run:
+        try:
+            backup = backup_database(engine)
+        except OSError as exc:
+            raise click.ClickException(
+                f"DB backup failed, aborting (no changes made): {exc}"
+            )
 
     with Session(engine) as session:
         changes = compute_recompute_plan(
             session, fill_missing_only=not recompute_all
         )
 
-        if dry_run:
-            backup = None
-        else:
-            backup = backup_database(engine)
+        if not dry_run:
             apply_recompute(session, changes)
             session.commit()
 
     if as_json:
-        click.echo(_fmt_recompute_json(changes, dry_run=dry_run, backup=backup))
+        click.echo(format_recompute_json(changes, backup=backup, dry_run=dry_run))
     else:
         if not dry_run and backup is not None:
             click.echo(f"Backup: {backup}")
-        click.echo(_fmt_recompute_table(changes, dry_run=dry_run))
+        click.echo(format_recompute_table(changes, backup=backup, dry_run=dry_run))
 
 
 # ── keyword subgroup ─────────────────────────────────────────────────────

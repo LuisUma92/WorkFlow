@@ -39,6 +39,7 @@ __all__ = [
     "import_bib_text",
     "MAX_BIB_SIZE_BYTES",
     "generate_bibkey_for_entry",
+    "disambiguate_bibkey",
 ]
 
 
@@ -301,7 +302,7 @@ def _suffix_sequence() -> Iterator[str]:
             yield "".join(combo)
 
 
-def _disambiguate_bibkey(candidate: str, taken: set[str]) -> str:
+def disambiguate_bibkey(candidate: str, taken: set[str]) -> str:
     """Append ``a``, ``b``, … to *candidate* until it is not in *taken*.
 
     Only appends a suffix when *candidate* already appears in *taken*.
@@ -315,6 +316,11 @@ def _disambiguate_bibkey(candidate: str, taken: set[str]) -> str:
         if suffixed not in taken:
             return suffixed
     return candidate  # unreachable; satisfies type checker
+
+
+# Backward-compatible private alias — kept so existing tests and internal
+# callers that reference ``_disambiguate_bibkey`` continue to work.
+_disambiguate_bibkey = disambiguate_bibkey
 
 
 def _assign_direct(out: dict[str, object], key: str, val: object) -> None:

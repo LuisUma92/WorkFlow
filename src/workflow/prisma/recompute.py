@@ -12,12 +12,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, selectinload
 
 from workflow.bibliography.bibkey import calculate_bibkey
 from workflow.db.models.bibliography import BibAuthor, BibEntry
-from workflow.prisma.importer import _disambiguate_bibkey
+from workflow.prisma.importer import disambiguate_bibkey
 
 __all__ = [
     "BibkeyChange",
@@ -88,8 +88,21 @@ def compute_recompute_plan(
     -------
     list[BibkeyChange]
         Changes that would be applied (entries where new key ≠ old key).
-        Returns an empty list on a second run (idempotent).
+
+    Idempotency contract
+    --------------------
+    ``fill_missing_only=True`` is idempotent by construction: after a first
+    run every previously-NULL key is non-empty, so those entries are excluded
+    on re-run and the result is an empty changeset.
+
+    ``fill_missing_only=False`` (``--all``) idempotency depends on the
+    deterministic ``ORDER BY BibEntry.id`` traversal below — collision-suffix
+    assignments (a, b, …) are stable only when the traversal order is fixed.
+    Keep the ORDER BY clause to preserve this guarantee.  Caveat: inserting
+    new entries that collide with existing ones between two ``--all`` runs can
+    shift suffix assignments for later entries in that collision group.
     """
+    # ORDER BY BibEntry.id is load-bearing for idempotency — do not remove.
     stmt = (
         select(BibEntry)
         .options(
@@ -126,7 +139,7 @@ def compute_recompute_plan(
             entry_type=entry.entry_type,
             name_prefix=name_prefix,
         )
-        new_key = _disambiguate_bibkey(candidate, taken)
+        new_key = disambiguate_bibkey(candidate, taken)
         taken.add(new_key)
 
         old_key = entry.bibkey or None
@@ -143,7 +156,7 @@ def compute_recompute_plan(
     return changes
 
 
-def backup_database(engine) -> Path | None:  # type: ignore[type-arg]
+def backup_database(engine: Engine) -> Path | None:
     """Copy the SQLite database file to a timestamped ``.bak-YYYYMMDDHHMMSS`` path.
 
     Parameters
@@ -156,6 +169,12 @@ def backup_database(engine) -> Path | None:  # type: ignore[type-arg]
     Path | None
         Absolute path to the backup file, or ``None`` for in-memory / missing
         databases.
+
+    Raises
+    ------
+    OSError
+        Propagated directly from ``shutil.copy2`` if the copy fails.  Callers
+        should catch this and abort before making any DB mutations.
     """
     db_path_str: str | None = engine.url.database
     if not db_path_str or db_path_str in (":memory:", ""):
@@ -167,7 +186,7 @@ def backup_database(engine) -> Path | None:  # type: ignore[type-arg]
 
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     backup_path = db_path.with_name(f"{db_path.name}.bak-{timestamp}")
-    shutil.copy2(db_path, backup_path)
+    shutil.copy2(db_path, backup_path)  # OSError propagates to caller
     return backup_path
 
 

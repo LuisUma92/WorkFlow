@@ -459,13 +459,13 @@ class TestCliRecomputeKeys:
         assert e.bibkey == "knuth1997V03E03"
 
     def test_all_flag_recalculates_existing(self, runner, global_engine):
-        """--all rewrites the explicit key to the calculated one."""
+        """--all --yes rewrites the explicit key to the calculated one."""
         with Session(global_engine) as s:
             import_bib_text(s, BIB_WITH_EXPLICIT_KEY)
 
         result = runner.invoke(
             prisma,
-            ["bib", "recompute-keys", "--all"],
+            ["bib", "recompute-keys", "--all", "--yes"],
             obj={"engine": global_engine},
             catch_exceptions=False,
         )
@@ -484,7 +484,7 @@ class TestCliRecomputeKeys:
 
         result = runner.invoke(
             prisma,
-            ["bib", "recompute-keys", "--all", "--json"],
+            ["bib", "recompute-keys", "--all", "--json", "--yes"],
             obj={"engine": global_engine},
             catch_exceptions=False,
         )
@@ -528,6 +528,117 @@ class TestCliRecomputeKeys:
         result = runner.invoke(prisma, ["bib", "--help"])
         assert result.exit_code == 0
         assert "recompute-keys" in result.output
+
+    # --- FIX 1: --all confirmation guard ---
+
+    def test_all_without_yes_and_input_n_aborts(self, runner, global_engine):
+        """--all without --yes prompts; answering 'n' aborts with nonzero exit."""
+        with Session(global_engine) as s:
+            import_bib_text(s, BIB_WITH_EXPLICIT_KEY)
+            before = s.execute(
+                select(BibEntry).where(BibEntry.title == "Explicit Key Article")
+            ).scalar_one()
+            before_key = before.bibkey  # preserve for assertion
+
+        result = runner.invoke(
+            prisma,
+            ["bib", "recompute-keys", "--all"],
+            obj={"engine": global_engine},
+            input="n\n",
+            catch_exceptions=False,
+        )
+        assert result.exit_code != 0
+
+        # DB must be unchanged.
+        with Session(global_engine) as s:
+            e = s.execute(
+                select(BibEntry).where(BibEntry.title == "Explicit Key Article")
+            ).scalar_one()
+        assert e.bibkey == before_key
+
+    def test_all_without_yes_and_input_y_applies(self, runner, global_engine):
+        """--all without --yes prompts; answering 'y' applies changes."""
+        with Session(global_engine) as s:
+            import_bib_text(s, BIB_WITH_EXPLICIT_KEY)
+
+        result = runner.invoke(
+            prisma,
+            ["bib", "recompute-keys", "--all"],
+            obj={"engine": global_engine},
+            input="y\n",
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0
+
+        with Session(global_engine) as s:
+            e = s.execute(
+                select(BibEntry).where(BibEntry.title == "Explicit Key Article")
+            ).scalar_one()
+        assert e.bibkey == "smith2020"
+
+    def test_json_all_without_yes_raises(self, runner, global_engine):
+        """--json --all without --yes raises ClickException (no prompt in JSON mode)."""
+        with Session(global_engine) as s:
+            import_bib_text(s, BIB_WITH_EXPLICIT_KEY)
+
+        result = runner.invoke(
+            prisma,
+            ["bib", "recompute-keys", "--all", "--json"],
+            obj={"engine": global_engine},
+            catch_exceptions=False,
+        )
+        assert result.exit_code != 0
+        assert "--yes" in result.output or "requires --yes" in result.output
+
+    def test_json_all_with_yes_works(self, runner, global_engine):
+        """--json --all --yes skips prompt and returns valid JSON."""
+        with Session(global_engine) as s:
+            import_bib_text(s, BIB_WITH_EXPLICIT_KEY)
+
+        result = runner.invoke(
+            prisma,
+            ["bib", "recompute-keys", "--all", "--json", "--yes"],
+            obj={"engine": global_engine},
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert data["count"] >= 1
+
+    # --- FIX 2: backup failure aborts ---
+
+    def test_backup_failure_aborts_no_db_change(
+        self, runner, global_engine, monkeypatch
+    ):
+        """If backup_database raises OSError, command aborts before any DB write."""
+        with Session(global_engine) as s:
+            import_bib_text(s, BIB_WITH_EXPLICIT_KEY)
+            before_key = s.execute(
+                select(BibEntry).where(BibEntry.title == "Explicit Key Article")
+            ).scalar_one().bibkey
+
+        def _fail_backup(engine):
+            raise OSError("disk full")
+
+        monkeypatch.setattr(
+            "workflow.prisma.cli.backup_database", _fail_backup
+        )
+
+        result = runner.invoke(
+            prisma,
+            ["bib", "recompute-keys", "--yes"],
+            obj={"engine": global_engine},
+            catch_exceptions=False,
+        )
+        assert result.exit_code != 0
+        assert "backup failed" in result.output.lower() or "DB backup" in result.output
+
+        # DB must be unchanged.
+        with Session(global_engine) as s:
+            e = s.execute(
+                select(BibEntry).where(BibEntry.title == "Explicit Key Article")
+            ).scalar_one()
+        assert e.bibkey == before_key
 
 
 # ---------------------------------------------------------------------------

@@ -6,6 +6,7 @@ Two output modes: human-readable table and JSON (for nvim integration).
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 
 from workflow.db.models.bibliography import (
@@ -17,6 +18,7 @@ from workflow.db.models.bibliography import (
 )
 
 from workflow.prisma.importer import ImportResult
+from workflow.prisma.recompute import BibkeyChange
 from workflow.prisma.service import (
     REVIEW_STATUS_LABELS,
     ChecklistItem,
@@ -258,6 +260,55 @@ def format_checklist_table(items: list[ChecklistItem]) -> str:
 def format_checklist_json(items: list[ChecklistItem]) -> str:
     """Render `get_checklist` result as a JSON list."""
     return json.dumps(items, ensure_ascii=False, indent=2)
+
+
+# ── Recompute-keys results (P3) ──────────────────────────────────────────
+
+
+def format_recompute_table(
+    changes: list[BibkeyChange],
+    *,
+    backup: "Path | None",
+    dry_run: bool,
+) -> str:
+    """Return a human-readable table of recompute changes."""
+    mode = "DRY RUN — " if dry_run else ""
+    if not changes:
+        return f"{mode}No changes needed."
+
+    header = f"{mode}{len(changes)} key(s) to update:\n"
+    rows = [
+        f"  [{c.entry_id}] {(c.title or '')[:50]!r:52s}  "
+        f"{(c.old_bibkey or 'NULL'):30s} → {c.new_bibkey}"
+        for c in changes
+    ]
+    return header + "\n".join(rows)
+
+
+def format_recompute_json(
+    changes: list[BibkeyChange],
+    *,
+    backup: "Path | None",
+    dry_run: bool,
+) -> str:
+    """Return a JSON string describing the recompute result."""
+    return json.dumps(
+        {
+            "dry_run": dry_run,
+            "backup": str(backup) if backup else None,
+            "count": len(changes),
+            "changes": [
+                {
+                    "entry_id": c.entry_id,
+                    "title": c.title,
+                    "old": c.old_bibkey,
+                    "new": c.new_bibkey,
+                }
+                for c in changes
+            ],
+        },
+        indent=2,
+    )
 
 
 def format_import_result_json(result: ImportResult) -> str:
