@@ -37,6 +37,12 @@ from workflow.prisma.formatters import (
 )
 from workflow.prisma.exporter import Dialect, ReviewStatus, export_bib_entries
 from workflow.prisma.importer import import_bib_file, import_bib_text
+from workflow.prisma.recompute import (
+    BibkeyChange,
+    apply_recompute,
+    backup_database,
+    compute_recompute_plan,
+)
 from workflow.prisma.service import (
     REVIEW_STATUS_LABELS,
     create_keyword,
@@ -284,6 +290,99 @@ def bib_export(
         out_path.write_text(bib_output, encoding="utf-8")
     else:
         click.echo(bib_output)
+
+
+# ── bib recompute-keys ───────────────────────────────────────────────────
+
+
+def _fmt_recompute_table(changes: list[BibkeyChange], dry_run: bool) -> str:
+    """Return a human-readable table of recompute changes."""
+    mode = "DRY RUN — " if dry_run else ""
+    if not changes:
+        return f"{mode}No changes needed."
+
+    header = f"{mode}{len(changes)} key(s) to update:\n"
+    rows = [
+        f"  [{c.entry_id}] {(c.title or '')[:50]!r:52s}  "
+        f"{(c.old_bibkey or 'NULL'):30s} → {c.new_bibkey}"
+        for c in changes
+    ]
+    return header + "\n".join(rows)
+
+
+def _fmt_recompute_json(
+    changes: list[BibkeyChange],
+    dry_run: bool,
+    backup: Path | None,
+) -> str:
+    import json as _json
+
+    return _json.dumps(
+        {
+            "dry_run": dry_run,
+            "backup": str(backup) if backup else None,
+            "count": len(changes),
+            "changes": [
+                {
+                    "entry_id": c.entry_id,
+                    "title": c.title,
+                    "old": c.old_bibkey,
+                    "new": c.new_bibkey,
+                }
+                for c in changes
+            ],
+        },
+        indent=2,
+    )
+
+
+@bib.command(name="recompute-keys")
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Report changes without writing or backing up.",
+)
+@click.option(
+    "--all",
+    "recompute_all",
+    is_flag=True,
+    help="Recompute every entry (normalize). Default fills only missing keys.",
+)
+@click.option("--json", "as_json", is_flag=True, help="JSON output.")
+@click.pass_context
+@with_schema_guard
+def bib_recompute_keys(
+    ctx: click.Context,
+    dry_run: bool,
+    recompute_all: bool,
+    as_json: bool,
+) -> None:
+    """Assign or recompute calculated bibkeys for bibliography entries.
+
+    Default mode fills only entries whose bibkey is NULL or empty.
+    Use --all to recompute every entry (normalize existing keys too).
+    Use --dry-run to preview changes without writing.
+    """
+    engine = get_engine_from_ctx(ctx)
+
+    with Session(engine) as session:
+        changes = compute_recompute_plan(
+            session, fill_missing_only=not recompute_all
+        )
+
+        if dry_run:
+            backup = None
+        else:
+            backup = backup_database(engine)
+            apply_recompute(session, changes)
+            session.commit()
+
+    if as_json:
+        click.echo(_fmt_recompute_json(changes, dry_run=dry_run, backup=backup))
+    else:
+        if not dry_run and backup is not None:
+            click.echo(f"Backup: {backup}")
+        click.echo(_fmt_recompute_table(changes, dry_run=dry_run))
 
 
 # ── keyword subgroup ─────────────────────────────────────────────────────
