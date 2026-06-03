@@ -23,18 +23,16 @@ from workflow.content.service import (
     ContentServiceError,
     DuplicateContent,
     add_content,
+    get_content_by_name,
 )
-from workflow.db.models.knowledge import (
-    Content,
-    DisciplineArea,
-    Topic,
-)
+from workflow.db.models.knowledge import DisciplineArea
 from workflow.topic.import_types import ImportResult, RowError
 from workflow.topic.service import (
     DisciplineAreaNotFound,
     DuplicateTopic,
     TopicError,
     add_topic,
+    get_topic_by_serial,
 )
 
 __all__ = [
@@ -194,12 +192,7 @@ def _import_content(
         content_id = content.id
         counters.contents += 1
     except DuplicateContent:
-        existing = session.scalars(
-            select(Content).where(
-                Content.topic_id == topic_id,
-                Content.name == c_name,
-            )
-        ).first()
+        existing = get_content_by_name(session, topic_id, c_name)
         if existing is None:
             counters.errors.append(RowError("content", c_name, "Duplicate but lookup failed."))
             return
@@ -233,12 +226,7 @@ def _import_topic(
         topic_id = topic.id
         counters.topics += 1
     except DuplicateTopic:
-        existing = session.scalars(
-            select(Topic).where(
-                Topic.discipline_area_id == da_id,
-                Topic.serial_number == serial,
-            )
-        ).first()
+        existing = get_topic_by_serial(session, da_id, serial)
         if existing is None:
             counters.errors.append(RowError("topic", t_name, "Duplicate but lookup failed."))
             return

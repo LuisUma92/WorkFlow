@@ -13,6 +13,7 @@ __all__ = [
     "add_topic",
     "list_topics",
     "get_topic",
+    "get_topic_by_serial",
 ]
 
 
@@ -43,12 +44,7 @@ def add_topic(
             f"DisciplineArea code {discipline_area_code!r} not found."
         )
 
-    existing = session.scalars(
-        select(Topic).where(
-            Topic.discipline_area_id == da.id,
-            Topic.serial_number == serial_number,
-        )
-    ).first()
+    existing = get_topic_by_serial(session, da.id, serial_number)
     if existing is not None:
         raise DuplicateTopic(
             f"Topic with serial_number={serial_number} already exists "
@@ -80,3 +76,17 @@ def list_topics(
 
 def get_topic(session: Session, topic_id: int) -> Topic | None:
     return session.get(Topic, topic_id)
+
+
+def get_topic_by_serial(
+    session: Session,
+    discipline_area_id: int,
+    serial_number: int,
+) -> Topic | None:
+    """Return the Topic matching (discipline_area_id, serial_number), or None."""
+    return session.scalars(
+        select(Topic).where(
+            Topic.discipline_area_id == discipline_area_id,
+            Topic.serial_number == serial_number,
+        )
+    ).first()

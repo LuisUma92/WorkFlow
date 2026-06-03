@@ -17,6 +17,7 @@ __all__ = [
     "add_content",
     "list_contents",
     "get_content",
+    "get_content_by_name",
 ]
 
 
@@ -54,12 +55,7 @@ def add_content(
     if topic is None:
         raise TopicNotFound(f"Topic id={topic_id} not found.")
 
-    existing = session.scalars(
-        select(Content).where(
-            Content.topic_id == topic_id,
-            Content.name == name,
-        )
-    ).first()
+    existing = get_content_by_name(session, topic_id, name)
     if existing is not None:
         raise DuplicateContent(
             f"Content {name!r} already exists in topic id={topic_id}."
@@ -83,3 +79,17 @@ def list_contents(
 
 def get_content(session: Session, content_id: int) -> Content | None:
     return session.get(Content, content_id)
+
+
+def get_content_by_name(
+    session: Session,
+    topic_id: int,
+    name: str,
+) -> Content | None:
+    """Return the Content matching (topic_id, name), or None."""
+    return session.scalars(
+        select(Content).where(
+            Content.topic_id == topic_id,
+            Content.name == name,
+        )
+    ).first()
