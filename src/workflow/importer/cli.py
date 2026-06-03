@@ -70,6 +70,15 @@ def import_cmd(
 ) -> None:
     """Bulk-import a DisciplineArea → Topic → Content → Concept hierarchy from YAML.
 
-    NOTE: the global skip semantics — a concept `code` reused under a DIFFERENT
-    content is silently skipped, not re-linked — see `workflow import --help`."""
+    Idempotent: existing Topics (by serial) and Contents (by name within a topic)
+    are reused, not duplicated.
+
+    CONCEPT GLOBAL-SKIP: a concept `code` is globally unique. A `code` that already
+    exists is silently skipped (counted under "skipped"), even when the YAML places
+    it under a DIFFERENT content — it is NOT re-linked to the new content. To move a
+    concept, edit it explicitly with `workflow concept` rather than re-importing.
+
+    Exit codes: 0 success / clean --dry-run · 1 schema or YAML error (no writes) ·
+    2 unknown discipline_area_code (no writes) · 3 partial failure (some rows
+    created, row-level errors collected)."""
     run_import(ctx, file, discipline_area_code, dry_run, as_json)

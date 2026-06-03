@@ -56,12 +56,35 @@ uniqueness guards: topic `(discipline_area_id, serial_number)`, content
 reused under a *different* content is silently skipped (global code uniqueness),
 not re-linked.
 
-## Consequences / follow-ups (non-blocking)
-- The engine lives under `workflow/topic/` but spans topic+content+concept — a
-  cross-domain composition root in a leaf module. Consider moving to a neutral
-  `workflow/importer/` and exposing `workflow import` before a second import
-  surface (bib, notes) appears.
-- The duplicate-resolution lookups re-implement the `add_*` uniqueness predicates
-  (drift risk). Extract shared `get_topic_by_serial` / `get_content_by_name`
-  helpers used by both the guard and the importer.
-- Document the concept global-skip behaviour in the user-facing help/template.
+## Consequences / follow-ups
+
+All three follow-ups below were resolved in the v1.14 reviewer-followups Wave 3
+(2026-06-03) — see the Amendment.
+
+- ✅ The engine lived under `workflow/topic/` but spanned topic+content+concept — a
+  cross-domain composition root in a leaf module. → moved to neutral
+  `workflow/importer/`; `workflow import` verb exposed (followup #8).
+- ✅ The duplicate-resolution lookups re-implemented the `add_*` uniqueness predicates
+  (drift risk). → extracted shared `get_topic_by_serial` / `get_content_by_name`
+  helpers used by both the guard and the importer (followup #9).
+- ✅ Document the concept global-skip behaviour in the user-facing help/template
+  (followup #10).
+
+## Amendment (2026-06-03 — Wave 3 reviewer-followups)
+
+**Canonical verb is now `workflow import`.** `workflow topic import` is retained as a
+**deprecation alias**: it emits a `[DEPRECATED]` notice to **stderr** (stdout stays
+clean, so the `--json` contract above is unaffected) and delegates to the same
+`importer.cli.run_import` body. Exit codes and the `--json` shape are byte-identical
+across both routes.
+
+The engine and its DTOs/formatters moved to the `workflow/importer/` package
+(`engine.py`, `types.py`, `formatters.py`, `cli.py`). The old `workflow.topic.bulk_import`,
+`workflow.topic.import_types`, and `workflow.topic.import_formatters` modules remain as
+thin re-export shims for backward compatibility.
+
+The concept global-skip limitation (a `code` reused under a different content is
+silently skipped, not re-linked) is now documented in `workflow import --help`.
+
+The per-row SAVEPOINT question is unchanged: revisit only if the global engine adopts
+the documented pysqlite BEGIN recipe.
