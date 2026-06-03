@@ -10,8 +10,16 @@ from typing import TypedDict
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
-from workflow.bibliography.service import (  # noqa: F401  (re-export for back-compat)
-    _bib_entry_options,
+# Deprecated re-export. Canonical home: workflow.bibliography (service.py / __init__.py).
+# Removal target: once no module imports get_bib_entry_by_bibkey from here.
+# Audit 2026-06-02: external callers importing from prisma.service = NONE.
+#   All callers use workflow.bibliography.service or workflow.bibliography directly:
+#   src/workflow/exercise/cli.py, exercise/service.py, content/bib_links.py.
+#   Safe to remove now; kept one release for any external scripts not in-tree.
+# Future LOW task: delete get_bib_entry_by_bibkey from this import in next release post-v1.14.0.
+# (workflow.bibliography is the foundation layer — see ADR-0020.)
+from workflow.bibliography.service import (  # noqa: F401
+    _bib_entry_options,  # genuine internal prisma dependency — NOT a re-export
     get_bib_entry_by_bibkey,
 )
 from workflow.db.models.bibliography import (

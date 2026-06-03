@@ -120,6 +120,7 @@ These decisions define how exercises are authored, parsed, indexed, and exported
 | [PRISMA-0004](PRISMA-0004-data-model-schema.md)              | Data model: 30+ Django models for systematic review      | PRISMA | Accepted                  | PRISMA-0000                                |
 | [PRISMA-0005](PRISMA-0005-cli-sqlalchemy-migration.md)       | PRISMA CLI: SQLAlchemy migration and unified workflow.db | PRISMA | Accepted                  | PRISMA-0000, PRISMA-0004, 0004, 0007, 0016 |
 | [0019](0019-bibliography-dialect-biblatex-bibtex.md)         | Bibliography dialect: biblatex-native model + bibtex compat layer | PRISMA | Accepted         | PRISMA-0002, PRISMA-0005, 0007             |
+| [0020](0020-bibliography-module-boundary.md)                 | Bibliography module boundary: foundation layer + 0/1/2+ lookup contract | Bibliography | Accepted | 0007, 0019, PRISMA-0005 |
 
 ## Asset Pipeline
 

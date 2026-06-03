@@ -167,3 +167,34 @@ See ITEP-0010 for the full contract.
 | Date       | Change      |
 | ---------- | ----------- |
 | 2026-03-25 | Initial ADR |
+| 2026-06-02 | Amendment: error-base graduation + read-heavy CLI bypass (see below) |
+
+---
+
+## Amendment — 2026-06-02
+
+### Rule A: Error-base graduation
+
+Service-layer error taxonomies introduced in a feature module are **provisional**.
+Generic bases (`EntityNotFoundError`, `UniquenessError`, `AmbiguousLookupError`)
+**graduate to `workflow.db.errors`** once a second consumer appears.
+
+**Canonical inheritance pattern** (from architect review):
+
+- A domain's *service-root* error (e.g. `ContentServiceError`) inherits
+  `workflow.db.errors.WorkflowError`.
+- A domain's *leaf* errors **SHOULD** inherit the neutral base directly
+  (e.g. `ExerciseNotFound(EntityNotFoundError)`) so that
+  `except dberr.EntityNotFoundError` works cross-domain, while
+  `except ContentServiceError` still catches via the root.
+
+The existing `content` module uses a transitional dual-base intermediate
+(`content.EntityNotFoundError(ContentServiceError, dberr.EntityNotFoundError)`)
+which is **accepted but NOT the template** for new domains.
+
+### Rule B: Read-heavy CLI bypass
+
+Read-heavy CLI surfaces **MAY** bypass the repository Protocol interfaces and
+query the ORM directly (e.g. single-row lookups in bibliography or
+`content link-bib` commands). The repo-protocol requirement applies to **write
+paths and complex queries**; lightweight read-only commands are exempt.

@@ -154,6 +154,7 @@ Architecture decisions in `docs/ADR/` (see [INDEX.md](docs/ADR/INDEX.md) for ful
 | 0017 | `graph neighbors --json` output contract | Accepted |
 | 0018 | `workflow topic import` bulk-import contract | Accepted |
 | 0019 | Bibliography dialect: biblatex-native model + bibtex compat layer | Accepted |
+| 0020 | Bibliography module boundary: foundation layer + 0/1/2+ lookup contract | Accepted |
 
 ## Build & CI
 
