@@ -1,11 +1,21 @@
-"""Schema-guard error translation for ITEP-0010.
+"""Service-layer error bases and schema-guard error translation.
 
-When a Click command opens a session against an out-of-date DB, SQLAlchemy
-raises ``OperationalError(no such column: ...)`` or ``no such table: ...``.
-The user sees a Python traceback. ``@with_schema_guard`` converts those
-specific cases into a ``click.ClickException`` whose message points at
-``workflow db migrate``. Any other ``OperationalError`` is re-raised
-unchanged so genuine bugs surface normally.
+Neutral, domain-agnostic error bases (ADR-0007) are defined here so that
+feature modules can inherit from them without creating cross-module import
+cycles.  Feature modules' error taxonomies graduate here once a 2nd consumer
+appears.
+
+Schema-guard (ITEP-0010): When a Click command opens a session against an
+out-of-date DB, SQLAlchemy raises ``OperationalError(no such column: ...)``
+or ``no such table: ...``.  The user sees a Python traceback.
+``@with_schema_guard`` converts those specific cases into a
+``click.ClickException`` whose message points at ``workflow db migrate``.
+Any other ``OperationalError`` is re-raised unchanged so genuine bugs surface
+normally.
+
+Note: ``SchemaOutOfDateError`` intentionally does NOT inherit ``WorkflowError``;
+it is always converted to a ``click.ClickException`` before reaching application
+catch-blocks, so it is deliberately outside the service-layer error tree.
 """
 
 from __future__ import annotations
@@ -19,10 +29,37 @@ import click
 from sqlalchemy.exc import OperationalError
 
 __all__ = [
+    # Neutral service-layer bases
+    "WorkflowError",
+    "EntityNotFoundError",
+    "UniquenessError",
+    "AmbiguousLookupError",
+    # Schema-guard
     "SchemaOutOfDateError",
     "translate_operational_error",
     "with_schema_guard",
 ]
+
+
+# ---------------------------------------------------------------------------
+# Neutral, domain-agnostic service-layer error bases (ADR-0007)
+# ---------------------------------------------------------------------------
+
+
+class WorkflowError(Exception):
+    """Root of all workflow service-layer errors."""
+
+
+class EntityNotFoundError(WorkflowError):
+    """A requested entity does not exist."""
+
+
+class UniquenessError(WorkflowError):
+    """An operation would violate a uniqueness constraint."""
+
+
+class AmbiguousLookupError(WorkflowError):
+    """A lookup matched 2+ rows where ≤1 was expected."""
 
 
 _RE_MISSING_COLUMN = re.compile(

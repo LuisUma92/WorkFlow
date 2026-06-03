@@ -4,6 +4,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from workflow.db import errors as dberr
 from workflow.db.models.knowledge import Content, Topic
 
 __all__ = [
@@ -19,15 +20,15 @@ __all__ = [
 ]
 
 
-class ContentServiceError(Exception):
-    pass
+class ContentServiceError(dberr.WorkflowError):
+    """Root of all content-service errors."""
 
 
-class EntityNotFoundError(ContentServiceError):
+class EntityNotFoundError(ContentServiceError, dberr.EntityNotFoundError):
     """Base for 'looked-up entity does not exist' errors."""
 
 
-class UniquenessError(ContentServiceError):
+class UniquenessError(ContentServiceError, dberr.UniquenessError):
     """Base for 'entity/link already exists' errors."""
 
 

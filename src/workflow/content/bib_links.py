@@ -22,6 +22,7 @@ from workflow.content.service import (
     EntityNotFoundError,
     UniquenessError,
 )
+from workflow.db.errors import AmbiguousLookupError
 from workflow.db.models.bibliography import BibContent, BibEntry
 from workflow.db.models.knowledge import Content
 
@@ -40,8 +41,8 @@ class BibEntryNotFound(EntityNotFoundError):
     pass
 
 
-class BibKeyAmbiguous(ContentServiceError):
-    pass
+class BibKeyAmbiguous(ContentServiceError, AmbiguousLookupError):
+    """Raised when a bibkey lookup hits 2+ rows at the content-service boundary."""
 
 
 class BibLinkNotFound(ContentServiceError):

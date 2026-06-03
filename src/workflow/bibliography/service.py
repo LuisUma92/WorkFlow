@@ -7,12 +7,13 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from workflow.db import errors as dberr
 from workflow.db.models.bibliography import BibAuthor, BibEntry
 
 __all__ = ["BibKeyAmbiguous", "get_bib_entry_by_bibkey"]
 
 
-class BibKeyAmbiguous(Exception):
+class BibKeyAmbiguous(dberr.AmbiguousLookupError):
     """Raised when multiple BibEntry rows share the same bibkey.
 
     This indicates a data integrity problem that must be resolved at the

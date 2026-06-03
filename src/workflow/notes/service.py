@@ -14,7 +14,8 @@ from pathlib import Path
 
 import yaml
 
-from workflow.notes.discovery import iter_note_files, parse_frontmatter, walk_note_files
+from workflow.db.errors import AmbiguousLookupError, EntityNotFoundError
+from workflow.notes.discovery import parse_frontmatter, walk_note_files
 from workflow.validation.schemas import NoteFrontmatter, validate_note_frontmatter
 
 __all__ = [
@@ -38,11 +39,11 @@ _SAFE_ID_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
 _WIKILINK_RE = re.compile(r"\[\[([^\]]+)\]\]")
 
 
-class NoteNotFound(Exception):
+class NoteNotFound(EntityNotFoundError):
     """Raised when a note with the given id cannot be found."""
 
 
-class AmbiguousNoteId(Exception):
+class AmbiguousNoteId(AmbiguousLookupError):
     """Raised when multiple notes share the same id in the search root."""
 
 
