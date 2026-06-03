@@ -62,6 +62,17 @@ and a planned exporter all depend on what "compliant" means here.
    > content link-bib, maturation) tolerate ambiguity by design. A calculated-bibkey
    > enforcement approach is tracked separately in
    > `tasks/requests/2026-06-02-calculated-bibkey-enforcement.md`.
+   >
+   > **Update (2026-06-02): calculated bibkey landed.** Pure `calculate_bibkey`
+   > (`src/workflow/bibliography/bibkey.py`) derives keys as book
+   > `<surname:lc><year:04d>[V<vol:02d>]E<ed:02d>` / article
+   > `<surname:lc><year:04d>[V<vol:02d>]` (fallbacks `0000`/`anon`/`E01`,
+   > von-particle + accent fold). The importer keeps the source `.bib` ID by
+   > default and only calculates when it is missing (`--recompute-bibkeys`
+   > forces it); collisions across distinct works get a bijective base-26
+   > suffix. `workflow prisma bib recompute-keys [--dry-run] [--all]` backfills
+   > missing keys (or normalizes all, after confirmation + DB backup). Bibkeys
+   > remain **non-unique** by design — this enforces a *format*, not uniqueness.
 6. **Folded identifiers (acceptable):** isbn/issn/ismn unified into `isn` +
    `isn_type` FK — representationally fine, but needs reverse-mapping on export.
 
