@@ -451,7 +451,7 @@ def test_flush_db_error_aborts_run_without_partial_commit(global_engine, monkeyp
     (App-level row errors like a bad domain ARE collected; that is covered by
     test_invalid_domain_*. This guards the DB-integrity path specifically.)
     """
-    import workflow.topic.bulk_import as bi
+    import workflow.importer.engine as bi
     from sqlalchemy.exc import SQLAlchemyError
 
     real_add = bi.add_concept

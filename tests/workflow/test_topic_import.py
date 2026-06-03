@@ -103,7 +103,7 @@ def test_json_flag_inserts_rows_and_correct_counts(runner, tmp_path):
     result = runner.invoke(topic, ["import", file, "--json"])
 
     assert result.exit_code == 0, result.output
-    parsed = json.loads(result.output)
+    parsed = json.loads(result.stdout)
     assert parsed["created"]["topics"] == 1
     assert parsed["created"]["contents"] == 1
     assert parsed["created"]["concepts"] == 1
@@ -133,7 +133,7 @@ def test_idempotent_rerun_exits_0_all_skipped(runner, tmp_path):
     result = runner.invoke(topic, ["import", file, "--json"])
 
     assert result.exit_code == 0, result.output
-    parsed = json.loads(result.output)
+    parsed = json.loads(result.stdout)
     assert parsed["created"]["topics"] == 0
     assert parsed["created"]["contents"] == 0
     assert parsed["skipped"] >= 1
@@ -188,7 +188,7 @@ def test_json_shape_has_required_keys(runner, tmp_path):
     result = runner.invoke(topic, ["import", file, "--json"])
 
     assert result.exit_code == 0, result.output
-    parsed = json.loads(result.output)
+    parsed = json.loads(result.stdout)
     assert "created" in parsed
     assert "skipped" in parsed
     assert "errors" in parsed
@@ -232,7 +232,7 @@ def test_partial_failure_exits_3_with_errors(runner, tmp_path):
     result = runner.invoke(topic, ["import", file, "--json"])
 
     assert result.exit_code == 3, result.output
-    parsed = json.loads(result.output)
+    parsed = json.loads(result.stdout)
     assert len(parsed["errors"]) >= 1
 
 
@@ -251,7 +251,7 @@ def test_discipline_area_override(runner, tmp_path):
     result = runner.invoke(topic, ["import", file, "--discipline-area", "MA0002", "--json"])
 
     assert result.exit_code == 0, result.output
-    parsed = json.loads(result.output)
+    parsed = json.loads(result.stdout)
     assert parsed["created"]["topics"] == 1
 
     # Topic should belong to MA0002's area

@@ -19,6 +19,7 @@ from workflow.concept.cli import concept
 from workflow.exam.cli import exam
 from workflow.topic.cli import topic
 from workflow.content.cli import content
+from workflow.importer.cli import import_cmd
 
 
 @click.group("workflow")
@@ -43,6 +44,7 @@ cli.add_command(concept)
 cli.add_command(exam)
 cli.add_command(topic)
 cli.add_command(content)
+cli.add_command(import_cmd)
 
 
 if __name__ == "__main__":

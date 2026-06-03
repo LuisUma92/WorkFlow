@@ -6,13 +6,12 @@ from sqlalchemy.orm import Session
 
 from workflow.db.engine import get_engine_from_ctx
 from workflow.db.errors import with_schema_guard
-from workflow.topic.bulk_import import ImportSchemaError, import_hierarchy, load_yaml
+from workflow.importer.cli import run_import
 from workflow.topic.formatters import (
     format_topic_json,
     format_topic_list_json,
     format_topic_list_table,
 )
-from workflow.topic.import_formatters import format_import_json, format_import_table
 from workflow.topic.service import (
     DisciplineAreaNotFound,
     DuplicateTopic,
@@ -130,31 +129,10 @@ def cmd_import(
     dry_run: bool,
     as_json: bool,
 ) -> None:
-    """Bulk-import Topic → Content → Concept hierarchy from a YAML file."""
-    try:
-        data = load_yaml(file)
-    except ImportSchemaError as exc:
-        click.echo(str(exc), err=True)
-        ctx.exit(1)
-        return
-
-    engine = _get_engine(ctx)
-    with Session(engine) as session:
-        try:
-            result = import_hierarchy(
-                session,
-                data,
-                discipline_area_override=discipline_area_code,
-                dry_run=dry_run,
-            )
-        except ImportSchemaError as exc:
-            click.echo(str(exc), err=True)
-            ctx.exit(1)
-            return
-        except DisciplineAreaNotFound as exc:
-            click.echo(str(exc), err=True)
-            ctx.exit(2)
-            return
-
-    click.echo(format_import_json(result) if as_json else format_import_table(result))
-    ctx.exit(3 if result.has_errors else 0)
+    """[DEPRECATED] Use `workflow import`. Bulk-import a hierarchy from YAML."""
+    click.echo(
+        "[DEPRECATED] 'workflow topic import' is deprecated; "
+        "use 'workflow import' instead.",
+        err=True,
+    )
+    run_import(ctx, file, discipline_area_code, dry_run, as_json)
