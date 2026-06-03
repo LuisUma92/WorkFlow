@@ -7,12 +7,13 @@ Uses per-item savepoint rollback on IntegrityError for dedup.
 
 from __future__ import annotations
 
+import itertools
 import re
 import warnings
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
-from typing import Literal
+from typing import Iterator, Literal
 from urllib.parse import urlparse
 
 import bibtexparser
@@ -293,23 +294,27 @@ def generate_bibkey_for_entry(fields: dict[str, object], author_string: str) -> 
     )
 
 
+def _suffix_sequence() -> Iterator[str]:
+    """Yield an unbounded bijective base-26 suffix sequence: a, b, …, z, aa, ab, …"""
+    for length in itertools.count(1):
+        for combo in itertools.product("abcdefghijklmnopqrstuvwxyz", repeat=length):
+            yield "".join(combo)
+
+
 def _disambiguate_bibkey(candidate: str, taken: set[str]) -> str:
     """Append ``a``, ``b``, … to *candidate* until it is not in *taken*.
 
     Only appends a suffix when *candidate* already appears in *taken*.
-    The first free suffix letter is used (``a`` → ``b`` → … → ``z``).
-    If all 26 are exhausted a ``RuntimeError`` is raised (extremely unlikely
-    in any real bibliography).
+    Uses an unbounded bijective base-26 sequence: a, b, …, z, aa, ab, …
+    so there is no cap on the number of colliding distinct works.
     """
     if candidate not in taken:
         return candidate
-    for ch in "abcdefghijklmnopqrstuvwxyz":
-        suffixed = f"{candidate}{ch}"
+    for suffix in _suffix_sequence():
+        suffixed = f"{candidate}{suffix}"
         if suffixed not in taken:
             return suffixed
-    raise RuntimeError(
-        f"Cannot disambiguate bibkey {candidate!r}: all 26 suffixes are taken."
-    )
+    return candidate  # unreachable; satisfies type checker
 
 
 def _assign_direct(out: dict[str, object], key: str, val: object) -> None:
@@ -556,12 +561,13 @@ def _process_entry(
     taken_bibkeys: set[str] | None = None,
 ) -> EntryStatus:
     fields_dict = _parse_fields(raw)
-    fields_dict["bibkey"] = _resolve_bibkey(
+    new_bibkey = _resolve_bibkey(
         raw,
         fields_dict,
         recompute_bibkeys=recompute_bibkeys,
         taken_bibkeys=taken_bibkeys,
     )
+    fields_dict["bibkey"] = new_bibkey
 
     entry = BibEntry(**fields_dict)
 
@@ -575,8 +581,9 @@ def _process_entry(
         return "skipped"
 
     # Track this key so later entries in the same batch can avoid collisions.
+    # Use the pre-captured value to avoid relying on ORM attribute state post-flush.
     if taken_bibkeys is not None:
-        taken_bibkeys.add(entry.bibkey)
+        taken_bibkeys.add(new_bibkey)
 
     for afield in _AUTHOR_FIELDS:
         val = raw.get(afield)
@@ -611,7 +618,9 @@ def _load_existing_bibkeys(session: Session) -> set[str]:
 # unique placeholder before parsing, then treat it as "missing" in
 # `_process_entry` → the calculated bibkey path fires (request P2.2).
 _KEYLESS_PREFIX = "__keyless_"
-_KEYLESS_OPEN_RE = re.compile(r"(@\w+\s*\{)(\s*,)")
+# Anchored to line-start (re.MULTILINE) so patterns inside field values like
+# `@misc{,` in an abstract or note are NOT matched — only real entry openers are.
+_KEYLESS_OPEN_RE = re.compile(r"^([ \t]*)(@\w+\s*\{)(\s*,)", re.MULTILINE)
 
 
 def _inject_keyless_ids(text: str) -> str:
@@ -621,7 +630,7 @@ def _inject_keyless_ids(text: str) -> str:
     def _repl(match: "re.Match[str]") -> str:
         key = f"{_KEYLESS_PREFIX}{counter[0]}__"
         counter[0] += 1
-        return f"{match.group(1)}{key}{match.group(2)}"
+        return f"{match.group(1)}{match.group(2)}{key}{match.group(3)}"
 
     return _KEYLESS_OPEN_RE.sub(_repl, text)
 
