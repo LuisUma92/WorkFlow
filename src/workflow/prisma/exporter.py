@@ -169,6 +169,7 @@ def _biblatex_field_pairs(entry: BibEntry) -> list[tuple[str, str]]:
     Skips internal/metadata columns.
     ``isn`` is emitted under its ISN-type code (``isbn``/``issn``/``ismn``) when
     ``entry.isn_type`` is set; falls back to ``isn`` when the type is unknown.
+    Overflow fields from ``bib_extra_field`` are appended last.
     """
     pairs: list[tuple[str, str]] = []
     for col in entry.__table__.columns:
@@ -185,6 +186,9 @@ def _biblatex_field_pairs(entry: BibEntry) -> list[tuple[str, str]]:
             pairs.append((field_name, _render_value(val)))
         else:
             pairs.append((name, _render_value(val)))
+    # Append overflow fields (catalog-known, no first-class column).
+    for ef in entry.extra_fields:
+        pairs.append((ef.field, _strip_braces(ef.value)))
     return pairs
 
 
@@ -214,6 +218,11 @@ def _bibtex_field_pairs(entry: BibEntry) -> list[tuple[str, str]]:
             raw[field_name] = val
         else:
             raw[name] = val
+
+    # Append overflow fields before dialect reverse-mapping so aliases are applied.
+    for ef in entry.extra_fields:
+        if ef.field not in raw:
+            raw[ef.field] = ef.value
 
     # Reverse-map biblatex field names → bibtex aliases.
     mapped = _dialect_to_bibtex(raw)

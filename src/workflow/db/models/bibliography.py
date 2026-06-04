@@ -235,6 +235,9 @@ class BibEntry(GlobalBase):
     review_records: Mapped[list["ReviewRecord"]] = relationship(
         back_populates="bib_entry"
     )
+    extra_fields: Mapped[list["BibExtraField"]] = relationship(
+        back_populates="bib_entry", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         title_short = (self.title or "")[:60]
@@ -437,3 +440,31 @@ class ReviewRationale(GlobalBase):
     rationale_option: Mapped["RationaleOption"] = relationship(
         back_populates="review_rationale_links"
     )
+
+
+# ── EAV overflow table ─────────────────────────────────────────────────────
+
+
+class BibExtraField(GlobalBase):
+    """Overflow table for catalog-known biblatex fields that lack a first-class column.
+
+    Security constraints (ADR-0019 A1 / security finding #3):
+    - ``field`` must be in ``_BIBLATEX_FIELD_CATALOG`` (whitelist).
+    - ``value`` is capped at ``MAX_EXTRA_VALUE_LEN`` characters.
+    - At most ``MAX_EXTRA_FIELDS`` rows per ``bib_entry_id``.
+    """
+
+    __tablename__ = "bib_extra_field"
+    __table_args__ = (
+        UniqueConstraint("bib_entry_id", "field", name="uq_extra_field_per_entry"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    bib_entry_id: Mapped[int] = mapped_column(ForeignKey("bib_entry.id"))
+    field: Mapped[str] = mapped_column(String(100))
+    value: Mapped[str] = mapped_column(Text)
+
+    bib_entry: Mapped["BibEntry"] = relationship(back_populates="extra_fields")
+
+    def __repr__(self) -> str:
+        return f"<BibExtraField {self.field}={self.value[:40]!r}>"

@@ -29,6 +29,7 @@ from workflow.db.models.bibliography import (
     AuthorType,
     BibAuthor,
     BibEntry,
+    BibExtraField,
     BibUrl,
     ReferencedDatabase,
 )
@@ -38,14 +39,78 @@ __all__ = [
     "import_bib_file",
     "import_bib_text",
     "MAX_BIB_SIZE_BYTES",
+    "MAX_EXTRA_VALUE_LEN",
+    "MAX_EXTRA_FIELDS",
     "generate_bibkey_for_entry",
     "disambiguate_bibkey",
+    "_BIBLATEX_FIELD_CATALOG",
 ]
 
 
 MAX_BIB_SIZE_BYTES: int = 50 * 1024 * 1024  # 50 MB hard cap on input
 
+# Security caps for the EAV overflow table (ADR-0019 A1 / security finding #3).
+MAX_EXTRA_VALUE_LEN: int = 10_000  # characters; values exceeding this are skipped
+MAX_EXTRA_FIELDS: int = 100       # rows per bib_entry; entries beyond cap are dropped
+
 _ALLOWED_URL_SCHEMES: frozenset[str] = frozenset({"http", "https", "ftp"})
+
+# ---------------------------------------------------------------------------
+# BibLaTeX field catalog — whitelist for the EAV overflow table (ADR-0019 A1).
+# Source: tasks/plans/biblatex-fields-catalog.md (293 fields + 9 aliases).
+# Only catalog-known fields may be stored; all others are silently dropped.
+# ---------------------------------------------------------------------------
+
+_BIBLATEX_FIELD_CATALOG: frozenset[str] = frozenset({
+    # Name fields (24)
+    "author", "editor", "translator", "editora", "editorb", "editorc",
+    "annotator", "commentator", "conductor", "bookauthor", "authortype",
+    "editortype", "editoratype", "editorbtype", "editorctype", "namea",
+    "nameaddon", "moreauthor", "moreeditor", "moretranslator", "morelabelname",
+    "savedauthor", "useauthor", "useeditor",
+    # Title fields (25)
+    "title", "subtitle", "titleaddon", "maintitle", "mainsubtitle",
+    "maintitleaddon", "booktitle", "booksubtitle", "booktitleaddon",
+    "journaltitle", "journalsubtitle", "journaltitleaddon", "issuetitle",
+    "issuesubtitle", "issuetitleaddon", "eventtitle", "eventtitleaddon",
+    "origtitle", "reprinttitle", "shorttitle", "indextitle", "indexsorttitle",
+    "extratitle", "labeltitle", "extratitleyear",
+    # Date/time fields (44)
+    "date", "year", "month", "day", "season", "yeardivision",
+    "endyear", "endmonth", "endday", "endseason", "endyeardivision",
+    "eventdate", "eventyear", "eventmonth", "eventday", "eventseason",
+    "eventyeardivision", "eventendyear", "eventendmonth", "eventendday",
+    "eventendseason", "eventendyeardivision",
+    "origdate", "origyear", "origmonth", "origday", "origseason",
+    "origyeardivision", "origendyear", "origendmonth", "origendday",
+    "origendseason", "origendyeardivision",
+    "urldate", "urlyear", "urlmonth", "urlday", "urlseason", "urlyeardivision",
+    "urlendyear", "urlendmonth", "urlendday", "urlendseason", "urlendyeardivision",
+    "datepart", "dateunspecified",
+    # Publication fields (10)
+    "publisher", "location", "address", "institution", "organization",
+    "school", "origlocation", "origpublisher", "venue", "place",
+    # Identifier fields (19)
+    "doi", "url", "urlraw", "isbn", "issn", "isrn", "eid", "eprint",
+    "eprinttype", "eprintclass", "archiveprefix", "primaryclass",
+    "pubmedid", "pubmed", "file", "pdf", "library", "gps", "articleid",
+    # Pagination & structure fields (11)
+    "pages", "pagetotal", "pagination", "bookpagination", "volume",
+    "volumes", "number", "chapter", "part", "edition", "issue",
+    # Series & cross-reference fields (10)
+    "series", "shortseries", "crossref", "xref", "xdata", "related",
+    "relatedtype", "relatedstring", "relatedoptions", "entrysetcount",
+    # Miscellaneous fields (23)
+    "note", "addendum", "pubstate", "language", "langid", "langidopts",
+    "hyphenation", "keywords", "annotation", "annote", "abstract", "type",
+    "subtype", "entrysubtype", "howpublished", "version", "foreword",
+    "afterword", "introduction", "commentary", "comment", "key", "origlanguage",
+    # Special/processing fields
+    "useprefix", "gender", "sortname", "sortkey", "sortinit", "sortinithash",
+    "label", "labelalpha", "labelnumber", "singletitle", "uniquename",
+    "uniquetitle", "uniquework", "shorthand", "shorthandintro", "execute",
+    "ids", "options", "presort", "entryset", "execute_task",
+})
 
 EntryStatus = Literal["created", "skipped"]
 
@@ -250,6 +315,12 @@ _IGNORED_BIB_KEYS: frozenset[str] = frozenset(
     {"ENTRYTYPE", "ID", "url", _RAW_DATE_BIB_FIELD, *_AUTHOR_FIELDS, *TRANSLATED_BIB_KEYS.values()}
 )
 
+# First-class column names on BibEntry (derived at import time from the ORM table).
+# Any field in _BIBLATEX_FIELD_CATALOG that is NOT in this set is an overflow candidate.
+_BIBENTRY_COLUMNS: frozenset[str] = frozenset(
+    col.name for col in BibEntry.__table__.columns
+)
+
 
 # ---------------------------------------------------------------------------
 # Bibkey generation helpers (ADR-0019, Phase 2)
@@ -414,6 +485,55 @@ def _apply_raw_date(raw: dict[str, object], out: dict[str, object]) -> None:
             pass
     if "month" not in out and len(parts) > 1:
         out["month"] = parts[1]
+
+
+def _persist_extra_fields(
+    session: Session,
+    bib_entry: BibEntry,
+    raw: dict[str, object],
+) -> None:
+    """Store catalog-known biblatex fields that lack a first-class BibEntry column.
+
+    Security constraints (finding #3):
+    - Only fields in ``_BIBLATEX_FIELD_CATALOG`` are stored (whitelist).
+    - ``value`` length is capped at ``MAX_EXTRA_VALUE_LEN``; over-length values are skipped.
+    - At most ``MAX_EXTRA_FIELDS`` rows are written per entry; extras are silently dropped.
+
+    Fields that are already handled as first-class columns, or that are in
+    ``_IGNORED_BIB_KEYS``, are excluded from overflow storage.
+    """
+    # Determine which raw fields are overflow candidates.
+    # A field qualifies when ALL of:
+    #   1. it is in the biblatex catalog (whitelist)
+    #   2. it does NOT have a first-class BibEntry column
+    #   3. it is not in the ignored set (internal bibtexparser keys, author fields, etc.)
+    count = 0
+    for raw_field, raw_val in raw.items():
+        if count >= MAX_EXTRA_FIELDS:
+            break
+        if raw_field in _IGNORED_BIB_KEYS:
+            continue
+        if raw_field not in _BIBLATEX_FIELD_CATALOG:
+            continue  # not catalog-known → drop (security: no arbitrary keys)
+        if raw_field in _BIBENTRY_COLUMNS:
+            continue  # already stored as a first-class column
+        cleaned = _clean(raw_val)
+        if not cleaned:
+            continue
+        if len(cleaned) > MAX_EXTRA_VALUE_LEN:
+            continue  # over-length → skip (security: cap value size)
+        savepoint = session.begin_nested()
+        try:
+            session.add(BibExtraField(
+                bib_entry_id=bib_entry.id,
+                field=raw_field,
+                value=cleaned,
+            ))
+            session.flush()
+            savepoint.commit()
+            count += 1
+        except IntegrityError:  # UNIQUE(bib_entry_id, field) violation; skip silently
+            savepoint.rollback()
 
 
 def _get_or_create_author_type(session: Session, name: str) -> AuthorType:
@@ -590,6 +710,9 @@ def _process_entry(
     # Use the pre-captured value to avoid relying on ORM attribute state post-flush.
     if taken_bibkeys is not None:
         taken_bibkeys.add(new_bibkey)
+
+    # Persist overflow fields (catalog-known, no first-class column).
+    _persist_extra_fields(session, entry, raw)
 
     for afield in _AUTHOR_FIELDS:
         val = raw.get(afield)
