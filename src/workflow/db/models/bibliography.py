@@ -251,6 +251,11 @@ class BibEntry(GlobalBase):
     extra_fields: Mapped[list["BibExtraField"]] = relationship(
         back_populates="bib_entry", cascade="all, delete-orphan"
     )
+    relations: Mapped[list["BibRelation"]] = relationship(
+        back_populates="child",
+        foreign_keys="BibRelation.child_id",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         title_short = (self.title or "")[:60]
@@ -481,3 +486,37 @@ class BibExtraField(GlobalBase):
 
     def __repr__(self) -> str:
         return f"<BibExtraField {self.field}={self.value[:40]!r}>"
+
+
+class BibRelation(GlobalBase):
+    """Inter-entry biblatex relation (crossref/xref/xdata/related) — ADR-0019 A4.
+
+    Stores the relation only; field inheritance is resolved at export time
+    behind ``--resolve-xref`` (decision D2). ``parent_bibkey`` holds the raw
+    target citation key verbatim and is always preserved — ``parent_id`` is
+    resolved to a :class:`BibEntry` only when the target exists in the DB,
+    so forward references and missing targets remain lossless.
+    """
+
+    __tablename__ = "bib_relation"
+    __table_args__ = (
+        UniqueConstraint(
+            "child_id", "kind", "parent_bibkey", name="uq_bib_relation"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    child_id: Mapped[int] = mapped_column(ForeignKey("bib_entry.id"))
+    parent_bibkey: Mapped[str] = mapped_column(String(255))
+    parent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("bib_entry.id"), nullable=True
+    )
+    kind: Mapped[str] = mapped_column(String(20))
+
+    child: Mapped["BibEntry"] = relationship(
+        back_populates="relations", foreign_keys=[child_id]
+    )
+    parent: Mapped["BibEntry | None"] = relationship(foreign_keys=[parent_id])
+
+    def __repr__(self) -> str:
+        return f"<BibRelation {self.kind} child={self.child_id} -> {self.parent_bibkey!r}>"

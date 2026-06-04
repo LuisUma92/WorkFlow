@@ -95,6 +95,8 @@ def export_bib_entries(
     keyword_id: int | None = None,
     status: ReviewStatus | None = None,
     dialect: Dialect = "biblatex",
+    *,
+    resolve_xref: bool = False,
 ) -> str:
     """Return a bib string for matching entries.
 
@@ -104,6 +106,9 @@ def export_bib_entries(
 
     :param dialect: ``"biblatex"`` (default) for canonical biblatex output,
         ``"bibtex"`` for a bibtex-compatible downgrade.
+    :param resolve_xref: when True, inline fields inherited from resolved
+        crossref/xdata parents and suppress those pointer fields (ADR-0019 A4,
+        decision D2). When False (default), relation fields round-trip verbatim.
     """
     if dialect not in ("biblatex", "bibtex"):
         raise ValueError(f"Unknown dialect {dialect!r}; use 'biblatex' or 'bibtex'")
@@ -116,4 +121,4 @@ def export_bib_entries(
     entries = _fetch_entries(session, keyword_id, status)
 
     formatter = _entry_to_biblatex if dialect == "biblatex" else _entry_to_bibtex
-    return "\n\n".join(formatter(e) for e in entries)
+    return "\n\n".join(formatter(e, resolve_xref=resolve_xref) for e in entries)

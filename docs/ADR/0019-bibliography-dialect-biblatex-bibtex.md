@@ -153,6 +153,26 @@ Concretely:
 - This ADR does **not** require touching the shipped `--stdin` import behaviour;
   it is the schema-direction decision that work deferred to.
 
+## Amendment — A4 inter-entry relations (2026-06-04)
+
+Wave A phase A4 adds inter-entry relation support without breaking the
+single-table model:
+
+- **Storage:** a new `bib_relation(child_id, parent_bibkey, parent_id NULL,
+  kind)` table (migration `0015`) holds `crossref`/`xref`/`xdata`/`related`.
+  `parent_bibkey` preserves the raw target verbatim, so forward references and
+  missing targets stay lossless; `parent_id` is resolved (best-effort, bibkeys
+  are non-unique) in a second import pass once every entry is inserted. These
+  fields are **no longer** routed to `bib_extra_field` overflow.
+- **Default export:** relation fields round-trip verbatim from `bib_relation`.
+- **`--resolve-xref` (decision D2):** opt-in at export; resolves biblatex
+  crossref field inheritance (the `\DeclareDataInheritance` default map — e.g.
+  a `@book` parent's `title` → child `@inbook` `booktitle`) and xdata verbatim
+  copy, child-wins, suppressing the resolved pointer fields. `xref`/`related`
+  do not trigger inheritance and are preserved as pointers. Inheritance is one
+  level deep; the map lives in `workflow.bibliography.inheritance` (foundation
+  layer — ADR-0020).
+
 ## Consequences
 
 - **Positive:** one table serves both dialects; lossless biblatex round-trip;

@@ -250,6 +250,12 @@ def bib_import(
     show_default=True,
     help="Output dialect: 'biblatex' (canonical) or 'bibtex' (downgraded aliases).",
 )
+@click.option(
+    "--resolve-xref",
+    is_flag=True,
+    help="Inline fields inherited from crossref/xdata parents (biblatex "
+    "inheritance) and suppress those pointer fields.",
+)
 @click.pass_context
 @with_schema_guard
 def bib_export(
@@ -259,12 +265,17 @@ def bib_export(
     output: str | None,
     force: bool,
     dialect: str,
+    resolve_xref: bool,
 ) -> None:
     """Export bibliography entries as BibLaTeX or BibTeX.
 
     Default dialect is biblatex (canonical field names, no type downgrade).
     Use --dialect bibtex for a bibtex-compatible export with downgraded entry
     types and reversed field aliases (journaltitle→journal, etc.).
+
+    By default crossref/xref/xdata/related relations round-trip verbatim. Pass
+    --resolve-xref to resolve biblatex crossref/xdata field inheritance into
+    each entry (ADR-0019 A4).
     """
     if status is not None and keyword_id is None:
         raise click.ClickException("--status requires --keyword-id")
@@ -280,6 +291,7 @@ def bib_export(
                 keyword_id=keyword_id,
                 status=review_status,
                 dialect=export_dialect,
+                resolve_xref=resolve_xref,
             )
     except ValueError as exc:
         raise click.ClickException(str(exc))

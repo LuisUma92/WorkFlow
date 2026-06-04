@@ -30,6 +30,7 @@ from workflow.db.models.bibliography import (
     BibAuthor,
     BibEntry,
     BibExtraField,
+    BibRelation,
     BibUrl,
     ReferencedDatabase,
 )
@@ -203,6 +204,12 @@ _STRING_BIB_FIELDS: frozenset[str] = frozenset(
 _INT_BIB_FIELDS: frozenset[str] = frozenset({"year", "edition"})
 
 _AUTHOR_FIELDS: tuple[str, ...] = ("author", "editor", "translator")
+
+# Biblatex inter-entry relation fields. Routed to the bib_relation table
+# (ADR-0019 A4) instead of bib_extra_field overflow. ``xdata``/``related``
+# are comma-separated lists yielding one BibRelation row per target.
+_RELATION_BIB_FIELDS: tuple[str, ...] = ("crossref", "xref", "xdata", "related")
+_MULTI_RELATION_FIELDS: frozenset[str] = frozenset({"xdata", "related"})
 
 
 @dataclass(frozen=True)
@@ -499,6 +506,24 @@ def _apply_raw_date(raw: dict[str, object], out: dict[str, object]) -> None:
         out["month"] = parts[1]
 
 
+def _is_overflow_field(raw_field: str) -> bool:
+    """Return True when ``raw_field`` belongs in bib_extra_field overflow.
+
+    A field qualifies when ALL of: it is catalog-known (whitelist), lacks a
+    first-class column, is not an ignored internal key, and is not a relation
+    field (which is routed to bib_relation instead — A4).
+    """
+    if raw_field in _IGNORED_BIB_KEYS:
+        return False
+    if raw_field in _RELATION_BIB_FIELDS:
+        return False  # handled by _persist_relations → bib_relation table (A4)
+    if raw_field not in _BIBLATEX_FIELD_CATALOG:
+        return False  # not catalog-known → drop (security: no arbitrary keys)
+    if raw_field in _BIBENTRY_COLUMNS:
+        return False  # already stored as a first-class column
+    return True
+
+
 def _persist_extra_fields(
     session: Session,
     bib_entry: BibEntry,
@@ -514,21 +539,12 @@ def _persist_extra_fields(
     Fields that are already handled as first-class columns, or that are in
     ``_IGNORED_BIB_KEYS``, are excluded from overflow storage.
     """
-    # Determine which raw fields are overflow candidates.
-    # A field qualifies when ALL of:
-    #   1. it is in the biblatex catalog (whitelist)
-    #   2. it does NOT have a first-class BibEntry column
-    #   3. it is not in the ignored set (internal bibtexparser keys, author fields, etc.)
     count = 0
     for raw_field, raw_val in raw.items():
         if count >= MAX_EXTRA_FIELDS:
             break
-        if raw_field in _IGNORED_BIB_KEYS:
+        if not _is_overflow_field(raw_field):
             continue
-        if raw_field not in _BIBLATEX_FIELD_CATALOG:
-            continue  # not catalog-known → drop (security: no arbitrary keys)
-        if raw_field in _BIBENTRY_COLUMNS:
-            continue  # already stored as a first-class column
         cleaned = _clean(raw_val)
         if not cleaned:
             continue
@@ -546,6 +562,84 @@ def _persist_extra_fields(
             count += 1
         except IntegrityError:  # UNIQUE(bib_entry_id, field) violation; skip silently
             savepoint.rollback()
+
+
+def _extract_relations(raw: dict[str, object]) -> list[tuple[str, str]]:
+    """Return ``(kind, parent_bibkey)`` pairs from this entry's relation fields.
+
+    ``crossref``/``xref`` take a single target; ``xdata``/``related`` are
+    comma-separated lists yielding one pair per target. Order is preserved and
+    blank targets are skipped.
+    """
+    out: list[tuple[str, str]] = []
+    for kind in _RELATION_BIB_FIELDS:
+        raw_val = raw.get(kind)
+        cleaned = _clean(raw_val) if raw_val is not None else None
+        if not cleaned:
+            continue
+        if kind in _MULTI_RELATION_FIELDS:
+            targets = [t.strip() for t in cleaned.split(",")]
+        else:
+            targets = [cleaned.strip()]
+        for target in targets:
+            if target:
+                out.append((kind, target))
+    return out
+
+
+def _persist_relations(
+    session: Session,
+    bib_entry: BibEntry,
+    raw: dict[str, object],
+) -> None:
+    """Create unresolved ``BibRelation`` rows for this entry's relation fields.
+
+    ``parent_id`` is left NULL here; :func:`_resolve_relation_parents` fills it
+    in a second pass once every entry in the batch has been inserted (so forward
+    references resolve). The UNIQUE constraint makes re-import idempotent.
+    """
+    for kind, parent_bibkey in _extract_relations(raw):
+        savepoint = session.begin_nested()
+        try:
+            session.add(BibRelation(
+                child_id=bib_entry.id,
+                parent_bibkey=parent_bibkey,
+                parent_id=None,
+                kind=kind,
+            ))
+            session.flush()
+            savepoint.commit()
+        except IntegrityError:  # UNIQUE(child_id, kind, parent_bibkey); skip dup
+            savepoint.rollback()
+
+
+def _resolve_relation_parents(session: Session) -> None:
+    """Second pass: fill ``parent_id`` on relations whose target now exists.
+
+    Runs over *all* currently-unresolved relations (not just the current
+    batch) — this is deliberate, so a relation orphaned by an earlier import
+    resolves once its target is finally imported. Best-effort: bibkeys are
+    intentionally non-unique, so an ambiguous target resolves to the
+    lowest-id (oldest) matching entry for deterministic, reproducible output.
+    Unresolved relations keep ``parent_id`` NULL while ``parent_bibkey``
+    preserves the raw target (lossless).
+    """
+    unresolved = session.scalars(
+        select(BibRelation).where(BibRelation.parent_id.is_(None))
+    ).all()
+    if not unresolved:
+        return
+    wanted = {rel.parent_bibkey for rel in unresolved}
+    rows = session.execute(
+        select(BibEntry.bibkey, BibEntry.id)
+        .where(BibEntry.bibkey.in_(wanted))
+        .order_by(BibEntry.id.desc())  # asc-overwrite → lowest id wins
+    ).all()
+    bibkey_to_id: dict[str, int] = {bibkey: eid for bibkey, eid in rows}
+    for rel in unresolved:
+        pid = bibkey_to_id.get(rel.parent_bibkey)
+        if pid is not None and pid != rel.child_id:
+            rel.parent_id = pid
 
 
 def _get_or_create_author_type(session: Session, name: str) -> AuthorType:
@@ -726,6 +820,10 @@ def _process_entry(
     # Persist overflow fields (catalog-known, no first-class column).
     _persist_extra_fields(session, entry, raw)
 
+    # Persist inter-entry relations (crossref/xref/xdata/related) — parent_id
+    # is resolved in a second pass after the whole batch is inserted (A4).
+    _persist_relations(session, entry, raw)
+
     for afield in _AUTHOR_FIELDS:
         val = raw.get(afield)
         if isinstance(val, str) and val:
@@ -844,6 +942,10 @@ def import_bib_text(
             label = type(exc).__name__
             errors.append(f"{bibkey}: {label}")
             statuses.append((bibkey, f"error: {label}"))
+
+    # Second pass: resolve relation parent_ids now that every entry in the
+    # batch (and any pre-existing entries) is available for bibkey lookup.
+    _resolve_relation_parents(session)
 
     session.commit()
     return ImportResult(
