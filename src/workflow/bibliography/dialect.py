@@ -33,6 +33,8 @@ BIBTEX_TO_BIBLATEX: dict[str, str] = {
     "key": "sortkey",
     "pdf": "file",
     "primaryclass": "eprintclass",
+    # PubMed identifier alias (JabRef/Zotero export as ``pmid``)
+    "pmid": "pubmedid",
 }
 
 # Inverse map — derived once at import time.

@@ -54,11 +54,28 @@ class TestFieldCatalog:
         assert MAX_EXTRA_FIELDS == 100
 
     def test_overflow_candidates_not_in_bibentry_columns(self):
-        """Fields like subtitle/langid/eprintclass must be overflow (not first-class)."""
-        overflow_fields = {"subtitle", "origtitle", "langid", "eprintclass"}
+        """Fields like langid/eprintclass/origtitle must remain overflow (not first-class)."""
+        # Note: subtitle, titleaddon, booksubtitle, mainsubtitle, maintitleaddon,
+        # booktitleaddon, origdate, origlocation, origpublisher, pubmedid, urlraw
+        # were promoted to first-class columns in ADR-0019 A3 and are NO LONGER
+        # overflow candidates — they are correctly absent from this check.
+        overflow_fields = {"origtitle", "langid", "eprintclass"}
         for f in overflow_fields:
             assert f not in _BIBENTRY_COLUMNS, (
                 f"{f!r} is already a first-class column; it should NOT go to overflow"
+            )
+
+    def test_a3_promoted_fields_in_bibentry_columns(self):
+        """Fields promoted by ADR-0019 A3 must be first-class columns on BibEntry."""
+        promoted = {
+            "subtitle", "titleaddon", "booksubtitle", "mainsubtitle",
+            "maintitleaddon", "booktitleaddon",
+            "origdate", "origlocation", "origpublisher",
+            "pubmedid", "urlraw",
+        }
+        for f in promoted:
+            assert f in _BIBENTRY_COLUMNS, (
+                f"{f!r} must be a first-class BibEntry column (ADR-0019 A3)"
             )
 
 

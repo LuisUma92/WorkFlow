@@ -185,6 +185,18 @@ _STRING_BIB_FIELDS: frozenset[str] = frozenset(
         # BibLaTeX dialect additions (ADR-0019 P2.2)
         "chapter",
         "type",
+        # Promoted first-class columns (ADR-0019 A3)
+        "subtitle",
+        "titleaddon",
+        "booksubtitle",
+        "booktitleaddon",
+        "mainsubtitle",
+        "maintitleaddon",
+        "origdate",
+        "origlocation",
+        "origpublisher",
+        "pubmedid",
+        "urlraw",
     }
 )
 

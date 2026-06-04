@@ -1,7 +1,9 @@
 """Tests for BibExtraField importer integration and round-trip export (ADR-0019 A1).
 
 Covers:
-- Import .bib with subtitle/origtitle/langid/eprintclass → bib_extra_field rows created
+- Import .bib with origtitle/langid/eprintclass → bib_extra_field rows created
+  (note: subtitle/origlocation/origpublisher/pubmedid/urlraw are now first-class
+   columns since ADR-0019 A3 — they must NOT appear in extra_fields)
 - Export --dialect biblatex re-emits those fields (round-trip)
 - Junk field notabiblatexfield NOT stored
 - Value-length cap enforced (value > MAX_EXTRA_VALUE_LEN skipped)
@@ -55,7 +57,6 @@ class TestImporterExtraFields:
           title       = {Extra Field Test},
           year        = {2020},
           volume      = {5},
-          subtitle    = {An Important Subtitle},
           origtitle   = {Der Ursprung der Arten},
           langid      = {english},
           eprintclass = {cs.AI},
@@ -67,8 +68,6 @@ class TestImporterExtraFields:
         entry = _get_entry(global_session, "extra2020")
         extras = _extra_dict(global_session, entry.id)
 
-        assert "subtitle" in extras, "subtitle should be stored as overflow"
-        assert extras["subtitle"] == "An Important Subtitle"
         assert "origtitle" in extras
         assert extras["origtitle"] == "Der Ursprung der Arten"
         assert "langid" in extras
@@ -101,7 +100,7 @@ class TestWhitelistEnforcement:
           volume           = {6},
           notabiblatexfield = {should be dropped},
           xyzzy_garbage    = {also dropped},
-          subtitle         = {A Real Field},
+          langid           = {english},
         }
     """)
 
@@ -112,7 +111,7 @@ class TestWhitelistEnforcement:
 
         assert "notabiblatexfield" not in extras
         assert "xyzzy_garbage" not in extras
-        assert "subtitle" in extras  # legitimate field still stored
+        assert "langid" in extras  # legitimate overflow field still stored
 
 
 # ---------------------------------------------------------------------------
@@ -127,33 +126,33 @@ class TestValueLengthCap:
         long_value = "x" * (MAX_EXTRA_VALUE_LEN + 1)
         bib = textwrap.dedent(f"""\
             @article{{lentest2022,
-              title    = {{Length Cap Test}},
-              year     = {{2022}},
-              volume   = {{7}},
-              subtitle = {{{long_value}}},
+              title  = {{Length Cap Test}},
+              year   = {{2022}},
+              volume = {{7}},
+              langid = {{{long_value}}},
             }}
         """)
         import_bib_text(global_session, bib)
         entry = _get_entry(global_session, "lentest2022")
         extras = _extra_dict(global_session, entry.id)
-        # subtitle value exceeds cap → must NOT be stored
-        assert "subtitle" not in extras
+        # langid value exceeds cap → must NOT be stored
+        assert "langid" not in extras
 
     def test_at_max_length_value_stored(self, global_session):
         exact_value = "y" * MAX_EXTRA_VALUE_LEN
         bib = textwrap.dedent(f"""\
             @article{{lentest2023,
-              title    = {{Exact Length Test}},
-              year     = {{2023}},
-              volume   = {{8}},
-              subtitle = {{{exact_value}}},
+              title  = {{Exact Length Test}},
+              year   = {{2023}},
+              volume = {{8}},
+              langid = {{{exact_value}}},
             }}
         """)
         import_bib_text(global_session, bib)
         entry = _get_entry(global_session, "lentest2023")
         extras = _extra_dict(global_session, entry.id)
-        assert "subtitle" in extras
-        assert extras["subtitle"] == exact_value
+        assert "langid" in extras
+        assert extras["langid"] == exact_value
 
 
 # ---------------------------------------------------------------------------
@@ -166,13 +165,14 @@ class TestRowsPerEntryCap:
 
     def test_rows_cap_enforced(self, global_session):
         # Build a .bib entry with more catalog fields than MAX_EXTRA_FIELDS.
-        # We use date sub-fields (all catalog-known) to fill slots.
-        # Many of the date sub-fields (endyear, eventyear…) are catalog-known
-        # but not first-class columns, making them legitimate overflow candidates.
+        # Only fields that are NOT first-class BibEntry columns are overflow
+        # candidates. Fields promoted in A3 (subtitle, titleaddon, booksubtitle,
+        # mainsubtitle, maintitleaddon, booktitleaddon, origdate, origlocation,
+        # origpublisher, pubmedid, urlraw) are excluded here.
         catalog_overflow_fields = [
-            "subtitle", "origtitle", "langid", "eprintclass",
-            "shorttitle", "titleaddon", "booksubtitle", "journalsubtitle",
-            "mainsubtitle", "maintitleaddon", "booktitleaddon", "eventtitleaddon",
+            "origtitle", "langid", "eprintclass",
+            "shorttitle", "journalsubtitle",
+            "eventtitleaddon",
             "issuetitleaddon", "issuesubtitle", "journaltitleaddon",
             "indexsorttitle", "extratitle", "labeltitle", "extratitleyear",
             "nameaddon", "useprefix", "gender", "sortname", "sortkey",
@@ -181,8 +181,8 @@ class TestRowsPerEntryCap:
             "shortseries", "crossref", "xref", "relatedtype", "relatedstring",
             "relatedoptions", "entrysetcount", "subtype", "entrysubtype",
             "foreword", "afterword", "introduction", "commentary", "comment",
-            "origlanguage", "urlraw", "pubmedid", "pubmed", "gps", "articleid",
-            "bookpagination", "place", "origlocation", "origpublisher",
+            "origlanguage", "pubmed", "gps", "articleid",
+            "bookpagination", "place",
             "langidopts", "datepart", "dateunspecified",
             "endyear", "endmonth", "endday", "endseason", "endyeardivision",
             "eventyear", "eventmonth", "eventday", "eventseason",
@@ -231,7 +231,7 @@ class TestExportRoundTrip:
           title       = {Round Trip Test},
           year        = {2025},
           volume      = {10},
-          subtitle    = {The Subtitle},
+          origtitle   = {Original Title},
           langid      = {english},
           eprintclass = {quant-ph},
         }
@@ -241,8 +241,8 @@ class TestExportRoundTrip:
         import_bib_text(global_session, self.BIB_ROUND_TRIP)
         output = export_bib_entries(global_session, dialect="biblatex")
 
-        assert "subtitle" in output
-        assert "The Subtitle" in output
+        assert "origtitle" in output
+        assert "Original Title" in output
         assert "langid" in output
         assert "english" in output
         assert "eprintclass" in output
@@ -252,8 +252,7 @@ class TestExportRoundTrip:
         import_bib_text(global_session, self.BIB_ROUND_TRIP)
         output = export_bib_entries(global_session, dialect="bibtex")
 
-        # subtitle has no bibtex alias; it may be passed through or dropped
-        # depending on the dialect map — at minimum the entry itself must export
+        # at minimum the entry itself must export
         assert "roundtrip2025" in output
 
     def test_junk_field_absent_from_export(self, global_session):
@@ -263,13 +262,13 @@ class TestExportRoundTrip:
               year              = {2026},
               volume            = {11},
               notabiblatexfield = {must not appear},
-              subtitle          = {Real Subtitle},
+              langid            = {english},
             }
         """)
         import_bib_text(global_session, bib)
         output = export_bib_entries(global_session, dialect="biblatex")
         assert "notabiblatexfield" not in output
-        assert "Real Subtitle" in output
+        assert "english" in output
 
 
 # ---------------------------------------------------------------------------
@@ -285,7 +284,7 @@ class TestImportIdempotency:
           title    = {Idempotent Test},
           year     = {2027},
           volume   = {12},
-          subtitle = {Consistent Subtitle},
+          langid   = {english},
         }
     """)
 
@@ -296,7 +295,7 @@ class TestImportIdempotency:
 
         entry = _get_entry(global_session, "idemptest2027")
         extras = _extra_dict(global_session, entry.id)
-        # Still exactly one subtitle row (no duplicate on re-import)
-        assert extras.get("subtitle") is not None
-        subtitle_rows = [ef for ef in entry.extra_fields if ef.field == "subtitle"]
-        assert len(subtitle_rows) == 1
+        # Still exactly one langid row (no duplicate on re-import)
+        assert extras.get("langid") is not None
+        langid_rows = [ef for ef in entry.extra_fields if ef.field == "langid"]
+        assert len(langid_rows) == 1

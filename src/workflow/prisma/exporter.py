@@ -187,7 +187,18 @@ def _biblatex_field_pairs(entry: BibEntry) -> list[tuple[str, str]]:
         else:
             pairs.append((name, _render_value(val)))
     # Append overflow fields (catalog-known, no first-class column).
+    # Skip any overflow row whose field is now a first-class column — the column
+    # value (already emitted above) takes precedence; this prevents double-emit
+    # during the A1→A3 transition period (read-both, column wins — ADR-0019 A3).
+    first_class_cols: frozenset[str] = frozenset(
+        col.name for col in entry.__table__.columns
+    )
     for ef in entry.extra_fields:
+        # Column wins only when it actually holds a value. If the promoted
+        # column is NULL (pre-A3 import stored the value only in overflow),
+        # fall through and emit the overflow row so data is not lost.
+        if ef.field in first_class_cols and getattr(entry, ef.field, None) not in (None, ""):
+            continue  # column value already emitted above
         pairs.append((ef.field, _strip_braces(ef.value)))
     return pairs
 
@@ -220,6 +231,10 @@ def _bibtex_field_pairs(entry: BibEntry) -> list[tuple[str, str]]:
             raw[name] = val
 
     # Append overflow fields before dialect reverse-mapping so aliases are applied.
+    # Promoted columns already populated ``raw`` above, so ``ef.field not in raw``
+    # makes the column win when it holds a value. When the column is NULL
+    # (pre-A3 import stored the value only in overflow), the name is absent from
+    # ``raw`` and the overflow value is emitted — read-both back-compat (ADR-0019 A3).
     for ef in entry.extra_fields:
         if ef.field not in raw:
             raw[ef.field] = ef.value

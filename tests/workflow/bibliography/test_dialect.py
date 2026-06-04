@@ -36,8 +36,9 @@ class TestBibtexToBiblatexMap:
         assert BIBTEX_TO_BIBLATEX["pdf"] == "file"
         assert BIBTEX_TO_BIBLATEX["key"] == "sortkey"
 
-    def test_map_has_exactly_ten_entries(self):
-        assert len(BIBTEX_TO_BIBLATEX) == 10
+    def test_map_has_exactly_eleven_entries(self):
+        # 10 original + pmid→pubmedid added in ADR-0019 A3
+        assert len(BIBTEX_TO_BIBLATEX) == 11
 
     def test_values_are_unique(self):
         vals = list(BIBTEX_TO_BIBLATEX.values())

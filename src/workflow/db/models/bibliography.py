@@ -136,9 +136,15 @@ class BibEntry(GlobalBase):
 
     # ── Titles ──
     title: Mapped[str | None] = mapped_column(String(500), default=None)
+    subtitle: Mapped[str | None] = mapped_column(String(500), default=None)
+    titleaddon: Mapped[str | None] = mapped_column(String(500), default=None)
     indextitle: Mapped[str | None] = mapped_column(String(500), default=None)
     booktitle: Mapped[str | None] = mapped_column(String(500), default=None)
+    booksubtitle: Mapped[str | None] = mapped_column(String(500), default=None)
+    booktitleaddon: Mapped[str | None] = mapped_column(String(500), default=None)
     maintitle: Mapped[str | None] = mapped_column(String(500), default=None)
+    mainsubtitle: Mapped[str | None] = mapped_column(String(500), default=None)
+    maintitleaddon: Mapped[str | None] = mapped_column(String(500), default=None)
     journaltitle: Mapped[str | None] = mapped_column(String(200), default=None)
     issuetitle: Mapped[str | None] = mapped_column(String(500), default=None)
     eventtitle: Mapped[str | None] = mapped_column(String(500), default=None)
@@ -173,11 +179,18 @@ class BibEntry(GlobalBase):
     location: Mapped[str | None] = mapped_column(String(100), default=None)
     venue: Mapped[str | None] = mapped_column(String(200), default=None)
 
+    # ── Origin / reprint ── (ADR-0019 A3)
+    origdate: Mapped[str | None] = mapped_column(String(50), default=None)
+    origlocation: Mapped[str | None] = mapped_column(String(200), default=None)
+    origpublisher: Mapped[str | None] = mapped_column(String(200), default=None)
+
     # ── Electronic identifiers ──
     doi: Mapped[str | None] = mapped_column(Text, default=None)
     eid: Mapped[str | None] = mapped_column(Text, default=None)
     eprint: Mapped[str | None] = mapped_column(Text, default=None)
     eprinttype: Mapped[str | None] = mapped_column(Text, default=None)
+    pubmedid: Mapped[str | None] = mapped_column(String(50), default=None)
+    urlraw: Mapped[str | None] = mapped_column(Text, default=None)
 
     # ── BibLaTeX dialect additions (ADR-0019 P2.1) ──
     date: Mapped[str | None] = mapped_column(String(50), default=None)
