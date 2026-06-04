@@ -21,14 +21,26 @@ __all__ = [
 # Keys that are already biblatex-native (no alias) are NOT listed here.
 # The importer's legacy "journal → journaltitle" bridge is subsumed here.
 BIBTEX_TO_BIBLATEX: dict[str, str] = {
+    # Standard BibTeX aliases
     "journal": "journaltitle",
     "address": "location",
     "school": "institution",
     "annote": "annotation",
     "note": "notes",
+    # arXiv / JabRef / extended aliases
+    "archiveprefix": "eprinttype",
+    "hyphenation": "langid",
+    "key": "sortkey",
+    "pdf": "file",
+    "primaryclass": "eprintclass",
 }
 
 # Inverse map — derived once at import time.
+# INVARIANT: some targets (e.g. ``eprinttype``) are native biblatex BibEntry
+# columns. The inverse map therefore rewrites them to their bibtex spelling
+# (``archiveprefix``) and MUST only be applied on the *bibtex* export path
+# (exporter._bibtex_field_pairs). The biblatex export path must never reverse-map,
+# or a biblatex→biblatex round-trip would lose ``eprinttype`` (ADR-0019 §MUST).
 _BIBLATEX_TO_BIBTEX: dict[str, str] = {v: k for k, v in BIBTEX_TO_BIBLATEX.items()}
 
 

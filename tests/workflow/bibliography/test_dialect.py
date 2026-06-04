@@ -29,8 +29,15 @@ class TestBibtexToBiblatexMap:
         assert BIBTEX_TO_BIBLATEX["annote"] == "annotation"
         assert BIBTEX_TO_BIBLATEX["note"] == "notes"
 
-    def test_map_has_exactly_five_entries(self):
-        assert len(BIBTEX_TO_BIBLATEX) == 5
+    def test_five_new_arxiv_jabref_aliases_present(self):
+        assert BIBTEX_TO_BIBLATEX["archiveprefix"] == "eprinttype"
+        assert BIBTEX_TO_BIBLATEX["primaryclass"] == "eprintclass"
+        assert BIBTEX_TO_BIBLATEX["hyphenation"] == "langid"
+        assert BIBTEX_TO_BIBLATEX["pdf"] == "file"
+        assert BIBTEX_TO_BIBLATEX["key"] == "sortkey"
+
+    def test_map_has_exactly_ten_entries(self):
+        assert len(BIBTEX_TO_BIBLATEX) == 10
 
     def test_values_are_unique(self):
         vals = list(BIBTEX_TO_BIBLATEX.values())
@@ -130,6 +137,45 @@ class TestToBiblatex:
     def test_empty_dict(self):
         assert to_biblatex({}) == {}
 
+    # --- new aliases (Phase A2) ---
+
+    def test_archiveprefix_renamed_to_eprinttype(self):
+        result = to_biblatex({"archiveprefix": "arXiv"})
+        assert result == {"eprinttype": "arXiv"}
+        assert "archiveprefix" not in result
+
+    def test_primaryclass_renamed_to_eprintclass(self):
+        result = to_biblatex({"primaryclass": "cs.LG"})
+        assert result == {"eprintclass": "cs.LG"}
+        assert "primaryclass" not in result
+
+    def test_hyphenation_renamed_to_langid(self):
+        result = to_biblatex({"hyphenation": "english"})
+        assert result == {"langid": "english"}
+        assert "hyphenation" not in result
+
+    def test_pdf_renamed_to_file(self):
+        result = to_biblatex({"pdf": "paper.pdf"})
+        assert result == {"file": "paper.pdf"}
+        assert "pdf" not in result
+
+    def test_key_renamed_to_sortkey(self):
+        result = to_biblatex({"key": "Smith2020"})
+        assert result == {"sortkey": "Smith2020"}
+        assert "key" not in result
+
+    def test_collision_pdf_and_file_keeps_file_warns(self):
+        """Both 'pdf' (alias) and 'file' (biblatex target) present: biblatex wins + warning."""
+        fields = {"pdf": "alias.pdf", "file": "native.pdf"}
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            result = to_biblatex(fields)
+        assert len(caught) == 1
+        assert issubclass(caught[0].category, UserWarning)
+        assert "pdf" in str(caught[0].message)
+        assert result["file"] == "native.pdf"
+        assert "pdf" not in result
+
 
 # ---------------------------------------------------------------------------
 # to_bibtex
@@ -176,6 +222,33 @@ class TestToBibtex:
 
     def test_empty_dict(self):
         assert to_bibtex({}) == {}
+
+    # --- new aliases inverse (Phase A2) ---
+
+    def test_eprinttype_renamed_to_archiveprefix(self):
+        result = to_bibtex({"eprinttype": "arXiv"})
+        assert result == {"archiveprefix": "arXiv"}
+        assert "eprinttype" not in result
+
+    def test_eprintclass_renamed_to_primaryclass(self):
+        result = to_bibtex({"eprintclass": "cs.LG"})
+        assert result == {"primaryclass": "cs.LG"}
+        assert "eprintclass" not in result
+
+    def test_langid_renamed_to_hyphenation(self):
+        result = to_bibtex({"langid": "english"})
+        assert result == {"hyphenation": "english"}
+        assert "langid" not in result
+
+    def test_file_renamed_to_pdf(self):
+        result = to_bibtex({"file": "paper.pdf"})
+        assert result == {"pdf": "paper.pdf"}
+        assert "file" not in result
+
+    def test_sortkey_renamed_to_key(self):
+        result = to_bibtex({"sortkey": "Smith2020"})
+        assert result == {"key": "Smith2020"}
+        assert "sortkey" not in result
 
 
 # ---------------------------------------------------------------------------
@@ -291,6 +364,30 @@ class TestRoundTrip:
             "institution": "MIT",
             "annotation": "good",
             "notes": "see",
+        }
+        result = to_biblatex(to_bibtex(original))
+        assert result == original
+
+    def test_bibtex_roundtrip_new_aliases(self):
+        """to_bibtex(to_biblatex(x)) == x for the 5 new arXiv/JabRef aliases."""
+        original = {
+            "archiveprefix": "arXiv",
+            "primaryclass": "cs.LG",
+            "hyphenation": "english",
+            "pdf": "paper.pdf",
+            "key": "Smith2020",
+        }
+        result = to_bibtex(to_biblatex(original))
+        assert result == original
+
+    def test_biblatex_roundtrip_new_aliases(self):
+        """to_biblatex(to_bibtex(x)) == x for the 5 new biblatex-native targets."""
+        original = {
+            "eprinttype": "arXiv",
+            "eprintclass": "cs.LG",
+            "langid": "english",
+            "file": "paper.pdf",
+            "sortkey": "Smith2020",
         }
         result = to_biblatex(to_bibtex(original))
         assert result == original
