@@ -305,52 +305,46 @@ def bib_export(
         click.echo(bib_output)
 
 
-# ── bib accept-to-note ───────────────────────────────────────────────────
+# ── bib accept-to-note helpers ───────────────────────────────────────────
 
 
-@bib.command(name="accept-to-note")
-@click.argument("bibkey", required=False, default=None)
-@click.option("--bib-entry-id", type=int, default=None, help="Resolve by bib_entry.id (disambiguates non-unique bibkeys).")
-@click.option("--keyword-id", type=int, default=None, help="Resolve ReviewRecord via (keyword_id, bib_entry_id) pair.")
-@click.option("--review-record-id", type=int, default=None, help="Reference a ReviewRecord directly.")
-@click.option("--vault-root", type=click.Path(path_type=Path), default=None, help="Override vault root directory.")
-@click.option("--dry-run", is_flag=True, help="Print rendered note to stdout without writing.")
-@click.option("--json", "as_json", is_flag=True, help="JSON output: {note_path, bibkey, created}.")
-@click.pass_context
-@with_schema_guard
-def bib_accept_to_note(
-    ctx: click.Context,
-    bibkey: str | None,
-    bib_entry_id: int | None,
-    keyword_id: int | None,
-    review_record_id: int | None,
-    vault_root: Path | None,
-    dry_run: bool,
-    as_json: bool,
-) -> None:
-    """Generate a literature note from a PRISMA-accepted bibliography entry.
+def _run_bulk_accept(engine, keyword_id, vault_root, dry_run, as_json,
+                     accept_all_fn, accept_all_json_fn):
+    """Execute the bulk accept-to-note path and emit output."""
+    with Session(engine) as session:
+        bulk = accept_all_fn(
+            session,
+            keyword_id=keyword_id,
+            vault_root=vault_root,
+            dry_run=dry_run,
+        )
 
-    Resolves the entry by BIBKEY (positional) or --bib-entry-id. When a
-    bibkey matches multiple entries, pass --bib-entry-id to disambiguate.
+    if as_json:
+        click.echo(accept_all_json_fn(bulk))
+        return
 
-    PRISMA context is optional: supply --keyword-id or --review-record-id to
-    embed the screening rationale in the note. Without either, origin=manual.
+    if dry_run:
+        click.echo(
+            f"[dry-run] Would create {bulk.created} note(s), "
+            f"skip {bulk.skipped} (already exist or ambiguous)."
+        )
+        return
 
-    The note is written to <vault_root>/notes/literature/<YYYYMMDD>-lit-<bibkey>.md.
-    If the file already exists, the command exits non-zero (idempotent).
+    for r in bulk.notes:
+        if r.created:
+            click.echo(f"Created: {r.note_path}")
+        else:
+            click.echo(f"Skipped (exists): {r.note_path}", err=True)
+    click.echo(f"Done: created={bulk.created} skipped={bulk.skipped}", err=True)
 
-    Use --dry-run to preview content without writing.
-    """
-    from workflow.bibliography.service import BibKeyAmbiguous
-    from workflow.prisma.accept_to_note import AcceptToNoteResult, accept_to_note, accept_to_note_json
 
-    if bibkey is None and bib_entry_id is None:
-        raise click.ClickException("Provide BIBKEY or --bib-entry-id.")
-
-    engine = get_engine_from_ctx(ctx)
+def _run_single_accept(engine, bibkey, bib_entry_id, keyword_id, review_record_id,
+                       vault_root, dry_run, as_json,
+                       accept_fn, accept_json_fn, BibKeyAmbiguousCls):
+    """Execute the single-entry accept-to-note path and emit output."""
     try:
         with Session(engine) as session:
-            result: AcceptToNoteResult = accept_to_note(
+            result = accept_fn(
                 session,
                 bibkey=bibkey,
                 bib_entry_id=bib_entry_id,
@@ -359,8 +353,7 @@ def bib_accept_to_note(
                 vault_root=vault_root,
                 dry_run=dry_run,
             )
-    except BibKeyAmbiguous:
-        # Query the conflicting ids so we can name them in the error message.
+    except BibKeyAmbiguousCls:
         from sqlalchemy import select as _select
         from workflow.db.models.bibliography import BibEntry as _BibEntry
         with Session(engine) as _s:
@@ -383,7 +376,7 @@ def bib_accept_to_note(
         return
 
     if as_json:
-        click.echo(accept_to_note_json(result))
+        click.echo(accept_json_fn(result))
         return
 
     if result.created:
@@ -391,6 +384,85 @@ def bib_accept_to_note(
     else:
         click.echo(f"Already exists (skipped): {result.note_path}", err=True)
         raise SystemExit(1)
+
+
+# ── bib accept-to-note ───────────────────────────────────────────────────
+
+
+@bib.command(name="accept-to-note")
+@click.argument("bibkey", required=False, default=None)
+@click.option("--bib-entry-id", type=int, default=None, help="Resolve by bib_entry.id (disambiguates non-unique bibkeys).")
+@click.option("--keyword-id", type=int, default=None, help="Resolve ReviewRecord via (keyword_id, bib_entry_id) pair.")
+@click.option("--review-record-id", type=int, default=None, help="Reference a ReviewRecord directly.")
+@click.option("--vault-root", type=click.Path(path_type=Path), default=None, help="Override vault root directory.")
+@click.option("--dry-run", is_flag=True, help="Print rendered note to stdout without writing.")
+@click.option("--json", "as_json", is_flag=True, help="JSON output: {note_path, bibkey, created} or bulk shape.")
+@click.option("--all-accepted", is_flag=True, help="Bulk: generate notes for all included==1 records for --keyword-id.")
+@click.pass_context
+@with_schema_guard
+def bib_accept_to_note(
+    ctx: click.Context,
+    bibkey: str | None,
+    bib_entry_id: int | None,
+    keyword_id: int | None,
+    review_record_id: int | None,
+    vault_root: Path | None,
+    dry_run: bool,
+    as_json: bool,
+    all_accepted: bool,
+) -> None:
+    """Generate a literature note from a PRISMA-accepted bibliography entry.
+
+    Single-entry mode: resolves the entry by BIBKEY (positional) or --bib-entry-id.
+    When a bibkey matches multiple entries, pass --bib-entry-id to disambiguate.
+
+    Bulk mode (--all-accepted): requires --keyword-id; generates one note per
+    included==1 review record for the keyword. Ambiguous/unsafe entries are skipped
+    (not fatal). Existing notes are counted as skipped.
+
+    PRISMA context is optional in single mode: supply --keyword-id or
+    --review-record-id to embed the screening rationale. Without either,
+    origin=manual.
+
+    The note is written to <vault_root>/notes/literature/<YYYYMMDD>-lit-<bibkey>.md.
+    Use --dry-run to preview content without writing.
+    """
+    from workflow.bibliography.service import BibKeyAmbiguous
+    from workflow.prisma.accept_to_note import (
+        accept_all_to_note,
+        accept_all_to_note_json,
+        accept_to_note,
+        accept_to_note_json,
+    )
+
+    # ── mutex / validation guards ─────────────────────────────────────────
+    if all_accepted:
+        if bibkey is not None:
+            raise click.UsageError(
+                "--all-accepted is mutually exclusive with the BIBKEY argument."
+            )
+        if keyword_id is None:
+            raise click.UsageError("--all-accepted requires --keyword-id.")
+
+    engine = get_engine_from_ctx(ctx)
+
+    # ── bulk branch ───────────────────────────────────────────────────────
+    if all_accepted:
+        _run_bulk_accept(
+            engine, keyword_id, vault_root, dry_run, as_json,  # type: ignore[arg-type]
+            accept_all_to_note, accept_all_to_note_json,
+        )
+        return
+
+    # ── single-entry branch ───────────────────────────────────────────────
+    if bibkey is None and bib_entry_id is None:
+        raise click.ClickException("Provide BIBKEY or --bib-entry-id.")
+
+    _run_single_accept(
+        engine, bibkey, bib_entry_id, keyword_id, review_record_id,
+        vault_root, dry_run, as_json,
+        accept_to_note, accept_to_note_json, BibKeyAmbiguous,
+    )
 
 
 # ── bib recompute-keys ───────────────────────────────────────────────────

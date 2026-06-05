@@ -26,8 +26,10 @@ if TYPE_CHECKING:
 
 __all__ = [
     "AcceptToNoteResult",
+    "AcceptAllResult",
     "build_note",
     "accept_to_note",
+    "accept_all_to_note",
 ]
 
 
@@ -308,4 +310,90 @@ def accept_to_note_json(result: AcceptToNoteResult) -> str:
         "note_path": str(result.note_path),
         "bibkey": result.bibkey,
         "created": result.created,
+    })
+
+
+@dataclass
+class AcceptAllResult:
+    """Result of a bulk accept-to-note operation."""
+
+    created: int
+    skipped: int
+    notes: list[AcceptToNoteResult]
+
+
+def accept_all_to_note(
+    session: Session,
+    *,
+    keyword_id: int,
+    vault_root: Path | None = None,
+    dry_run: bool = False,
+) -> AcceptAllResult:
+    """Generate literature notes for all included (included==1) review records for a keyword.
+
+    Iterates over every ReviewRecord for *keyword_id* where ``included == 1``, calls
+    :func:`accept_to_note` for each, and collects results. Non-fatal per-entry errors
+    (``BibKeyAmbiguous``, unsafe bibkey, missing entry) are counted as skipped rather
+    than aborting the batch.
+
+    Args:
+        session: Active SQLAlchemy session.
+        keyword_id: ID of the BibKeyword whose accepted entries will be converted.
+        vault_root: Override vault root (default: resolve_vault_root()).
+        dry_run: Compute content but do not write any files.
+
+    Returns:
+        AcceptAllResult with created/skipped counts and per-entry result list.
+    """
+    from workflow.bibliography.service import BibKeyAmbiguous
+
+    stmt = select(ReviewRecord).where(
+        ReviewRecord.keyword_id == keyword_id,
+        ReviewRecord.included == 1,
+    )
+    records = session.scalars(stmt).all()
+
+    created_count = 0
+    skipped_count = 0
+    note_results: list[AcceptToNoteResult] = []
+
+    for record in records:
+        try:
+            result = accept_to_note(
+                session,
+                bib_entry_id=record.bib_entry_id,
+                review_record_id=record.id,
+                vault_root=vault_root,
+                dry_run=dry_run,
+            )
+        except (BibKeyAmbiguous, ValueError):
+            skipped_count += 1
+            continue
+
+        if result.created:
+            created_count += 1
+        else:
+            skipped_count += 1
+        note_results.append(result)
+
+    return AcceptAllResult(
+        created=created_count,
+        skipped=skipped_count,
+        notes=note_results,
+    )
+
+
+def accept_all_to_note_json(result: AcceptAllResult) -> str:
+    """Serialize an AcceptAllResult to the --json bulk wire format."""
+    return json.dumps({
+        "created": result.created,
+        "skipped": result.skipped,
+        "notes": [
+            {
+                "note_path": str(r.note_path),
+                "bibkey": r.bibkey,
+                "created": r.created,
+            }
+            for r in result.notes
+        ],
     })
