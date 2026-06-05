@@ -310,6 +310,15 @@ function M.setup(workflow)
 	vim.api.nvim_create_user_command("WorkflowBibImport", function()
 		require("workflow.bib_import").import_current_buffer({})
 	end, { nargs = 0 })
+
+	-- PRISMA accept-to-note command (Wave C3)
+
+	-- :WorkflowPrismaAcceptToNote
+	-- Prompt for a bibkey (single) or keyword-id (bulk) and generate
+	-- literature note(s) via `workflow prisma bib accept-to-note --json`.
+	vim.api.nvim_create_user_command("WorkflowPrismaAcceptToNote", function()
+		require("workflow.prisma_note").accept_to_note({})
+	end, { nargs = 0 })
 end
 
 return M

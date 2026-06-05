@@ -234,6 +234,34 @@ indexes so `:help :WorkflowXxx` resolves correctly.
     :WorkflowBibImport
 <
 
+2.11 PRISMA accept-to-note (Wave C3)              *workflow-prisma-accept-note*
+
+*:WorkflowPrismaAcceptToNote*
+  Generate a literature note from a PRISMA-accepted bibliography entry.
+  Prompts for a bibkey (single mode) or, if left blank, for a keyword-id
+  (bulk mode).
+
+  Single mode — shells out to: >
+    workflow prisma bib accept-to-note <BIBKEY> --json
+<
+  Bulk mode — shells out to: >
+    workflow prisma bib accept-to-note --all-accepted --keyword-id N --json
+<
+  On single success the resulting note is opened in a vertical split with a
+  notification showing "Created:" or "Already exists:" and the file path.
+
+  On bulk success a notification shows "N created, M skipped".  If the
+  returned notes list is non-empty the first note is opened in a split.  An
+  empty result emits a WARN notification and opens nothing.
+
+  On CLI error the error message is displayed verbatim at ERROR level.
+
+  Example: >
+    :WorkflowPrismaAcceptToNote
+<
+  Then enter a bibkey at the prompt (e.g. `Smith2020`) for single mode, or
+  press Enter with a blank bibkey and supply a keyword-id for bulk mode.
+
 ==============================================================================
 3. KEYMAPS                                                   *workflow-keymaps*
 
