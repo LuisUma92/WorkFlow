@@ -305,6 +305,94 @@ def bib_export(
         click.echo(bib_output)
 
 
+# ── bib accept-to-note ───────────────────────────────────────────────────
+
+
+@bib.command(name="accept-to-note")
+@click.argument("bibkey", required=False, default=None)
+@click.option("--bib-entry-id", type=int, default=None, help="Resolve by bib_entry.id (disambiguates non-unique bibkeys).")
+@click.option("--keyword-id", type=int, default=None, help="Resolve ReviewRecord via (keyword_id, bib_entry_id) pair.")
+@click.option("--review-record-id", type=int, default=None, help="Reference a ReviewRecord directly.")
+@click.option("--vault-root", type=click.Path(path_type=Path), default=None, help="Override vault root directory.")
+@click.option("--dry-run", is_flag=True, help="Print rendered note to stdout without writing.")
+@click.option("--json", "as_json", is_flag=True, help="JSON output: {note_path, bibkey, created}.")
+@click.pass_context
+@with_schema_guard
+def bib_accept_to_note(
+    ctx: click.Context,
+    bibkey: str | None,
+    bib_entry_id: int | None,
+    keyword_id: int | None,
+    review_record_id: int | None,
+    vault_root: Path | None,
+    dry_run: bool,
+    as_json: bool,
+) -> None:
+    """Generate a literature note from a PRISMA-accepted bibliography entry.
+
+    Resolves the entry by BIBKEY (positional) or --bib-entry-id. When a
+    bibkey matches multiple entries, pass --bib-entry-id to disambiguate.
+
+    PRISMA context is optional: supply --keyword-id or --review-record-id to
+    embed the screening rationale in the note. Without either, origin=manual.
+
+    The note is written to <vault_root>/notes/literature/<YYYYMMDD>-lit-<bibkey>.md.
+    If the file already exists, the command exits non-zero (idempotent).
+
+    Use --dry-run to preview content without writing.
+    """
+    from workflow.bibliography.service import BibKeyAmbiguous
+    from workflow.prisma.accept_to_note import AcceptToNoteResult, accept_to_note, accept_to_note_json
+
+    if bibkey is None and bib_entry_id is None:
+        raise click.ClickException("Provide BIBKEY or --bib-entry-id.")
+
+    engine = get_engine_from_ctx(ctx)
+    try:
+        with Session(engine) as session:
+            result: AcceptToNoteResult = accept_to_note(
+                session,
+                bibkey=bibkey,
+                bib_entry_id=bib_entry_id,
+                keyword_id=keyword_id,
+                review_record_id=review_record_id,
+                vault_root=vault_root,
+                dry_run=dry_run,
+            )
+    except BibKeyAmbiguous:
+        # Query the conflicting ids so we can name them in the error message.
+        from sqlalchemy import select as _select
+        from workflow.db.models.bibliography import BibEntry as _BibEntry
+        with Session(engine) as _s:
+            conflict_ids = [
+                str(r)
+                for r in _s.scalars(
+                    _select(_BibEntry.id).where(_BibEntry.bibkey == bibkey)
+                ).all()
+            ]
+        ids_str = ", ".join(conflict_ids) if conflict_ids else "(unknown)"
+        raise click.ClickException(
+            f"Bibkey {bibkey!r} matches multiple entries (ids: {ids_str}). "
+            "Re-run with --bib-entry-id to disambiguate."
+        )
+    except ValueError as exc:
+        raise click.ClickException(str(exc))
+
+    if dry_run:
+        click.echo(result.content)
+        return
+
+    if as_json:
+        click.echo(accept_to_note_json(result))
+        return
+
+    if result.created:
+        click.echo(f"Created: {result.note_path}")
+    else:
+        click.echo(f"Already exists (skipped): {result.note_path}", err=True)
+        raise SystemExit(1)
+
+
 # ── bib recompute-keys ───────────────────────────────────────────────────
 
 

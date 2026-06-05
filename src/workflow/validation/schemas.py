@@ -28,6 +28,7 @@ CANDIDATE_PROJECT_RE = re.compile(r"^[0-9]{4}[A-Z]{2}-[0-9]{2}[A-Z]{2}$")
 """Format of an ADR ITEP-0009 forward reference: ``DDTTAA-YYPP``."""
 
 _VALID_NOTE_TYPES = {"permanent", "literature", "fleeting"}
+_VALID_LITERATURE_ORIGINS = {"prisma", "manual"}
 _VALID_EXERCISE_TYPES = {
     "multichoice",
     "shortanswer",
@@ -57,6 +58,11 @@ class NoteFrontmatter:
     # main_topic accepts either an int id or a code slug (e.g. "FI0006").
     main_topic: str | int | None = None
     discipline_area: str | None = None
+    # Wave C C1 — PRISMA-provenance keys (literature notes only, all optional).
+    bibkey: str | None = None
+    prisma_review_record_id: int | None = None
+    prisma_keyword_id: int | None = None
+    origin: str | None = None
 
 
 @dataclass(frozen=True)
@@ -79,6 +85,37 @@ def _string_list(data: dict, key: str, errors: list[str]) -> list[str]:
         errors.append(f"all items in '{key}' must be strings")
         return []
     return list(raw)
+
+
+def _validate_literature_provenance(
+    data: dict, errors: list[str]
+) -> tuple[str | None, int | None, int | None, str | None]:
+    """Validate PRISMA-provenance keys for literature notes.
+
+    All four keys are optional.  Returns (bibkey, prisma_review_record_id,
+    prisma_keyword_id, origin).
+    """
+    bibkey = data.get("bibkey", None)
+    if bibkey is not None and not isinstance(bibkey, str):
+        errors.append("'bibkey' must be a string or absent")
+        bibkey = None
+
+    prr_id = data.get("prisma_review_record_id", None)
+    if prr_id is not None and (isinstance(prr_id, bool) or not isinstance(prr_id, int)):
+        errors.append("'prisma_review_record_id' must be an integer or null")
+        prr_id = None
+
+    pk_id = data.get("prisma_keyword_id", None)
+    if pk_id is not None and (isinstance(pk_id, bool) or not isinstance(pk_id, int)):
+        errors.append("'prisma_keyword_id' must be an integer or null")
+        pk_id = None
+
+    origin = data.get("origin", None)
+    if origin is not None and not isinstance(origin, str):
+        errors.append("'origin' must be a string or absent")
+        origin = None
+
+    return bibkey, prr_id, pk_id, origin
 
 
 def _validate_candidate_project(data: dict, errors: list[str]) -> str | None:
@@ -135,6 +172,17 @@ def validate_note_frontmatter(data: dict) -> tuple[NoteFrontmatter | None, list[
     main_topic = _validate_main_topic(data, errors)
     discipline_area = _validate_discipline_area(data, errors)
 
+    # PRISMA-provenance fields — validated for literature notes; silently
+    # ignored (not an error) on permanent/fleeting notes.
+    bibkey: str | None = None
+    prisma_review_record_id: int | None = None
+    prisma_keyword_id: int | None = None
+    origin: str | None = None
+    if note_type == "literature":
+        bibkey, prisma_review_record_id, prisma_keyword_id, origin = (
+            _validate_literature_provenance(data, errors)
+        )
+
     if errors:
         return None, errors
 
@@ -153,6 +201,10 @@ def validate_note_frontmatter(data: dict) -> tuple[NoteFrontmatter | None, list[
             candidate_project=candidate_project,
             main_topic=main_topic,
             discipline_area=discipline_area,
+            bibkey=bibkey,
+            prisma_review_record_id=prisma_review_record_id,
+            prisma_keyword_id=prisma_keyword_id,
+            origin=origin,
         ),
         [],
     )
