@@ -1,4 +1,51 @@
+---
+id: 20260503-notes-crud-subcommands
+title: Implement full CRUD on `workflow notes`
+type: enhancement
+source_agent: workflow-runner
+opened_on: 2026-05-03
+status: closed
+resolution: implemented
+priority: P2
+severity: recurring-friction
+labels:
+  - cli
+  - notes
+components:
+  - workflow.db
+adr_refs: []
+related_requests:
+  - 20260503-note-frontmatter-main-topic
+  - 20260503-graph-export-tikz-filters
+related_gaps:
+  - workflow-runner.md#2026-05-03-21:10
+  - workflow-runner.md#2026-04-19-14:48
+duplicates: []
+blocked_by: []
+assignee: unassigned
+implementation:
+  - "workflow notes new|list|show|tag|link (src/workflow/.../notes/cli.py)"
+  - "bonus: notes sync, notes edges"
+closed_on: 2026-06-05
+closed_by: "audit 2026-06-05 — pre-existing implementation"
+acceptance_criteria:
+  - "`workflow notes --help` lists at minimum init, new, list, show, tag, link"
+  - "`notes new` round-trips through `validate notes` without warnings"
+  - "`notes list --json` matches sibling JSON shapes (e.g. course list --json)"
+  - "Empty result on `notes list` filters returns [] with exit 0"
+  - "Tests cover: create+list+show round-trip, tag add/remove, link to concept/reference/exercise, schema rejection on invalid candidate_project"
+verification:
+  - "grep notes subcommands in notes/cli.py:53,77,148,219,246,283,360,498"
+---
+
 # Implement full CRUD on `workflow notes` (currently only `init` exists)
+
+## Resolution (2026-06-05)
+
+Audited 2026-06-05 against source. All five requested subcommands — `new`, `list`, `show`, `tag`,
+`link` — already exist in `notes/cli.py` (lines 77/148/219/246/498), plus bonus `sync` (283) and
+`edges` (360) on top of `init` (53). The request's premise ("only `init` exists") is stale; full
+CRUD shipped. No work required. **Closed: implemented.**
 
 **Suggested labels:** `enhancement`, `cli`, `notes`, `zettelkasten`, `priority:recurring-friction`
 
