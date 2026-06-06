@@ -1,8 +1,6 @@
 import os
 from pathlib import Path
 
-import platformdirs
-
 from workflow import config as _workflow_config
 from workflow import paths
 
@@ -15,8 +13,8 @@ DEF_ABS_SRC_DIR = paths.data_dir()
 # Default institution short name.  Reads config.yaml when present;
 # falls back to "UCR" when no config is set.
 DEFAULT_INSTITUTION: str = _workflow_config.get_default_institution("UCR")
-# itep namespace kept behaviour-identical (P3 will collapse); just off appdirs.
-DB_PATH = Path(platformdirs.user_data_dir("itep")) / "itep.db"
+# itep.db now lives under the workflow XDG data root (P3 namespace collapse).
+DB_PATH = paths.data_dir() / "itep.db"
 
 # XDG canonical pool for shared LaTeX assets (single source of truth).
 # Populated from `shared/latex/sty/` + legacy `~/.config/mytex/sty/`.

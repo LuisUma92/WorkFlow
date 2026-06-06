@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import importlib
-import json
 
 import pytest
 from sqlalchemy import create_engine, inspect, text
@@ -397,7 +396,10 @@ class TestMigration0009NormalizeModels:
     # ------------------------------------------------------------------
 
     def test_migration_writes_orphan_dump_file(self, pre_engine, monkeypatch, tmp_path):
-        monkeypatch.setenv("HOME", str(tmp_path))
+        # Migration 0009 now writes the dump under workflow.paths.data_dir()
+        # (Wave E P3 de-hardcoded the legacy ~/01-U/workflow path).
+        dump_dir = tmp_path / "wf_data"
+        monkeypatch.setattr("workflow.paths.data_dir", lambda: dump_dir)
 
         with pre_engine.begin() as conn:
             conn.exec_driver_sql(
@@ -414,11 +416,8 @@ class TestMigration0009NormalizeModels:
         with pre_engine.begin() as conn:
             _load().upgrade(conn)
 
-        # The dump file should exist under the redirected HOME
-        dump_path = (
-            tmp_path / "01-U" / "workflow"
-            / "migration-0009-orphan-exercise-concepts.txt"
-        )
+        # The dump file should exist under the patched data_dir
+        dump_path = dump_dir / "migration-0009-orphan-exercise-concepts.txt"
         assert dump_path.exists(), f"Orphan dump file not found at {dump_path}"
 
         content = dump_path.read_text()

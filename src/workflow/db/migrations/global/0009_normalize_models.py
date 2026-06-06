@@ -15,7 +15,6 @@ making any changes and returns early if the target state is already present.
 from __future__ import annotations
 
 import datetime
-from pathlib import Path
 
 from sqlalchemy.engine import Connection
 
@@ -69,7 +68,7 @@ def _already_applied(connection: Connection) -> bool:
     already = (
         "concepts" not in exercise_cols          # dropped
         and "content_id" not in exercise_cols    # dropped
-        and "chapter_number" in bib_content_cols # added
+        and "chapter_number" in bib_content_cols  # added
         and "content_id" in concept_cols         # rebuilt
         and "main_topic_id" not in concept_cols  # removed
     )
@@ -225,7 +224,10 @@ def _dump_orphan_exercise_concepts(connection: Connection) -> None:
     if not rows:
         return
 
-    dump_path = Path.home() / "01-U" / "workflow" / "migration-0009-orphan-exercise-concepts.txt"
+    # Lazy import to avoid circular imports in the migration module.
+    from workflow import paths as _paths  # lazy: avoids import cycle in migration module
+
+    dump_path = _paths.data_dir() / "migration-0009-orphan-exercise-concepts.txt"
     dump_path.parent.mkdir(parents=True, exist_ok=True)
     with dump_path.open("a", encoding="utf-8") as fh:
         fh.write(

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import datetime
+import shutil
 from pathlib import Path
 
 import click
@@ -307,6 +309,70 @@ def discipline_areas_list(ctx: click.Context, as_json: bool, dd: str | None) -> 
         click.echo(_json.dumps(records, ensure_ascii=False, indent=2))
     else:
         _render_discipline_areas_table(records)
+
+
+@db.command("migrate-xdg")
+@click.option(
+    "--dry-run/--no-dry-run",
+    default=True,
+    show_default=True,
+    help="Print the migration plan without touching the filesystem (default: dry-run).",
+)
+@click.option(
+    "--yes",
+    is_flag=True,
+    default=False,
+    help="Skip interactive confirmation when running a real migration.",
+)
+def migrate_xdg(dry_run: bool, yes: bool) -> None:
+    """Migrate the legacy ~/01-U/workflow/workflow.db to the XDG data directory.
+
+    Backs up the legacy file to <legacy>.bak-<YYYYMMDDHHMMSS> before moving it.
+    Idempotent: exits cleanly if the target already exists or the legacy file is absent.
+    Default is --dry-run; pass --no-dry-run to perform the actual migration.
+    """
+    from workflow import paths  # lazy import keeps module-level imports clean
+
+    legacy: Path = paths.legacy_db_path()
+    target: Path = paths.data_dir() / "workflow.db"
+
+    if not legacy.exists():
+        click.echo(f"No legacy DB at {legacy}; nothing to do.")
+        return
+
+    if target.exists():
+        click.echo(f"XDG target already present at {target}; nothing to do.")
+        return
+
+    ts = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    backup: Path = legacy.with_name(legacy.name + f".bak-{ts}")
+
+    if dry_run:
+        click.echo("[dry-run] Migration plan:")
+        click.echo(f"  1. Back up  {legacy}")
+        click.echo(f"          →  {backup}")
+        click.echo(f"  2. Move     {legacy}")
+        click.echo(f"          →  {target}")
+        click.echo("Run with --no-dry-run to apply.")
+        return
+
+    if not yes:
+        click.confirm(
+            f"Migrate {legacy} → {target}?",
+            default=False,
+            abort=True,
+        )
+
+    try:
+        shutil.copy2(str(legacy), str(backup))
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(legacy), str(target))
+    except OSError as exc:
+        raise click.ClickException(f"Migration failed: {exc}") from exc
+
+    click.echo(f"Backed up legacy DB to {backup}")
+    click.echo(f"Moved {legacy} → {target}")
+    click.echo("Migration complete.")
 
 
 # Deprecation alias: `db taxonomy list` → `db disciplines list`.
