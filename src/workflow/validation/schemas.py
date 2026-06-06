@@ -13,6 +13,8 @@ from workflow.db.models.academic import (
 
 __all__ = [
     "NoteFrontmatter",
+    "RelationEdge",
+    "NoteRelations",
     "ExerciseMetadata",
     "validate_note_frontmatter",
     "validate_exercise_metadata",
@@ -28,6 +30,14 @@ CANDIDATE_PROJECT_RE = re.compile(r"^[0-9]{4}[A-Z]{2}-[0-9]{2}[A-Z]{2}$")
 """Format of an ADR ITEP-0009 forward reference: ``DDTTAA-YYPP``."""
 
 _VALID_NOTE_TYPES = {"permanent", "literature", "fleeting"}
+
+# ITEP-0013 edge type vocabularies.
+_STRUCTURAL_REL_TYPES: frozenset[str] = frozenset(
+    {"continuation", "refines", "branches", "synthesis", "rebuttal"}
+)
+_ASSOCIATIVE_REL_TYPES: frozenset[str] = frozenset(
+    {"supports", "contradicts", "expands", "see_also"}
+)
 _VALID_LITERATURE_ORIGINS = {"prisma", "manual"}
 _VALID_EXERCISE_TYPES = {
     "multichoice",
@@ -39,6 +49,24 @@ _VALID_EXERCISE_TYPES = {
 _VALID_DIFFICULTIES = {"easy", "medium", "hard"}
 _VALID_TAXONOMY_LEVELS = set(_TAXONOMY_LEVELS)
 _VALID_TAXONOMY_DOMAINS = set(_TAXONOMY_DOMAINS)
+
+
+@dataclass(frozen=True)
+class RelationEdge:
+    """One edge item from ITEP-0013 ``relations.derived_from`` or ``relations.links``."""
+
+    id: str
+    type: str
+    weight: float | None = None
+    note: str | None = None
+
+
+@dataclass(frozen=True)
+class NoteRelations:
+    """Parsed ``relations:`` block from note frontmatter (ITEP-0013)."""
+
+    derived_from: tuple[RelationEdge, ...] = ()
+    links: tuple[RelationEdge, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -63,6 +91,9 @@ class NoteFrontmatter:
     prisma_review_record_id: int | None = None
     prisma_keyword_id: int | None = None
     origin: str | None = None
+    # ITEP-0013 — note relation graph (DTO only; no DB persistence in this slice).
+    entry_point: bool = False
+    relations: NoteRelations | None = None
 
 
 @dataclass(frozen=True)
@@ -116,6 +147,81 @@ def _validate_literature_provenance(
         origin = None
 
     return bibkey, prr_id, pk_id, origin
+
+
+def _validate_relation_edge(
+    item: object,
+    slot: str,
+    allowed_types: frozenset[str],
+    errors: list[str],
+) -> RelationEdge | None:
+    if not isinstance(item, dict):
+        errors.append(f"each item in 'relations.{slot}' must be a mapping")
+        return None
+    edge_id = item.get("id")
+    if not edge_id or not isinstance(edge_id, str):
+        errors.append(f"'id' is required in each 'relations.{slot}' item")
+        return None
+    edge_type = item.get("type")
+    if not edge_type or not isinstance(edge_type, str):
+        errors.append(f"'type' is required in each 'relations.{slot}' item")
+        return None
+    if edge_type not in allowed_types:
+        errors.append(
+            f"'relations.{slot}' item has invalid type '{edge_type}'; "
+            f"allowed: {sorted(allowed_types)}"
+        )
+        return None
+    weight = item.get("weight")
+    if weight is not None and (isinstance(weight, bool) or not isinstance(weight, (int, float))):
+        errors.append(f"'weight' in 'relations.{slot}' must be a number")
+        weight = None
+    note = item.get("note")
+    if note is not None and not isinstance(note, str):
+        errors.append(f"'note' in 'relations.{slot}' must be a string")
+        note = None
+    return RelationEdge(id=edge_id, type=edge_type, weight=weight, note=note)
+
+
+def _validate_relations(
+    data: dict, errors: list[str]
+) -> NoteRelations | None:
+    raw = data.get("relations")
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        errors.append("'relations' must be a mapping or absent")
+        return None
+
+    derived: list[RelationEdge] = []
+    raw_derived = raw.get("derived_from", [])
+    if not isinstance(raw_derived, list):
+        errors.append("'relations.derived_from' must be a list")
+    else:
+        for item in raw_derived:
+            edge = _validate_relation_edge(item, "derived_from", _STRUCTURAL_REL_TYPES, errors)
+            if edge is not None:
+                derived.append(edge)
+
+    links: list[RelationEdge] = []
+    raw_links = raw.get("links", [])
+    if not isinstance(raw_links, list):
+        errors.append("'relations.links' must be a list")
+    else:
+        for item in raw_links:
+            edge = _validate_relation_edge(item, "links", _ASSOCIATIVE_REL_TYPES, errors)
+            if edge is not None:
+                links.append(edge)
+
+    return NoteRelations(derived_from=tuple(derived), links=tuple(links))
+
+
+def _validate_entry_point(data: dict, errors: list[str]) -> bool:
+    val = data.get("entry_point", False)
+    if not isinstance(val, bool):
+        errors.append("'entry_point' must be a boolean (true/false)")
+        return False
+    return val
 
 
 def _validate_candidate_project(data: dict, errors: list[str]) -> str | None:
@@ -183,6 +289,9 @@ def validate_note_frontmatter(data: dict) -> tuple[NoteFrontmatter | None, list[
             _validate_literature_provenance(data, errors)
         )
 
+    entry_point = _validate_entry_point(data, errors)
+    relations = _validate_relations(data, errors)
+
     if errors:
         return None, errors
 
@@ -205,6 +314,8 @@ def validate_note_frontmatter(data: dict) -> tuple[NoteFrontmatter | None, list[
             prisma_review_record_id=prisma_review_record_id,
             prisma_keyword_id=prisma_keyword_id,
             origin=origin,
+            entry_point=entry_point,
+            relations=relations,
         ),
         [],
     )

@@ -107,6 +107,75 @@ class TestInitWorkspace:
         content = (tmp_path / VAULT_NAME / "templates" / "permanent.md").read_text()
         assert "```bib" not in content
 
+    # Phase 2 — template gap additions
+
+    def test_permanent_template_has_main_topic_and_discipline_area(self, tmp_path):
+        init_workspace(tmp_path)
+        content = (tmp_path / VAULT_NAME / "templates" / "permanent.md").read_text()
+        assert "main_topic:" in content
+        assert "discipline_area:" in content
+
+    def test_permanent_template_has_relations_scaffold(self, tmp_path):
+        init_workspace(tmp_path)
+        content = (tmp_path / VAULT_NAME / "templates" / "permanent.md").read_text()
+        assert "relations:" in content
+        assert "derived_from:" in content
+        assert "links:" in content
+        assert "entry_point:" in content
+
+    def test_permanent_template_no_delivered_from(self, tmp_path):
+        """Lock against obsidian.lua delivered_from bug leaking into init templates."""
+        init_workspace(tmp_path)
+        content = (tmp_path / VAULT_NAME / "templates" / "permanent.md").read_text()
+        assert "delivered_from" not in content
+
+    def test_literature_template_has_main_topic_discipline_origin(self, tmp_path):
+        init_workspace(tmp_path)
+        content = (tmp_path / VAULT_NAME / "templates" / "literature.md").read_text()
+        assert "main_topic:" in content
+        assert "discipline_area:" in content
+        assert "origin:" in content
+
+    def test_literature_template_has_relations_scaffold(self, tmp_path):
+        init_workspace(tmp_path)
+        content = (tmp_path / VAULT_NAME / "templates" / "literature.md").read_text()
+        assert "relations:" in content
+        assert "derived_from:" in content
+        assert "entry_point:" in content
+
+    def test_fleeting_template_has_no_main_topic(self, tmp_path):
+        """Fleeting notes stay minimal — no main_topic or relations."""
+        init_workspace(tmp_path)
+        content = (tmp_path / VAULT_NAME / "templates" / "fleeting.md").read_text()
+        assert "main_topic" not in content
+        assert "relations" not in content
+
+    def test_permanent_template_passes_validator(self, tmp_path):
+        import yaml
+        from workflow.validation.schemas import validate_note_frontmatter
+        init_workspace(tmp_path)
+        raw = (tmp_path / VAULT_NAME / "templates" / "permanent.md").read_text()
+        # Extract frontmatter between --- delimiters
+        parts = raw.split("---")
+        fm_data = yaml.safe_load(parts[1])
+        # Inject required fields that templates leave blank
+        fm_data["id"] = "testid123456"
+        fm_data["title"] = "Test"
+        _, errors = validate_note_frontmatter(fm_data)
+        assert errors == []
+
+    def test_literature_template_passes_validator(self, tmp_path):
+        import yaml
+        from workflow.validation.schemas import validate_note_frontmatter
+        init_workspace(tmp_path)
+        raw = (tmp_path / VAULT_NAME / "templates" / "literature.md").read_text()
+        parts = raw.split("---")
+        fm_data = yaml.safe_load(parts[1])
+        fm_data["id"] = "litid1234567"
+        fm_data["title"] = "Test lit"
+        _, errors = validate_note_frontmatter(fm_data)
+        assert errors == []
+
 
 class TestInitCLI:
     def test_init_command_succeeds(self, runner, tmp_path):
