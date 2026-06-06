@@ -1,7 +1,7 @@
 """
 Two DeclarativeBase classes for the WorkFlow dual-database architecture.
 
-- GlobalBase: tables in ~/.config/workflow/workflow.db  (user-level knowledge)
+- GlobalBase: tables in ~/.local/share/workflow/workflow.db  (XDG data dir; override via $WORKFLOW_DATA_DIR)
 - LocalBase:  tables in <project>/slipbox.db            (project-level notes)
 """
 

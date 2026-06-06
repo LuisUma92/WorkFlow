@@ -141,3 +141,18 @@ Each ITEP project directory contains its own `slipbox.db` (local DB, per ADR-000
 | Date       | Change      |
 | ---------- | ----------- |
 | 2026-03-25 | Initial ADR |
+| 2026-06-05 | Wave E amendment — see below |
+
+---
+
+## Amendment — 2026-06-05 (Wave E)
+
+- **Vault path correction**: the canonical vault root is `~/01-U/0000AA-Vault`, not `~/Documents/01-U` as stated in the original Decision section. The vault is intentionally NON-XDG (it is hand-edited documents, not app data). Override at runtime via `WORKFLOW_VAULT_ROOT` env var.
+- **`WORKFLOW_DATA_DIR` env override**: this is the canonical escape hatch for the global DB path and always wins over any computed default.
+- **Global DB back-compat resolver** (order of precedence, highest first):
+  1. `$WORKFLOW_DATA_DIR` env var — wins unconditionally.
+  2. XDG data dir (`~/.local/share/workflow/workflow.db`) — used if the file already exists there.
+  3. Legacy path (`~/01-U/workflow/workflow.db`) — used if the file already exists there (back-compat).
+  4. XDG default (`~/.local/share/workflow/workflow.db`) — final fallback for new installs.
+  Relocation from legacy to XDG is performed only by the explicit `workflow db migrate-xdg` command (dry-run by default; never auto-runs).
+- **`platformdirs` replaces `appdirs`**: the data root is `platformdirs.user_data_dir("workflow")` (= `~/.local/share/workflow/` on Linux). The `appdirs` dependency is replaced by `platformdirs`.
