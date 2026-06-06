@@ -9,6 +9,7 @@ Models:
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -29,6 +30,40 @@ from workflow.db.base import GlobalBase
 
 if TYPE_CHECKING:
     from workflow.db.models.knowledge import MainTopic
+
+
+# --- ITEP-0013 / ITEP-0015 note-edge vocabulary — SINGLE SOURCE OF TRUTH ----
+# The NoteEdge CHECK constraints below, the relations-frontmatter parser
+# (workflow.notes.edges) and the frontmatter validator
+# (workflow.validation.schemas) all derive their allowed values from here.
+# Do NOT re-declare these literals anywhere else (ADR ITEP-0013 MUST rule;
+# cf. ADR-0017 stub-drift lesson).
+_STRUCTURAL_RELATION_TYPES_ORDERED = (
+    "continuation",
+    "refines",
+    "branches",
+    "synthesis",
+    "rebuttal",
+)
+_ASSOCIATIVE_RELATION_TYPES_ORDERED = (
+    "supports",
+    "contradicts",
+    "expands",
+    "see_also",
+)
+_EDGE_CLASSES_ORDERED = ("structural", "associative")
+
+STRUCTURAL_RELATION_TYPES: frozenset[str] = frozenset(_STRUCTURAL_RELATION_TYPES_ORDERED)
+ASSOCIATIVE_RELATION_TYPES: frozenset[str] = frozenset(_ASSOCIATIVE_RELATION_TYPES_ORDERED)
+EDGE_CLASSES: frozenset[str] = frozenset(_EDGE_CLASSES_ORDERED)
+
+# ITEP-0015: zettel_id is a NanoID — URL-safe alphabet, 8–21 chars.
+ZETTEL_ID_RE = re.compile(r"^[A-Za-z0-9_-]{8,21}$")
+
+
+def _sql_in(values: tuple[str, ...]) -> str:
+    """Render an ordered tuple as a SQL ``IN`` value list (single-quoted)."""
+    return ", ".join(f"'{v}'" for v in values)
 
 
 class Note(GlobalBase):
@@ -244,12 +279,16 @@ class NoteEdge(GlobalBase):
 
     __table_args__ = (
         CheckConstraint(
-            "edge_class IN ('structural', 'associative')",
+            f"edge_class IN ({_sql_in(_EDGE_CLASSES_ORDERED)})",
             name="ck_note_edge_class_valid",
         ),
         CheckConstraint(
-            "relation_type IN ('continuation','refines','branches','synthesis','rebuttal',"
-            "'supports','contradicts','expands','see_also')",
+            "relation_type IN ("
+            + _sql_in(
+                _STRUCTURAL_RELATION_TYPES_ORDERED
+                + _ASSOCIATIVE_RELATION_TYPES_ORDERED
+            )
+            + ")",
             name="ck_note_edge_relation_type_valid",
         ),
         UniqueConstraint(

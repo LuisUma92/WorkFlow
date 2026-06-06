@@ -17,17 +17,13 @@ Notes without a relations: block are valid lineage roots.
 from __future__ import annotations
 
 import math
-import re
 from dataclasses import dataclass
 
-# Locked in ITEP-0015: NanoID, 8-21 chars, URL-safe alphabet.
-_ZETTEL_ID_RE = re.compile(r"^[A-Za-z0-9_-]{8,21}$")
-
-_STRUCTURAL_TYPES: frozenset[str] = frozenset(
-    {"continuation", "refines", "branches", "synthesis", "rebuttal"}
-)
-_ASSOCIATIVE_TYPES: frozenset[str] = frozenset(
-    {"supports", "contradicts", "expands", "see_also"}
+# Single source of truth — ITEP-0013 vocabulary lives on the NoteEdge model.
+from workflow.db.models.notes import (
+    ASSOCIATIVE_RELATION_TYPES as _ASSOCIATIVE_TYPES,
+    STRUCTURAL_RELATION_TYPES as _STRUCTURAL_TYPES,
+    ZETTEL_ID_RE as _ZETTEL_ID_RE,
 )
 
 

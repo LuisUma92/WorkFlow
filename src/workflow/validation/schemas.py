@@ -10,6 +10,11 @@ from workflow.db.models.academic import (
     _TAXONOMY_DOMAINS,
     _TAXONOMY_LEVELS,
 )
+from workflow.db.models.notes import (
+    ASSOCIATIVE_RELATION_TYPES as _ASSOCIATIVE_REL_TYPES,
+    STRUCTURAL_RELATION_TYPES as _STRUCTURAL_REL_TYPES,
+    ZETTEL_ID_RE as _ZETTEL_ID_RE,
+)
 
 __all__ = [
     "NoteFrontmatter",
@@ -31,13 +36,8 @@ CANDIDATE_PROJECT_RE = re.compile(r"^[0-9]{4}[A-Z]{2}-[0-9]{2}[A-Z]{2}$")
 
 _VALID_NOTE_TYPES = {"permanent", "literature", "fleeting"}
 
-# ITEP-0013 edge type vocabularies.
-_STRUCTURAL_REL_TYPES: frozenset[str] = frozenset(
-    {"continuation", "refines", "branches", "synthesis", "rebuttal"}
-)
-_ASSOCIATIVE_REL_TYPES: frozenset[str] = frozenset(
-    {"supports", "contradicts", "expands", "see_also"}
-)
+# ITEP-0013 edge-type vocabularies + zettel_id format are imported from the
+# NoteEdge model (single source of truth) — see top-of-file imports.
 _VALID_LITERATURE_ORIGINS = {"prisma", "manual"}
 _VALID_EXERCISE_TYPES = {
     "multichoice",
@@ -162,13 +162,22 @@ def _validate_relation_edge(
     if not edge_id or not isinstance(edge_id, str):
         errors.append(f"'id' is required in each 'relations.{slot}' item")
         return None
+    if not _ZETTEL_ID_RE.match(edge_id):
+        # Mirror the sync/ingest contract (workflow.notes.edges) — an id that
+        # fails the NanoID format is silently dropped there, so flag it here.
+        errors.append(
+            f"'id' {edge_id[:40]!r} in 'relations.{slot}' must match "
+            "the NanoID format ^[A-Za-z0-9_-]{8,21}$"
+        )
+        return None
     edge_type = item.get("type")
     if not edge_type or not isinstance(edge_type, str):
         errors.append(f"'type' is required in each 'relations.{slot}' item")
         return None
     if edge_type not in allowed_types:
+        # repr() neutralizes newlines/control chars in echoed user input (CWE-117).
         errors.append(
-            f"'relations.{slot}' item has invalid type '{edge_type}'; "
+            f"'relations.{slot}' item has invalid type {edge_type[:40]!r}; "
             f"allowed: {sorted(allowed_types)}"
         )
         return None
