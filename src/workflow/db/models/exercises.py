@@ -23,6 +23,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    Enum,
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -33,6 +34,7 @@ from sqlalchemy.orm import (
 from typing import TYPE_CHECKING
 
 from workflow.db.base import GlobalBase
+from workflow.exercise.domain import ExerciseType
 
 if TYPE_CHECKING:
     from workflow.db.models.bibliography import BibEntry
@@ -68,8 +70,8 @@ class Exercise(GlobalBase):
         default="placeholder",
         comment="File lifecycle: placeholder | in_progress | complete",
     )
-    type: Mapped[str | None] = mapped_column(
-        String(20),
+    type: Mapped[ExerciseType | None] = mapped_column(
+        Enum(ExerciseType),
         nullable=True,
         comment="multichoice | essay | shortanswer | numerical | truefalse",
     )
@@ -203,12 +205,12 @@ class ExerciseConcept(GlobalBase):
     exercise: Mapped["Exercise"] = relationship(back_populates="concept_links")
     concept: Mapped["Concept"] = relationship()
 
-    __table_args__ = (
-        Index("ix_exercise_concept_concept", "concept_id"),
-    )
+    __table_args__ = (Index("ix_exercise_concept_concept", "concept_id"),)
 
     def __repr__(self) -> str:
-        return f"<ExerciseConcept exercise={self.exercise_id} concept={self.concept_id}>"
+        return (
+            f"<ExerciseConcept exercise={self.exercise_id} concept={self.concept_id}>"
+        )
 
 
 __all__ = [

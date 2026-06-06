@@ -9,6 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, TYPE_CHECKING
 
+from workflow.exercise.domain import ExerciseType
+
 if TYPE_CHECKING:
     from workflow.db.models.bibliography import BibEntry
 
@@ -156,6 +158,7 @@ def parse(path: str) -> None:
 def _exercise_to_dict(ex: Any) -> dict[str, Any]:
     """Serialize an Exercise ORM row to a JSON-serialisable dict."""
     import json as _json
+
     # Extract the first tag that looks like a course code for the 'course' field.
     tags_raw = ex.tags or "[]"
     try:
@@ -188,7 +191,9 @@ def _exercise_to_dict(ex: Any) -> dict[str, Any]:
     "--taxonomy-level", type=str, default=None, help="Filter by taxonomy level."
 )
 @click.option("--type", "exercise_type", type=str, default=None, help="Filter by type.")
-@click.option("--course", type=str, default=None, help="Filter by course code (tag match).")
+@click.option(
+    "--course", type=str, default=None, help="Filter by course code (tag match)."
+)
 @click.option("--limit", type=int, default=100, show_default=True)
 @click.option("--json", "as_json", is_flag=True, default=False, help="Emit JSON array.")
 @click.pass_context
@@ -216,7 +221,9 @@ def list_exercises(
         )
 
         if as_json:
-            click.echo(_json.dumps([_exercise_to_dict(ex) for ex in exercises], indent=2))
+            click.echo(
+                _json.dumps([_exercise_to_dict(ex) for ex in exercises], indent=2)
+            )
             return
 
         if not exercises:
@@ -284,7 +291,7 @@ def gc(ctx, yes: bool) -> None:
     click.echo(f"Removed {count} orphaned record(s).")
 
 
-_EXERCISE_TYPES = ["multichoice", "shortanswer", "essay", "numerical", "truefalse", "SCM", "SSU", "SDE"]
+_EXERCISE_TYPES = [e.value for e in ExerciseType]
 _DIFFICULTIES = ["easy", "medium", "hard"]
 
 
@@ -293,8 +300,8 @@ _DIFFICULTIES = ["easy", "medium", "hard"]
 @click.option(
     "--type",
     "exercise_type",
-    type=click.Choice(_EXERCISE_TYPES, case_sensitive=False),
-    default="essay",
+    type=click.Choice([e.value for e in ExerciseType], case_sensitive=False),
+    default=ExerciseType.TDE.value,
     show_default=True,
 )
 @click.option(
@@ -375,7 +382,7 @@ def create(
     "--type",
     "exercise_type",
     type=click.Choice(_EXERCISE_TYPES, case_sensitive=False),
-    default="essay",
+    default=ExerciseType.TDE.value,
     show_default=True,
 )
 @click.option(
@@ -666,8 +673,10 @@ def _register_one(
         status=ex_parsed.status or "complete",
         type=exercise_type,
         difficulty=(ex_parsed.metadata.difficulty if ex_parsed.metadata else None),
-        taxonomy_level=taxonomy_level or (ex_parsed.metadata.taxonomy_level if ex_parsed.metadata else None),
-        taxonomy_domain=taxonomy_domain or (ex_parsed.metadata.taxonomy_domain if ex_parsed.metadata else None),
+        taxonomy_level=taxonomy_level
+        or (ex_parsed.metadata.taxonomy_level if ex_parsed.metadata else None),
+        taxonomy_domain=taxonomy_domain
+        or (ex_parsed.metadata.taxonomy_domain if ex_parsed.metadata else None),
         tags=tags_json,
         default_grade=float(points),
         option_count=len(ex_parsed.options),
@@ -690,7 +699,8 @@ def _register_one(
 @exercise.command()
 @click.option("--path", required=True, type=str, help="Path to existing .tex file.")
 @click.option(
-    "--type", "exercise_type",
+    "--type",
+    "exercise_type",
     required=True,
     type=click.Choice(_REGISTER_TYPES, case_sensitive=False),
     help="Exercise type.",
@@ -699,9 +709,15 @@ def _register_one(
 @click.option("--cycle", required=True, type=str, help="Academic cycle (e.g. 2026C1).")
 @click.option("--partial", required=True, type=str, help="Parcial ID (e.g. P02).")
 @click.option("--points", required=True, type=int, help="Point value.")
-@click.option("--taxonomy-level", type=str, default=None, help="Override taxonomy level.")
-@click.option("--taxonomy-domain", type=str, default=None, help="Override taxonomy domain.")
-@click.option("--json", "as_json", is_flag=True, default=False, help="Emit JSON output.")
+@click.option(
+    "--taxonomy-level", type=str, default=None, help="Override taxonomy level."
+)
+@click.option(
+    "--taxonomy-domain", type=str, default=None, help="Override taxonomy domain."
+)
+@click.option(
+    "--json", "as_json", is_flag=True, default=False, help="Emit JSON output."
+)
 @click.pass_context
 @with_schema_guard
 def register(
@@ -724,8 +740,15 @@ def register(
 
     with Session(engine) as session:
         row = _register_one(
-            session, tex_path, exercise_type, course, cycle, partial, points,
-            taxonomy_level, taxonomy_domain,
+            session,
+            tex_path,
+            exercise_type,
+            course,
+            cycle,
+            partial,
+            points,
+            taxonomy_level,
+            taxonomy_domain,
         )
         session.commit()
 
@@ -740,14 +763,19 @@ def register(
 @click.option("--course", required=True, type=str, help="Course code (e.g. CB0009).")
 @click.option("--cycle", required=True, type=str, help="Academic cycle (e.g. 2026C1).")
 @click.option("--partial", required=True, type=str, help="Parcial ID (e.g. P02).")
-@click.option("--points", type=int, default=1, show_default=True, help="Point value per exercise.")
 @click.option(
-    "--type", "exercise_type",
+    "--points", type=int, default=1, show_default=True, help="Point value per exercise."
+)
+@click.option(
+    "--type",
+    "exercise_type",
     type=click.Choice(_REGISTER_TYPES, case_sensitive=False),
     default=None,
     help="Override exercise type for all files.",
 )
-@click.option("--json", "as_json", is_flag=True, default=False, help="Emit JSON output.")
+@click.option(
+    "--json", "as_json", is_flag=True, default=False, help="Emit JSON output."
+)
 @click.pass_context
 @with_schema_guard
 def register_batch(
@@ -785,8 +813,15 @@ def register_batch(
                     inferred_type = "essay"
 
             row = _register_one(
-                session, tex_path, inferred_type, course, cycle, partial, points,
-                None, None,
+                session,
+                tex_path,
+                inferred_type,
+                course,
+                cycle,
+                partial,
+                points,
+                None,
+                None,
             )
             results.append(row)
         session.commit()

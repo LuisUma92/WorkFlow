@@ -12,6 +12,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from workflow.exercise.domain import ExerciseType
+
 __all__ = ["GeneratedExercise", "generate_exercise_file", "generate_from_content"]
 
 _SAFE_ID_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
@@ -45,11 +47,17 @@ def _build_tags_yaml(tags: list[str] | None) -> str:
 
 def _render_exercices_id(
     book_cite: str,
+    exercise_type: ExerciseType,
     chapter: int,
     section: str,
     num: int,
 ) -> str:
-    return f"{book_cite}-C{chapter:02d}S{section[:2]}P{num:03d}"
+    exercise_code = exercise_type.code
+    author_found = re.match(r"^(.*?)(?=\d{4}[a-zA-Z0-9]+)", book_cite)
+    if author_found:
+        return f"{author_found.group(1)}-{exercise_code}C{chapter:02d}S{section[:2]}P{num:03d}"
+    else:
+        return f"{book_cite}-{exercise_code}C{chapter:02d}S{section[:2]}P{num:03d}"
 
 
 def _render_template(
@@ -140,6 +148,7 @@ def generate_exercise_file(
             )
         exercise_id = _render_exercices_id(
             book_cite,
+            exercise_type,
             chapter,
             section,
             exercise_num,

@@ -9,6 +9,7 @@ See ADR-0011 for ParseResult design rationale.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 
 from workflow.validation.schemas import ExerciseMetadata
 
@@ -51,3 +52,15 @@ class ParseResult:
     warnings: tuple[str, ...] = ()  # non-fatal issues
     errors: tuple[str, ...] = ()  # fatal issues
     source_path: str = ""  # path to the .tex file
+
+
+class ExerciseType(StrEnum):
+    TSU = "multichoice"
+    TRC = "shortanswer"
+    TDE = "essay"
+    TNU = "numerical"
+    TVF = "truefalse"
+
+    @property
+    def code(self) -> str:
+        return self.name
