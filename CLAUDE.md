@@ -86,7 +86,7 @@ Defined in `pyproject.toml` under `[project.scripts]`:
 - **SQLAlchemy 2.0** with `Mapped[]` annotations is the single ORM (ADR-0004)
 - Data access goes through **repository Protocol interfaces** (`workflow.db.repos.protocols`)
 - **Hybrid DB**: global for reference data + unified vault notes (ADR-0003, ITEP-0011); local per project for PRISMA decisions + project-scoped notes (ITEP-0011 P5)
-- XDG layout: config in `~/.config/workflow/`, data in `~/.local/share/workflow/` (ADR-0008)
+- XDG layout: paths resolved via `src/workflow/paths.py` (platformdirs; data=`~/.local/share/workflow/`, config=`~/.config/workflow/config.yaml`, cache=`~/.cache/workflow/`). `WORKFLOW_DATA_DIR`/`WORKFLOW_VAULT_ROOT` env overrides win; legacy `~/01-U/workflow/workflow.db` kept via fallback resolver until `workflow db migrate-xdg` is run. `workflow.config` reads `~/.config/workflow/config.yaml` (`vault_path`, `default_institution`, `default_timezone`; env > config > default). See ADR-0008 (amended 2026-06-05).
 - Exercise macros: extend existing `\question`, `\qpart`, `\pts` — never replace (ADR-0005)
 - `.tex` files are **truth source** for exercise content; DB stores metadata index only (ADR-0010)
 - Exercise CLI: `workflow exercise parse|list|sync|gc|export-moodle|create|create-range|build-exam`. `workflow exercise sync` supports `--strict-concepts` and writes `ExerciseConcept` M2M rows (no JSON column).
@@ -102,6 +102,7 @@ Defined in `pyproject.toml` under `[project.scripts]`:
 - Content bib-link CLI: `workflow content link-bib | bib-links | unlink-bib` (v1.13.0). Links `BibContent` rows (`bib_entry_id`, `content_id`) with locus columns (chapter, section, pages, exercise range). Reuses `_resolve_bib_entry` single-query lookup — soon to move to a dedicated `workflow.bibliography.service` module.
 - Validation CLI: `workflow validate notes [--strict-main-topic] [--strict-concepts]` (ITEP-0009 + ITEP-0012, Implemented). Resolves frontmatter `main_topic` against `MainTopic`, enforces `discipline_area` consistency, and optionally validates `concepts:` slugs against the Concept table.
 - Disciplines + maturation CLI: `workflow db disciplines list [--json]`, `workflow project propose-maturation [--json] [--area DDTTAA]` (ADR ITEP-0009). Bloom enums: `workflow item taxonomy --levels|--domains [--json]` (ADR ITEP-0006).
+- DB migration CLI: `workflow db migrate-xdg [--dry-run/--no-dry-run] [--yes]` — relocate a legacy `~/01-U/workflow/` DB into the XDG data dir (`~/.local/share/workflow/`); dry-run on by default (requires `--no-dry-run` to write); backs up DB before moving; idempotent (no-ops if already in XDG location); never runs automatically.
 - Neovim plugin (v1.12.0): Topic + Content CLIs have pickers (`:WorkflowTopicPicker [discipline-area=CODE]`, `:WorkflowContentPicker [topic-id=N]`); Concept CLI has picker (`:WorkflowConceptPicker [main-topic=CODE]`); Graph CLI accessible via `:WorkflowGraphStats` / `:WorkflowGraphOrphans` (both accept filter flags); Lectures CLI accessible via `:WorkflowLectureScan` / `:WorkflowLectureLink`. All insert/display in scratch buffers or splits. See `nvim-plugin/doc/workflow.txt`. PRISMA accept-to-note (Wave C3): `:WorkflowPrismaAcceptToNote` prompts bibkey (single) or keyword-id (bulk), shells to `workflow prisma bib accept-to-note --json`, opens result in a vsplit.
 - Shared `get_engine_from_ctx()` in `workflow.db.engine` for all Click commands
 - Project types: `GeneralProject` and `LectureProject` (see `itep/models.py`)
@@ -133,7 +134,7 @@ Architecture decisions in `docs/ADR/` (see [INDEX.md](docs/ADR/INDEX.md) for ful
 | 0005 | Exercise DSL extends existing macros | Accepted |
 | 0006 | TikZ standalone asset pipeline | Accepted |
 | 0007 | Shared DB module with repository API | Accepted |
-| 0008 | XDG directory layout | Accepted |
+| 0008 | XDG directory layout | Accepted (amended 2026-06-05) |
 | 0009 | Exercise module boundary + shared LaTeX parsing | Accepted |
 | 0010 | Exercise persistence: file as truth, DB as index | Accepted |
 | 0011 | LaTeX parser: brace-counting extractor | Accepted |
