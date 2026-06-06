@@ -3,6 +3,7 @@ from pathlib import Path
 
 import platformdirs
 
+from workflow import config as _workflow_config
 from workflow import paths
 
 _DEFAULT_PHYSICS_DIR = Path.home() / "Documents" / "01-U" / "00-Fisica"
@@ -10,6 +11,10 @@ DEF_ABS_PARENT_DIR = Path(
     os.environ.get("WORKFLOW_PHYSICS_DIR", str(_DEFAULT_PHYSICS_DIR))
 )
 DEF_ABS_SRC_DIR = paths.data_dir()
+
+# Default institution short name.  Reads config.yaml when present;
+# falls back to "UCR" when no config is set.
+DEFAULT_INSTITUTION: str = _workflow_config.get_default_institution("UCR")
 # itep namespace kept behaviour-identical (P3 will collapse); just off appdirs.
 DB_PATH = Path(platformdirs.user_data_dir("itep")) / "itep.db"
 
