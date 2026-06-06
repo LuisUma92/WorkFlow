@@ -5,9 +5,9 @@
 % Este comando permite generar rápidamente una celda que une varias 
 % filas y que permite usar \\ como cambio de línea en la celda
 %==< Definición de directorios importantes >===================================
-  \newcommand{\mytex}{/home/luis/.config/mytex}
-  \newcommand{\FisicaDir}{/home/luis/Documents/01-U}
-  \newcommand{\IMGfolder}{\FisicaDir/00II-ImagesFigures}
+  \newcommand{\FisicaDir}{/home/luis/01-U}
+  \newcommand{\IMGfolder}{\FisicaDir/0000II-ImagesFigures}
+  \newcommand{\EEfolder}{\FisicaDir/0000II-ImagesFigures}
 
 %==< Definición de booleanos >=================================================
   \newboolean{test}
@@ -22,40 +22,38 @@
   \newcounter{lastChapter}
   \newcounter{example}[section] 
   \newcommand{\exa}[2][]{%
-    \ifblank{#2}{
-      \stepcounter{example}
-    }{
-      \setcounter{example}{#2}%
-    }
+    \ifblank{#2}{\stepcounter{example}}{\setcounter{example}{#2}}%
     \ifthenelse{\isundefined{\thechapter}}{%
-      \ifblank{#1}{
-        \hspace{0.8cm}\par\arabic{section}.\arabic{example}.\hspace{0.45mm} %
-      }{
-        \setcounter{lastChapter}{\thesection}
-        \setcounter{section}{#1}
-        \hspace{0.8cm}\par\arabic{section}.\arabic{example}.\hspace{0.45mm} %
-        \setcounter{section}{\thelastChapter}
-      }
-    }{
-      \ifblank{#1}{
-        \hspace{0.8cm}\par\arabic{chapter}.\arabic{example}.\hspace{0.45mm} %
-      }{
-        \setcounter{lastChapter}{\thechapter}
-        \setcounter{chapter}{#1}
-        \hspace{0.8cm}\par\arabic{chapter}.\arabic{example}.\hspace{0.45mm} %
-        \setcounter{chapter}{\thelastChapter}
-      }
-    }
+      \ifblank{#1}{%
+        \arabic{section}.\arabic{example}.%
+      }{%
+        \setcounter{lastChapter}{\value{section}}%
+        \setcounter{section}{#1}%
+        \arabic{section}.\arabic{example}.%
+        \setcounter{section}{\thelastChapter}%
+      }%
+    }{%
+      \ifblank{#1}{%
+        \arabic{chapter}.\arabic{example}.%
+      }{%
+        \setcounter{lastChapter}{\value{chapter}}%
+        \setcounter{chapter}{#1}%
+        \arabic{chapter}.\arabic{example}.%
+        \setcounter{chapter}{\thelastChapter}%
+      }%
+    }%
+    \hspace{0.5em}\ignorespaces
   }
-  \newcommand{\exatitle}[1]{
+  \newcommand{\exatitle}[1]{%
     \ifthenelse{\isundefined{\thechapter}}{%
       \textbf{#1}
       \addcontentsline{toc}{subsection}{\thesection.\theexample. #1}
-    }{
+    }{%
       \textbf{#1}
       \addcontentsline{toc}{subsection}{\thechapter.\theexample. #1 }
-    }
-  }%
+    }%
+    \ignorespaces
+  }
   \newcommand{\exacs}[1]{%
     \ifblank{#1}{
       \stepcounter{example}
@@ -78,7 +76,7 @@
       }{}
     }{
     #1\par
-    #2
+    \ifthenelse{\boolean{solutions}}{#2}{}
     }
   }
   \newcommand{\qpart}[2]{
@@ -94,32 +92,6 @@
     \renewcommand{\thegeneralobjective}{#1}
   }
 
-\newcommand{\ptsdistro}{
-  \paragraph{Distribución de puntos}
-  \renewcommand{\labelenumiii}{\theenumi\theenumii-\arabic{enumiii})}
-}
-\newcommand{\pts}[2][]{
-  (\textit{#2 pts.})
-  \ifthenelse{\equal{#1}{add}}{
-    \addtocounter{points}{#2}
-  }{}
-}
-\newcommand{\upt}[1][]{
-  (\textit{1 pt.})
-  \ifthenelse{\equal{#1}{add}}{
-    \addtocounter{points}{1}
-  }{}
-}
-\newcommand{\uptcu}{(\textit{1 pt c/u.})}
-\newcommand{\ptscu}[1]{(\textit{#1 pts c/u.})}
-\newcommand{\consolidatePoints}[1]{
-  \setcounter{sectionPoints}{\value{points}}
-  \addtocounter{totalPoints}{\value{points}}
-  \setcounter{points}{0}
-  \protected@write\@auxout{}{%
-    \string\newlabel{#1}{{\arabic{sectionPoints}}{\thepage}}%
-  }%
-}
 %==< Definición de comandos >==================================================
   \newcommand\mailto[1]{\href{mailto:#1}{#1}}
   \newcommand{\minitab}[2]{\begin{tabular}{#1}#2\end{tabular}}
@@ -145,11 +117,13 @@
   }
   
   \newcommand{\scrp}[1]{_{\mbox{\scriptsize{#1}}}}
-  \newcommand{\vc}[1]{\vec{\symbf{#1}}}
   \newcommand{\nc}[2]{$^{#1}$#2}
   \newcommand{\ncm}[2]{^{#1}\text{#2}}
   \newcommand{\then}{=}
   \newcommand{\ifpause}{}
+  \newcommand{\teqlabel}[1]{
+    \refstepcounter{equation}(\theequation)\label{#1}
+  }
 
 %==< CentredPage command >=====================================================
 % Full-page centred layout command with l3keys configuration.
@@ -313,3 +287,5 @@
 
 \ExplSyntaxOff
 %==============================================================================
+
+

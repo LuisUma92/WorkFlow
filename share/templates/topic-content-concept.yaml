@@ -1,0 +1,74 @@
+# Template: Topic / Content / Concept hierarchy for workflow.db
+#
+# Hierarchy:  DisciplineArea → Topic → Content → Concept → sub-Concept
+#
+# Fill in this file, then run:
+#   workflow topic import <this-file>
+#
+# Rules:
+#   - discipline_area_code must already exist in workflow.db
+#   - concept.domain must be one of:
+#       Información | Procedimiento Mental | Procedimiento Psicomotor | Metacognitivo
+#   - concept.code must be unique (e.g. "FS01-KIN-001")
+#   - parent_code references another concept.code in THIS file (or already in DB)
+#   - Leave optional fields blank or omit them entirely
+#
+# To see existing discipline areas:
+#   workflow db disciplines list --json
+# ─────────────────────────────────────────────────────────────────────────────
+
+discipline_area_code: FS01 # code of the pre-existing DisciplineArea
+
+topics:
+  - name: Cinemática
+    serial: 1 # ordering within the discipline area
+    contents:
+      - name: Posición y desplazamiento
+        concepts:
+          - code: FS01-KIN-001
+            label: Vector posición
+            domain: Información
+            description: >
+              Representación vectorial de la ubicación de una partícula
+              respecto a un origen de referencia.
+
+          - code: FS01-KIN-002
+            label: Desplazamiento
+            domain: Información
+            description: >
+              Cambio neto del vector posición entre dos instantes.
+            parent_code: FS01-KIN-001 # optional: sub-concept of vector posición
+
+      - name: Velocidad y aceleración
+        concepts:
+          - code: FS01-KIN-010
+            label: Velocidad media
+            domain: Procedimiento Mental
+            description: ""
+
+          - code: FS01-KIN-011
+            label: Aceleración instantánea
+            domain: Procedimiento Mental
+            description: ""
+            parent_code: FS01-KIN-010
+
+  - name: Dinámica
+    serial: 2
+    contents:
+      - name: Leyes de Newton
+        concepts:
+          - code: FS01-DYN-001
+            label: Primera ley de Newton
+            domain: Información
+            description: ""
+
+          - code: FS01-DYN-002
+            label: Segunda ley de Newton
+            domain: Procedimiento Mental
+            description: ""
+
+          - code: FS01-DYN-003
+            label: Tercera ley de Newton
+            domain: Procedimiento Mental
+            description: ""
+            parent_code: FS01-DYN-001

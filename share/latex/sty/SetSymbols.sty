@@ -1,5 +1,8 @@
 % --- Helper: vector coloreado ---
-\newcommand{\cvec}[2]{\vec{\symbf{\textcolor{#1}{#2}}}}
+% \newcommand{\cvec}[2]{\vec{\symbf{\textcolor{#1}{#2}}}}
+\newcommand{\cvec}[2]{\vec{{\textcolor{#1}{#2}}}}
+  \newcommand{\vc}[1]{\vec{{#1}}}
+  \newcommand{\vh}[1]{\hat{#1}}
 
 % --- Posición ---
 \newcommand{\vpos}{\cvec{Pos}{r}}                       % \vec{r}
@@ -11,6 +14,7 @@
 \newcommand{\uvj}{\textcolor{PosY}{\hat{\bm{j}}}}       % ĵ
 \newcommand{\uvk}{\textcolor{PosZ}{\hat{\bm{k}}}}       % k̂
 \newcommand{\pr}[1][r]{\vc{\textcolor{Pos}{#1}}}
+\newcommand{\pc}[1]{\textcolor{Pos}{#1}}
 \newcommand{\mpr}{|\vc{\textcolor{Pos}{r}}|}
 \newcommand{\px}{\textcolor{PosX}{x}}
 \newcommand{\py}{\textcolor{PosY}{y}}
@@ -67,7 +71,6 @@
 \newcommand{\sene}{\textcolor{Ene}{E}}                   % E
 \newcommand{\senek}{\textcolor{EneK}{K}}                 % K
 \newcommand{\seneu}{\textcolor{EneU}{U}}                 % U
-\newcommand{\pc}[1]{\textcolor{Pos}{#1}}
 
 
 %General vector notation
@@ -104,6 +107,9 @@
 % \newcommand{\rot}[1]{\nabla\times #1}
 % \newcommand{\dive}[1]{\nabla\cdot{#1}}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% \newcommand{\tagarray}{%
-% \refstepcounter{equation}(\theequation)%
-% }
+\newcommand{\tagarray}{%
+\refstepcounter{equation}(\theequation)%
+}
+
+
+% ── MERGED FROM REPO (2026-05-03) — 1 unique line(s); review/clean ──

@@ -90,7 +90,7 @@
     \renewcommand{\theuni}{Universidad de Costa Rica}
     \renewcommand{\theunishort}{UCR}
     \savebox{\ulogo}{
-	    \includegraphics[width=0.4\textwidth]{\mytex/img/ucr/firma-horizontal-dos-lineas-cmky.png}
+	    \includegraphics[width=0.4\textwidth]{/home/luis/.local/share/workflow/img/ucr/firma-horizontal-dos-lineas-cmky.png}
     }
     \savebox{\schoollogo}{}
   }
@@ -99,10 +99,10 @@
     \renewcommand{\theunishort}{UCR}
     \renewcommand{\theschool}{Escuela de Física}
     \savebox{\ulogo}{
-	    \includegraphics[width=0.4\textwidth]{\mytex/img/ucr/firma-horizontal-dos-lineas-cmky.png}
+	    \includegraphics[width=0.4\textwidth]{/home/luis/.local/share/workflow/img/ucr/firma-horizontal-dos-lineas-cmky.png}
     }
     \savebox{\schoollogo}{
-	    \includegraphics[width=0.2\textwidth]{\mytex/img/ucr/efis/efis.png}
+	    \includegraphics[width=0.2\textwidth]{/home/luis/.local/share/workflow/img/ucr/efis/efis.png}
     }
   }
   \newcommand{\ucimed}{
@@ -110,7 +110,7 @@
     \renewcommand{\theunishort}{UCIMED}
     \renewcommand{\theschool}{Ciencias Básicas}
     \savebox{\ulogo}{
-	    \includegraphics[width=0.2\textwidth]{\mytex/img/ucimed/ucimed.png}
+	    \includegraphics[width=0.2\textwidth]{/home/luis/.local/share/workflow/img/ucimed/ucimed.png}
     }
     \savebox{\schoollogo}{}
   }
@@ -119,7 +119,7 @@
     \renewcommand{\theunishort}{UFide}
     \renewcommand{\theschool}{Ciencias Básicas}
     \savebox{\ulogo}{
-	    \includegraphics[width=0.3\textwidth]{\mytex/img/ufide/ufidelitas.png}
+	    \includegraphics[width=0.3\textwidth]{/home/luis/.local/share/workflow/img/ufide/ufidelitas.png}
     }
     \savebox{\schoollogo}{}
   }
@@ -164,8 +164,12 @@
       \renewcommand{\classname}{Física I}
       \ucimed
     }{
+    \ifthenelse{\equal{#1}{CBI-07}}{
+      \renewcommand{\classname}{Física II}
+      \ucimed
+    }{
       \renewcommand{\classname}{#1}
-    } } } } } } } } }
+    } } } } } } } } } }
   }
 
   \newcommand{\thecycle}{0000-III}

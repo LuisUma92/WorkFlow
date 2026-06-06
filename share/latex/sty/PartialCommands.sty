@@ -23,6 +23,36 @@
   \setpartialnumber{#3}
 }
 
+\newcommand{\ptsdistro}{
+  \paragraph{Distribución de puntos}
+  \ifthenelse{\boolean{test}}{
+    \renewcommand{\labelenumiii}{\theenumi\theenumii-\arabic{enumiii})}
+  }{
+    \renewcommand{\labelenumii}{\arabic{example}\alph{enumi}-\arabic{enumii})}
+  }
+}
+\newcommand{\pts}[2][]{
+  (\textit{#2 pts.})
+  \ifthenelse{\equal{#1}{add}}{
+    \addtocounter{points}{#2}
+  }{}
+}
+\newcommand{\upt}[1][]{
+  (\textit{1 pt.})
+  \ifthenelse{\equal{#1}{add}}{
+    \addtocounter{points}{1}
+  }{}
+}
+\newcommand{\uptcu}{(\textit{1 pt c/u.})}
+\newcommand{\ptscu}[1]{(\textit{#1 pts c/u.})}
+\newcommand{\consolidatePoints}[1]{
+  \setcounter{sectionPoints}{\value{points}}
+  \addtocounter{totalPoints}{\value{points}}
+  \setcounter{points}{0}
+  \protected@write\@auxout{}{%
+    \string\newlabel{#1}{{\arabic{sectionPoints}}{\thepage}}%
+  }%
+}
 
 
 \newcommand{\topics}{}

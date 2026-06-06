@@ -52,6 +52,7 @@
   % Para tachar en ecuaciones
   \usepackage[
       makeroom,
+      thicklines
       ]{cancel}
   \renewcommand\CancelColor{\color{red}}
 
@@ -105,12 +106,14 @@
   % más información en https://www.ctan.org/pkg/multirow
   \usepackage{multirow}
   % Generate table from csv
+  \usepackage{pgfplots} 
   \usepackage{pgfplotstable} 
-  \pgfplotstableset{col sep=comma}
+  \pgfplotstableset{col sep=semicolon}
   \pgfplotsset{compat=1.18}
   % Permite usar columnas de ancho preestablecido
   \usepackage{dcolumn}
   \newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+  \setcounter{tocdepth}{1}
   \newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
   \newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
 
