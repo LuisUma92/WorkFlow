@@ -142,6 +142,7 @@ Each ITEP project directory contains its own `slipbox.db` (local DB, per ADR-000
 | ---------- | ----------- |
 | 2026-03-25 | Initial ADR |
 | 2026-06-05 | Wave E amendment — see below |
+| 2026-06-06 | Production symlink note — see below |
 
 ---
 
@@ -156,3 +157,11 @@ Each ITEP project directory contains its own `slipbox.db` (local DB, per ADR-000
   4. XDG default (`~/.local/share/workflow/workflow.db`) — final fallback for new installs.
   Relocation from legacy to XDG is performed only by the explicit `workflow db migrate-xdg` command (dry-run by default; never auto-runs).
 - **`platformdirs` replaces `appdirs`**: the data root is `platformdirs.user_data_dir("workflow")` (= `~/.local/share/workflow/` on Linux). The `appdirs` dependency is replaced by `platformdirs`.
+
+---
+
+## Note — 2026-06-06 (Production symlink setup)
+
+In the live developer setup, `~/.local/share/workflow` is a **symlink** pointing to `<repo>/share/` (i.e. `~/02-Projects/WorkFlow/share/`). This means the shared LaTeX styles, templates, and other application data under `share/` in the repository tree are served through the standard XDG data path.
+
+`paths.py` and `platformdirs` are fully symlink-agnostic: `Path.exists()` follows symlinks, so `global_db_path()` precedence resolution works correctly whether the XDG data directory is a real directory or a symlink. No code changes are required to support this setup.

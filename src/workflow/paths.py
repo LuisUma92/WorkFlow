@@ -7,6 +7,11 @@ Precedence for global_db_path():
   3. Legacy path exists                 → ~/01-U/workflow/workflow.db  (+one-time notice)
   4. Default (new install)              → XDG data dir / workflow.db
 
+Symlink-compatible: ``~/.local/share/workflow`` may be a symlink (e.g. pointing to
+``<repo>/share/`` in the developer setup).  ``Path.exists()`` follows symlinks, so all
+precedence checks and callers work identically whether the data dir is a real directory
+or a symlink.
+
 For tests: monkeypatch ``workflow.paths.data_dir`` and/or ``workflow.paths.legacy_db_path``,
 or call ``reset_notice_for_tests()`` to reset the one-time legacy notice flag.
 """
