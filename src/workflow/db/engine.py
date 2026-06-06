@@ -7,13 +7,13 @@ Local DB:  <project_root>/slipbox.db
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import click
 from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
+from workflow import paths
 from workflow.db.base import GlobalBase, LocalBase
 
 __all__ = [
@@ -50,8 +50,7 @@ def _enable_fk_pragma(dbapi_conn, _connection_record):
 
 
 def _default_global_path() -> Path:
-    data_dir = Path(os.environ.get("WORKFLOW_DATA_DIR", "~/01-U/workflow")).expanduser()
-    return data_dir / "workflow.db"
+    return paths.global_db_path()
 
 
 # ── Engine factories ───────────────────────────────────────────────────────

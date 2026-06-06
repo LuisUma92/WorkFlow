@@ -1,17 +1,21 @@
 import os
 from pathlib import Path
-from appdirs import user_data_dir
+
+import platformdirs
+
+from workflow import paths
 
 _DEFAULT_PHYSICS_DIR = Path.home() / "Documents" / "01-U" / "00-Fisica"
 DEF_ABS_PARENT_DIR = Path(
     os.environ.get("WORKFLOW_PHYSICS_DIR", str(_DEFAULT_PHYSICS_DIR))
 )
-DEF_ABS_SRC_DIR = Path(user_data_dir("workflow", "LuisUmana"))
-DB_PATH = Path(user_data_dir("itep")) / "itep.db"
+DEF_ABS_SRC_DIR = paths.data_dir()
+# itep namespace kept behaviour-identical (P3 will collapse); just off appdirs.
+DB_PATH = Path(platformdirs.user_data_dir("itep")) / "itep.db"
 
 # XDG canonical pool for shared LaTeX assets (single source of truth).
 # Populated from `shared/latex/sty/` + legacy `~/.config/mytex/sty/`.
-_XDG_STY = Path(user_data_dir("workflow")) / "sty"
+_XDG_STY = paths.data_dir() / "sty"
 
 # Templates still live in repo until migrated.
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent

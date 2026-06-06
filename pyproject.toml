@@ -15,7 +15,7 @@ classifiers = [
   "Topic :: Text Processing :: Markup :: LaTeX",
   "Topic :: Education",
 ]
-dependencies = ["appdirs", "bibtexparser", "click", "pyyaml", "sqlalchemy"]
+dependencies = ["platformdirs", "bibtexparser", "click", "pyyaml", "sqlalchemy"]
 
 [project.urls]
 Repository = "https://github.com/LuisUma92/WorkFlow"
