@@ -77,6 +77,7 @@ def _build_frontmatter(
     record: ReviewRecord | None,
     keyword_id: int | None,
     today: str,
+    origin: str | None = None,
 ) -> str:
     """Render YAML frontmatter between --- fences."""
     bibkey = entry.bibkey or ""
@@ -85,7 +86,9 @@ def _build_frontmatter(
 
     record_id_val = record.id if record is not None else "null"
     kw_id_val = keyword_id if keyword_id is not None else "null"
-    origin = "prisma" if record is not None or keyword_id is not None else "manual"
+    # When origin is explicitly provided, use it verbatim. Otherwise auto-derive.
+    if origin is None:
+        origin = "prisma" if record is not None or keyword_id is not None else "manual"
 
     lines = [
         "---",
@@ -99,7 +102,7 @@ def _build_frontmatter(
         "concepts: []",
         "tags: []",
         f'created: "{today}"',
-        f"origin: {origin}",
+        f"origin: {origin}",  # origin is always a string at this point
         "---",
     ]
     return "\n".join(lines)
@@ -150,13 +153,21 @@ def _build_rationale_section(record: ReviewRecord, session: Session) -> str:
     return "\n".join(lines)
 
 
-def build_note(session: Session, entry: BibEntry, record: ReviewRecord | None) -> str:
+def build_note(
+    session: Session,
+    entry: BibEntry,
+    record: ReviewRecord | None,
+    *,
+    origin: str | None = None,
+) -> str:
     """Render a literature note as a markdown string.
 
     Args:
         session: Active SQLAlchemy session (needed to resolve rationale_links).
         entry: The BibEntry to render.
         record: The ReviewRecord providing PRISMA context, or None.
+        origin: Override the frontmatter ``origin:`` field. When None, auto-derives
+            ("prisma" if record/keyword present, else "manual").
 
     Returns:
         Full markdown content including YAML frontmatter.
@@ -164,7 +175,7 @@ def build_note(session: Session, entry: BibEntry, record: ReviewRecord | None) -
     today = date.today().isoformat()
     keyword_id: int | None = record.keyword_id if record is not None else None
 
-    frontmatter = _build_frontmatter(entry, record, keyword_id, today)
+    frontmatter = _build_frontmatter(entry, record, keyword_id, today, origin=origin)
     title_line = f"# {entry.title or ''}"
     metadata = _build_metadata_section(entry)
 
@@ -247,6 +258,7 @@ def accept_to_note(
     review_record_id: int | None = None,
     vault_root: Path | None = None,
     dry_run: bool = False,
+    origin: str | None = None,
 ) -> AcceptToNoteResult:
     """Generate (or find existing) literature note for a bibliography entry.
 
@@ -258,6 +270,8 @@ def accept_to_note(
         review_record_id: Directly reference a ReviewRecord.
         vault_root: Override vault root (default: resolve_vault_root()).
         dry_run: Compute content but do not write file.
+        origin: Override frontmatter ``origin:`` field. When None, auto-derives
+            ("prisma" if record/keyword present, else "manual").
 
     Returns:
         AcceptToNoteResult with note_path, bibkey, created flag, and content.
@@ -282,7 +296,7 @@ def accept_to_note(
     root = vault_root if vault_root is not None else resolve_vault_root()
     note_path = root / "notes" / "literature" / filename
 
-    content = build_note(session, entry, record)
+    content = build_note(session, entry, record, origin=origin)
 
     if note_path.exists():
         return AcceptToNoteResult(

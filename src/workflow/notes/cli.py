@@ -145,6 +145,74 @@ def new_cmd(
         click.echo(str(path))
 
 
+@notes.command(name="create")
+@click.option(
+    "--type",
+    "note_type",
+    type=click.Choice(["literature"]),
+    default="literature",
+    show_default=True,
+    help="Note type to create (only 'literature' is supported via bibkey).",
+)
+@click.option("--bibkey", required=True, help="Bibliography key for the literature note.")
+@click.option("--bib-entry-id", "bib_entry_id", type=int, default=None,
+              help="Disambiguate when bibkey matches multiple entries.")
+@click.option("--origin", default="manual", show_default=True,
+              help="Origin label written verbatim to frontmatter origin: field.")
+@click.option("--vault-root", "vault_root", type=click.Path(file_okay=False), default=None,
+              help="Override vault root directory.")
+@click.option("--dry-run", is_flag=True, default=False,
+              help="Compute note content without writing any file.")
+@click.option("--json", "as_json", is_flag=True)
+@click.pass_context
+@with_schema_guard
+def create_cmd(
+    ctx: click.Context,
+    note_type: str,
+    bibkey: str,
+    bib_entry_id: int | None,
+    origin: str,
+    vault_root: str | None,
+    dry_run: bool,
+    as_json: bool,
+) -> None:
+    """Create a literature note from a bibliography key (no PRISMA context required)."""
+    from pathlib import Path as _Path
+
+    from sqlalchemy.orm import Session
+
+    from workflow.bibliography.service import BibKeyAmbiguous
+    from workflow.db.engine import get_engine_from_ctx
+    from workflow.prisma.accept_to_note import accept_to_note, accept_to_note_json
+
+    vault_path = _Path(vault_root).resolve() if vault_root else None
+    engine = get_engine_from_ctx(ctx)
+    try:
+        with Session(engine) as session:
+            result = accept_to_note(
+                session,
+                bibkey=bibkey,
+                bib_entry_id=bib_entry_id,
+                origin=origin,
+                vault_root=vault_path,
+                dry_run=dry_run,
+            )
+    except BibKeyAmbiguous:
+        raise click.ClickException(
+            f"bibkey {bibkey!r} matches multiple entries. "
+            "Use --bib-entry-id to select the correct one."
+        )
+    except ValueError as exc:
+        raise click.ClickException(str(exc))
+
+    if as_json:
+        click.echo(accept_to_note_json(result))
+    elif result.created:
+        click.echo(str(result.note_path))
+    else:
+        click.echo(f"exists: {result.note_path}")
+
+
 @notes.command(name="list")
 @click.argument("note_id", required=False, default=None)
 @click.option("--tag", default=None)
