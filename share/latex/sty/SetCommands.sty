@@ -7,7 +7,7 @@
 %==< Definición de directorios importantes >===================================
   \newcommand{\FisicaDir}{/home/luis/01-U}
   \newcommand{\IMGfolder}{\FisicaDir/0000II-ImagesFigures}
-  \newcommand{\EEfolder}{\FisicaDir/0000II-ImagesFigures}
+  \newcommand{\EEfolder}{\FisicaDir/0000EE-ExamplesExercises}
 
 %==< Definición de booleanos >=================================================
   \newboolean{test}
@@ -22,6 +22,7 @@
   \newcounter{lastChapter}
   \newcounter{example}[section] 
   \newcommand{\exa}[2][]{%
+    \par
     \ifblank{#2}{\stepcounter{example}}{\setcounter{example}{#2}}%
     \ifthenelse{\isundefined{\thechapter}}{%
       \ifblank{#1}{%
