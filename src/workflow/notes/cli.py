@@ -563,6 +563,75 @@ def edges_resolve_cmd(ctx: click.Context, dry_run: bool, as_json: bool) -> None:
         )
 
 
+@notes.command(name="enums")
+@click.option("--json", "as_json", is_flag=True, help="Emit machine-readable JSON.")
+@with_schema_guard
+def enums_cmd(as_json: bool) -> None:
+    """Emit the closed-set vocabulary: note types, edge classes, and relation types."""
+    from workflow.db.models.notes import (
+        _STRUCTURAL_RELATION_TYPES_ORDERED,
+        _ASSOCIATIVE_RELATION_TYPES_ORDERED,
+        _EDGE_CLASSES_ORDERED,
+    )
+    from workflow.validation.schemas import _VALID_NOTE_TYPES
+
+    if as_json:
+        data = {
+            "edge_class": list(_EDGE_CLASSES_ORDERED),
+            "relation_type": {
+                "structural": list(_STRUCTURAL_RELATION_TYPES_ORDERED),
+                "associative": list(_ASSOCIATIVE_RELATION_TYPES_ORDERED),
+            },
+            "note_type": sorted(_VALID_NOTE_TYPES),
+            "zettel_id_format": {
+                "library": "nanoid",
+                "alphabet": "A-Za-z0-9_-",
+                "default_length": 12,
+                "min_length": 8,
+                "max_length": 21,
+                "validation_regex": "^[A-Za-z0-9_-]{8,21}$",
+                "filename_convention": "<zettel_id>-<slug>.md",
+                "alias_template": ["<zettel_id>-<slug>", "<slug>", "<zettel_id>"],
+            },
+        }
+        click.echo(json.dumps(data, ensure_ascii=False))
+    else:
+        click.echo("Edge classes:")
+        for ec in _EDGE_CLASSES_ORDERED:
+            click.echo(f"  {ec}")
+        click.echo("\nRelation types (structural):")
+        for rt in _STRUCTURAL_RELATION_TYPES_ORDERED:
+            click.echo(f"  {rt}")
+        click.echo("\nRelation types (associative):")
+        for rt in _ASSOCIATIVE_RELATION_TYPES_ORDERED:
+            click.echo(f"  {rt}")
+        click.echo("\nNote types:")
+        for nt in sorted(_VALID_NOTE_TYPES):
+            click.echo(f"  {nt}")
+        click.echo("\nZettel ID format:")
+        click.echo("  library: nanoid  alphabet: A-Za-z0-9_-  length: 8–21 (default 12)")
+
+
+@notes.command(name="new-id")
+@click.option(
+    "--length",
+    type=int,
+    default=12,
+    show_default=True,
+    help="ID length (8–21).",
+)
+@with_schema_guard
+def new_id_cmd(length: int) -> None:
+    """Emit a fresh zettel_id matching ^[A-Za-z0-9_-]{8,21}$."""
+    from workflow.notes.ids import generate_zettel_id
+
+    try:
+        zid = generate_zettel_id(length)
+    except ValueError as exc:
+        raise click.UsageError(str(exc))
+    click.echo(zid)
+
+
 @notes.command(name="link")
 @click.argument("note_id")
 @click.option("--concept", "concept", default=None)

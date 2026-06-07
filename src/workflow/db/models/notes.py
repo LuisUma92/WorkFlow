@@ -57,6 +57,25 @@ STRUCTURAL_RELATION_TYPES: frozenset[str] = frozenset(_STRUCTURAL_RELATION_TYPES
 ASSOCIATIVE_RELATION_TYPES: frozenset[str] = frozenset(_ASSOCIATIVE_RELATION_TYPES_ORDERED)
 EDGE_CLASSES: frozenset[str] = frozenset(_EDGE_CLASSES_ORDERED)
 
+
+def edge_class_for_relation_type(rel_type: str) -> str | None:
+    """Return the edge class for a relation type, or ``None`` if unknown.
+
+    Args:
+        rel_type: A relation type string (e.g. ``"continuation"``).
+
+    Returns:
+        ``"structural"`` for structural relation types,
+        ``"associative"`` for associative relation types,
+        ``None`` for any other value.
+    """
+    if rel_type in STRUCTURAL_RELATION_TYPES:
+        return "structural"
+    if rel_type in ASSOCIATIVE_RELATION_TYPES:
+        return "associative"
+    return None
+
+
 # ITEP-0015: zettel_id is a NanoID — URL-safe alphabet, 8–21 chars.
 ZETTEL_ID_RE = re.compile(r"^[A-Za-z0-9_-]{8,21}$")
 
@@ -318,4 +337,15 @@ __all__ = [
     "NoteTag",
     "NoteConcept",
     "NoteEdge",
+    # vocabulary constants
+    "STRUCTURAL_RELATION_TYPES",
+    "ASSOCIATIVE_RELATION_TYPES",
+    "EDGE_CLASSES",
+    "ZETTEL_ID_RE",
+    # ordered tuples (for deterministic JSON output)
+    "_STRUCTURAL_RELATION_TYPES_ORDERED",
+    "_ASSOCIATIVE_RELATION_TYPES_ORDERED",
+    "_EDGE_CLASSES_ORDERED",
+    # helpers
+    "edge_class_for_relation_type",
 ]

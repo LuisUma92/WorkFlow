@@ -177,6 +177,29 @@ class TestInitWorkspace:
         assert errors == []
 
 
+    # Wave 1 — template parity guard (lock against field drift in init.py templates)
+
+    def test_permanent_template_parity_guard(self, tmp_path):
+        """Lock: permanent.md template must always contain all four required fields."""
+        init_workspace(tmp_path)
+        content = (tmp_path / VAULT_NAME / "templates" / "permanent.md").read_text()
+        for field in ("main_topic", "discipline_area", "relations", "entry_point"):
+            assert field in content, (
+                f"permanent.md template missing field {field!r} — "
+                "update init.py _create_note_templates to restore it"
+            )
+
+    def test_literature_template_parity_guard(self, tmp_path):
+        """Lock: literature.md template must always contain all four required fields."""
+        init_workspace(tmp_path)
+        content = (tmp_path / VAULT_NAME / "templates" / "literature.md").read_text()
+        for field in ("main_topic", "discipline_area", "relations", "entry_point"):
+            assert field in content, (
+                f"literature.md template missing field {field!r} — "
+                "update init.py _create_note_templates to restore it"
+            )
+
+
 class TestInitCLI:
     def test_init_command_succeeds(self, runner, tmp_path):
         result = runner.invoke(notes, ["init", str(tmp_path)])
