@@ -148,7 +148,7 @@ def generate_exercise_file(
             )
         exercise_id = _render_exercices_id(
             book_cite,
-            exercise_type,
+            ExerciseType(exercise_type),
             chapter,
             section,
             exercise_num,
@@ -202,7 +202,13 @@ def generate_from_content(
     results: list[GeneratedExercise] = []
 
     for num in range(first_exercise, last_exercise + 1):
-        exercise_id = _render_exercices_id(book_cite, chapter, section, num)
+        exercise_id = _render_exercices_id(
+            book_cite,
+            ExerciseType(exercise_type),
+            chapter,
+            section,
+            num,
+        )
         result = generate_exercise_file(
             output_dir,
             exercise_id=exercise_id,
