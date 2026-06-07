@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass
 
-from sqlalchemy.orm import Session
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session, aliased
 
 from workflow.db.models.knowledge import DisciplineArea, MainTopic
 from workflow.db.models.academic import (
@@ -12,6 +14,8 @@ from workflow.db.models.academic import (
 )
 from workflow.db.models.notes import (
     ASSOCIATIVE_RELATION_TYPES as _ASSOCIATIVE_REL_TYPES,
+    NoteEdge,
+    Note,
     STRUCTURAL_RELATION_TYPES as _STRUCTURAL_REL_TYPES,
     ZETTEL_ID_RE as _ZETTEL_ID_RE,
 )
@@ -27,6 +31,7 @@ __all__ = [
     "check_main_topic_against_db",
     "check_discipline_area_consistency",
     "check_concepts_against_db",
+    "check_graph_against_db",
     "CANDIDATE_PROJECT_RE",
 ]
 
@@ -149,6 +154,32 @@ def _validate_literature_provenance(
     return bibkey, prr_id, pk_id, origin
 
 
+def _validate_weight(
+    weight: object, slot: str, errors: list[str]
+) -> float | None:
+    """Validate a relation-edge weight value.
+
+    Returns the weight as float on success, or None when an error is recorded.
+    Rules: must be a finite, positive number.
+    """
+    if weight is None:
+        return None
+    if isinstance(weight, bool) or not isinstance(weight, (int, float)):
+        errors.append(f"'weight' in 'relations.{slot}' must be a number")
+        return None
+    if not math.isfinite(weight):
+        errors.append(
+            f"'weight' in 'relations.{slot}' must be finite (got {weight!r})"
+        )
+        return None
+    if weight <= 0:
+        errors.append(
+            f"'weight' in 'relations.{slot}' must be > 0 (got {weight!r})"
+        )
+        return None
+    return float(weight)
+
+
 def _validate_relation_edge(
     item: object,
     slot: str,
@@ -181,10 +212,7 @@ def _validate_relation_edge(
             f"allowed: {sorted(allowed_types)}"
         )
         return None
-    weight = item.get("weight")
-    if weight is not None and (isinstance(weight, bool) or not isinstance(weight, (int, float))):
-        errors.append(f"'weight' in 'relations.{slot}' must be a number")
-        weight = None
+    weight = _validate_weight(item.get("weight"), slot, errors)
     note = item.get("note")
     if note is not None and not isinstance(note, str):
         errors.append(f"'note' in 'relations.{slot}' must be a string")
@@ -596,5 +624,130 @@ def check_concepts_against_db(
                             ),
                         }
                     )
+
+    return issues
+
+
+def check_graph_against_db(session: Session) -> list[dict[str, str]]:
+    """Validate the NoteEdge graph against ITEP-0013 failure modes.
+
+    Returns a list of issue dicts: ``{"severity": "error"|"warning", "message": str}``.
+
+    Categories:
+    - **Lineage cycles** (error): structural edges forming directed cycles.
+      Detected via ``workflow.notes.dag.detect_structural_cycles``.
+    - **Unresolved edges** (warning): NoteEdge rows with ``target_id IS NULL``.
+    - **Orphan notes** (warning): Notes with zero outgoing AND zero incoming structural
+      edges (true graph isolates). NOTE: ``entry_point: true`` is stored in frontmatter
+      only, not in the DB; this check therefore reports all structural isolates,
+      including entry-point notes that have no structural edges yet.
+    - **Self-edges** (warning): NoteEdge where ``target_zettel_id`` matches the source
+      note's own ``zettel_id``.  A DB CHECK prevents ``source_id == target_id``, but a
+      self-reference by zettel_id with ``target_id IS NULL`` can slip through.
+    - **Duplicate edges** (warning): same ``(source_id, target_zettel_id, relation_type)``
+      appearing more than once.  Normally prevented by the UNIQUE constraint; reported
+      defensively in case the constraint is ever bypassed.
+    """
+    from workflow.notes.dag import detect_structural_cycles
+
+    issues: list[dict[str, str]] = []
+
+    # --- 1. Lineage cycles (error) ---
+    cycles = detect_structural_cycles(session)
+    for cycle in cycles:
+        issues.append({
+            "severity": "error",
+            "message": f"structural cycle detected (note ids): {cycle}",
+        })
+
+    # --- 2. Unresolved edges (warning) ---
+    unresolved_rows = session.execute(
+        select(NoteEdge.id, NoteEdge.source_id, NoteEdge.target_zettel_id).where(
+            NoteEdge.target_id.is_(None)
+        )
+    ).all()
+    for row in unresolved_rows:
+        issues.append({
+            "severity": "warning",
+            "message": (
+                f"unresolved edge (edge_id={row.id}, source_id={row.source_id}): "
+                f"target_zettel_id={row.target_zettel_id!r} has no matching Note."
+            ),
+        })
+
+    # --- 3. Orphan notes (warning) ---
+    # True graph isolates: no outgoing AND no incoming structural edges.
+    # NOTE: 'entry_point: true' is a frontmatter field not tracked in the DB,
+    # so entry-point notes without any structural edges will appear here too.
+    notes_with_outgoing = (
+        select(NoteEdge.source_id)
+        .where(NoteEdge.edge_class == "structural")
+        .scalar_subquery()
+    )
+    notes_with_incoming = (
+        select(NoteEdge.target_id)
+        .where(
+            NoteEdge.edge_class == "structural",
+            NoteEdge.target_id.is_not(None),
+        )
+        .scalar_subquery()
+    )
+    orphan_rows = session.execute(
+        select(Note.id, Note.zettel_id, Note.title).where(
+            Note.id.not_in(notes_with_outgoing),
+            Note.id.not_in(notes_with_incoming),
+        )
+    ).all()
+    for row in orphan_rows:
+        label = row.zettel_id or str(row.id)
+        issues.append({
+            "severity": "warning",
+            "message": (
+                f"orphan note (id={row.id}, zettel_id={label!r}): "
+                "no structural edges in or out."
+            ),
+        })
+
+    # --- 4. Self-edges (warning) ---
+    SourceNote = aliased(Note)
+    self_edge_rows = session.execute(
+        select(NoteEdge.id, NoteEdge.source_id, NoteEdge.target_zettel_id)
+        .join(SourceNote, NoteEdge.source_id == SourceNote.id)
+        .where(
+            NoteEdge.target_zettel_id == SourceNote.zettel_id,
+            SourceNote.zettel_id.is_not(None),
+        )
+    ).all()
+    for row in self_edge_rows:
+        issues.append({
+            "severity": "warning",
+            "message": (
+                f"self-edge (edge_id={row.id}, source_id={row.source_id}): "
+                f"target_zettel_id={row.target_zettel_id!r} points back to the source note."
+            ),
+        })
+
+    # --- 5. Duplicate edges (warning, defensive) ---
+    # The UNIQUE(source_id, target_zettel_id, relation_type) constraint normally
+    # prevents these; this check is defensive and reports any that slip through.
+    dup_rows = session.execute(
+        select(
+            NoteEdge.source_id,
+            NoteEdge.target_zettel_id,
+            NoteEdge.relation_type,
+            func.count(NoteEdge.id).label("cnt"),
+        )
+        .group_by(NoteEdge.source_id, NoteEdge.target_zettel_id, NoteEdge.relation_type)
+        .having(func.count(NoteEdge.id) > 1)
+    ).all()
+    for row in dup_rows:
+        issues.append({
+            "severity": "warning",
+            "message": (
+                f"duplicate edge: source_id={row.source_id}, "
+                f"target_zettel_id={row.target_zettel_id!r}, "
+                f"relation_type={row.relation_type!r} appears {row.cnt} times."
+            ),
+        })
 
     return issues
