@@ -95,8 +95,12 @@ def validate():
     "--graph",
     is_flag=True,
     default=False,
-    help="After per-file validation, check the NoteEdge graph for cycles, "
-    "unresolved edges, orphan notes, self-edges, and duplicate edges (ITEP-0013).",
+    help=(
+        "After per-file validation, run a vault-wide NoteEdge graph check for "
+        "cycles, unresolved edges, orphan notes, self-edges, and duplicate edges "
+        "(ITEP-0013).  This check is global/vault-wide — it is NOT scoped to the "
+        "PATH argument."
+    ),
 )
 def notes(
     ctx: click.Context,

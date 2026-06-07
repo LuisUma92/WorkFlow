@@ -29,7 +29,7 @@ from workflow.graph.collectors import (
     filter_graph_by_taxonomy,
     resolve_taxonomy_filter,
 )
-from workflow.graph.domain import KnowledgeGraph
+from workflow.graph.domain import GraphNode, KnowledgeGraph
 from workflow.graph.node_ids import is_note, parse_note_id
 from workflow.vault.paths import resolve_vault_root
 
@@ -213,15 +213,15 @@ def _filter_by_tags(
     inc = [t.strip().lower() for t in include_tags.split(",") if t.strip()] if include_tags else []
     exc = [t.strip().lower() for t in exclude_tags.split(",") if t.strip()] if exclude_tags else []
 
-    def _keep(node: KnowledgeGraph) -> bool:  # type: ignore[arg-type]
-        label = node.label.lower()  # type: ignore[attr-defined]
+    def _keep(node: GraphNode) -> bool:
+        label = node.label.lower()
         if inc and not any(t in label for t in inc):
             return False
         if exc and any(t in label for t in exc):
             return False
         return True
 
-    sub_nodes = tuple(n for n in kg.nodes if _keep(n))  # type: ignore[arg-type]
+    sub_nodes = tuple(n for n in kg.nodes if _keep(n))
     sub_ids = frozenset(n.node_id for n in sub_nodes)
     sub_edges = tuple(
         e for e in kg.edges
@@ -422,14 +422,20 @@ def export_dot_cmd(
     "include_tags",
     default=None,
     metavar="TAG[,TAG...]",
-    help="Keep only nodes whose label contains at least one of these comma-separated tags.",
+    help=(
+        "Keep only nodes whose display label contains at least one of these "
+        "comma-separated strings (substring match on label text; not a DB tag query)."
+    ),
 )
 @click.option(
     "--exclude-tags",
     "exclude_tags",
     default=None,
     metavar="TAG[,TAG...]",
-    help="Remove nodes whose label contains any of these comma-separated tags.",
+    help=(
+        "Remove nodes whose display label contains any of these comma-separated "
+        "strings (substring match on label text; not a DB tag query)."
+    ),
 )
 @click.option(
     "--layout",
@@ -444,7 +450,11 @@ def export_dot_cmd(
     "color_by",
     type=click.Choice(["type", "main_topic", "tag"], case_sensitive=False),
     default=None,
-    help="Colour nodes by this attribute (stable hash to a fixed palette).",
+    help=(
+        "Colour nodes by this attribute.  'type' (default) uses per-type colours. "
+        "'main_topic' and 'tag' both map each node's id to a stable palette colour "
+        "via SHA-1 hash — they do NOT query real MainTopic/Tag DB data."
+    ),
 )
 @_filter_options
 @with_schema_guard

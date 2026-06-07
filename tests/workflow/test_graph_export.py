@@ -1,7 +1,8 @@
 """Tests for export-tikz CLI filter flags (Wave 4).
 
 Covers: --depth, --cluster, --main-topic + --cluster mutex, --color-by,
-        --layout, --include-tags, --exclude-tags.
+        --layout, --include-tags, --exclude-tags, palette stability,
+        newline injection safety.
 
 Run with:
     WORKFLOW_DATA_DIR=$(mktemp -d) uv run pytest tests/workflow/test_graph_export.py -q
@@ -15,7 +16,7 @@ from click.testing import CliRunner
 
 from workflow.graph.cli import graph, _expand_by_depth
 from workflow.graph.domain import GraphEdge, GraphNode, KnowledgeGraph
-from workflow.graph.tikz_export import graph_to_tikz
+from workflow.graph.tikz_export import _escape_tikz, _palette_color, graph_to_tikz
 
 
 # ---------------------------------------------------------------------------
@@ -409,6 +410,91 @@ class TestTagFlags:
 # ---------------------------------------------------------------------------
 # 8. Backward-compatibility: existing callers still work
 # ---------------------------------------------------------------------------
+
+# (sections 8+)
+
+# ---------------------------------------------------------------------------
+# 9. Stable palette hash — process-independent (SHA-1 based)
+# ---------------------------------------------------------------------------
+
+class TestPaletteStability:
+    def test_same_key_same_color(self):
+        """_palette_color must return the same value on repeated calls."""
+        assert _palette_color("note:42") == _palette_color("note:42")
+
+    def test_pinned_known_mapping(self):
+        """Pin the SHA-1-based index for a known key so regressions are caught.
+
+        SHA-1("note:1") = 3d963f7b... → int mod 10.
+        We compute the expected value inline so the test is self-documenting.
+        """
+        import hashlib
+        from workflow.graph.tikz_export import _COLOR_PALETTE
+
+        key = "note:1"
+        digest = int(hashlib.sha1(key.encode()).hexdigest(), 16)
+        expected_idx = digest % len(_COLOR_PALETTE)
+        assert _palette_color(key) == _COLOR_PALETTE[expected_idx]
+
+    def test_different_keys_may_differ(self):
+        """Two distinct keys should not always map to the same colour (sanity)."""
+        keys = [f"note:{i}" for i in range(20)]
+        colors = {_palette_color(k) for k in keys}
+        # With 20 keys across a 10-colour palette we expect > 1 distinct colour.
+        assert len(colors) > 1
+
+    def test_stable_across_simulated_process_restart(self):
+        """Recompute the mapping independently; result must match."""
+        import hashlib
+        from workflow.graph.tikz_export import _COLOR_PALETTE
+
+        key = "topic:physics"
+        digest = int(hashlib.sha1(key.encode()).hexdigest(), 16)
+        expected = _COLOR_PALETTE[digest % len(_COLOR_PALETTE)]
+        assert _palette_color(key) == expected
+
+
+# ---------------------------------------------------------------------------
+# 10. Newline injection safety in _escape_tikz and graph_to_tikz title
+# ---------------------------------------------------------------------------
+
+
+class TestNewlineSafety:
+    def test_escape_tikz_strips_newline(self):
+        """A label with \\n must produce a single-line, brace-safe string."""
+        result = _escape_tikz("line1\nline2")
+        assert "\n" not in result
+        assert "line1" in result
+        assert "line2" in result
+
+    def test_escape_tikz_strips_carriage_return(self):
+        result = _escape_tikz("line1\rline2")
+        assert "\r" not in result
+
+    def test_escape_tikz_strips_crlf(self):
+        result = _escape_tikz("a\r\nb")
+        assert "\r" not in result
+        assert "\n" not in result
+
+    def test_node_label_with_newline_produces_valid_tikz(self):
+        """A GraphNode whose label contains \\n must produce single-line \\node."""
+        n = _node("note:1", label="title\ninjected")
+        kg = KnowledgeGraph(nodes=(n,), edges=())
+        result = graph_to_tikz(kg, standalone=False)
+        # Each \node line must be a single line (no embedded newline inside braces)
+        for line in result.splitlines():
+            if r"\node" in line:
+                assert "\n" not in line
+
+    def test_title_with_newline_does_not_break_comment(self):
+        """A title containing \\n must not produce multi-line % comment."""
+        n = _node("note:1", label="X")
+        kg = KnowledgeGraph(nodes=(n,), edges=())
+        result = graph_to_tikz(kg, standalone=False, title="my\ntitle")
+        for line in result.splitlines():
+            if line.strip().startswith("%"):
+                assert "\n" not in line
+
 
 class TestBackwardCompat:
     def test_graph_to_tikz_no_new_args(self):

@@ -5,9 +5,11 @@ Fruchterman-Reingold force-directed layout.
 """
 from __future__ import annotations
 
+import hashlib
 import math
 import random
 from collections import Counter, defaultdict, deque
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from workflow.graph.domain import KnowledgeGraph, GraphNode  # noqa: F401
@@ -48,8 +50,13 @@ _COLOR_PALETTE: tuple[str, ...] = (
 
 
 def _palette_color(key: str) -> str:
-    """Map *key* to a stable TikZ colour from the palette."""
-    idx = abs(hash(key)) % len(_COLOR_PALETTE)
+    """Map *key* to a stable TikZ colour from the palette.
+
+    Uses a SHA-1 digest so the mapping is deterministic across processes
+    (unlike Python's PYTHONHASHSEED-salted ``hash()``).
+    """
+    digest = int(hashlib.sha1(key.encode()).hexdigest(), 16)
+    idx = digest % len(_COLOR_PALETTE)
     return _COLOR_PALETTE[idx]
 
 
@@ -358,7 +365,13 @@ def _safe_node_name(node_id: str) -> str:
 
 
 def _escape_tikz(text: str) -> str:
-    """Escape LaTeX special characters for TikZ labels."""
+    """Escape LaTeX special characters for TikZ labels.
+
+    Newlines (``\\n`` / ``\\r``) are replaced with a space first so that
+    user-controlled node labels cannot break out of TikZ ``\\node{...}``
+    braces or corrupt ``%``-comment lines.
+    """
+    text = text.replace('\r', ' ').replace('\n', ' ')
     for char in ('\\', '{', '}', '$', '&', '#', '_', '%', '~', '^'):
         text = text.replace(char, '\\' + char)
     return text
@@ -386,12 +399,18 @@ def _select_layout(
 def _make_color_fn(
     color_by: str | None,
     node_colors: dict[str, str] | None,
-):  # type: ignore[return]
-    """Return a callable ``(GraphNode) -> str`` for the chosen colour strategy."""
+) -> Callable[[GraphNode], str]:
+    """Return a callable ``(GraphNode) -> str`` for the chosen colour strategy.
+
+    ``color_by="main_topic"`` and ``color_by="tag"`` both hash the node's
+    ``node_id`` to a palette colour — they do **not** query real MainTopic or
+    Tag DB data (``GraphNode`` does not carry that metadata).  The mapping is
+    stable across processes thanks to SHA-1 (see ``_palette_color``).
+    """
     if color_by is None or color_by == "type":
         colors: dict[str, str] = {**_DEFAULT_TIKZ_COLORS, **(node_colors or {})}
         return lambda node: _tikz_color(node.node_type, colors)
-    # "main_topic", "tag", or future keys — hash node_id to palette.
+    # "main_topic", "tag", or future keys — stable hash of node_id to palette.
     return lambda node: _palette_color(node.node_id)
 
 
@@ -430,8 +449,9 @@ def graph_to_tikz(
         Colouring strategy for nodes.  ``None`` / ``"type"`` → default
         type-based palette (unchanged behaviour).  ``"main_topic"`` or
         ``"tag"`` → each node gets a stable palette colour derived from its
-        node_id (a deterministic hash), so repeated renders produce identical
-        colours.
+        ``node_id`` via a SHA-1 hash (process-stable).  Note: these modes do
+        **not** use real MainTopic or Tag DB data; ``GraphNode`` does not carry
+        that metadata.  The coloring is purely id-hash-based.
 
     Returns
     -------
@@ -445,7 +465,9 @@ def graph_to_tikz(
     body_lines: list[str] = []
 
     if title:
-        body_lines.append(f"  % {title}")
+        # Sanitize newlines so the title cannot break the % comment line.
+        safe_title = title.replace('\r', ' ').replace('\n', ' ')
+        body_lines.append(f"  % {safe_title}")
 
     # Nodes
     for ln in layout:
