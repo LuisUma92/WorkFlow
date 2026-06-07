@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, TYPE_CHECKING
 
 from workflow.exercise.domain import ExerciseType
+from workflow.util import copy_to_clipboard
 
 if TYPE_CHECKING:
     from workflow.db.models.bibliography import BibEntry
@@ -358,6 +359,7 @@ def create(
     )
     if result.created:
         click.echo(f"Created: {result.file_path}")
+        copy_to_clipboard(f"\n\\input{{{result.file_path.absolute()}}}")
         engine = _get_engine(click.get_current_context())
         _sync_files(engine, [result.file_path])
     else:
@@ -440,8 +442,11 @@ def create_range(
     created = [r for r in results if r.created]
     skipped = [r for r in results if not r.created]
 
+    inset_txt = ""
     for r in created:
         click.echo(f"  [created] {r.file_path.name}")
+        inset_txt += f"\n\\input{{{r.file_path.absolute()}}}"
+    copy_to_clipboard(inset_txt)
     for r in skipped:
         click.echo(f"  [skipped] {r.file_path.name}")
     engine = _get_engine(click.get_current_context())
