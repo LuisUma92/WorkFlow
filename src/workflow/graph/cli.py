@@ -12,6 +12,8 @@ Commands:
 from __future__ import annotations
 
 import json as _json
+import re as _re
+from collections import deque as _deque
 from pathlib import Path
 
 import click
@@ -90,6 +92,142 @@ def _build_graph_with_filter(
         if not tf.is_empty():
             kg = filter_graph_by_taxonomy(kg, gsession, tf)
         return kg
+
+
+# ── Graph filter helpers (Wave 4) ────────────────────────────────────────────
+
+
+def _build_full_graph(
+    project: str,
+    engine: Engine | None = None,
+) -> KnowledgeGraph:
+    """Build the full knowledge graph without any taxonomy filter."""
+    del project  # reserved for ITEP-0011 P5 routing
+    global_engine = engine or init_global_db()
+    with Session(global_engine) as gsession:
+        return build_knowledge_graph(gsession)
+
+
+def _expand_by_depth(
+    full_kg: KnowledgeGraph,
+    seed_kg: KnowledgeGraph,
+    depth: int,
+) -> KnowledgeGraph:
+    """Expand *seed_kg* by up to *depth* hops in *full_kg*.
+
+    Multi-source BFS from every node in *seed_kg*, traversing edges in
+    *full_kg*.  Returns a subgraph containing all reachable nodes and the
+    induced edges from *full_kg*.
+
+    depth=0 returns *seed_kg* unchanged.
+    """
+    if depth <= 0:
+        return seed_kg
+
+    seed_ids = seed_kg.node_ids()
+    all_node_ids = full_kg.node_ids()
+    adj = full_kg.adjacency()
+
+    # Multi-source BFS: start at every seed node simultaneously.
+    visited: dict[str, int] = {nid: 0 for nid in seed_ids if nid in all_node_ids}
+    queue: _deque[tuple[str, int]] = _deque((nid, 0) for nid in visited)
+
+    while queue:
+        current, current_depth = queue.popleft()
+        if current_depth >= depth:
+            continue
+        for neighbor in adj.get(current, []):
+            if neighbor not in visited and neighbor in all_node_ids:
+                visited[neighbor] = current_depth + 1
+                queue.append((neighbor, current_depth + 1))
+
+    expanded_ids = frozenset(visited.keys())
+    node_map = {n.node_id: n for n in full_kg.nodes}
+    exp_nodes = tuple(node_map[nid] for nid in expanded_ids if nid in node_map)
+    exp_edges = tuple(
+        e for e in full_kg.edges
+        if e.source_id in expanded_ids and e.target_id in expanded_ids
+    )
+    return KnowledgeGraph(nodes=exp_nodes, edges=exp_edges)
+
+
+def _parse_cluster_name(name: str, max_count: int) -> int:
+    """Parse a cluster name to a 0-based index.
+
+    Accepts plain integers (``"1"``) or ``graph clusters``-style names
+    (``"Cluster 1"``).  Raises ``click.ClickException`` on invalid input.
+    """
+    m = _re.fullmatch(r'(?:cluster\s+)?(\d+)', name.strip(), _re.IGNORECASE)
+    if not m:
+        raise click.ClickException(
+            f"Invalid cluster name {name!r}. Use a number (1-based) or 'Cluster N'."
+        )
+    idx = int(m.group(1)) - 1  # convert to 0-based
+    if idx < 0 or idx >= max_count:
+        raise click.ClickException(
+            f"Cluster {name!r} not found (valid range: 1–{max_count})."
+        )
+    return idx
+
+
+def _filter_by_cluster(kg: KnowledgeGraph, cluster_name: str) -> KnowledgeGraph:
+    """Return the subgraph matching the named community.
+
+    Requires networkx; raises ``click.ClickException`` if unavailable.
+    """
+    from workflow.graph.clustering import detect_communities
+
+    communities = detect_communities(kg)
+    if communities is None:
+        raise click.ClickException(
+            "networkx is not installed. Install it with: pip install networkx"
+        )
+    if not communities:
+        raise click.ClickException("No clusters found (graph is empty).")
+
+    idx = _parse_cluster_name(cluster_name, len(communities))
+    community = communities[idx]
+    comm_ids = frozenset(n.node_id for n in community)
+    sub_edges = tuple(
+        e for e in kg.edges
+        if e.source_id in comm_ids and e.target_id in comm_ids
+    )
+    return KnowledgeGraph(nodes=community, edges=sub_edges)
+
+
+def _filter_by_tags(
+    kg: KnowledgeGraph,
+    include_tags: str | None,
+    exclude_tags: str | None,
+) -> KnowledgeGraph:
+    """Filter graph nodes by tag presence in their label (substring match).
+
+    *include_tags* / *exclude_tags* are comma-separated strings.  A node is
+    kept when its label contains at least one include-tag (if any specified)
+    and none of the exclude-tags.
+
+    Note: ``GraphNode`` does not carry DB-level tag data, so this uses the
+    node label as a best-effort proxy.  Full tag support would require tag
+    metadata to be propagated through the collectors layer.
+    """
+    inc = [t.strip().lower() for t in include_tags.split(",") if t.strip()] if include_tags else []
+    exc = [t.strip().lower() for t in exclude_tags.split(",") if t.strip()] if exclude_tags else []
+
+    def _keep(node: KnowledgeGraph) -> bool:  # type: ignore[arg-type]
+        label = node.label.lower()  # type: ignore[attr-defined]
+        if inc and not any(t in label for t in inc):
+            return False
+        if exc and any(t in label for t in exc):
+            return False
+        return True
+
+    sub_nodes = tuple(n for n in kg.nodes if _keep(n))  # type: ignore[arg-type]
+    sub_ids = frozenset(n.node_id for n in sub_nodes)
+    sub_edges = tuple(
+        e for e in kg.edges
+        if e.source_id in sub_ids and e.target_id in sub_ids
+    )
+    return KnowledgeGraph(nodes=sub_nodes, edges=sub_edges)
 
 
 # ── CLI group ───────────────────────────────────────────────────────────────
@@ -262,21 +400,106 @@ def export_dot_cmd(
 @click.option("--project", type=click.Path(exists=True), default=".")
 @click.option("--output", "-o", type=click.Path(), default=None)
 @click.option("--standalone/--no-standalone", default=True)
+@click.option(
+    "--depth",
+    default=0,
+    show_default=True,
+    help="Expand the filtered node set by N neighbour rings (0 = exact filter match).",
+)
+@click.option(
+    "--cluster",
+    "cluster",
+    default=None,
+    metavar="NAME",
+    help=(
+        "Restrict to a precomputed community from 'graph clusters'. "
+        "Use a 1-based number or 'Cluster N'. "
+        "Mutually exclusive with --main-topic."
+    ),
+)
+@click.option(
+    "--include-tags",
+    "include_tags",
+    default=None,
+    metavar="TAG[,TAG...]",
+    help="Keep only nodes whose label contains at least one of these comma-separated tags.",
+)
+@click.option(
+    "--exclude-tags",
+    "exclude_tags",
+    default=None,
+    metavar="TAG[,TAG...]",
+    help="Remove nodes whose label contains any of these comma-separated tags.",
+)
+@click.option(
+    "--layout",
+    "layout_name",
+    type=click.Choice(["force", "radial", "hierarchical"], case_sensitive=False),
+    default="force",
+    show_default=True,
+    help="Node placement algorithm.",
+)
+@click.option(
+    "--color-by",
+    "color_by",
+    type=click.Choice(["type", "main_topic", "tag"], case_sensitive=False),
+    default=None,
+    help="Colour nodes by this attribute (stable hash to a fixed palette).",
+)
 @_filter_options
 @with_schema_guard
 def export_tikz_cmd(
     project: str,
     output: str | None,
     standalone: bool,
+    depth: int,
+    cluster: str | None,
+    include_tags: str | None,
+    exclude_tags: str | None,
+    layout_name: str,
+    color_by: str | None,
     main_topic: str | None,
     discipline_area: str | None,
     topic: str | None,
 ) -> None:
-    """Export graph as TikZ for LaTeX rendering."""
+    """Export graph as TikZ for LaTeX rendering.
+
+    Filter flags (--main-topic, --discipline-area, --topic) narrow the graph
+    to a taxonomy subgraph before rendering.  Use --depth to expand the
+    matched node set by N BFS rings.  --cluster restricts to a precomputed
+    community (mutually exclusive with --main-topic).
+    """
     from workflow.graph.tikz_export import graph_to_tikz
 
-    kg = _build_graph_with_filter(project, main_topic, discipline_area, topic)
-    tikz = graph_to_tikz(kg, standalone=standalone)
+    # Mutex guard: --main-topic + --cluster are incompatible.
+    if main_topic and cluster:
+        raise click.UsageError("--main-topic and --cluster are mutually exclusive.")
+
+    full_kg: KnowledgeGraph | None = None
+
+    if cluster:
+        # Build graph (respecting any non-main_topic taxonomy filter) then
+        # pick the named community.
+        kg = _build_graph_with_filter(project, None, discipline_area, topic)
+        kg = _filter_by_cluster(kg, cluster)
+    else:
+        kg = _build_graph_with_filter(project, main_topic, discipline_area, topic)
+
+    # Depth expansion: BFS from the filtered seed nodes into the full graph.
+    if depth > 0 and (main_topic or discipline_area or topic or cluster):
+        full_kg = _build_full_graph(project)
+        kg = _expand_by_depth(full_kg, kg, depth)
+
+    # Tag filters (label-based substring matching).
+    if include_tags or exclude_tags:
+        kg = _filter_by_tags(kg, include_tags, exclude_tags)
+
+    tikz = graph_to_tikz(
+        kg,
+        standalone=standalone,
+        layout_name=layout_name,
+        color_by=color_by,
+    )
 
     if output:
         Path(output).write_text(tikz, encoding="utf-8")

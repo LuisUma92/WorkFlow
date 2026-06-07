@@ -7,11 +7,20 @@ from __future__ import annotations
 
 import math
 import random
+from collections import Counter, defaultdict, deque
 from dataclasses import dataclass
 
 from workflow.graph.domain import KnowledgeGraph, GraphNode  # noqa: F401
 
-__all__ = ["LayoutNode", "spring_layout", "graph_to_tikz"]
+__all__ = [
+    "LayoutNode",
+    "spring_layout",
+    "radial_layout",
+    "hierarchical_layout",
+    "graph_to_tikz",
+    "_select_layout",
+    "_make_color_fn",
+]
 
 _DEFAULT_TIKZ_COLORS: dict[str, str] = {
     "note": "blue!60",
@@ -21,6 +30,27 @@ _DEFAULT_TIKZ_COLORS: dict[str, str] = {
     "topic": "violet!60",
     "course": "teal!60",
 }
+
+# Stable palette for color_by="main_topic" / color_by="tag".
+# Uses a deterministic hash of the attribute key → palette index.
+_COLOR_PALETTE: tuple[str, ...] = (
+    "red!70",
+    "blue!70",
+    "green!70",
+    "orange!70",
+    "violet!70",
+    "teal!70",
+    "yellow!60",
+    "cyan!70",
+    "magenta!60",
+    "lime!60",
+)
+
+
+def _palette_color(key: str) -> str:
+    """Map *key* to a stable TikZ colour from the palette."""
+    idx = abs(hash(key)) % len(_COLOR_PALETTE)
+    return _COLOR_PALETTE[idx]
 
 
 @dataclass(frozen=True)
@@ -110,6 +140,149 @@ def spring_layout(
     return tuple(LayoutNode(nodes[i], xs[i], ys[i]) for i in range(n))
 
 
+# ---------------------------------------------------------------------------
+# Radial layout — BFS rings from the most-connected node
+# ---------------------------------------------------------------------------
+
+def _assign_ring_depths(
+    nodes: list[GraphNode],
+    graph: KnowledgeGraph,
+    center_id: str,
+) -> dict[str, int]:
+    """BFS from *center_id*; assign ring depth to every node.
+
+    Disconnected nodes are placed in an extra outer ring beyond the BFS horizon.
+    """
+    adj = graph.adjacency()
+    node_ids = graph.node_ids()
+    visited: dict[str, int] = {center_id: 0}
+    queue: deque[str] = deque([center_id])
+    while queue:
+        current = queue.popleft()
+        for neighbor in adj.get(current, []):
+            if neighbor not in visited and neighbor in node_ids:
+                visited[neighbor] = visited[current] + 1
+                queue.append(neighbor)
+    max_depth = max(visited.values()) if visited else 0
+    for nd in nodes:
+        if nd.node_id not in visited:
+            max_depth += 1
+            visited[nd.node_id] = max_depth
+    return visited
+
+
+def _place_rings(
+    nodes: list[GraphNode],
+    depths: dict[str, int],
+    cx: float,
+    cy: float,
+    outer_radius: float,
+) -> list[LayoutNode]:
+    """Convert BFS depth assignments into 2-D positions."""
+    rings: dict[int, list[GraphNode]] = defaultdict(list)
+    for nd in nodes:
+        rings[depths[nd.node_id]].append(nd)
+    total_rings = max(rings.keys())
+    result: list[LayoutNode] = []
+    for depth in sorted(rings.keys()):
+        ring_nodes = rings[depth]
+        if depth == 0:
+            result.append(LayoutNode(ring_nodes[0], cx, cy))
+            continue
+        radius = outer_radius * depth / (total_rings + 1)
+        for j, nd in enumerate(ring_nodes):
+            angle = 2.0 * math.pi * j / len(ring_nodes)
+            result.append(LayoutNode(nd, cx + radius * math.cos(angle), cy + radius * math.sin(angle)))
+    return result
+
+
+def radial_layout(
+    graph: KnowledgeGraph,
+    *,
+    width: float = 16.0,
+    height: float = 12.0,
+) -> tuple[LayoutNode, ...]:
+    """Arrange nodes in concentric rings using BFS from the highest-degree node.
+
+    Parameters
+    ----------
+    graph:
+        The graph to lay out.
+    width, height:
+        Bounding box in centimetres.
+
+    Returns
+    -------
+    tuple[LayoutNode, ...]
+        Immutable sequence of positioned nodes.
+    """
+    nodes = list(graph.nodes)
+    if not nodes:
+        return ()
+
+    cx, cy = width / 2.0, height / 2.0
+
+    if len(nodes) == 1:
+        return (LayoutNode(nodes[0], cx, cy),)
+
+    # Find center as most-connected node (highest undirected degree).
+    degree: Counter[str] = Counter()
+    for e in graph.edges:
+        degree[e.source_id] += 1
+        degree[e.target_id] += 1
+    center_id = max((nd.node_id for nd in nodes), key=lambda nid: degree[nid])
+
+    depths = _assign_ring_depths(nodes, graph, center_id)
+    outer_radius = min(width, height) / 2.0 * 0.85
+    return tuple(_place_rings(nodes, depths, cx, cy, outer_radius))
+
+
+# ---------------------------------------------------------------------------
+# Hierarchical layout — horizontal layers by node_type
+# ---------------------------------------------------------------------------
+
+def hierarchical_layout(
+    graph: KnowledgeGraph,
+    *,
+    width: float = 16.0,
+    height: float = 12.0,
+) -> tuple[LayoutNode, ...]:
+    """Arrange nodes in horizontal layers grouped by *node_type*.
+
+    Parameters
+    ----------
+    graph:
+        The graph to lay out.
+    width, height:
+        Bounding box in centimetres.
+
+    Returns
+    -------
+    tuple[LayoutNode, ...]
+        Immutable sequence of positioned nodes.
+    """
+    nodes = list(graph.nodes)
+    if not nodes:
+        return ()
+
+    # Group by node_type (stable ordering via sorted).
+    layers: dict[str, list[GraphNode]] = defaultdict(list)
+    for nd in nodes:
+        layers[nd.node_type].append(nd)
+
+    layer_types = sorted(layers.keys())
+    n_layers = len(layer_types)
+    result: list[LayoutNode] = []
+    for i, ntype in enumerate(layer_types):
+        layer_nodes = layers[ntype]
+        y = height * (i + 1) / (n_layers + 1)
+        for j, nd in enumerate(layer_nodes):
+            x = width * (j + 1) / (len(layer_nodes) + 1)
+            result.append(LayoutNode(nd, x, y))
+
+    return tuple(result)
+
+
 def _repulsive_forces(
     n: int, xs: list[float], ys: list[float], k: float
 ) -> tuple[list[float], list[float]]:
@@ -195,6 +368,33 @@ def _tikz_color(node_type: str, node_colors: dict[str, str]) -> str:
     return node_colors.get(node_type, _DEFAULT_TIKZ_COLORS.get(node_type, "gray!40"))
 
 
+def _select_layout(
+    graph: KnowledgeGraph,
+    layout: tuple[LayoutNode, ...] | None,
+    layout_name: str,
+) -> tuple[LayoutNode, ...]:
+    """Return *layout* if provided, else compute one using *layout_name*."""
+    if layout is not None:
+        return layout
+    if layout_name == "radial":
+        return radial_layout(graph)
+    if layout_name == "hierarchical":
+        return hierarchical_layout(graph)
+    return spring_layout(graph)
+
+
+def _make_color_fn(
+    color_by: str | None,
+    node_colors: dict[str, str] | None,
+):  # type: ignore[return]
+    """Return a callable ``(GraphNode) -> str`` for the chosen colour strategy."""
+    if color_by is None or color_by == "type":
+        colors: dict[str, str] = {**_DEFAULT_TIKZ_COLORS, **(node_colors or {})}
+        return lambda node: _tikz_color(node.node_type, colors)
+    # "main_topic", "tag", or future keys — hash node_id to palette.
+    return lambda node: _palette_color(node.node_id)
+
+
 def graph_to_tikz(
     graph: KnowledgeGraph,
     *,
@@ -202,6 +402,8 @@ def graph_to_tikz(
     standalone: bool = True,
     title: str = "",
     node_colors: dict[str, str] | None = None,
+    layout_name: str = "force",
+    color_by: str | None = None,
 ) -> str:
     """Render *graph* as TikZ/LaTeX source.
 
@@ -210,23 +412,34 @@ def graph_to_tikz(
     graph:
         The knowledge graph to render.
     layout:
-        Pre-computed layout; if ``None``, :func:`spring_layout` is called.
+        Pre-computed layout (``tuple[LayoutNode, ...]``); if ``None``, the
+        algorithm selected by *layout_name* is called automatically.
     standalone:
         Wrap in ``\\documentclass[tikz]{standalone}`` when ``True``.
     title:
-        Optional title drawn as a node above the diagram.
+        Optional title drawn as a comment above the diagram.
     node_colors:
         Per-type TikZ colour overrides (e.g. ``{"note": "blue!80"}``).
+        Ignored when *color_by* is not ``None`` or ``"type"``.
+    layout_name:
+        Layout algorithm to use when *layout* is ``None``.
+        One of ``"force"`` (default, Fruchterman-Reingold), ``"radial"``
+        (BFS rings from highest-degree node), or ``"hierarchical"``
+        (horizontal layers by node_type).
+    color_by:
+        Colouring strategy for nodes.  ``None`` / ``"type"`` → default
+        type-based palette (unchanged behaviour).  ``"main_topic"`` or
+        ``"tag"`` → each node gets a stable palette colour derived from its
+        node_id (a deterministic hash), so repeated renders produce identical
+        colours.
 
     Returns
     -------
     str
         LaTeX source string.
     """
-    if layout is None:
-        layout = spring_layout(graph)
-
-    colors: dict[str, str] = {**_DEFAULT_TIKZ_COLORS, **(node_colors or {})}
+    layout = _select_layout(graph, layout, layout_name)
+    get_color = _make_color_fn(color_by, node_colors)
     id_to_name: dict[str, str] = {ln.node.node_id: _safe_node_name(ln.node.node_id) for ln in layout}
 
     body_lines: list[str] = []
@@ -236,7 +449,7 @@ def graph_to_tikz(
 
     # Nodes
     for ln in layout:
-        color = _tikz_color(ln.node.node_type, colors)
+        color = get_color(ln.node)
         name = id_to_name[ln.node.node_id]
         label = _escape_tikz(ln.node.label)
         x_str = f"{ln.x:.2f}"
