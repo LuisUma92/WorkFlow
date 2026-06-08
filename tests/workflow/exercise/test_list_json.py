@@ -42,7 +42,7 @@ def runner():
 COMPLETE_TEX_SSU = """\
 % ---
 % id: list-test-ssu-001
-% type: SSU
+% type: multichoice
 % difficulty: medium
 % taxonomy_level: Usar-Aplicar
 % taxonomy_domain: Procedimiento Mental
@@ -146,7 +146,7 @@ class TestListFilterCourse:
     def test_course_filter_returns_matching_only(self, runner, db_engine):
         """--course CB0009 returns only exercises tagged CB0009."""
         with Session(db_engine) as s:
-            _seed_exercise(s, "list-course-001", "SSU", "CB0009")
+            _seed_exercise(s, "list-course-001", "multichoice", "CB0009")
             _seed_exercise(s, "list-course-002", "multichoice", "FS0211")
 
         result = runner.invoke(
@@ -173,7 +173,7 @@ class TestListFilterCourse:
     def test_course_field_in_json_output(self, runner, db_engine):
         """The 'course' field in JSON output matches the requested course."""
         with Session(db_engine) as s:
-            _seed_exercise(s, "list-course-004", "SSU", "CB0009")
+            _seed_exercise(s, "list-course-004", "multichoice", "CB0009")
 
         result = runner.invoke(
             exercise, ["list", "--course", "CB0009", "--json"], obj={"engine": db_engine}
@@ -188,43 +188,43 @@ class TestListFilterCourse:
 
 class TestListFilterType:
     def test_type_filter_ssu(self, runner, db_engine):
-        """--type SSU returns only SSU exercises."""
+        """--type multichoice returns only multichoice exercises."""
         with Session(db_engine) as s:
-            _seed_exercise(s, "list-type-ssu-001", "SSU", "CB0009")
-            _seed_exercise(s, "list-type-mc-001", "multichoice", "CB0009")
+            _seed_exercise(s, "list-type-ssu-001", "multichoice", "CB0009")
+            _seed_exercise(s, "list-type-mc-001", "essay", "CB0009")
 
         result = runner.invoke(
-            exercise, ["list", "--type", "SSU", "--json"], obj={"engine": db_engine}
+            exercise, ["list", "--type", "multichoice", "--json"], obj={"engine": db_engine}
         )
         assert result.exit_code == 0, result.output
         data = json.loads(result.output)
-        assert all(d["type"] == "SSU" for d in data)
+        assert all(d["type"] == "multichoice" for d in data)
         ids = [d["id"] for d in data]
         assert "list-type-ssu-001" in ids
         assert "list-type-mc-001" not in ids
 
     def test_type_filter_scm(self, runner, db_engine):
-        """--type SCM is accepted and filters correctly."""
+        """--type shortanswer is accepted and filters correctly."""
         with Session(db_engine) as s:
-            _seed_exercise(s, "list-type-scm-001", "SCM", "CB0009")
+            _seed_exercise(s, "list-type-scm-001", "shortanswer", "CB0009")
 
         result = runner.invoke(
-            exercise, ["list", "--type", "SCM", "--json"], obj={"engine": db_engine}
+            exercise, ["list", "--type", "shortanswer", "--json"], obj={"engine": db_engine}
         )
         assert result.exit_code == 0, result.output
         data = json.loads(result.output)
         assert len(data) == 1
-        assert data[0]["type"] == "SCM"
+        assert data[0]["type"] == "shortanswer"
 
     def test_type_filter_sde(self, runner, db_engine):
-        """--type SDE is accepted and filters correctly."""
+        """--type essay is accepted and filters correctly."""
         with Session(db_engine) as s:
-            _seed_exercise(s, "list-type-sde-001", "SDE", "CB0009")
+            _seed_exercise(s, "list-type-sde-001", "essay", "CB0009")
 
         result = runner.invoke(
-            exercise, ["list", "--type", "SDE", "--json"], obj={"engine": db_engine}
+            exercise, ["list", "--type", "essay", "--json"], obj={"engine": db_engine}
         )
         assert result.exit_code == 0, result.output
         data = json.loads(result.output)
         assert len(data) == 1
-        assert data[0]["type"] == "SDE"
+        assert data[0]["type"] == "essay"

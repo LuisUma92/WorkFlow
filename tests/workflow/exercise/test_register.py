@@ -43,7 +43,7 @@ def runner():
 _TEX_CONTENT = textwrap.dedent("""\
     % ---
     % id: register-test-ssu-001
-    % type: SSU
+    % type: multichoice
     % difficulty: medium
     % taxonomy_level: Usar-Aplicar
     % taxonomy_domain: Procedimiento Mental
@@ -55,7 +55,7 @@ _TEX_CONTENT = textwrap.dedent("""\
 _TEX_CONTENT_2 = textwrap.dedent("""\
     % ---
     % id: register-test-ssu-002
-    % type: SSU
+    % type: multichoice
     % difficulty: easy
     % taxonomy_level: Recordar
     % taxonomy_domain: Información
@@ -67,7 +67,7 @@ _TEX_CONTENT_2 = textwrap.dedent("""\
 _TEX_CONTENT_3 = textwrap.dedent("""\
     % ---
     % id: register-test-ssu-003
-    % type: SSU
+    % type: multichoice
     % difficulty: hard
     % taxonomy_level: Analizar
     % taxonomy_domain: Procedimiento Mental
@@ -91,7 +91,7 @@ class TestRegisterCommand:
             [
                 "register",
                 "--path", str(tex),
-                "--type", "SSU",
+                "--type", "multichoice",
                 "--course", "CB0009",
                 "--cycle", "2026C1",
                 "--partial", "P02",
@@ -111,7 +111,7 @@ class TestRegisterCommand:
             [
                 "register",
                 "--path", str(tex),
-                "--type", "SSU",
+                "--type", "multichoice",
                 "--course", "CB0009",
                 "--cycle", "2026C1",
                 "--partial", "P02",
@@ -126,28 +126,28 @@ class TestRegisterCommand:
         assert ex is not None
 
     def test_register_type_enum_scm(self, runner, tmp_path, db_engine):
-        """--type SCM is accepted without error."""
+        """--type shortanswer is accepted without error."""
         tex = tmp_path / "scm-test.tex"
         scm_content = _TEX_CONTENT.replace("id: register-test-ssu-001", "id: register-scm-001")
         tex.write_text(scm_content)
 
         result = runner.invoke(
             exercise,
-            ["register", "--path", str(tex), "--type", "SCM",
+            ["register", "--path", str(tex), "--type", "shortanswer",
              "--course", "CB0009", "--cycle", "2026C1", "--partial", "P02", "--points", "1"],
             obj={"engine": db_engine},
         )
         assert result.exit_code == 0, result.output
 
     def test_register_type_enum_sde(self, runner, tmp_path, db_engine):
-        """--type SDE is accepted without error."""
+        """--type essay is accepted without error."""
         tex = tmp_path / "sde-test.tex"
         sde_content = _TEX_CONTENT.replace("id: register-test-ssu-001", "id: register-sde-001")
         tex.write_text(sde_content)
 
         result = runner.invoke(
             exercise,
-            ["register", "--path", str(tex), "--type", "SDE",
+            ["register", "--path", str(tex), "--type", "essay",
              "--course", "CB0009", "--cycle", "2026C1", "--partial", "P02", "--points", "1"],
             obj={"engine": db_engine},
         )
@@ -163,7 +163,7 @@ class TestRegisterCommand:
             [
                 "register",
                 "--path", str(tex),
-                "--type", "SSU",
+                "--type", "multichoice",
                 "--course", "CB0009",
                 "--cycle", "2026C1",
                 "--partial", "P02",
@@ -182,7 +182,7 @@ class TestRegisterCommand:
         assert row["course"] == "CB0009"
         assert row["cycle"] == "2026C1"
         assert row["partial"] == "P02"
-        assert row["type"] == "SSU"
+        assert row["type"] == "multichoice"
 
     def test_register_missing_path_exits_one(self, runner, db_engine):
         """Nonexistent path exits 1 with 'not found' message."""
@@ -191,7 +191,7 @@ class TestRegisterCommand:
             [
                 "register",
                 "--path", "/nonexistent/exercise.tex",
-                "--type", "SSU",
+                "--type", "multichoice",
                 "--course", "CB0009",
                 "--cycle", "2026C1",
                 "--partial", "P02",
@@ -210,7 +210,7 @@ class TestRegisterCommand:
         args = [
             "register",
             "--path", str(tex),
-            "--type", "SSU",
+            "--type", "multichoice",
             "--course", "CB0009",
             "--cycle", "2026C1",
             "--partial", "P02",

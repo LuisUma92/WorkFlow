@@ -149,9 +149,9 @@ def test_generate_from_content_naming_convention():
         )
         names = {r.file_path.name for r in results}
         assert names == {
-            "serway-C03S01P010.tex",
-            "serway-C03S01P011.tex",
-            "serway-C03S01P012.tex",
+            "serway-TDEC03S01P010.tex",
+            "serway-TDEC03S01P011.tex",
+            "serway-TDEC03S01P012.tex",
         }
 
 
@@ -170,7 +170,7 @@ def test_generate_from_content_files_contain_exa():
 def test_generate_from_content_skips_existing():
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp)
-        existing = out / "serway-C01S01P001.tex"
+        existing = out / "serway-TDEC01S01P001.tex"
         existing.write_text("PRE-EXISTING")
 
         results = generate_from_content(

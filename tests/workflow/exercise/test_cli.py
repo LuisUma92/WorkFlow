@@ -464,7 +464,7 @@ class TestCreateCommand:
                 obj={"engine": db_engine},
             )
         assert result.exit_code == 0, result.output
-        assert (tmp_path / "testbook-C01S01P001.tex").exists()
+        assert (tmp_path / "testbook-TDEC01S01P001.tex").exists()
 
     def test_create_single_reports_created(self, runner, tmp_path, db_engine):
         from unittest.mock import patch
@@ -482,7 +482,7 @@ class TestCreateCommand:
                 obj={"engine": db_engine},
             )
         assert result.exit_code == 0
-        assert "testbook-C01S01P001" in result.output
+        assert "testbook-TDEC01S01P001" in result.output
 
     def test_create_with_options(self, runner, tmp_path, db_engine):
         from unittest.mock import patch
@@ -503,13 +503,13 @@ class TestCreateCommand:
                 obj={"engine": db_engine},
             )
         assert result.exit_code == 0, result.output
-        content = (tmp_path / "serway-C01S01P005.tex").read_text()
-        assert "id: serway-C01S01P005" in content
+        content = (tmp_path / "serway-TDEC01S01P005.tex").read_text()
+        assert "id: serway-TDEC01S01P005" in content
         assert "difficulty: hard" in content
         assert r"\exa[1]{5}" in content
 
     def test_create_existing_skips_without_overwrite(self, runner, tmp_path, db_engine):
-        path = tmp_path / "testbook-C01S01P001.tex"
+        path = tmp_path / "testbook-TDEC01S01P001.tex"
         path.write_text("EXISTING")
 
         from unittest.mock import patch
@@ -556,7 +556,7 @@ class TestCreateRangeCommand:
         )
         assert result.exit_code == 0, result.output
         for num in range(1, 6):
-            assert (tmp_path / f"serway-C01S01P{num:03d}.tex").exists()
+            assert (tmp_path / f"serway-TDEC01S01P{num:03d}.tex").exists()
 
     def test_create_range_reports_count(self, runner, tmp_path):
         result = runner.invoke(
@@ -581,7 +581,7 @@ class TestCreateRangeCommand:
         assert "5" in result.output  # 5 files created
 
     def test_create_range_skips_existing(self, runner, tmp_path):
-        existing = tmp_path / "serway-C01S01P001.tex"
+        existing = tmp_path / "serway-TDEC01S01P001.tex"
         existing.write_text("PRE-EXISTING")
 
         result = runner.invoke(
@@ -629,7 +629,7 @@ class TestCreateRangeCommand:
             ],
         )
         assert result.exit_code == 0
-        content = (tmp_path / "halliday-C05S01P001.tex").read_text()
+        content = (tmp_path / "halliday-TDEC05S01P001.tex").read_text()
         assert "mechanics" in content
         assert "forces" in content
 
