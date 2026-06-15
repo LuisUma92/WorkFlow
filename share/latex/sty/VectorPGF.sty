@@ -1,3 +1,7 @@
+% --- Dependencias propias de la librería de estilos ---
+\RequirePackage{tikz}
+\usetikzlibrary{arrows.meta}
+
 % --- Estilos TikZ para HD ---
 \tikzset{
   line cap=round,
@@ -25,6 +29,27 @@
     line width=1.1pt
   }
 }
+
+% --- Estilos pgfplots reutilizables para ejes ---
+% Convención de ejes: el SÍMBOLO de la variable va cerca del EXTREMO del eje
+% (junto a la punta de la flecha), DEBAJO en el eje x y a la IZQUIERDA en el
+% eje y; la UNIDAD va entre paréntesis tras el símbolo,
+% p. ej. xlabel={\(r\) (m)}, ylabel={\(V\) (V)}.
+% Requiere que pgfplots se cargue ANTES que VectorPGF (el guard lo verifica).
+\@ifpackageloaded{pgfplots}{%
+  \pgfplotsset{
+    PhysAxis/.style={
+      axis lines=left,
+      axis line style={-{Stealth[length=10pt,width=6pt]}, line width=0.9pt},
+      tick align=outside,
+      xlabel style={at={(current axis.right of origin)},
+                    anchor=north, yshift=-2pt},
+      ylabel style={at={(current axis.above origin)},
+                    anchor=east, rotate=-90, xshift=-2pt},
+      every axis plot/.append style={line width=1.1pt},
+    },
+  }%
+}{}%
 
 \newcommand{\printvalue}[2]{
 \pgfmathprintnumber[fixed,precision=#1]{#2}
