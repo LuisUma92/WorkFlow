@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import difflib
 import math
 import re
 from dataclasses import dataclass
@@ -54,6 +55,25 @@ _VALID_EXERCISE_TYPES = {
 _VALID_DIFFICULTIES = {"easy", "medium", "hard"}
 _VALID_TAXONOMY_LEVELS = set(_TAXONOMY_LEVELS)
 _VALID_TAXONOMY_DOMAINS = set(_TAXONOMY_DOMAINS)
+
+# Explicit exercise `status:` values accepted in commented-YAML frontmatter.
+# Shared with workflow.exercise.parser so the enum has a single source of
+# truth across the parse (file) and validate (schema) entry points.
+_VALID_EXPLICIT_STATUSES = ("placeholder", "in_progress", "complete")
+
+# Keys read by validate_exercise_metadata (including `status`, which is
+# checked here but excluded from the returned ExerciseMetadata dataclass).
+# Anything outside this set is a likely typo — warn with a difflib suggestion.
+_RECOGNIZED_EXERCISE_KEYS = frozenset({
+    "id",
+    "type",
+    "difficulty",
+    "taxonomy_level",
+    "taxonomy_domain",
+    "tags",
+    "concepts",
+    "status",
+})
 
 
 @dataclass(frozen=True)
@@ -384,12 +404,42 @@ def _validate_discipline_area(data: dict, errors: list[str]) -> str | None:
     return value
 
 
-def validate_exercise_metadata(data: dict) -> tuple[ExerciseMetadata | None, list[str]]:
+def _check_unknown_exercise_keys(data: dict) -> list[str]:
+    """Warn on frontmatter keys outside the recognized set, with a difflib suggestion."""
+    warnings: list[str] = []
+    unknown_keys = set(data.keys()) - _RECOGNIZED_EXERCISE_KEYS
+    for key in sorted(unknown_keys):
+        suggestion = difflib.get_close_matches(key, _RECOGNIZED_EXERCISE_KEYS, n=1)
+        if suggestion:
+            warnings.append(
+                f"unknown frontmatter key '{key}' — did you mean '{suggestion[0]}'?"
+            )
+        else:
+            warnings.append(f"unknown frontmatter key '{key}'")
+    return warnings
+
+
+def _check_exercise_status(status: object) -> list[str]:
+    """Validate an explicit `status:` value; absent (None) status is valid."""
+    if status is None:
+        return []
+    if not isinstance(status, str) or status not in _VALID_EXPLICIT_STATUSES:
+        return [f"'status' must be one of {list(_VALID_EXPLICIT_STATUSES)}, got '{status}'"]
+    return []
+
+
+def validate_exercise_metadata(
+    data: dict,
+) -> tuple[ExerciseMetadata | None, list[str], list[str]]:
     """Parse and validate exercise metadata dict.
 
-    Returns (ExerciseMetadata, []) on success or (None, [errors]) on failure.
+    Returns ``(ExerciseMetadata, errors, warnings)``. The first element is
+    ``None`` iff ``errors`` is non-empty. ``warnings`` never blocks validity
+    (currently: unrecognized frontmatter keys, reported with a difflib
+    closest-match suggestion).
     """
     errors: list[str] = []
+    warnings: list[str] = _check_unknown_exercise_keys(data)
 
     ex_id = data.get("id")
     if not ex_id or not isinstance(ex_id, str):
@@ -443,8 +493,10 @@ def validate_exercise_metadata(data: dict) -> tuple[ExerciseMetadata | None, lis
         errors.append("all items in 'concepts' must be strings")
         concepts = []
 
+    errors.extend(_check_exercise_status(data.get("status")))
+
     if errors:
-        return None, errors
+        return None, errors, warnings
 
     return (
         ExerciseMetadata(
@@ -457,6 +509,7 @@ def validate_exercise_metadata(data: dict) -> tuple[ExerciseMetadata | None, lis
             concepts=tuple(concepts),
         ),
         [],
+        warnings,
     )
 
 

@@ -13,9 +13,10 @@ class TestExerciseMetadataValidation:
             "taxonomy_level": "Usar-Aplicar",
             "taxonomy_domain": "Procedimiento Mental",
         }
-        result, errors = validate_exercise_metadata(data)
+        result, errors, warnings = validate_exercise_metadata(data)
         assert result is not None
         assert errors == []
+        assert warnings == []
 
     def test_invalid_taxonomy_level(self):
         from workflow.validation.schemas import validate_exercise_metadata
@@ -26,7 +27,7 @@ class TestExerciseMetadataValidation:
             "taxonomy_level": "INVALID",
             "taxonomy_domain": "Información",
         }
-        result, errors = validate_exercise_metadata(data)
+        result, errors, warnings = validate_exercise_metadata(data)
         assert result is None
         assert any("taxonomy_level" in e for e in errors)
 

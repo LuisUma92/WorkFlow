@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from workflow.concept.service import resolve_concepts
 from workflow.db.models.exercises import Exercise, ExerciseConcept, ExerciseOption
 from workflow.db.repos.sqlalchemy import SqlExerciseRepo
-from workflow.exercise.parser import parse_exercise
+from workflow.exercise.parser import INVALID_STATUS_ERROR_PREFIX, parse_exercise
 from workflow.bibliography.service import get_bib_entry_by_bibkey, BibKeyAmbiguous
 
 if TYPE_CHECKING:
@@ -45,6 +45,7 @@ class SyncResult:
     updated: int
     unchanged: int
     skipped: int
+    invalid_status: int = 0  # files skipped due to an invalid explicit `status:`
 
 
 def file_hash(path: Path) -> str:
@@ -77,6 +78,40 @@ def _resolve_book_id(
     return bib.id if bib is not None else None
 
 
+def _sync_exercise_concepts(
+    session: Session,
+    result_record: Exercise,
+    concept_codes: list[str],
+    filename: str,
+    strict_concepts: bool,
+    messages: list[str],
+    concept_errors: list[str],
+) -> None:
+    """Resolve + upsert ExerciseConcept M2M rows for one exercise's concept slugs.
+
+    Unresolved codes are tagged with *filename* and routed to *concept_errors*
+    (strict) or appended to *messages* as a warning (lenient) — never raised
+    here so the caller can finish the whole batch before deciding to abort.
+    """
+    found_concepts, issues = resolve_concepts(concept_codes, session, strict=strict_concepts)
+    for issue in issues:
+        tagged_message = f"{filename}: {issue['message']}"
+        if issue["severity"] == "error":
+            concept_errors.append(tagged_message)
+        else:
+            messages.append(f"  [WARN] {tagged_message}")
+            logger.warning("%s", tagged_message)
+
+    desired_ids = {c.id for c in found_concepts}
+    existing_ids = {ec.concept_id for ec in result_record.concept_links}
+    for c in found_concepts:
+        if c.id not in existing_ids:
+            session.add(ExerciseConcept(exercise_id=result_record.id, concept_id=c.id))
+    for ec in list(result_record.concept_links):
+        if ec.concept_id not in desired_ids:
+            session.delete(ec)
+
+
 def sync_exercises(
     session: Session,
     files: list[Path],
@@ -90,7 +125,9 @@ def sync_exercises(
     updated_count = 0
     unchanged_count = 0
     skipped_count = 0
+    invalid_status_count = 0
     messages: list[str] = []
+    concept_errors: list[str] = []  # strict-mode failures, collected across all files
 
     for filepath in files:
         if filepath.stat().st_size > max_file_bytes:
@@ -104,6 +141,8 @@ def sync_exercises(
         if result.errors:
             messages.append(f"  [SKIP] {filepath.name}: {result.errors[0]}")
             skipped_count += 1
+            if any(err.startswith(INVALID_STATUS_ERROR_PREFIX) for err in result.errors):
+                invalid_status_count += 1
             continue
 
         ex = result.exercise
@@ -160,19 +199,15 @@ def sync_exercises(
 
         # Upsert ExerciseConcept M2M rows from frontmatter concept slugs
         concept_codes: list[str] = ex.metadata.concepts or []
-        found_concepts, issues = resolve_concepts(concept_codes, session, strict=strict_concepts)
-        for issue in issues:
-            if issue["severity"] == "error":
-                raise ValueError(issue["message"])
-            logger.warning("%s", issue['message'])
-        desired_ids = {c.id for c in found_concepts}
-        existing_ids = {ec.concept_id for ec in result_record.concept_links}
-        for c in found_concepts:
-            if c.id not in existing_ids:
-                session.add(ExerciseConcept(exercise_id=result_record.id, concept_id=c.id))
-        for ec in list(result_record.concept_links):
-            if ec.concept_id not in desired_ids:
-                session.delete(ec)
+        _sync_exercise_concepts(
+            session,
+            result_record,
+            concept_codes,
+            filepath.name,
+            strict_concepts,
+            messages,
+            concept_errors,
+        )
 
         if existing is not None:
             updated_count += 1
@@ -183,6 +218,11 @@ def sync_exercises(
 
         messages.append(f"  [{status_label}] {ex.metadata.id}: {ex.status}")
 
+    if concept_errors:
+        # Strict-mode failure: abort atomically, surface every dropped code.
+        session.rollback()
+        raise ValueError("; ".join(concept_errors))
+
     session.commit()
 
     return SyncResult(
@@ -190,6 +230,7 @@ def sync_exercises(
         updated=updated_count,
         unchanged=unchanged_count,
         skipped=skipped_count,
+        invalid_status=invalid_status_count,
     ), messages
 
 

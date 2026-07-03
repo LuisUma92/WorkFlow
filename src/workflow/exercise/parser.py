@@ -20,6 +20,7 @@ from workflow.latex.braces import extract_macro_args
 from workflow.latex.comments import extract_commented_yaml
 from workflow.validation.schemas import (
     ExerciseMetadata,
+    _VALID_EXPLICIT_STATUSES,
     validate_exercise_metadata,
 )
 
@@ -29,7 +30,13 @@ from workflow.exercise.domain import (
     ParseResult,
 )
 
-__all__ = ["parse_exercise"]
+__all__ = ["parse_exercise", "INVALID_STATUS_ERROR_PREFIX"]
+
+# Marker prefix for the "invalid explicit status" ParseResult.errors entry.
+# workflow.exercise.service checks for this prefix to distinguish a hard
+# invalid-status failure from other parse errors (e.g. missing \question)
+# that are skipped but do not fail a sync run.
+INVALID_STATUS_ERROR_PREFIX = "Invalid status '"
 
 # Regex patterns for image references
 _IMAGE_PATTERNS = [
@@ -167,12 +174,26 @@ def parse_exercise(text: str, source_path: str = "") -> ParseResult:
         explicit_status = yaml_data.get("status")
         yaml_data = {k: v for k, v in yaml_data.items() if k != "status"}
 
-        validated, validation_errors = validate_exercise_metadata(yaml_data)
+        if explicit_status is not None and explicit_status not in _VALID_EXPLICIT_STATUSES:
+            location = source_path or "(unknown file)"
+            errors.append(
+                f"{INVALID_STATUS_ERROR_PREFIX}{explicit_status}' in {location}"
+                f" (valid: {', '.join(_VALID_EXPLICIT_STATUSES)})"
+            )
+            # Never propagate an invalid value — fall back to inference,
+            # matching the "absent status" path (ADR-0011: never raise).
+            explicit_status = None
+
+        validated, validation_errors, validation_warnings = validate_exercise_metadata(
+            yaml_data
+        )
         if validation_errors:
             for err in validation_errors:
                 warnings.append(f"Metadata: {err}")
         else:
             metadata = validated
+        for w in validation_warnings:
+            warnings.append(f"Metadata: {w}")
 
     # ── Pass 2: Structure ────────────────────────────────────────────
     question_matches = extract_macro_args(text, "question", 2)

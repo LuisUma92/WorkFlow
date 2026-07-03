@@ -64,9 +64,20 @@ def _find_tex_files(path: Path) -> list[Path]:
     return files
 
 
-def _sync_files(engine, files: list[Path]) -> None:
+def _sync_files(engine, files: list[Path], strict_concepts: bool = False) -> None:
+    import sys
+
     with Session(engine) as session:
-        result, messages = sync_exercises(session, files)
+        try:
+            result, messages = sync_exercises(
+                session, files, strict_concepts=strict_concepts
+            )
+        except ValueError as exc:
+            # Strict-concepts failure: every dropped code is joined into
+            # exc's message (service.py collects across the whole batch).
+            for line in str(exc).split("; "):
+                click.echo(f"error: {line}", err=True)
+            sys.exit(1)
 
     for msg in messages:
         click.echo(msg)
@@ -77,6 +88,14 @@ def _sync_files(engine, files: list[Path]) -> None:
         f"{result.unchanged} unchanged, "
         f"{result.skipped} skipped."
     )
+
+    if result.invalid_status:
+        click.echo(
+            f"error: {result.invalid_status} file(s) skipped due to an "
+            "invalid explicit status (see [SKIP] lines above).",
+            err=True,
+        )
+        sys.exit(1)
 
 
 def _test_bib_entry_existence(
@@ -245,9 +264,16 @@ def list_exercises(
 
 @exercise.command()
 @click.argument("path", type=click.Path(exists=True))
+@click.option(
+    "--strict-concepts",
+    "strict_concepts",
+    is_flag=True,
+    default=False,
+    help="Treat unresolved concept codes as errors (abort sync, exit 1).",
+)
 @click.pass_context
 @with_schema_guard
-def sync(ctx, path: str) -> None:
+def sync(ctx, path: str, strict_concepts: bool) -> None:
     """Sync exercise .tex files to the database.
 
     Scans PATH for .tex files, parses metadata, and upserts into the
@@ -261,7 +287,7 @@ def sync(ctx, path: str) -> None:
         click.echo("No .tex files found.")
         return
 
-    _sync_files(engine, files)
+    _sync_files(engine, files, strict_concepts=strict_concepts)
 
 
 @exercise.command()

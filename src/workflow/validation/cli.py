@@ -157,6 +157,7 @@ def exercises(path: str, recursive: bool) -> None:
     total = 0
     valid = 0
     invalid = 0
+    warned = 0
 
     for filepath in files:
         total += 1
@@ -166,7 +167,7 @@ def exercises(path: str, recursive: bool) -> None:
             click.echo(f"{filepath}: [SKIP] no metadata block found")
             continue
 
-        _, errors = validate_exercise_metadata(metadata)
+        _, errors, warnings = validate_exercise_metadata(metadata)
         if errors:
             invalid += 1
             click.echo(f"{filepath}:")
@@ -174,7 +175,16 @@ def exercises(path: str, recursive: bool) -> None:
                 click.echo(f"  - {err}")
         else:
             valid += 1
+        if warnings:
+            warned += 1
+            click.echo(f"{filepath}:")
+            for w in warnings:
+                click.echo(f"  ! {w}")
 
     click.echo(
-        f"\nSummary: {total} files checked, {valid} valid, {invalid} with errors."
+        f"\nSummary: {total} files checked, {valid} valid, "
+        f"{invalid} with errors, {warned} with warnings."
     )
+
+    if invalid:
+        sys.exit(1)
