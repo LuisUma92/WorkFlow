@@ -79,7 +79,9 @@ These ADRs document the custom LaTeX packages in `shared/sty/`.
 | [0002](0002-Unified-knowledge.md)        | Markdown as canonical knowledge layer                    | Zettelkasten | Accepted           | 0001       |
 | [0015](0015-zettelkasten-dailly-work.md) | Zettelkasten daily work: notes, demos, images, exercises | Zettelkasten | Accepted | 0001, 0002 |
 | [ITEP-0012](ITEP-0012-concept-orm.md)   | Concept ORM surface: taxonomy tree, `concepts:` resolver, `--strict-concepts` validator; amended for `content_id` re-rooting, `domain` column, `ExerciseConcept` M2M (migration 0009); amended 2026-05-27 for `Concept.main_topic` chain post-Topic re-root (Phase 4B, migration 0011) | ITeP | Implemented (Phase 5, amended 2026-05-27) | ITEP-0002, ITEP-0006, ITEP-0009, ITEP-0011 |
-| [ITEP-0013](ITEP-0013-note-relation-graph.md) | Note relation graph: directed lineage + associative edges, DAG traversal, `note_edge` table | ITeP | Proposed | 0002, 0010, LZK-0003, ITEP-0009, ITEP-0011 |
+| [ITEP-0013](ITEP-0013-note-relation-graph.md) | Note relation graph: directed lineage + associative edges, DAG traversal, `note_edge` table | ITeP | Accepted | 0002, 0010, LZK-0003, ITEP-0009, ITEP-0011 |
+| [ITEP-0014](ITEP-0014-incremental-sync-via-content-hash.md) | Incremental sync via per-note content hashing (`fm_hash`) | ITeP | Proposed | ITEP-0011, ITEP-0013 |
+| [ITEP-0015](ITEP-0015-editor-first-authoring-tooling.md) | Editor-first authoring tooling for the note graph | ITeP | Proposed | ITEP-0011, ITEP-0012, ITEP-0013 |
 
 ## Exercise System
 

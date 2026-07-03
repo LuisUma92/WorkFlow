@@ -281,6 +281,18 @@ class ParseResult:
   (rare in exercises)
 - Not reusable as a general LaTeX parser (by design)
 
+## Amendment 2026-07-03 — explicit invalid `status:` is an error, not silently inferred
+
+The original decision lets the parser infer `status` from content. This holds
+ONLY when `status:` is absent from the commented-YAML frontmatter. When an
+explicit `status:` value is present but outside the enum
+`{placeholder, in_progress, complete}` (pinned in ADR-0010), the parser MUST
+record a `ParseResult.errors` entry (never raise — the no-exception rule stands)
+and CLI commands (parse/sync/validate) MUST exit nonzero. Silently falling back
+to `_infer_status` for an invalid explicit value caused the 2026-06-30 drift
+incident (`status: solved` accepted → 11,301 files hand-normalized).
+See tasks/requests/2026-07-03-exercise-failloud-validators.md.
+
 ---
 
 ## Status
