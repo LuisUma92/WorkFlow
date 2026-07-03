@@ -265,6 +265,83 @@ def compute_stats(graph: KnowledgeGraph) -> GraphStats:
     )
 
 
+# ── Directed traversal ────────────────────────────────────────────────────
+
+
+def directed_bfs(
+    start_id: str,
+    adj: dict[str, list[str]],
+    max_depth: int,
+    node_budget: int,
+) -> dict[str, int]:
+    """BFS from *start_id* using a directed adjacency map.
+
+    Args:
+        start_id: The node to start from.
+        adj: Directed adjacency map {node_id: [neighbor_id, ...]}.
+        max_depth: Maximum hop depth (inclusive).
+        node_budget: Stop when this many nodes have been collected.
+
+    Returns:
+        ``{node_id: depth}`` for all reachable nodes up to the bounds.
+        The start node is included at depth 0.
+    """
+    if node_budget <= 0:
+        return {}
+    visited: dict[str, int] = {start_id: 0}
+    queue: deque[str] = deque([start_id])
+    while queue:
+        if len(visited) >= node_budget:
+            break
+        current = queue.popleft()
+        d = visited[current]
+        if d >= max_depth:
+            continue
+        for neighbor in adj.get(current, []):
+            if neighbor not in visited:
+                visited[neighbor] = d + 1
+                queue.append(neighbor)
+                if len(visited) >= node_budget:
+                    break
+    return visited
+
+
+# ── Lineage roots ─────────────────────────────────────────────────────────
+
+
+def find_lineage_roots(
+    graph: KnowledgeGraph,
+    node_type: str | None = None,
+) -> tuple[GraphNode, ...]:
+    """Return nodes that have outgoing structural edges but no incoming structural edges.
+
+    These are "lineage roots" in the sense that they are the starting points
+    of derivative chains — they were derived from others, but nothing was
+    derived from them.
+
+    If *node_type* is given, only nodes of that type are considered.
+    """
+    _structural = "note_edge:structural"
+
+    has_incoming: set[str] = set()
+    has_outgoing: set[str] = set()
+
+    for e in graph.edges:
+        if e.edge_type == _structural:
+            has_outgoing.add(e.source_id)
+            has_incoming.add(e.target_id)
+
+    node_map = {n.node_id: n for n in graph.nodes}
+    result = [
+        node_map[nid]
+        for nid in has_outgoing
+        if nid not in has_incoming
+        and nid in node_map
+        and (node_type is None or node_map[nid].node_type == node_type)
+    ]
+    return tuple(result)
+
+
 __all__ = [
     "GraphStats",
     "NeighborInfo",
@@ -274,4 +351,6 @@ __all__ = [
     "neighbors",
     "neighbors_detailed",
     "compute_stats",
+    "directed_bfs",
+    "find_lineage_roots",
 ]

@@ -276,6 +276,20 @@ def _upsert_note_edges(session: Session, note: Note, fm: dict) -> int:
     return created
 
 
+def _rebuild_note_edges(session: Session, note: Note, fm: dict) -> int:
+    """Delete all existing NoteEdge rows for this source, then re-upsert from frontmatter.
+
+    This implements the --rebuild-edges semantic: stale/renamed edges are dropped
+    atomically per note before the current frontmatter is re-imported.
+    Returns the count of edges created after rebuild.
+    """
+    from sqlalchemy import delete as _delete
+
+    session.execute(_delete(NoteEdge).where(NoteEdge.source_id == note.id))
+    session.flush()
+    return _upsert_note_edges(session, note, fm)
+
+
 def _sync_note_concepts(
     session: Session,
     note: "Note",
@@ -336,6 +350,44 @@ def _drop_orphan_links(
     return len(orphan_links)
 
 
+def _resolve_scan_root(vault_root: Path, project_filter: str | None) -> Path:
+    """Resolve the scan root, validating project_filter containment."""
+    vault_root_resolved = vault_root.resolve()
+    if project_filter:
+        scan_root = (vault_root / project_filter).resolve()
+        if not scan_root.is_relative_to(vault_root_resolved):
+            raise ValueError(
+                f"project_filter escapes vault_root: {project_filter!r}"
+            )
+        return scan_root
+    return vault_root_resolved
+
+
+def _run_write_passes(
+    session: Session,
+    note_data: list,
+    scope_prefix: str,
+    current_filenames: set[str],
+    strict_concepts: bool,
+    rebuild_edges: bool,
+    report: SyncReport,
+) -> None:
+    """Run passes 2-5: links, orphan drop, edges, concepts (all write paths)."""
+    for note, body, _fm in note_data:
+        report.links_created += _upsert_note_links(session, note, body)
+
+    report.orphans_dropped += _drop_orphan_links(session, scope_prefix, current_filenames)
+
+    _edge_fn = _rebuild_note_edges if rebuild_edges else _upsert_note_edges
+    for note, _body, fm in note_data:
+        report.edges_created += _edge_fn(session, note, fm)
+
+    for note, _body, fm in note_data:
+        created, issues = _sync_note_concepts(session, note, fm, strict=strict_concepts)
+        report.concept_links_created += created
+        report.concept_issues.extend(issues)
+
+
 def sync_vault(
     vault_root: Path,
     session: Session,
@@ -343,88 +395,55 @@ def sync_vault(
     dry_run: bool = False,
     project_filter: str | None = None,
     strict_concepts: bool = False,
+    rebuild_edges: bool = False,
 ) -> SyncReport:
     """Scan vault_root/**/*.md, parse frontmatter + wikilinks, upsert Note/Label/Link rows.
 
     File-as-truth, DB-as-index. Idempotent.
     """
     report = SyncReport()
-
-    # Resolve vault_root to prevent symlink escape in scope checks
     vault_root_resolved = vault_root.resolve()
-
-    if project_filter:
-        scan_root = (vault_root / project_filter).resolve()
-        if not scan_root.is_relative_to(vault_root_resolved):
-            raise ValueError(
-                f"project_filter escapes vault_root: {project_filter!r}"
-            )
-    else:
-        scan_root = vault_root_resolved
-
+    scan_root = _resolve_scan_root(vault_root, project_filter)
     scope_prefix = str(scan_root)
 
-    # Discover .md files — filter symlinks that escape vault_root
     md_paths = [
         p for p in scan_root.rglob("*.md")
         if p.resolve().is_relative_to(vault_root_resolved)
     ]
     current_filenames: set[str] = {str(p) for p in md_paths}
 
-    # Pass 1: upsert Note + Label rows
-    note_data: list[tuple[Note, str, dict]] = []  # (note, body, fm_raw)
+    # Pass 1: upsert Note + Label rows (or dry-run count)
+    note_data: list[tuple[Note, str, dict]] = []
 
     for md_path in md_paths:
         parsed = _parse_md(md_path)
         if parsed is None:
             continue
-
         fm, body = parsed
         zettel_id = fm.get("id")
         if not zettel_id or not isinstance(zettel_id, str):
             continue
-
         anchors: list[str] = list(fm.get("anchors") or [])
         bibkeys: list[str] = [
             k for k in (fm.get("references") or [])
             if isinstance(k, str) and k.strip()
         ]
-
         if dry_run:
             report.notes_scanned += 1
-            report.labels_registered += 1  # __note__
-            report.labels_registered += sum(1 for a in anchors if _ANCHOR_RE.match(a))
+            report.labels_registered += 1 + sum(1 for a in anchors if _ANCHOR_RE.match(a))
             report.citations_registered += len(bibkeys)
             report.edges_created += len(parse_relations_frontmatter(fm))
             continue
-
         note = _upsert_note_row(session, str(md_path), {**fm, "id": zettel_id})
         report.notes_scanned += 1
         report.labels_registered += _upsert_note_labels(session, note, anchors)
         report.citations_registered += _upsert_note_citations(session, note, bibkeys)
         note_data.append((note, body, fm))
 
-    # Pass 2: upsert Link rows
     if not dry_run:
-        for note, body, _fm in note_data:
-            report.links_created += _upsert_note_links(session, note, body)
-
-    # Pass 3: orphan Link cleanup
-    if not dry_run:
-        report.orphans_dropped += _drop_orphan_links(
-            session, scope_prefix, current_filenames
+        _run_write_passes(
+            session, note_data, scope_prefix, current_filenames,
+            strict_concepts, rebuild_edges, report,
         )
-
-    # Pass 4: upsert NoteEdge rows from relations: frontmatter
-    if not dry_run:
-        for note, _body, fm in note_data:
-            report.edges_created += _upsert_note_edges(session, note, fm)
-
-    # Pass 5: upsert NoteConcept rows from concepts: frontmatter
-    if not dry_run:
-        for note, _body, fm in note_data:
-            created, issues = _sync_note_concepts(session, note, fm, strict=strict_concepts)
-            report.concept_links_created += created
-            report.concept_issues.extend(issues)
 
     return report

@@ -16,7 +16,12 @@ import yaml
 
 from workflow.db.errors import AmbiguousLookupError, EntityNotFoundError
 from workflow.notes.discovery import parse_frontmatter, walk_note_files
-from workflow.validation.schemas import NoteFrontmatter, validate_note_frontmatter
+from workflow.validation.schemas import (
+    NoteFrontmatter,
+    NoteRelations,
+    RelationEdge,
+    validate_note_frontmatter,
+)
 
 __all__ = [
     "NoteNotFound",
@@ -28,6 +33,7 @@ __all__ = [
     "read_note",
     "update_tags",
     "add_link",
+    "add_relation_link",
     "resolve_workspace_root",
 ]
 
@@ -71,6 +77,26 @@ def _assert_within(child: Path, root: Path) -> None:
         raise ValueError(f"Path {child} escapes target directory {root}")
 
 
+def _relation_edge_to_dict(e: RelationEdge) -> dict:
+    """Serialize a RelationEdge to a dict suitable for YAML output."""
+    d: dict = {"id": e.id, "type": e.type}
+    if e.weight is not None:
+        d["weight"] = e.weight
+    if e.note is not None:
+        d["note"] = e.note
+    return d
+
+
+def _relations_to_dict(rel: NoteRelations) -> dict:
+    """Serialize a NoteRelations object to a plain dict for YAML/validation."""
+    out: dict = {}
+    if rel.derived_from:
+        out["derived_from"] = [_relation_edge_to_dict(e) for e in rel.derived_from]
+    if rel.links:
+        out["links"] = [_relation_edge_to_dict(e) for e in rel.links]
+    return out
+
+
 def _fm_to_yaml(fm: NoteFrontmatter) -> str:
     """Serialize NoteFrontmatter to YAML block preserving field order."""
     d: dict = {
@@ -92,6 +118,10 @@ def _fm_to_yaml(fm: NoteFrontmatter) -> str:
         d["main_topic"] = fm.main_topic
     if fm.discipline_area is not None:
         d["discipline_area"] = fm.discipline_area
+    if fm.relations is not None:
+        rel_dict = _relations_to_dict(fm.relations)
+        if rel_dict:
+            d["relations"] = rel_dict
     return yaml.safe_dump(d, allow_unicode=True, sort_keys=False)
 
 
@@ -102,7 +132,7 @@ def _write_note_file(path: Path, fm: NoteFrontmatter, body: str) -> None:
     fence (H3: body_raw already carries its leading character, e.g. ``\n``).
     """
     # Re-validate before write
-    fm_dict = {
+    fm_dict: dict = {
         "id": fm.id,
         "title": fm.title,
         "aliases": list(fm.aliases),
@@ -117,6 +147,10 @@ def _write_note_file(path: Path, fm: NoteFrontmatter, body: str) -> None:
         "main_topic": fm.main_topic,
         "discipline_area": fm.discipline_area,
     }
+    if fm.relations is not None:
+        rel_dict = _relations_to_dict(fm.relations)
+        if rel_dict:
+            fm_dict["relations"] = rel_dict
     result, errors = validate_note_frontmatter(fm_dict)
     if errors:
         raise NoteValidationError(
@@ -590,6 +624,93 @@ def add_link(
     )
     _write_note_file(path, new_fm, body)
     return path, new_fm, issues
+
+
+def _update_relation_bucket(
+    bucket: list[RelationEdge],
+    target_id: str,
+    rel_type: str,
+    *,
+    remove: bool,
+) -> None:
+    """Mutate *bucket* in-place: add or remove the (target_id, rel_type) edge."""
+    def _matches(e: RelationEdge) -> bool:
+        return e.id == target_id and e.type == rel_type
+
+    if remove:
+        bucket[:] = [e for e in bucket if not _matches(e)]
+    elif not any(_matches(e) for e in bucket):
+        bucket.append(RelationEdge(id=target_id, type=rel_type))
+
+
+def add_relation_link(
+    root: Path,
+    note_id: str,
+    *,
+    relation_type: str,
+    target_zettel_id: str,
+    remove: bool = False,
+) -> tuple[Path, NoteFrontmatter, list[dict]]:
+    """Append (or remove) a relation entry in the note's frontmatter ``relations`` block.
+
+    The edge_class is derived from ``relation_type`` via ``edge_class_for_relation_type``.
+    Operation is idempotent: re-adding the same (relation_type, target_zettel_id) is a
+    no-op. Re-validates frontmatter via ``validate_note_frontmatter`` before any write.
+
+    Returns ``(path, updated_fm, issues)`` where issues is always ``[]`` (kept for
+    API symmetry with ``add_link``).
+
+    Raises:
+        ValueError: if ``relation_type`` is unknown or ``target_zettel_id`` is malformed.
+        NoteNotFound: if the note file is not found.
+        NoteValidationError: if existing frontmatter is already invalid.
+    """
+    from workflow.db.models.notes import (
+        ZETTEL_ID_RE as _ZETTEL_ID_RE,
+        edge_class_for_relation_type,
+    )
+
+    # Validate relation_type
+    edge_class = edge_class_for_relation_type(relation_type)
+    if edge_class is None:
+        from workflow.db.models.notes import (
+            _STRUCTURAL_RELATION_TYPES_ORDERED,
+            _ASSOCIATIVE_RELATION_TYPES_ORDERED,
+        )
+        valid = list(_STRUCTURAL_RELATION_TYPES_ORDERED) + list(_ASSOCIATIVE_RELATION_TYPES_ORDERED)
+        raise ValueError(
+            f"Unknown relation type {relation_type!r}. Valid types: {valid}"
+        )
+
+    # Validate target zettel_id
+    if not _ZETTEL_ID_RE.match(target_zettel_id):
+        raise ValueError(
+            f"target_zettel_id {target_zettel_id!r} must match NanoID format "
+            "^[A-Za-z0-9_-]{8,21}$"
+        )
+
+    path, fm, body, raw_dict = _raw_read_note(root, note_id)
+    if fm is None:
+        _, errors = validate_note_frontmatter(raw_dict)
+        raise NoteValidationError(
+            f"Frontmatter of {note_id!r} is already invalid: {'; '.join(errors)}"
+        )
+
+    # Build updated relations
+    current = fm.relations if fm.relations is not None else NoteRelations()
+    derived, links = list(current.derived_from), list(current.links)
+
+    target_bucket = derived if edge_class == "structural" else links
+    _update_relation_bucket(target_bucket, target_zettel_id, relation_type, remove=remove)
+
+    new_relations: NoteRelations | None = (
+        NoteRelations(derived_from=tuple(derived), links=tuple(links))
+        if (derived or links) else None
+    )
+
+    new_fm = dataclasses.replace(fm, relations=new_relations)
+    _write_note_file(path, new_fm, body)
+    return path, new_fm, []
 
 
 def resolve_workspace_root(start: Path) -> Path:

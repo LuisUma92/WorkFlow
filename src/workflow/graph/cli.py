@@ -15,6 +15,7 @@ import json as _json
 import re as _re
 from collections import deque as _deque
 from pathlib import Path
+from typing import Any
 
 import click
 from sqlalchemy import Engine, select
@@ -22,7 +23,14 @@ from sqlalchemy.orm import Session
 
 from workflow.db.engine import init_global_db
 from workflow.db.errors import with_schema_guard
-from workflow.graph.analysis import compute_stats, find_orphans, neighbors, neighbors_detailed
+from workflow.graph.analysis import (
+    compute_stats,
+    directed_bfs,
+    find_lineage_roots,
+    find_orphans,
+    neighbors,
+    neighbors_detailed,
+)
 from workflow.graph.collectors import (
     TaxonomyFilter,
     build_knowledge_graph,
@@ -293,28 +301,53 @@ def orphans(
     discipline_area: str | None,
     topic: str | None,
 ) -> None:
-    """List nodes with no connections."""
+    """List nodes with no connections, and lineage roots (no incoming structural edges)."""
     kg = _build_graph_with_filter(project, main_topic, discipline_area, topic)
     orphan_nodes = find_orphans(kg, node_type=node_type)
+    lineage_root_nodes = find_lineage_roots(kg, node_type=node_type)
+
+    # Build combined list: true orphans (is_lineage_root=False) +
+    # lineage roots (is_lineage_root=True). Deduplicate by node_id.
+    orphan_ids = {n.node_id for n in orphan_nodes}
+    all_items = [
+        (n, False) for n in orphan_nodes
+    ] + [
+        (n, True) for n in lineage_root_nodes if n.node_id not in orphan_ids
+    ]
 
     if as_json:
         click.echo(
             _json.dumps(
                 [
-                    {"node_id": n.node_id, "node_type": n.node_type, "label": n.label}
-                    for n in orphan_nodes
+                    {
+                        "node_id": n.node_id,
+                        "node_type": n.node_type,
+                        "label": n.label,
+                        "is_lineage_root": is_root,
+                    }
+                    for n, is_root in all_items
                 ]
             )
         )
         return
 
-    if not orphan_nodes:
+    if not all_items:
         click.echo("No orphaned nodes found.")
         return
 
-    for node in orphan_nodes:
-        click.echo(f"  [{node.node_type}] {node.node_id}: {node.label}")
-    click.echo(f"\nTotal: {len(orphan_nodes)} orphan(s).")
+    true_orphans = [(n, r) for n, r in all_items if not r]
+    roots = [(n, r) for n, r in all_items if r]
+
+    if true_orphans:
+        for node, _ in true_orphans:
+            click.echo(f"  [{node.node_type}] {node.node_id}: {node.label}")
+        click.echo(f"\nTotal: {len(true_orphans)} orphan(s).")
+
+    if roots:
+        click.echo("\nLineage roots (no incoming structural edges):")
+        for node, _ in roots:
+            click.echo(f"  [{node.node_type}] {node.node_id}: {node.label}")
+        click.echo(f"Total: {len(roots)} lineage root(s).")
 
 
 # ── stats ────────────────────────────────────────────────────────────────────
@@ -676,6 +709,170 @@ def neighbors_cmd(
         marker = " *" if node.node_id == node_id else ""
         click.echo(f"  [{node.node_type}] {node.node_id}: {node.label}{marker}")
     click.echo(f"\n{len(subgraph.nodes)} node(s), {len(subgraph.edges)} edge(s).")
+
+
+# ── trace / resume shared helpers ─────────────────────────────────────────────
+
+
+def _structural_traversal(
+    engine: Engine,
+    zettel_id: str,
+    *,
+    reverse: bool,
+    max_depth: int,
+    node_budget: int,
+) -> tuple[str, dict[str, int], dict[int, "Any"]]:
+    """BFS traversal along structural NoteEdge rows.
+
+    Args:
+        reverse: When False, follow child→parent (trace ancestors).
+                 When True, follow parent→child (resume descendants).
+
+    Returns:
+        ``(start_node_id, visited_depths, note_by_db_id)`` where
+        ``visited_depths`` maps node_id → depth (includes start at depth 0) and
+        ``note_by_db_id`` maps Note.id → Note row for all visited non-start nodes.
+    """
+    from sqlalchemy import select
+    from sqlalchemy.orm import Session
+
+    from workflow.db.models.notes import Note, NoteEdge
+
+    with Session(engine) as session:
+        note = session.scalars(
+            select(Note).where(Note.zettel_id == zettel_id)
+        ).first()
+        if note is None:
+            raise click.ClickException(f"Note {zettel_id!r} not found in DB.")
+
+        rows = session.scalars(
+            select(NoteEdge).where(
+                NoteEdge.edge_class == "structural",
+                NoteEdge.target_id.is_not(None),
+            )
+        ).all()
+
+        adj: dict[str, list[str]] = {}
+        for row in rows:
+            src = f"note:{row.source_id}"
+            tgt = f"note:{row.target_id}"
+            key, val = (tgt, src) if reverse else (src, tgt)
+            adj.setdefault(key, []).append(val)
+
+        start = f"note:{note.id}"
+        visited = directed_bfs(start, adj, max_depth=max_depth, node_budget=node_budget)
+
+        other_ids = [
+            int(nid[5:]) for nid in visited
+            if nid != start and nid.startswith("note:")
+            and nid[5:].lstrip("-").isdigit()
+        ]
+        rows_fetched = session.scalars(
+            select(Note).where(Note.id.in_(other_ids))
+        ).all() if other_ids else []
+        note_by_id = {n.id: n for n in rows_fetched}
+
+    return start, visited, note_by_id
+
+
+def _emit_traversal(
+    start: str,
+    zettel_id: str,
+    visited: dict[str, int],
+    note_by_id: "dict[int, Any]",
+    *,
+    as_json: bool,
+    empty_msg: str,
+) -> None:
+    """Render traversal result (JSON or text)."""
+    entries = sorted(
+        ((nid, d) for nid, d in visited.items() if nid != start),
+        key=lambda x: x[1],
+    )
+    if as_json:
+        result_nodes = []
+        for nid, depth in entries:
+            suffix = nid[len("note:"):]
+            int_id = int(suffix) if suffix.lstrip("-").isdigit() else None
+            n = note_by_id.get(int_id) if int_id is not None else None
+            result_nodes.append({
+                "node_id": nid,
+                "zettel_id": n.zettel_id if n else None,
+                "title": n.title if n else None,
+                "depth": depth,
+            })
+        click.echo(_json.dumps({"start": zettel_id, "nodes": result_nodes}))
+        return
+    if not entries:
+        click.echo(empty_msg)
+        return
+    for nid, depth in entries:
+        suffix = nid[len("note:"):]
+        int_id = int(suffix) if suffix.lstrip("-").isdigit() else None
+        n = note_by_id.get(int_id) if int_id is not None else None
+        label = (n.zettel_id or nid) if n else nid
+        title = f" — {n.title}" if n and n.title else ""
+        click.echo(f"  (depth {depth}) {label}{title}")
+
+
+# ── trace ─────────────────────────────────────────────────────────────────────
+
+
+@graph.command(name="trace")
+@click.argument("zettel_id")
+@click.option("--max-depth", "max_depth", type=int, default=10, show_default=True,
+              help="Maximum BFS depth toward ancestors.")
+@click.option("--node-budget", "node_budget", type=int, default=50, show_default=True,
+              help="Stop traversal after collecting this many nodes.")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
+@with_schema_guard
+def trace_cmd(
+    zettel_id: str,
+    max_depth: int,
+    node_budget: int,
+    as_json: bool,
+) -> None:
+    """Trace lineage ancestors of a note along structural edges (BFS toward roots)."""
+    global_engine = init_global_db()
+    start, visited, note_by_id = _structural_traversal(
+        global_engine, zettel_id,
+        reverse=False, max_depth=max_depth, node_budget=node_budget,
+    )
+    _emit_traversal(
+        start, zettel_id, visited, note_by_id,
+        as_json=as_json,
+        empty_msg=f"No ancestors found for {zettel_id!r}.",
+    )
+
+
+# ── resume ────────────────────────────────────────────────────────────────────
+
+
+@graph.command(name="resume")
+@click.argument("zettel_id")
+@click.option("--max-depth", "max_depth", type=int, default=10, show_default=True,
+              help="Maximum BFS depth toward descendants.")
+@click.option("--node-budget", "node_budget", type=int, default=50, show_default=True,
+              help="Stop traversal after collecting this many nodes.")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
+@with_schema_guard
+def resume_cmd(
+    zettel_id: str,
+    max_depth: int,
+    node_budget: int,
+    as_json: bool,
+) -> None:
+    """Show descendants of a note: notes that continue from it (BFS along structural edges)."""
+    global_engine = init_global_db()
+    start, visited, note_by_id = _structural_traversal(
+        global_engine, zettel_id,
+        reverse=True, max_depth=max_depth, node_budget=node_budget,
+    )
+    _emit_traversal(
+        start, zettel_id, visited, note_by_id,
+        as_json=as_json,
+        empty_msg=f"No descendants found for {zettel_id!r}.",
+    )
 
 
 __all__ = ["graph"]

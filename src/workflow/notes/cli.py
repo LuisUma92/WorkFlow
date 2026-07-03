@@ -25,6 +25,7 @@ from workflow.notes.service import (
     NoteValidationError,
     _SAFE_ID_RE,
     add_link,
+    add_relation_link,
     create_note,
     list_notes,
     read_note,
@@ -359,6 +360,23 @@ def tag_cmd(
     help="Treat unknown concept codes as errors (abort sync).",
 )
 @click.option("--json", "as_json", is_flag=True, default=False, help="Emit JSON report.")
+@click.option(
+    "--rebuild-edges",
+    "rebuild_edges",
+    is_flag=True,
+    default=False,
+    help=(
+        "Full edge rebuild: drop all existing NoteEdge rows per note before "
+        "re-importing from frontmatter, so stale/renamed edges are removed."
+    ),
+)
+@click.option(
+    "--force",
+    "force",
+    is_flag=True,
+    default=False,
+    help="Bypass any future hash gate (accepted but currently a no-op).",
+)
 @click.pass_context
 @with_schema_guard
 def sync_cmd(
@@ -367,6 +385,8 @@ def sync_cmd(
     project_filter: str | None,
     strict_concepts: bool,
     as_json: bool,
+    rebuild_edges: bool,
+    force: bool,
 ) -> None:
     """Sync notes vault: upsert Note/Label/Link rows from .md files."""
     import json as _json
@@ -387,6 +407,7 @@ def sync_cmd(
             dry_run=dry_run,
             project_filter=project_filter,
             strict_concepts=strict_concepts,
+            rebuild_edges=rebuild_edges,
         )
         if not dry_run:
             session.commit()
@@ -632,6 +653,97 @@ def new_id_cmd(length: int) -> None:
     click.echo(zid)
 
 
+def _run_classic_link(
+    root: Path,
+    note_id: str,
+    engine: object,
+    *,
+    concept: str | None,
+    reference: str | None,
+    exercise: str | None,
+    main_topic: str | None,
+    strict: bool,
+    remove: bool,
+) -> tuple:
+    """Execute a classic link operation (concept/reference/exercise/main_topic).
+
+    Raises click.ClickException on service errors.
+    Returns (path, fm, issues).
+    """
+    from sqlalchemy.orm import Session as _Session
+
+    try:
+        with _Session(engine) as session:
+            path, new_fm, issues = add_link(
+                root, note_id,
+                concept=concept, reference=reference, exercise=exercise,
+                main_topic=main_topic,
+                session=session, strict=strict, remove=remove,
+            )
+            session.commit()
+    except NoteNotFound as exc:
+        raise click.ClickException(str(exc))
+    except AmbiguousNoteId as exc:
+        raise click.ClickException("ambiguous id: " + str(exc))
+    except NoteValidationError as exc:
+        raise click.ClickException(str(exc))
+    return path, new_fm, issues
+
+
+def _run_relation_link(
+    root: Path,
+    note_id: str,
+    relation_type: str | None,
+    relation_target: str | None,
+    *,
+    remove: bool,
+) -> tuple:
+    """Validate and execute a --relation link operation. Returns (path, fm, issues)."""
+    _validate_relation_options(relation_type, relation_target)
+    try:
+        path, new_fm, issues = add_relation_link(
+            root, note_id,
+            relation_type=relation_type,
+            target_zettel_id=relation_target,
+            remove=remove,
+        )
+    except (NoteNotFound, NoteValidationError) as exc:
+        raise click.ClickException(str(exc))
+    except AmbiguousNoteId as exc:
+        raise click.ClickException("ambiguous id: " + str(exc))
+    except ValueError as exc:
+        raise click.UsageError(str(exc))
+    return path, new_fm, issues
+
+
+def _validate_relation_options(
+    relation_type: str | None,
+    relation_target: str | None,
+) -> None:
+    """Validate --relation and --target options; raise UsageError on failure."""
+    if relation_target is None:
+        raise click.UsageError("--relation requires --target <zettel_id>.")
+    from workflow.db.models.notes import (
+        ZETTEL_ID_RE as _ZID_RE,
+        _ASSOCIATIVE_RELATION_TYPES_ORDERED,
+        _STRUCTURAL_RELATION_TYPES_ORDERED,
+        edge_class_for_relation_type,
+    )
+    if edge_class_for_relation_type(relation_type) is None:
+        valid = (
+            list(_STRUCTURAL_RELATION_TYPES_ORDERED)
+            + list(_ASSOCIATIVE_RELATION_TYPES_ORDERED)
+        )
+        raise click.UsageError(
+            f"Unknown relation type {relation_type!r}. Valid types: {valid}"
+        )
+    if not _ZID_RE.match(relation_target):
+        raise click.UsageError(
+            f"--target {relation_target!r} does not match NanoID format "
+            "^[A-Za-z0-9_-]{8,21}$"
+        )
+
+
 @notes.command(name="link")
 @click.argument("note_id")
 @click.option("--concept", "concept", default=None)
@@ -639,6 +751,16 @@ def new_id_cmd(length: int) -> None:
 @click.option("--exercise", "exercise", default=None)
 @click.option("--main-topic", "main_topic", default=None,
               help="Rewrite frontmatter main_topic: key and set Note.main_topic_id FK.")
+@click.option(
+    "--relation", "relation_type", default=None,
+    help="Relation type (e.g. continuation, refines, supports). "
+         "Use with --target.",
+)
+@click.option(
+    "--target", "relation_target", default=None,
+    metavar="ZETTEL_ID",
+    help="Target zettel_id for --relation (NanoID format, 8–21 chars).",
+)
 @click.option(
     "--dir",
     "root_dir",
@@ -659,42 +781,42 @@ def link_cmd(
     reference: str | None,
     exercise: str | None,
     main_topic: str | None,
+    relation_type: str | None,
+    relation_target: str | None,
     root_dir: str,
     as_json: bool,
     remove: bool,
     strict: bool,
 ) -> None:
-    """Append (or remove) a concept, reference, exercise, or main_topic link to a note."""
-    from sqlalchemy.orm import Session
-
+    """Append (or remove) a concept, reference, exercise, main_topic, or relation link to a note."""
     from workflow.db.engine import get_engine_from_ctx
 
     _validate_cli_id(note_id)
 
-    # Mutex: exactly one of --concept/--reference/--exercise/--main-topic required
-    targets = [x for x in (concept, reference, exercise, main_topic) if x is not None]
-    if len(targets) != 1:
+    classic_targets = [x for x in (concept, reference, exercise, main_topic) if x is not None]
+    has_relation = relation_type is not None
+
+    if has_relation and classic_targets:
         raise click.UsageError(
-            "Exactly one of --concept, --reference, --exercise, or --main-topic is required."
+            "--relation is mutually exclusive with --concept, --reference, --exercise, --main-topic."
         )
 
     root = Path(root_dir).resolve()
-    engine = get_engine_from_ctx(ctx)
-    try:
-        with Session(engine) as session:
-            path, new_fm, issues = add_link(
-                root, note_id,
-                concept=concept, reference=reference, exercise=exercise,
-                main_topic=main_topic,
-                session=session, strict=strict, remove=remove,
+    if has_relation:
+        path, new_fm, issues = _run_relation_link(
+            root, note_id, relation_type, relation_target, remove=remove,
+        )
+    else:
+        if len(classic_targets) != 1:
+            raise click.UsageError(
+                "Exactly one of --concept, --reference, --exercise, --main-topic, or --relation is required."
             )
-            session.commit()
-    except NoteNotFound as exc:
-        raise click.ClickException(str(exc))
-    except AmbiguousNoteId as exc:
-        raise click.ClickException("ambiguous id: " + str(exc))
-    except NoteValidationError as exc:
-        raise click.ClickException(str(exc))
+        engine = get_engine_from_ctx(ctx)
+        path, new_fm, issues = _run_classic_link(
+            root, note_id, engine,
+            concept=concept, reference=reference, exercise=exercise,
+            main_topic=main_topic, strict=strict, remove=remove,
+        )
 
     for issue in issues:
         click.echo(f"Warning: {issue['message']}", err=True)

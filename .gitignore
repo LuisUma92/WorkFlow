@@ -230,3 +230,4 @@ pytest-of-luis/
 # Serena tool workspace + stray Moodle-export test artifacts
 .serena/
 tmp*.xml
+graphify-out/
