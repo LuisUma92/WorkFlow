@@ -9,31 +9,35 @@
 
 ### ITEP-0013 — note relation graph: ~70% SHIPPED (ADR INDEX still says "Proposed" — stale)
 
-| ADR phase | Claim | Reality (verified) |
-|---|---|---|
-| P0 migration `note_edge` + indexes | pending | ✅ `0007_add_note_edges.py` |
-| NoteEdge ORM model | pending | ✅ `db/models/notes.py`; vocab constants now single-source there (commit `d9c7d39`) |
-| P1 frontmatter `relations` DTO | pending | ✅ shipped in template-gap wave — `NoteRelations`/`RelationEdge`/`entry_point` (`209987d`) |
-| P2 reindex → `note_edge`, unresolved=NULL | pending | ✅ `sync.py:248 _upsert_note_edges`, `parse_relations_frontmatter`, `edges resolve` (`resolve.py`), `upsert_note_edge` |
-| P3 validator | pending | 🟡 PARTIAL — `notes edges check` (cycles only, via `dag.detect_structural_cycles`) + `edges resolve` exist; **no unified `validate notes --graph`** (orphan/unresolved/self/duplicate as warnings) — an ADR **MUST** |
-| P4 CLI | pending | ❌ `notes link --relation` absent (link has concept/reference/exercise/main-topic only, `cli.py:566`); `graph trace`/`graph resume` absent; `graph orphans` not lineage-aware |
-| `sync --rebuild-edges` (MUST) | pending | ❌ absent — `sync` has no rebuild/force-edges flag; default sync upserts edges incrementally only |
-| `notes enums --json` (MUST, single-source) | pending | ❌ absent — the keystone gap |
+| ADR phase                                  | Claim   | Reality (verified)                                                                                                                                                                                                   |
+| ------------------------------------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P0 migration `note_edge` + indexes         | pending | ✅ `0007_add_note_edges.py`                                                                                                                                                                                          |
+| NoteEdge ORM model                         | pending | ✅ `db/models/notes.py`; vocab constants now single-source there (commit `d9c7d39`)                                                                                                                                  |
+| P1 frontmatter `relations` DTO             | pending | ✅ shipped in template-gap wave — `NoteRelations`/`RelationEdge`/`entry_point` (`209987d`)                                                                                                                           |
+| P2 reindex → `note_edge`, unresolved=NULL  | pending | ✅ `sync.py:248 _upsert_note_edges`, `parse_relations_frontmatter`, `edges resolve` (`resolve.py`), `upsert_note_edge`                                                                                               |
+| P3 validator                               | pending | 🟡 PARTIAL — `notes edges check` (cycles only, via `dag.detect_structural_cycles`) + `edges resolve` exist; **no unified `validate notes --graph`** (orphan/unresolved/self/duplicate as warnings) — an ADR **MUST** |
+| P4 CLI                                     | pending | ❌ `notes link --relation` absent (link has concept/reference/exercise/main-topic only, `cli.py:566`); `graph trace`/`graph resume` absent; `graph orphans` not lineage-aware                                        |
+| `sync --rebuild-edges` (MUST)              | pending | ❌ absent — `sync` has no rebuild/force-edges flag; default sync upserts edges incrementally only                                                                                                                    |
+| `notes enums --json` (MUST, single-source) | pending | ❌ absent — the keystone gap                                                                                                                                                                                         |
 
 ### ITEP-0015 — editor-first tooling: PARTIALLY in motion, keystone missing
+
 - Depends on ITEP-0013 P2.1 (NoteEdge model) → **landed, unblocked.**
 - nvim `picker/edges.lua` **already exists** — but with no `notes enums --json` it can only hard-code the enum lists, which **violates the ITEP-0013 single-source MUST** (same drift class as ADR-0017). Unverified but near-certain.
 - ❌ `notes enums --json`, ❌ `notes new-id`, ❌ `note_alias` table + alias resolution, ❌ in-buffer `:WorkflowValidate` on `BufWritePost`.
 
 ### ITEP-0014 — incremental sync (`fm_hash`): correctly PARKED
+
 - Status: Proposed placeholder. ADR's own gate: **MUST NOT** begin before (1) a benchmark justifies it, (2) open questions resolved, (3) ITEP-0013 ships. `fm_hash` column absent. Not near-term work — only a benchmark spike belongs on this roadmap.
 
 ### The three 2026-05-03 requests
+
 - `notes-crud-subcommands` — ✅ CLOSED/implemented (all CRUD + bonus sync/edges exist).
 - `note-frontmatter-main-topic` — ✅ CLOSED/implemented. Residual: concept cross-check is discipline-area-scoped, not exact `Concept.main_topic_id == main_topic`. Micro-follow-up only if exact-match is wanted.
 - `graph-export-tikz-filters` — 🟡 OPEN. Shipped: `--main-topic`/`--discipline-area`/`--topic` (`graph/cli.py:109,261`). Missing: `--depth`, `--cluster`, `--include-tags`/`--exclude-tags`, `--layout`, `--color-by`, and the `--main-topic`+`--cluster` mutex.
 
 ### Deferred from the 2026-06-06 reviewer-esquema
+
 - `notes enums --json` (HIGH-1 completion — constants consolidated onto the model `d9c7d39`; CLI surfacing is the next step). **→ Wave 1.**
 - Validator↔ingest **two-parser** duplication (`schemas._validate_relations` strict vs `edges.parse_relations_frontmatter` lenient). **→ Wave 1 (fold).**
 - weight range / list caps, init.py↔live-vault template parity test, `None` vs empty `NoteRelations` normalization. **→ small tasks folded where relevant.**
@@ -102,7 +106,7 @@ human/agent/editor-facing reads the closed sets from there — never re-encodes 
 
 ## Sequencing rationale
 
-1. **W1 is the keystone** — it's a MUST for *two* ADRs and the completion of the last
+1. **W1 is the keystone** — it's a MUST for _two_ ADRs and the completion of the last
    review's consolidation. Cheap (constants already exist on the model). Everything
    editor/CI-facing depends on it.
 2. **W2 before W5** — the in-buffer validator is just the CLI `--graph` surface wrapped
