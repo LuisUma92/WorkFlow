@@ -319,6 +319,77 @@ function M.setup(workflow)
 	vim.api.nvim_create_user_command("WorkflowPrismaAcceptToNote", function()
 		require("workflow.prisma_note").accept_to_note({})
 	end, { nargs = 0 })
+
+	-- Wave 5 EDITOR commands ------------------------------------------------
+
+	-- :WorkflowReloadEnums
+	-- Clear the session-cached enums so the next picker call re-fetches from CLI.
+	vim.api.nvim_create_user_command("WorkflowReloadEnums", function()
+		require("workflow.picker.enums").reload()
+	end, { nargs = 0 })
+
+	-- :WorkflowEnumRelationType [edge_class] [mode=insert|yank]
+	-- Pick a relation_type from the live vocab; insert at cursor or yank.
+	vim.api.nvim_create_user_command("WorkflowEnumRelationType", function(cmd_opts)
+		local opts = {}
+		for _, arg in ipairs(cmd_opts.fargs) do
+			local k, v = arg:match("^([%w%-_]+)=(.+)$")
+			if k and v then
+				opts[k] = v
+			elseif not k then
+				-- bare arg treated as edge_class filter
+				opts.edge_class = arg
+			end
+		end
+		workflow.pick_relation_type(opts)
+	end, { nargs = "*" })
+
+	-- :WorkflowEnumEdgeClass [mode=insert|yank]
+	-- Pick an edge_class from the live vocab; insert at cursor or yank.
+	vim.api.nvim_create_user_command("WorkflowEnumEdgeClass", function(cmd_opts)
+		local opts = {}
+		for _, arg in ipairs(cmd_opts.fargs) do
+			local k, v = arg:match("^([%w%-_]+)=(.+)$")
+			if k and v then opts[k] = v end
+		end
+		workflow.pick_edge_class(opts)
+	end, { nargs = "*" })
+
+	-- :WorkflowEnumNoteType [mode=insert|yank]
+	-- Pick a note_type from the live vocab; insert at cursor or yank.
+	vim.api.nvim_create_user_command("WorkflowEnumNoteType", function(cmd_opts)
+		local opts = {}
+		for _, arg in ipairs(cmd_opts.fargs) do
+			local k, v = arg:match("^([%w%-_]+)=(.+)$")
+			if k and v then opts[k] = v end
+		end
+		workflow.pick_note_type(opts)
+	end, { nargs = "*" })
+
+	-- :WorkflowNoteNewId
+	-- Generate a fresh zettel_id and insert it at the cursor position.
+	vim.api.nvim_create_user_command("WorkflowNoteNewId", function()
+		workflow.insert_new_id({})
+	end, { nargs = 0 })
+
+	-- :WorkflowEdgesPickerFiltered
+	-- Two-step picker: select edge_class from live enums, then browse edges.
+	vim.api.nvim_create_user_command("WorkflowEdgesPickerFiltered", function()
+		workflow.pick_edges_filtered({})
+	end, { nargs = 0 })
+
+	-- :WorkflowValidateGraph
+	-- Run graph validation on the current buffer and populate diagnostics.
+	vim.api.nvim_create_user_command("WorkflowValidateGraph", function()
+		workflow.validate_graph({})
+	end, { nargs = 0 })
+
+	-- :WorkflowRelationBlock [relation_type]
+	-- Insert a YAML relation block scaffold (derived_from / links) at cursor.
+	vim.api.nvim_create_user_command("WorkflowRelationBlock", function(cmd_opts)
+		local rtype = cmd_opts.fargs[1] or nil
+		workflow.insert_relation_block(rtype, {})
+	end, { nargs = "?" })
 end
 
 return M

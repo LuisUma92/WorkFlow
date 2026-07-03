@@ -7,6 +7,10 @@ M.defaults = {
 	workflow_cmd = nil, -- auto-detected from venv or PATH
 	auto_sync_on_save = true,
 	auto_validate_on_save = true,
+	-- Run `workflow validate notes <path> --graph --json` on BufWritePost for
+	-- vault markdown files and surface results as Neovim diagnostics.
+	-- Set to false to disable the on-save graph check.
+	auto_graph_validate_on_save = true,
 	workspace_dir = nil, -- auto-detected from .workflow/config.yaml
 	vault_dir = "/home/luis/01-U/0000AA-Vault",
 	keymaps = true,

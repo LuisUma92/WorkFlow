@@ -81,6 +81,27 @@ function M.setup(prefix, workflow)
 	vim.keymap.set("n", prefix .. "nc", function()
 		workflow.edges_check()
 	end, vim.tbl_extend("force", opts, { desc = "workflow: check note edge cycles" }))
+
+	-- Wave 5 EDITOR keymaps
+	-- <prefix>en — generate a fresh zettel_id and insert at cursor
+	vim.keymap.set("n", prefix .. "en", function()
+		workflow.insert_new_id({})
+	end, vim.tbl_extend("force", opts, { desc = "workflow: insert new zettel_id at cursor" }))
+
+	-- <prefix>er — pick relation_type from live enums and insert at cursor
+	vim.keymap.set("n", prefix .. "er", function()
+		workflow.pick_relation_type({})
+	end, vim.tbl_extend("force", opts, { desc = "workflow: pick relation_type (enums)" }))
+
+	-- <prefix>ec — pick edge_class from live enums and insert at cursor
+	vim.keymap.set("n", prefix .. "ec", function()
+		workflow.pick_edge_class({})
+	end, vim.tbl_extend("force", opts, { desc = "workflow: pick edge_class (enums)" }))
+
+	-- <prefix>eg — manual graph validate for current buffer
+	vim.keymap.set("n", prefix .. "eg", function()
+		workflow.validate_graph({})
+	end, vim.tbl_extend("force", opts, { desc = "workflow: graph-validate current note" }))
 end
 
 return M

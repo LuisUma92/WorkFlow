@@ -43,6 +43,26 @@ function M.setup(config)
 			end,
 		})
 	end
+
+	-- Graph validate on save: runs `workflow validate notes <path> --graph --json`
+	-- and surfaces issues as Neovim diagnostics.  Opt-in via auto_graph_validate_on_save.
+	if config.auto_graph_validate_on_save then
+		vim.api.nvim_create_autocmd("BufWritePost", {
+			group = group,
+			pattern = "*.md",
+			callback = function(args)
+				local path = vim.api.nvim_buf_get_name(args.buf)
+				-- Only fire for vault notes (inside vault_root or workspace_dir).
+				local cfg = require("workflow.config")
+				if
+					cfg.is_in_workspace(path, config.vault_root)
+					or cfg.is_in_workspace(path, config.workspace_dir)
+				then
+					require("workflow.validate").validate_buffer(args.buf, config)
+				end
+			end,
+		})
+	end
 end
 
 return M

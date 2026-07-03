@@ -8,6 +8,7 @@ CONTENTS                                                    *workflow-contents*
   3. Keymaps ........................................... |workflow-keymaps|
   4. Configuration ..................................... |workflow-config|
   5. Troubleshooting ................................... |workflow-troubleshooting|
+  6. Wave 5 editor layer ............................... |workflow-wave5-editor|
 
 ==============================================================================
 1. SETUP                                                       *workflow-setup*
@@ -232,6 +233,63 @@ indexes so `:help :WorkflowXxx` resolves correctly.
 <
   Then run: >
     :WorkflowBibImport
+<
+
+2.12 Wave 5 — Enum pickers, new-id, graph validate    *workflow-wave5-editor*
+
+*:WorkflowReloadEnums*
+  Clear the session-cached vocab so the next enum picker call re-fetches
+  from `workflow notes enums --json`.  Use after upgrading the workflow CLI.
+
+*:WorkflowEnumRelationType* [edge_class] [mode=insert|yank]
+  Pick a relation_type from the live vocab.  Optional `edge_class` arg
+  restricts choices to that class's types.  `mode=yank` yanks to + instead
+  of inserting at cursor.  Example: >
+    :WorkflowEnumRelationType structural
+    :WorkflowEnumRelationType mode=yank
+<
+
+*:WorkflowEnumEdgeClass* [mode=insert|yank]
+  Pick an edge_class from the live vocab and insert/yank.
+
+*:WorkflowEnumNoteType* [mode=insert|yank]
+  Pick a note_type from the live vocab and insert/yank.
+
+*:WorkflowNoteNewId*
+  Generate a fresh zettel_id via `workflow notes new-id` and insert it at
+  the cursor position (also yanked to the + register).
+
+*:WorkflowEdgesPickerFiltered*
+  Two-step picker: first select an edge_class from the live enums, then
+  browse edges filtered by that class.  This ensures edge_class values are
+  always sourced from the CLI vocab (no hard-coded drift).
+
+*:WorkflowValidateGraph*
+  Run `workflow validate notes <path> --graph --json` on the current buffer
+  and populate Neovim diagnostics (namespace `workflow_graph_validate`).
+  Also fires automatically on BufWritePost for vault notes when
+  `auto_graph_validate_on_save = true` (default).
+
+*:WorkflowRelationBlock* [relation_type]
+  Insert a YAML relation block scaffold (`derived_from:` / `links:`) at the
+  cursor.  Optional `relation_type` argument pre-fills the field.  Example: >
+    :WorkflowRelationBlock derived_from
+<
+
+Wave 5 keymaps (under `keymap_prefix`, default `<leader>z`):
+
+  <prefix>en   Insert a fresh zettel_id at cursor
+  <prefix>er   Pick relation_type from live enums (insert)
+  <prefix>ec   Pick edge_class from live enums (insert)
+  <prefix>eg   Graph-validate current note (diagnostics)
+
+LuaSnip triggers (markdown):
+
+  rel.    Insert a `derived_from:` YAML block scaffold
+  link.   Insert a `links:` YAML block scaffold
+
+Configuration flag: >
+  auto_graph_validate_on_save = true   -- default; set false to disable
 <
 
 2.11 PRISMA accept-to-note (Wave C3)              *workflow-prisma-accept-note*

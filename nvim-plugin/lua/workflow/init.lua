@@ -234,4 +234,89 @@ function M.statusline()
 	return require("workflow.statusline").component()
 end
 
+-- Wave 5 EDITOR: enum pickers
+
+function M.pick_relation_type(opts)
+	require("workflow.picker.enums").pick_relation_type(opts)
+end
+
+function M.pick_edge_class(opts)
+	require("workflow.picker.enums").pick_edge_class(opts)
+end
+
+function M.pick_note_type(opts)
+	require("workflow.picker.enums").pick_note_type(opts)
+end
+
+function M.reload_enums()
+	require("workflow.picker.enums").reload()
+end
+
+-- Wave 5 EDITOR: new zettel_id insert
+
+--- Generate a fresh zettel_id via `workflow notes new-id --json` (or plain)
+--- and insert it at the cursor position, also yanking to + register.
+function M.insert_new_id(opts)
+	opts = opts or {}
+	local config = require("workflow.config").resolve(opts)
+	require("workflow.server").run_cli({ "notes", "new-id" }, config, function(ok, output)
+		if not ok then
+			vim.notify("Failed to generate new id:\n" .. output, vim.log.levels.ERROR, { title = "workflow" })
+			return
+		end
+		local id = output:match("[A-Za-z0-9_%-]+")
+		if not id or id == "" then
+			vim.notify("No valid id in CLI output: " .. output, vim.log.levels.ERROR, { title = "workflow" })
+			return
+		end
+		vim.schedule(function()
+			local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+			vim.api.nvim_buf_set_text(0, row - 1, col, row - 1, col, { id })
+			vim.api.nvim_win_set_cursor(0, { row, col + #id })
+			vim.fn.setreg('"', id)
+			vim.fn.setreg("+", id)
+			vim.notify("Inserted zettel_id: " .. id, vim.log.levels.INFO, { title = "workflow" })
+		end)
+	end)
+end
+
+-- Wave 5 EDITOR: graph validation
+
+--- Run graph validation on current buffer and surface as diagnostics.
+function M.validate_graph(opts)
+	opts = opts or {}
+	local config = require("workflow.config").resolve(vim.tbl_extend("force", opts, M._config or {}))
+	require("workflow.validate").validate_buffer(0, config)
+end
+
+-- Wave 5 EDITOR: filtered edges picker
+
+function M.pick_edges_filtered(opts)
+	require("workflow.picker.edges").pick_with_class_filter(opts)
+end
+
+-- Wave 5 EDITOR: relation block insert
+
+--- Insert a YAML relation block scaffold at the cursor.
+--- If rtype is provided, the relation_type field is pre-filled.
+---@param rtype string|nil  pre-filled relation_type value
+---@param opts table|nil
+function M.insert_relation_block(rtype, opts)
+	local rt_line = rtype and ("  - relation_type: " .. rtype) or "  - relation_type: "
+	local block = {
+		"",
+		"# Relation block (remove or complete as needed)",
+		"derived_from:",
+		"  - zettel_id: ",
+		rt_line,
+		"links:",
+		"  - zettel_id: ",
+		"    relation_type: ",
+	}
+	local row = vim.api.nvim_win_get_cursor(0)[1]
+	vim.api.nvim_buf_set_lines(0, row, row, false, block)
+	-- Position cursor on the first zettel_id field.
+	vim.api.nvim_win_set_cursor(0, { row + 4, #"  - zettel_id: " })
+end
+
 return M

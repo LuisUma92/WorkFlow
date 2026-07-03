@@ -23,21 +23,23 @@ local assert = require("luassert")
 -- Helpers
 -- ---------------------------------------------------------------------------
 
+-- NOTE: edge_class values must match the live vocab (structural/associative),
+-- NOT note types like "concept" or "reference" (those were the old drift bug).
 local EDGES_JSON = vim.json.encode({
   {
     source_zettel_id = "20230101120000",
     target_zettel_id = "20230102130000",
-    edge_class = "concept",
-    relation_type = "supports",
+    edge_class = "structural",
+    relation_type = "derived_from",
     id = 5,
     weight = 1.0,
-    rationale = "Direct support",
+    rationale = "Direct derivation",
   },
   {
     source_zettel_id = "20230103140000",
     target_zettel_id = "20230104150000",
-    edge_class = "reference",
-    relation_type = "cites",
+    edge_class = "associative",
+    relation_type = "supports",
     id = 7,
   },
 })
@@ -45,6 +47,16 @@ local EDGES_JSON = vim.json.encode({
 -- Load dependency modules once at describe level so the rtp loader fires.
 local server = require("workflow.server")
 local config_mod = require("workflow.config")
+
+-- Enums fixture used in pick_with_class_filter tests.
+local ENUMS_JSON = vim.json.encode({
+  edge_class = { "structural", "associative" },
+  relation_type = {
+    structural = { "parent_of", "derived_from" },
+    associative = { "supports", "contradicts" },
+  },
+  note_type = { "permanent", "literature" },
+})
 
 -- ---------------------------------------------------------------------------
 -- Suite
@@ -64,8 +76,9 @@ describe("workflow.picker.edges", function()
   local captured_args
 
   before_each(function()
-    -- Only bust the picker cache so it re-reads the (now stubbed) server/config fields.
+    -- Bust both picker caches so they re-read the (now stubbed) dependencies.
     package.loaded["workflow.picker.edges"] = nil
+    package.loaded["workflow.picker.enums"] = nil
 
     -- Save originals.
     orig_run_cli = server.run_cli
@@ -74,11 +87,17 @@ describe("workflow.picker.edges", function()
     orig_notify = vim.notify
     orig_snacks_pkg = package.loaded["snacks"]
 
-    -- Default stubs.
+    -- Default stubs: serve edges JSON for "notes edges list" calls and
+    -- enums JSON for "notes enums" calls.
     captured_args = nil
     server.run_cli = function(args, cfg, cb)
       captured_args = args
-      cb(true, EDGES_JSON)
+      local cmd = table.concat(args, " ")
+      if cmd:find("enums") then
+        cb(true, ENUMS_JSON)
+      else
+        cb(true, EDGES_JSON)
+      end
     end
 
     config_mod.resolve = function(opts)
@@ -113,6 +132,7 @@ describe("workflow.picker.edges", function()
     vim.notify = orig_notify
     package.loaded["snacks"] = orig_snacks_pkg
     package.loaded["workflow.picker.edges"] = nil
+    package.loaded["workflow.picker.enums"] = nil
   end)
 
   -- -------------------------------------------------------------------------
@@ -125,13 +145,14 @@ describe("workflow.picker.edges", function()
     assert.equals(2, #captured_spec.items)
 
     local item1 = captured_spec.items[1]
-    assert.equals("[concept] 20230101120000 → 20230102130000 (supports)", item1.text)
+    -- edge_class is now "structural" (live vocab), not "concept" (old drift)
+    assert.equals("[structural] 20230101120000 → 20230102130000 (derived_from)", item1.text)
     assert.equals(5, item1.item.id)
-    assert.equals("concept", item1.item.edge_class)
+    assert.equals("structural", item1.item.edge_class)
     assert.equals("20230101120000", item1.item.source_zettel_id)
 
     local item2 = captured_spec.items[2]
-    assert.equals("[reference] 20230103140000 → 20230104150000 (cites)", item2.text)
+    assert.equals("[associative] 20230103140000 → 20230104150000 (supports)", item2.text)
     assert.equals(7, item2.item.id)
   end)
 
@@ -246,5 +267,58 @@ describe("workflow.picker.edges", function()
       end
     end
     assert.is_true(found, "Expected 'snacks.nvim is required' notification")
+  end)
+
+  -- -------------------------------------------------------------------------
+  -- Case 6: pick_with_class_filter — opens class picker sourced from enums
+  -- -------------------------------------------------------------------------
+  it("pick_with_class_filter opens a class picker with values from live enums", function()
+    edges.pick_with_class_filter({})
+
+    -- First call: Snacks.picker is invoked for the class selection step.
+    assert.is_not_nil(captured_spec, "class selection picker must open")
+    local class_title = captured_spec.title or ""
+    assert.is_truthy(
+      class_title:lower():find("class") or class_title:lower():find("edge"),
+      "picker title should mention 'class' or 'edge', got: " .. class_title
+    )
+
+    -- Items must come from the live enums, not any hard-coded list.
+    assert.equals(2, #captured_spec.items, "expected 2 edge classes from ENUMS_JSON")
+    local texts = {}
+    for _, item in ipairs(captured_spec.items) do
+      table.insert(texts, item.text)
+    end
+    assert.is_truthy(vim.tbl_contains(texts, "structural"), "expected 'structural' from live enums")
+    assert.is_truthy(vim.tbl_contains(texts, "associative"), "expected 'associative' from live enums")
+  end)
+
+  -- -------------------------------------------------------------------------
+  -- Case 7: pick_with_class_filter — confirm opens filtered edges picker
+  -- -------------------------------------------------------------------------
+  it("pick_with_class_filter confirm re-opens edges picker with selected class", function()
+    local picker_calls = {}
+    package.loaded["snacks"] = {
+      picker = function(spec)
+        table.insert(picker_calls, spec)
+        -- auto-capture last spec
+        captured_spec = spec
+      end,
+    }
+
+    edges.pick_with_class_filter({})
+
+    -- First picker: class selection.
+    assert.equals(1, #picker_calls, "expected exactly one picker open so far")
+
+    -- Simulate confirming "structural".
+    local fake_picker = { close = function() end }
+    captured_spec.confirm(fake_picker, captured_spec.items[1])
+
+    -- Second picker: edges list filtered by structural.
+    assert.equals(2, #picker_calls, "expected second picker after class confirm")
+    local edge_spec = picker_calls[2]
+    assert.is_not_nil(edge_spec.items, "edges picker must have items")
+    assert.equals(2, #edge_spec.items, "should see both edges from EDGES_JSON")
   end)
 end)

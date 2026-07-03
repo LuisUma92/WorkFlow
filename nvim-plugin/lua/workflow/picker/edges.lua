@@ -3,8 +3,12 @@
 -- Filters: source, edge-class, relation-type
 -- Preview: full edge JSON + rationale
 -- <CR>: open source note file
+--
+-- edge_class / relation_type values are sourced from the live vocab via
+-- workflow.picker.enums (never hard-coded here).
 
 local server = require("workflow.server")
+local enums_mod = require("workflow.picker.enums")
 
 local M = {}
 
@@ -130,6 +134,50 @@ function M.pick(opts)
 						vim.notify("No file path for note " .. src_id, vim.log.levels.WARN, { title = "workflow" })
 					end
 				end)
+			end,
+		})
+	end)
+end
+
+--- Two-step picker: first pick edge_class from live enums, then filter edges.
+--- This ensures edge_class is always sourced from the live vocab (no drift).
+---@param opts table|nil
+function M.pick_with_class_filter(opts)
+	opts = opts or {}
+	local config = require("workflow.config").resolve(opts)
+	enums_mod.get_enums(config, function(ok, enums, err)
+		if not ok then
+			vim.notify("Failed to load enums:\n" .. (err or "?"), vim.log.levels.ERROR, { title = "workflow" })
+			return
+		end
+		local classes = enums.edge_class
+		if not classes or #classes == 0 then
+			-- Fall back to unfiltered picker
+			M.pick(opts)
+			return
+		end
+		local ok_snacks, Snacks = pcall(require, "snacks")
+		if not ok_snacks or not Snacks or not Snacks.picker then
+			vim.notify("snacks.nvim is required for pickers (https://github.com/folke/snacks.nvim)", vim.log.levels.ERROR, { title = "workflow" })
+			return
+		end
+		local class_items = {}
+		for _, c in ipairs(classes) do
+			table.insert(class_items, { text = c, value = c })
+		end
+		Snacks.picker({
+			title = "Filter by edge class",
+			items = class_items,
+			format = function(item) return { { item.text } } end,
+			confirm = function(picker, item)
+				picker:close()
+				if not item then
+					-- No selection → open unfiltered
+					M.pick(opts)
+					return
+				end
+				local merged = vim.tbl_extend("force", opts, { edge_class = item.value })
+				M.pick(merged)
 			end,
 		})
 	end)
