@@ -24,7 +24,7 @@ from workflow.db.models.academic import (
     Institution,
     Item,
 )
-from workflow.db.models.exercises import Exercise
+from workflow.db.models.exercises import Exercise, ExerciseConcept
 from workflow.db.models.notes import Link, Note, NoteTag, Tag
 
 
@@ -254,6 +254,7 @@ class SqlExerciseRepo:
         taxonomy_domain: str | None = None,
         status: str | None = None,
         exercise_type: str | None = None,
+        concept_ids: list[int] | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list[Exercise]:
@@ -272,6 +273,10 @@ class SqlExerciseRepo:
         if tags is not None:
             for tag in tags:
                 stmt = stmt.where(Exercise.tags.contains(f'"{tag}"'))
+        if concept_ids is not None:
+            stmt = stmt.join(
+                ExerciseConcept, ExerciseConcept.exercise_id == Exercise.id
+            ).where(ExerciseConcept.concept_id.in_(concept_ids))
 
         stmt = stmt.offset(offset).limit(limit)
         return list(self._session.scalars(stmt).all())

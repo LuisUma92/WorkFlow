@@ -22,6 +22,7 @@ from workflow.db.models.exercises import Exercise
 from workflow.db.repos.sqlalchemy import SqlExerciseRepo
 from workflow.db.errors import with_schema_guard
 from workflow.bibliography.service import get_bib_entry_by_bibkey, BibKeyAmbiguous
+from workflow.concept.service import resolve_concepts
 from workflow.exercise.exam_builder import build_exam
 from workflow.exercise.generator import generate_exercise_file, generate_from_content
 from workflow.exercise.moodle import exercises_to_quiz_xml
@@ -64,29 +65,72 @@ def _find_tex_files(path: Path) -> list[Path]:
     return files
 
 
-def _sync_files(engine, files: list[Path], strict_concepts: bool = False) -> None:
+def _sync_files(
+    engine,
+    files: list[Path],
+    strict_concepts: bool = False,
+    as_json: bool = False,
+    dry_run: bool = False,
+    status_filter: str | None = None,
+) -> None:
     import sys
+    import json as _json
 
     with Session(engine) as session:
         try:
             result, messages = sync_exercises(
-                session, files, strict_concepts=strict_concepts
+                session,
+                files,
+                strict_concepts=strict_concepts,
+                status_filter=status_filter,
+                dry_run=dry_run,
             )
         except ValueError as exc:
             # Strict-concepts failure: every dropped code is joined into
             # exc's message (service.py collects across the whole batch).
-            for line in str(exc).split("; "):
-                click.echo(f"error: {line}", err=True)
+            lines = str(exc).split("; ")
+            if as_json:
+                click.echo(
+                    _json.dumps(
+                        {
+                            "synced": 0,
+                            "skipped": 0,
+                            "errors": lines,
+                            "dropped_concepts": [],
+                            "invalid_status": 0,
+                            "dry_run": dry_run,
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                for line in lines:
+                    click.echo(f"error: {line}", err=True)
             sys.exit(1)
+
+    if as_json:
+        report = {
+            "synced": result.new + result.updated,
+            "skipped": result.skipped,
+            "errors": list(result.errors),
+            "dropped_concepts": result.dropped_concepts,
+            "invalid_status": result.invalid_status,
+            "dry_run": dry_run,
+        }
+        click.echo(_json.dumps(report, indent=2))
+        if result.invalid_status:
+            sys.exit(1)
+        return
 
     for msg in messages:
         click.echo(msg)
 
+    dry_run_note = " (dry-run, no changes written)" if dry_run else ""
     click.echo(
         f"\nSync complete: {result.new} new, "
         f"{result.updated} updated, "
         f"{result.unchanged} unchanged, "
-        f"{result.skipped} skipped."
+        f"{result.skipped} skipped.{dry_run_note}"
     )
 
     if result.invalid_status:
@@ -214,15 +258,27 @@ def _exercise_to_dict(ex: Any) -> dict[str, Any]:
 @click.option(
     "--course", type=str, default=None, help="Filter by course code (tag match)."
 )
+@click.option(
+    "--concept", "concept_code", type=str, default=None, help="Filter by concept code."
+)
 @click.option("--limit", type=int, default=100, show_default=True)
 @click.option("--json", "as_json", is_flag=True, default=False, help="Emit JSON array.")
 @click.pass_context
 @with_schema_guard
 def list_exercises(
-    ctx, status, difficulty, taxonomy_level, exercise_type, course, limit, as_json
+    ctx,
+    status,
+    difficulty,
+    taxonomy_level,
+    exercise_type,
+    course,
+    concept_code,
+    limit,
+    as_json,
 ) -> None:
     """List exercises in the database."""
     import json as _json
+    import sys
 
     engine = _get_engine(ctx)
 
@@ -230,6 +286,17 @@ def list_exercises(
     tag_filter = [course] if course else None
 
     with Session(engine) as session:
+        concept_ids: list[int] | None = None
+        if concept_code is not None:
+            found, _issues = resolve_concepts([concept_code], session, strict=True)
+            if not found:
+                click.echo(
+                    f"error: concept code '{concept_code}' not found in database.",
+                    err=True,
+                )
+                sys.exit(2)
+            concept_ids = [found[0].id]
+
         repo = SqlExerciseRepo(session)
         exercises = repo.find_by_filters(
             status=status,
@@ -237,6 +304,7 @@ def list_exercises(
             taxonomy_level=taxonomy_level,
             exercise_type=exercise_type,
             tags=tag_filter,
+            concept_ids=concept_ids,
             limit=limit,
         )
 
@@ -271,23 +339,69 @@ def list_exercises(
     default=False,
     help="Treat unresolved concept codes as errors (abort sync, exit 1).",
 )
+@click.option("--json", "as_json", is_flag=True, default=False, help="Emit JSON report.")
+@click.option(
+    "--dry-run",
+    "dry_run",
+    is_flag=True,
+    default=False,
+    help="Parse and report the diff without writing to the DB.",
+)
+@click.option(
+    "--status",
+    "status_filter",
+    type=click.Choice(["placeholder", "in_progress", "complete"], case_sensitive=False),
+    default=None,
+    help="Only sync files whose parsed status matches.",
+)
 @click.pass_context
 @with_schema_guard
-def sync(ctx, path: str, strict_concepts: bool) -> None:
+def sync(
+    ctx,
+    path: str,
+    strict_concepts: bool,
+    as_json: bool,
+    dry_run: bool,
+    status_filter: str | None,
+) -> None:
     """Sync exercise .tex files to the database.
 
     Scans PATH for .tex files, parses metadata, and upserts into the
     global exercise bank. Reports new, updated, and unchanged counts.
     """
+    import json as _json
+
     engine = _get_engine(ctx)
     target = Path(path)
     files = _find_tex_files(target)
 
     if not files:
-        click.echo("No .tex files found.")
+        if as_json:
+            click.echo(
+                _json.dumps(
+                    {
+                        "synced": 0,
+                        "skipped": 0,
+                        "errors": [],
+                        "dropped_concepts": [],
+                        "invalid_status": 0,
+                        "dry_run": dry_run,
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            click.echo("No .tex files found.")
         return
 
-    _sync_files(engine, files, strict_concepts=strict_concepts)
+    _sync_files(
+        engine,
+        files,
+        strict_concepts=strict_concepts,
+        as_json=as_json,
+        dry_run=dry_run,
+        status_filter=status_filter,
+    )
 
 
 @exercise.command()
