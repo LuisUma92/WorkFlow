@@ -148,3 +148,5 @@ institution, or empty result set when `--fail-empty` is passed.
 
 - `raw/workflow-runner.md#2026-04-27-14:20` — `workflow evaluations list`
   crashes on schema mismatch (missing `description` column)
+
+- 2026-07-03 — audit re-verify: evaluations list protected by @with_schema_guard (evaluation/cli.py:64); db migrate exists. Crash cannot recur; stays closed.

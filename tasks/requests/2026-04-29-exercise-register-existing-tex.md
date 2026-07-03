@@ -150,3 +150,5 @@ file not found, DB collision, or unknown `--type` value.
 
 - `raw/exam-author.md#2026-04-23` — `workflow exercise create` cannot register
   an existing .tex file with UCIMED metadata
+
+- 2026-07-03 — audit re-verify: register/register-batch confirmed live with --course/--cycle/--partial + ExerciseType enum values (multichoice/shortanswer/essay/numerical/truefalse — enum VALUES, not TSU/TRC codes). No reopen needed.

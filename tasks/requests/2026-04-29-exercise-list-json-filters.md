@@ -128,3 +128,5 @@ Exit codes: 0 on successful query (including empty results); 1 on unknown
 
 - `raw/workflow-runner.md#2026-04-27-14:15` — `workflow exercise list` lacks
   `--json` flag; workaround required direct SQLite inspection
+
+- 2026-07-03 — audit re-verify: shipped surface confirmed live (--json/--status/--difficulty/--taxonomy-level/--type/--course/--limit). Missing --concept filter reopened as [20260703-exercise-composability-flags](2026-07-03-exercise-composability-flags.md) — do not reopen here.

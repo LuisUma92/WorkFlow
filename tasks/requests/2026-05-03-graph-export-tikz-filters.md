@@ -4,8 +4,8 @@ title: Add filter flags to `workflow graph export-tikz`
 type: enhancement
 source_agent: workflow-runner
 opened_on: 2026-05-03
-status: open
-resolution:
+status: closed
+resolution: implemented
 priority: P2
 severity: recurring-friction
 labels:
@@ -26,8 +26,8 @@ assignee: unassigned
 target_release: "graph-enhancement wave (not current PRISMA/bibliography roadmap)"
 implementation:
   - "PARTIAL: --main-topic/--discipline-area/--topic shipped (Phase 4E, graph/cli.py:271-273)"
-closed_on:
-closed_by:
+closed_on: 2026-07-03
+closed_by: 4bba8ab (W4) + c19afaa (reviewer fixes)
 acceptance_criteria:
   - "`workflow graph export-tikz --main-topic <slug>` emits a `.tex` whose nodes are exactly the notes with that `main_topic` (plus `--depth` ring)."
   - "`--cluster <name>` produces the subgraph from `graph clusters` output with the same name."
@@ -115,3 +115,5 @@ Semantics:
 
 - `~/Documents/01-U/.claude/gaps/raw/workflow-runner.md#2026-05-03-21:12`
   (`graph export-tikz` sin filtros)
+
+- 2026-07-03 — closed: W4 shipped `graph export-tikz --depth/--cluster/--include-tags/--exclude-tags/--layout/--color-by` (4bba8ab). Caveat: --color-by main_topic/tag uses id-hash/label-substring, NOT real MainTopic/Tag DB propagation — that residual tracked in roadmap 2026-07-03 (post-candidatura).
