@@ -5,8 +5,8 @@ type: gap
 source_agent: exam-author
 opened_on: 2026-07-03
 
-status: open
-resolution:
+status: closed
+resolution: implemented
 priority: P1
 severity: recurring-friction
 
@@ -31,9 +31,15 @@ blocked_by: []
 
 assignee: claude
 target_release: pre-candidatura-window-2026-07
-implementation: []
-closed_on:
-closed_by:
+implementation:
+  - src/workflow/exam/validate.py
+  - src/workflow/exam/weekly.py
+  - src/workflow/exam/cli.py (scaffold-xml dual-mode + validate wiring)
+  - tests/workflow/exam/test_validate.py
+  - tests/workflow/exam/test_scaffold_weekly.py
+  - tests/fixtures/moodle/*.xml
+closed_on: 2026-07-03
+closed_by: "f0aa62d + 14a0f21 (write: f0aa62d + follow-up feat(exam) weekly scaffold commit)"
 
 acceptance_criteria:
   - "`workflow exercise validate-moodle <file.xml>` checks per multichoice question: exactly one fraction=100, >=2 fraction=0, CDATA wrapping, defaultgrade/penalty/single present; exit 1 on violation with question name + rule"
@@ -94,14 +100,14 @@ Expected output / JSON shape (validate --json):
 
 ## Acceptance criteria
 
-- [ ] validate-moodle rules: 1×fraction=100, ≥2×fraction=0, CDATA, defaultgrade/penalty/single
-- [ ] --strict adds idnumber + category checks
-- [ ] scaffold-moodle emits categories/idnumbers/stubs only (no content authoring)
-- [ ] --category-style default flat; hierarchical opt-in documented
-- [ ] Week/Tema offset encoded
-- [ ] scaffold output passes own validator (round-trip test)
-- [ ] Tests + fixture XMLs under tests/workflow/exercise/ (outputs to tests/outputs/)
-- [ ] Docs updated: CLAUDE.md command table
+- [x] validate rules: 1×fraction=100, ≥2×fraction=0, CDATA, defaultgrade/penalty/single (shipped as `workflow exam validate`)
+- [x] --strict adds idnumber + category checks
+- [x] scaffold weekly mode emits categories/idnumbers/stubs only (no content authoring)
+- [x] --category-style default flat; hierarchical opt-in documented
+- [x] Week/Tema offset encoded (`workflow.exam.weekly.tema_label_for_practica`)
+- [x] scaffold output passes own validator (round-trip test)
+- [x] Tests + fixture XMLs — actual location `tests/workflow/exam/` + `tests/fixtures/moodle/` (surface moved from `exercise` to `exam` group post-discovery, see Progress log 2026-07-03)
+- [x] Docs updated: CLAUDE.md command table
 
 ## Out of scope
 
@@ -139,14 +145,38 @@ xmllint --noout weekly.xml   # well-formedness only, no Moodle semantics
 ## Progress log
 
 - 2026-07-03 — opened by claude; consolidates 2026-04-29-exam-scaffold-moodle-xml + audit slugs #4/#11/#16; surface decision (exercise group) by user
+- 2026-07-03 — **Surface decision revised (post-discovery):** final surface is `workflow exam validate` and
+  `workflow exam scaffold-xml --week/--dc/--kind/--category-style`, NOT `exercise validate-moodle`/
+  `exercise scaffold-moodle` as originally scoped. `exam scaffold-xml` already existed (2026-05-27); extending
+  it in place — rather than adding a second, parallel `exercise` surface — keeps one scaffold engine.
+  Implementation summary:
+  - **`exam validate`** (`src/workflow/exam/validate.py`, Phase 1, commit `f0aa62d`): per-multichoice-question
+    rules — exactly one `fraction=100`, ≥2 `fraction=0`, CDATA wrapping, `defaultgrade`/`penalty`/`single`
+    present; `--strict` adds `idnumber` + category-question presence; a loudness guard fails the whole file if
+    the raw CDATA scan and `xml.etree` question count disagree (never silently under-checks); exit 1 on any
+    violation; `--json` emits `{file, questions, violations[]}`. 19 tests + 8 fixture XMLs under
+    `tests/fixtures/moodle/`.
+  - **`exam scaffold-xml` weekly mode** (`src/workflow/exam/weekly.py` + `cli.py` dual-mode dispatch, Phase 2,
+    uncommitted at doc-close time, landing as a follow-up `feat(exam)` commit): `--week/--dc/--kind` reads a
+    DC.md's `##` headings as categories (`parse_dc_headings`); builds `WWCCNN` idnumbers with a 1..99 guard per
+    field (`build_idnumber`); encodes `Practica-N → PC-N → Tema #(N+1)` via `tema_label_for_practica`; supports
+    `--category-style flat` (default) or `hierarchical`; guards against a `]]>` CDATA terminator inside a
+    heading; includes a round-trip test asserting scaffold output passes `exam validate --strict` with zero
+    violations. Mixing legacy (`--cycle/--group/--label/--category/--blocks`) and weekly options is a
+    `click.UsageError`. 42 new tests.
+  - 43 new tests total across both phases; full suite green (2336 passed) per `verification` commands run
+    against the `exam` surface equivalents of the ones listed below.
+  - See CLAUDE.md Key Patterns bullet for `src/workflow/exam/` (added 2026-07-03) for the user-facing contract.
 
 ## Closure checklist
 
 When `status: closed` and `resolution: implemented`:
 
-- [ ] All acceptance criteria checked
-- [ ] `verification` commands pass on master
-- [ ] `implementation` frontmatter list filled
-- [ ] `closed_by` references commit/PR/ADR
-- [ ] `2026-04-29-exam-scaffold-moodle-xml.md` closed as superseded
-- [ ] Related gap log entries cross-linked back to this request id
+- [x] All acceptance criteria checked
+- [x] `verification` commands pass on master (against the `exam` surface equivalents — see Progress log)
+- [x] `implementation` frontmatter list filled
+- [x] `closed_by` references commit/PR/ADR
+- [ ] `2026-04-29-exam-scaffold-moodle-xml.md` closed as superseded — **N/A by design**: that request was
+  extended, not superseded, and remains `status: completed` / `resolution: implemented`. A one-line
+  cross-link was added to its Progress log instead (see that file).
+- [ ] Related gap log entries cross-linked back to this request id — out of scope for this doc-closure pass

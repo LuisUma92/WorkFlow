@@ -144,3 +144,7 @@ required flags, or output path not writable.
   subcommand in `src/workflow/exam/` (scaffold.py + cli.py). Pure-Python, no DB.
   String-template approach for CDATA sections. 35 tests added; full suite 1286 passed.
   `xmllint --noout` confirms valid output. Wired into `src/main.py`.
+- **2026-07-03** — Weekly DC.md-driven scaffold mode (`--week --dc --kind [--category-style]`)
+  and `workflow exam validate` shipped via `2026-07-03-exercise-moodle-validate-scaffold.md`,
+  extending this same `scaffold-xml` command rather than adding a parallel surface. This
+  request's status/resolution are unchanged (implemented, not superseded).
