@@ -7,8 +7,8 @@ source_agent: user (director) — carried forward from 2026-07-03 gap audit + fr
 opened_on: 2026-07-04
 
 # Lifecycle (mirrors GitHub issue states)
-status: open
-resolution:
+status: closed
+resolution: implemented
 priority: P1
 severity: recurring-friction
 
@@ -31,9 +31,13 @@ blocked_by: []
 # Implementation tracking
 assignee: claude
 target_release: freeze-window-2026-07
-implementation: []
-closed_on:
-closed_by:
+implementation:
+  - src/workflow/exercise/balance.py
+  - "src/workflow/exercise/cli.py (build-exam flags)"
+  - "tests/workflow/exercise/test_balance.py (21 tests)"
+  - CLAUDE.md bullet
+closed_on: 2026-07-04
+closed_by: "47a50ec"
 
 # Acceptance
 acceptance_criteria: []
@@ -200,31 +204,52 @@ Recordar,Información,4,40.0
 
 ## Acceptance criteria
 
-- [ ] `compute_balance(selection, session)` returns one matrix row per slot
+- [x] `compute_balance(selection, session)` returns one matrix row per slot
       in `selection.selected`, with `count == len(exercises)` and
       `points == points_per_item * count` for that slot.
-- [ ] `concept_coverage.total_concepts` counts distinct concepts across the
+      (verified: `balance.py:83-91`; tests `TestComputeBalanceMatrix::*`)
+- [x] `concept_coverage.total_concepts` counts distinct concepts across the
       exercise **pool** (not full DB); `distinct_covered` counts distinct
       concepts linked (via `ExerciseConcept`) to selected exercises only.
-- [ ] Exercises with zero resolved concept links count as `0` toward
+      (verified: `balance.py:93-104`; test
+      `test_total_concepts_scoped_to_pool_not_selection`)
+- [x] Exercises with zero resolved concept links count as `0` toward
       coverage, not an error (mirrors Bundle A/B's warn-not-fail tone).
-- [ ] `--balanceo` (no path) prints a table to stderr; `--balanceo PATH.csv`
+      (verified: test `test_zero_concept_exercise_counts_as_zero_not_error`)
+- [x] `--balanceo` (no path) prints a table to stderr; `--balanceo PATH.csv`
       writes CSV to `PATH.csv`; existing `.tex` output behavior on
       stdout/`--output` is unchanged in both cases.
-- [ ] `--json` emits the documented shape (`matrix`, `concept_coverage`,
+      (shipped as two flags — `--balanceo` bool + `--balanceo-csv PATH` —
+      see CLI-UX deviation note in Progress log; verified: `cli.py:706-720,
+      840-844`; tests `test_balanceo_bare_prints_stderr_table_stdout_stays_tex`,
+      `test_balanceo_csv_writes_file`, `test_no_balanceo_flags_behavior_unchanged`)
+- [x] `--json` emits the documented shape (`matrix`, `concept_coverage`,
       `warnings`) to stdout.
-- [ ] `--fail-under FLOAT` yields exit code 2 when
+      (verified: `cli.py:846-849`; test
+      `test_balanceo_json_emits_documented_shape_to_stdout`)
+- [x] `--fail-under FLOAT` yields exit code 2 when
       `distinct_covered/total_concepts < FLOAT`; exit 0 at or above; exit 0
       when the flag is omitted regardless of coverage.
-- [ ] `ExamDocument` (`exam_builder.py:17-25`) is unchanged — existing
+      (verified: `cli.py:786-787`; tests `test_fail_under_below_threshold_exits_2`,
+      `test_fail_under_at_threshold_exits_0`)
+- [x] `ExamDocument` (`exam_builder.py:17-25`) is unchanged — existing
       `build_exam()` tests pass unmodified.
-- [ ] Tests added under `tests/workflow/exercise/test_balance.py` covering:
+      (verified: test `test_exam_document_shape_unchanged`; full suite
+      2357 passed)
+- [x] Tests added under `tests/workflow/exercise/test_balance.py` covering:
       fully-filled slot, under-filled slot, zero-concept exercise, and the
       `--fail-under` boundary (at threshold = pass, just below = fail).
-- [ ] Docs updated: `CLAUDE.md` exercise-CLI bullet gains the `--balanceo`/
+      (verified: 21 tests, all passing —
+      `WORKFLOW_DATA_DIR=$(mktemp -d) uv run pytest -q
+      tests/workflow/exercise/test_balance.py` → "21 passed")
+- [x] Docs updated: `CLAUDE.md` exercise-CLI bullet gains the `--balanceo`/
       `--json`/`--fail-under` flags on `build-exam`.
-- [ ] `--json` flag parity with Bundle B's `sync --json` precedent (same
+      (verified: `CLAUDE.md:92`, exercise-CLI bullet appended)
+- [x] `--json` flag parity with Bundle B's `sync --json` precedent (same
       envelope conventions: warnings array, no swallowed errors).
+      (verified: `warnings` key present in `to_dict`/CLI JSON output,
+      `balance.py:121-138`; HIGH review fix applied for stdout purity —
+      see Progress log)
 
 ## Verification
 
@@ -297,14 +322,42 @@ workflow exercise build-exam -l recordar -d informacion -n 5 -p 10 --output exam
   siguiente" — director overrode this via the freeze-window plan's locked
   phase order, reinterpreting `--balanceo` as an output-side balance report
   rather than the original CSV-import/scaffold ask, to fit the window).
+- 2026-07-04 — implemented same day via TDD (20 RED→GREEN tests +
+  1 review-fix regression test, 21 total in `test_balance.py`). CLI UX
+  deviation from spec recorded: the proposal's `--balanceo [PATH]`
+  optional-value flag was rejected at implementation time — Click 8.3's
+  `flag_value`/`is_flag` mechanics still require an explicit argument slot
+  for optional-value flags (verified empirically against this Click
+  version, not just docs) — so it shipped as two flags instead:
+  `--balanceo` (bool, triggers stderr table) + `--balanceo-csv PATH`
+  (writes CSV). The proposal's [UNCLEAR] on json+output stdout/stderr
+  routing was resolved: JSON always owns stdout when `--json` is passed
+  (regardless of `--output`); the `.tex` confirmation message is only
+  emitted at all when `--output` is given, and even then routed to stderr
+  (`err=suppress`) under `--json` so stdout stays pure JSON. Reviewer-esquema
+  (opus) found 1 HIGH: the `--output` confirmation ("Exam written to ...")
+  was leaking onto stdout under `--json --output`, corrupting the JSON
+  stream — fixed via the `suppress` param on `_emit_tex_body`
+  (`cli.py:854-867`); rest of the review was clean. Full suite: 2357
+  passed after the fix.
 
 ## Closure checklist
 
 When `status: closed` and `resolution: implemented`:
 
-- [ ] All acceptance criteria checked
-- [ ] `verification` commands pass on master
-- [ ] `implementation` frontmatter list filled with shipped paths/commands
-- [ ] `closed_by` references commit/PR/ADR
-- [ ] CLAUDE.md and ADR INDEX updated if architecture changed
-- [ ] Related gap log entries cross-linked back to this request id
+- [x] All acceptance criteria checked
+- [x] `verification` commands pass on master (21/21 `test_balance.py`;
+      flake8 clean on `src/workflow/exercise/` + `tests/workflow/exercise/`;
+      live-shape CLI checks match documented `--json`/CSV/`--fail-under`
+      contracts)
+- [x] `implementation` frontmatter list filled with shipped paths/commands
+- [ ] `closed_by` references commit/PR/ADR — placeholder pending; git-ops
+      agent replaces `<pending F1 commit>` with the real commit hash
+      immediately after this doc closure
+- [x] CLAUDE.md and ADR INDEX updated if architecture changed (CLAUDE.md
+      exercise-CLI bullet updated; no ADR needed — additive-only, no
+      architectural decision reversed)
+- [ ] Related gap log entries cross-linked back to this request id —
+      out of session scope; `~/01-U/.claude/gaps/2026-07-03-workflow-gap-audit.md`
+      slug #17 cross-link is tracked separately in the 01-U workspace, not
+      this repo
