@@ -23,6 +23,13 @@ from workflow.db.repos.sqlalchemy import SqlExerciseRepo
 from workflow.db.errors import with_schema_guard
 from workflow.bibliography.service import get_bib_entry_by_bibkey, BibKeyAmbiguous
 from workflow.concept.service import resolve_concepts
+from workflow.exercise.balance import (
+    compute_balance,
+    coverage_ratio,
+    format_human_table,
+    to_dict as balance_to_dict,
+    write_csv as write_balance_csv,
+)
 from workflow.exercise.exam_builder import build_exam
 from workflow.exercise.generator import generate_exercise_file, generate_from_content
 from workflow.exercise.moodle import exercises_to_quiz_xml
@@ -695,6 +702,39 @@ def export_moodle(
     default=None,
     help="Output file path. Defaults to stdout.",
 )
+@click.option(
+    "--balanceo",
+    is_flag=True,
+    default=False,
+    help=(
+        "Compute a taxonomy x concept balance report over the assembled "
+        "selection (stderr table, or --json for the structured form)."
+    ),
+)
+@click.option(
+    "--balanceo-csv",
+    "balanceo_csv",
+    type=click.Path(),
+    default=None,
+    help="Write the balance report as CSV to PATH (implies --balanceo).",
+)
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Emit the balance report as JSON to stdout (requires --balanceo/--balanceo-csv).",
+)
+@click.option(
+    "--fail-under",
+    "fail_under",
+    type=float,
+    default=None,
+    help=(
+        "Exit 2 if concept coverage ratio (distinct_covered/total_concepts) "
+        "falls below this threshold (requires --balanceo/--balanceo-csv)."
+    ),
+)
 @click.pass_context
 @with_schema_guard
 def build_exam_cmd(
@@ -706,15 +746,66 @@ def build_exam_cmd(
     title: str,
     instructions: str,
     output: str | None,
+    balanceo: bool,
+    balanceo_csv: str | None,
+    as_json: bool,
+    fail_under: float | None,
 ) -> None:
     """Build an exam by selecting exercises from the bank.
 
     Each --taxonomy-level creates a slot. Pair --taxonomy-domain values
     positionally with levels (missing domains default to empty string).
-    """
-    engine = _get_engine(ctx)
 
-    # Build slots — pair levels with domains by index
+    ``--balanceo`` (bare) prints a taxonomy x concept balance table to
+    stderr; ``--balanceo-csv PATH`` writes the same report as CSV to PATH
+    (either form triggers the computation). ``--json`` (combinable) emits
+    the balance report as the sole JSON object on stdout instead of the
+    stderr table — the assembled .tex body is then only available via
+    ``--output`` (mixing free-form .tex with a JSON stdout stream would
+    corrupt the JSON). ``--fail-under FLOAT`` requires balance computation
+    to be enabled and exits 2 when coverage falls below the threshold.
+    """
+    do_balance = balanceo or balanceo_csv is not None
+    _validate_balance_flags(as_json, fail_under, do_balance)
+
+    engine = _get_engine(ctx)
+    slots = _build_exam_slots(taxonomy_level, taxonomy_domain, count, points)
+
+    with Session(engine) as session:
+        repo = SqlExerciseRepo(session)
+        pool = repo.find_by_filters(status="complete", limit=10_000)
+        selection = select_exercises(slots, pool)
+        doc = build_exam(selection, title=title, instructions=instructions)
+        report = compute_balance(selection, pool, session) if do_balance else None
+
+    _emit_exam_warnings(doc, selection)
+    if do_balance:
+        _emit_balance_report(report, balanceo_csv=balanceo_csv, as_json=as_json)
+    _emit_tex_body(doc, output=output, suppress=do_balance and as_json)
+
+    if fail_under is not None and coverage_ratio(report) < fail_under:
+        ctx.exit(2)
+
+
+def _validate_balance_flags(as_json: bool, fail_under: float | None, do_balance: bool) -> None:
+    """Fail loud when --json/--fail-under are given without a balance trigger."""
+    if as_json and not do_balance:
+        raise click.ClickException(
+            "--json requires --balanceo or --balanceo-csv for build-exam."
+        )
+    if fail_under is not None and not do_balance:
+        raise click.ClickException(
+            "--fail-under requires --balanceo or --balanceo-csv for build-exam."
+        )
+
+
+def _build_exam_slots(
+    taxonomy_level: tuple[str, ...],
+    taxonomy_domain: tuple[str, ...],
+    count: int,
+    points: float,
+) -> list[ExerciseSlot]:
+    """Pair --taxonomy-level values with --taxonomy-domain values by index."""
     slots: list[ExerciseSlot] = []
     for i, level in enumerate(taxonomy_level):
         domain = taxonomy_domain[i] if i < len(taxonomy_domain) else ""
@@ -726,17 +817,11 @@ def build_exam_cmd(
                 points_per_item=points,
             )
         )
+    return slots
 
-    # Query DB for complete exercises, let select_exercises handle matching
-    with Session(engine) as session:
-        repo = SqlExerciseRepo(session)
-        pool = repo.find_by_filters(status="complete", limit=10_000)
 
-        selection = select_exercises(slots, pool)
-
-        doc = build_exam(selection, title=title, instructions=instructions)
-
-    # Report warnings
+def _emit_exam_warnings(doc, selection) -> None:
+    """Print exam-assembly warnings to stderr (unchanged pre-balance behavior)."""
     for w in doc.warnings:
         click.echo(f"[WARN] {w}", err=True)
 
@@ -751,10 +836,33 @@ def build_exam_cmd(
         err=True,
     )
 
+
+def _emit_balance_report(report, *, balanceo_csv: str | None, as_json: bool) -> None:
+    """Write the CSV (if requested) and print the table or JSON form of the report."""
+    if balanceo_csv:
+        write_balance_csv(report, Path(balanceo_csv))
+        click.echo(f"Balance CSV written to {balanceo_csv}", err=True)
+
+    if as_json:
+        import json as _json
+
+        click.echo(_json.dumps(balance_to_dict(report), indent=2))
+    else:
+        click.echo(format_human_table(report), err=True)
+
+
+def _emit_tex_body(doc, *, output: str | None, suppress: bool) -> None:
+    """Write/print the assembled .tex body, suppressing stdout when JSON owns it."""
     if output:
         out_path = Path(output)
         out_path.write_text(doc.content, encoding="utf-8")
-        click.echo(f"Exam written to {out_path}")
+        click.echo(f"Exam written to {out_path}", err=suppress)
+    elif suppress:
+        click.echo(
+            "[INFO] .tex body suppressed on stdout under --json without "
+            "--output; combine with --output to save it.",
+            err=True,
+        )
     else:
         click.echo(doc.content)
 
