@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<quiz>
+<question type="category">
+  <category>
+    <text><![CDATA[$course$/top/CI0007 2026C1]]></text>
+  </category>
+</question>
+<question type="multichoice">
+  <name>
+    <text><![CDATA[Q-noid]]></text>
+  </name>
+  <questiontext format="html">
+    <text><![CDATA[Enunciado]]></text>
+  </questiontext>
+  <defaultgrade>1</defaultgrade>
+  <penalty>0.25</penalty>
+  <single>true</single>
+  <shuffleanswers>1</shuffleanswers>
+  <answer fraction="100" format="html">
+    <text><![CDATA[Answer 1]]></text>
+    <feedback format="html">
+      <text><![CDATA[fb]]></text>
+    </feedback>
+  </answer>
+  <answer fraction="0" format="html">
+    <text><![CDATA[Answer 2]]></text>
+    <feedback format="html">
+      <text><![CDATA[fb]]></text>
+    </feedback>
+  </answer>
+  <answer fraction="0" format="html">
+    <text><![CDATA[Answer 3]]></text>
+    <feedback format="html">
+      <text><![CDATA[fb]]></text>
+    </feedback>
+  </answer>
+  <answer fraction="0" format="html">
+    <text><![CDATA[Answer 4]]></text>
+    <feedback format="html">
+      <text><![CDATA[fb]]></text>
+    </feedback>
+  </answer>
+</question>
+</quiz>

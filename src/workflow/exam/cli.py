@@ -14,6 +14,7 @@ from xml.etree import ElementTree as ET
 import click
 
 from workflow.exam.scaffold import parse_blocks_spec, build_moodle_quiz_xml
+from workflow.exam.validate import validate_moodle_xml
 
 __all__ = ["exam"]
 
@@ -107,3 +108,47 @@ def cmd_scaffold_xml(
             f"Wrote {total_questions} questions "
             f"(1 category + {multichoice_count} multichoice) to {out}"
         )
+
+
+def _echo_json_report(report) -> None:
+    """Emit the JSON report shape for ``exam validate --json``."""
+    click.echo(
+        json.dumps(
+            {
+                "file": report.file,
+                "questions": report.questions,
+                "violations": [
+                    {"question": v.question, "rule": v.rule, "detail": v.detail}
+                    for v in report.violations
+                ],
+            }
+        )
+    )
+
+
+def _echo_human_report(report) -> None:
+    """Emit the human-readable report for ``exam validate``."""
+    for v in report.violations:
+        click.echo(f"{v.question}: {v.rule} — {v.detail}")
+    click.echo(f"{'OK' if not report.violations else 'FAIL'}: "
+               f"{report.questions} questions, {len(report.violations)} violations")
+
+
+@exam.command("validate")
+@click.argument("xml_file", type=click.Path(exists=True, dir_okay=False))
+@click.option("--strict", is_flag=True, default=False, help="Also enforce idnumber + category rules")
+@click.option("--json", "as_json", is_flag=True, default=False, help="Emit JSON report instead of prose")
+def cmd_validate(xml_file: str, strict: bool, as_json: bool) -> None:
+    """Lint a Moodle XML quiz export for structural issues."""
+    try:
+        report = validate_moodle_xml(xml_file, strict=strict)
+    except ValueError as exc:
+        raise click.ClickException(f"XML parse error: {exc}") from exc
+
+    if as_json:
+        _echo_json_report(report)
+    else:
+        _echo_human_report(report)
+
+    if report.violations:
+        sys.exit(1)

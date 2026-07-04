@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<quiz>
+<question type="multichoice">
+  <name>
+    <text><![CDATA[Q-nocat]]></text>
+  </name>
+  <questiontext format="html">
+    <text><![CDATA[Enunciado]]></text>
+  </questiontext>
+  <defaultgrade>1</defaultgrade>
+  <penalty>0.25</penalty>
+  <single>true</single>
+  <shuffleanswers>1</shuffleanswers>
+  <idnumber>X-01</idnumber>
+  <answer fraction="100" format="html">
+    <text><![CDATA[Answer 1]]></text>
+    <feedback format="html">
+      <text><![CDATA[fb]]></text>
+    </feedback>
+  </answer>
+  <answer fraction="0" format="html">
+    <text><![CDATA[Answer 2]]></text>
+    <feedback format="html">
+      <text><![CDATA[fb]]></text>
+    </feedback>
+  </answer>
+  <answer fraction="0" format="html">
+    <text><![CDATA[Answer 3]]></text>
+    <feedback format="html">
+      <text><![CDATA[fb]]></text>
+    </feedback>
+  </answer>
+  <answer fraction="0" format="html">
+    <text><![CDATA[Answer 4]]></text>
+    <feedback format="html">
+      <text><![CDATA[fb]]></text>
+    </feedback>
+  </answer>
+</question>
+</quiz>
