@@ -43,6 +43,19 @@ class TestExerciseMetadataValidation:
         from workflow.db.models.academic import _TAXONOMY_DOMAINS
         assert set(_TAXONOMY_DOMAINS) == _VALID_TAXONOMY_DOMAINS
 
+    def test_all_exercise_types_valid(self):
+        """Validator vocabulary is single-sourced from ExerciseType.
+
+        Regression guard for the 'essay' graph-stats crash: ExerciseType
+        (workflow.exercise.domain) is the ONE vocabulary source; the
+        validator must derive from it, not carry an independent literal
+        copy that can drift.
+        """
+        from workflow.validation.schemas import _valid_exercise_types
+        from workflow.exercise.domain import ExerciseType
+        assert _valid_exercise_types() == {e.value for e in ExerciseType}
+        assert "essay" in _valid_exercise_types()
+
 
 class TestNoteFrontmatterValidation:
     def test_valid_note(self):

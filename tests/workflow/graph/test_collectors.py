@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from workflow.db.base import GlobalBase, LocalBase
 from workflow.db.models.knowledge import Content, DisciplineArea, MainTopic, Topic
@@ -150,6 +150,33 @@ def test_collect_exercises_basic(global_session):
     assert "exercise:phys-001" in node_ids
     node = next(n for n in nodes if n.node_id == "exercise:phys-001")
     assert node.node_type == "exercise"
+
+
+def test_collect_exercises_reads_legacy_value_form_type(global_engine):
+    """Regression: live-vault rows store Exercise.type as the human-readable
+    ExerciseType.value ('essay', 'multichoice', ...), not the member name
+    ('TDE', 'TSU', ...). Reading such a row from a *fresh* session used to
+    raise ``LookupError`` from SQLAlchemy's Enum result-processor because
+    the ORM Enum column defaulted to name-based lookup. Insert raw (as a
+    legacy row would exist on disk, bypassing ORM bind-time coercion) and
+    read back via collect_exercises — the actual crash path
+    (`workflow graph stats` -> build_knowledge_graph -> collect_exercises).
+    """
+    with global_engine.connect() as conn:
+        conn.exec_driver_sql(
+            "INSERT INTO exercise "
+            "(exercise_id, source_path, file_hash, status, type, "
+            "penalty, has_images, option_count, created_at, updated_at) "
+            "VALUES ('phys-essay-001', '/path/phys-essay-001.tex', "
+            "'deadbeef', 'complete', 'essay', 0.0, 0, 0, "
+            "'2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+        )
+        conn.commit()
+
+    with Session(global_engine) as fresh_session:
+        nodes, edges = collect_exercises(fresh_session)
+        node_ids = {n.node_id for n in nodes}
+        assert "exercise:phys-essay-001" in node_ids
 
 
 def test_collect_exercises_no_content_edge(global_session):

@@ -71,7 +71,18 @@ class Exercise(GlobalBase):
         comment="File lifecycle: placeholder | in_progress | complete",
     )
     type: Mapped[ExerciseType | None] = mapped_column(
-        Enum(ExerciseType),
+        Enum(
+            ExerciseType,
+            # Store/read by ExerciseType.value ("essay", "multichoice", ...)
+            # — the dominant literal form on the live DB — rather than the
+            # default (member .name: "TDE", "TSU", ...). See migration
+            # 0016_exercise_type_normalize_legacy_codes, which normalizes
+            # legacy code-form rows to match. Single source of truth for
+            # the vocabulary is ExerciseType itself (workflow.exercise.domain).
+            values_callable=lambda enum_cls: [e.value for e in enum_cls],
+            length=20,
+            native_enum=False,
+        ),
         nullable=True,
         comment="multichoice | essay | shortanswer | numerical | truefalse",
     )

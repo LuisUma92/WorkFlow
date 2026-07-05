@@ -45,13 +45,21 @@ _VALID_NOTE_TYPES = {"permanent", "literature", "fleeting"}
 # ITEP-0013 edge-type vocabularies + zettel_id format are imported from the
 # NoteEdge model (single source of truth) — see top-of-file imports.
 _VALID_LITERATURE_ORIGINS = {"prisma", "manual"}
-_VALID_EXERCISE_TYPES = {
-    "multichoice",
-    "shortanswer",
-    "essay",
-    "numerical",
-    "truefalse",
-}
+
+
+def _valid_exercise_types() -> frozenset[str]:
+    """Single source of truth for exercise-type vocabulary.
+
+    Deferred import: ``workflow.exercise.domain`` imports ``ExerciseMetadata``
+    from this module, so importing ``ExerciseType`` at module level here
+    would be circular. See ``workflow.db.models.exercises.Exercise.type``
+    (the ORM column) — also keyed on ``ExerciseType.value``.
+    """
+    from workflow.exercise.domain import ExerciseType
+
+    return frozenset(e.value for e in ExerciseType)
+
+
 _VALID_DIFFICULTIES = {"easy", "medium", "hard"}
 _VALID_TAXONOMY_LEVELS = set(_TAXONOMY_LEVELS)
 _VALID_TAXONOMY_DOMAINS = set(_TAXONOMY_DOMAINS)
@@ -448,9 +456,9 @@ def validate_exercise_metadata(
     ex_type = data.get("type")
     if not ex_type or not isinstance(ex_type, str):
         errors.append("'type' is required and must be a non-empty string")
-    elif ex_type not in _VALID_EXERCISE_TYPES:
+    elif ex_type not in _valid_exercise_types():
         errors.append(
-            f"'type' must be one of {sorted(_VALID_EXERCISE_TYPES)}, got '{ex_type}'"
+            f"'type' must be one of {sorted(_valid_exercise_types())}, got '{ex_type}'"
         )
 
     difficulty = data.get("difficulty")
