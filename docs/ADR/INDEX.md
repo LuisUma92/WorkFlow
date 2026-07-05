@@ -82,6 +82,8 @@ These ADRs document the custom LaTeX packages in `shared/sty/`.
 | [ITEP-0013](ITEP-0013-note-relation-graph.md) | Note relation graph: directed lineage + associative edges, DAG traversal, `note_edge` table | ITeP | Implemented | 0002, 0010, LZK-0003, ITEP-0009, ITEP-0011 |
 | [ITEP-0014](ITEP-0014-incremental-sync-via-content-hash.md) | Incremental sync via per-note content hashing (`fm_hash`) | ITeP | Proposed | ITEP-0011, ITEP-0013 |
 | [ITEP-0015](ITEP-0015-editor-first-authoring-tooling.md) | Editor-first authoring tooling for the note graph | ITeP | Proposed | ITEP-0011, ITEP-0012, ITEP-0013 |
+| [0021](0021-vault-full-text-search.md) | Vault full-text search via SQLite FTS5 | Zettelkasten | Proposed | ITEP-0011, 0010, ITEP-0014 |
+| [0022](0022-research-question-entity.md) | ResearchQuestion as first-class entity | Zettelkasten | Proposed | ITEP-0012, ITEP-0013, 0003, PRISMA-0005 |
 
 ## Exercise System
 

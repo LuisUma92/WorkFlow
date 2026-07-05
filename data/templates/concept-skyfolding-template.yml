@@ -1,0 +1,120 @@
+# Skyfolding de contenidos — PLANTILLA
+#
+# Fuente única para crear DisciplineArea -> Topic -> Content -> Concept
+# de un área/curso, de arriba hacia abajo ("skyfolding-first").
+#
+# Importar:
+#   workflow db seed && workflow import <DDTTAA>-contents-skyfolding.yml
+#
+# Contrato de import (exit codes, --json, idempotencia, concept global-skip):
+# ver docs/ADR/0018-bulk-import-contract.md.
+#
+# Nota: `workflow concept harvest` (diseñado 2026-07-05, ver
+# docs/superpowers/specs/2026-07-05-fleeting-harvest-design.md) emite
+# DELTAS en este MISMO formato — un delta harvest es un skyfolding parcial
+# con solo los conceptos "huérfanos" descubiertos en notas, listo para
+# revisión humana y luego `workflow import`.
+#
+# Convención de nombre de archivo: <DDTTAA>-contents-skyfolding.yml
+# (p. ej. 0010MC-contents-skyfolding.yml), viven en
+# ~/01-U/0000AV-Vault/templates/.
+#
+# ---------------------------------------------------------------------------
+# REFERENCIA DE CAMPOS (esquema enriquecido completo)
+# ---------------------------------------------------------------------------
+#
+# discipline_area_code : <DDTTAA> — código completo del área de disciplina.
+#                         DD = dígitos de disciplina (p. ej. "00" = Física),
+#                         TTAA = código de main-topic (data/00-PhysicsCodes.csv,
+#                         ITEP-0008), p. ej. "10MC" (Mecánica Clásica).
+#                         DD + TTAA = DDTTAA, p. ej. 00 + 10MC = 0010MC.
+# discipline_area_name : <"Nombre visible del área">
+# dewey                : <"NNN-NN"> — clasificación Dewey del área (string, con comillas).
+#
+# books[]               : OPCIONAL — lista de referencias bibliográficas usadas
+#                          por los contents[] de este skyfolding (via book: más abajo).
+#   - cite               : <"Autor, Título, edición (año)"> — cita legible.
+#     bibkey             : <"clavebib"> — debe existir/coincidir con BibContent.bibkey.
+#
+# topics[]               : lista de Topic, en orden de exposición del curso.
+#   - name                : <"Nombre del topic">
+#     serial              : <N> — serial_number, único por discipline_area_code
+#                            (entero, empieza en 1, sin huecos obligatorios).
+#     unit                 : OPCIONAL — <"UN"> etiqueta de unidad docente
+#                            (p. ej. "U0 (repaso)", "U1"); libre, no normativa.
+#     contents[]           : lista de Content dentro de este topic.
+#       - name             : <"Nombre del content">
+#         cnnsmm           : OPCIONAL — <"CppSnn"> enlace al mapeo curricular
+#                            (admin/MapeoUnidadCapitulo.md), p. ej. "C22S01".
+#         book             : OPCIONAL — <"NN.N-NN.N"> rango de secciones del
+#                            libro de texto citado en books[] (p. ej. Serway).
+#         concepts[]       : lista de Concept dentro de este content.
+#           - code         : <prefijo-slug-descriptivo> — slug único global,
+#                            patrón ^[a-z0-9][a-z0-9-]{0,31}$, con prefijo de
+#                            letras del área (convención viva, no forzada por
+#                            schema), p. ej. "mc-" para Mecánica Clásica,
+#                            "em-" para Electromagnetismo. Slug-only, estricto,
+#                            para siempre (ITEP-0012, decisión #18 2026-07-04):
+#                            NUNCA se resuelve por label.
+#             label        : <"Nombre visible del concepto">
+#             domain       : <Información|Procedimiento Mental|
+#                             Procedimiento Psicomotor|Metacognitivo>
+#                            (taxonomía Marzano, _TAXONOMY_DOMAINS en
+#                            workflow.db.models.knowledge)
+#             parent_code  : OPCIONAL — <code-del-concepto-ancestro> — debe
+#                            existir dentro del MISMO content (o ya importado
+#                            antes); crea jerarquía Concept.parent_id.
+#             description  : OPCIONAL — <"Texto libre descriptivo del concepto">
+#
+# ---------------------------------------------------------------------------
+# EJEMPLO MÍNIMO RELLENO (1 topic, 1 content, 2 concepts, 1 book)
+# ---------------------------------------------------------------------------
+#
+# discipline_area_code: 0099EJ
+# discipline_area_name: "Ejemplo de Área"
+# dewey: "000-00"
+# books:
+#   - cite: "Autor Ejemplo, Título de Ejemplo, 1a ed. (2026)"
+#     bibkey: "ejemplo2026"
+# topics:
+#   - name: "Topic de ejemplo"
+#     serial: 1
+#     unit: "U0"
+#     contents:
+#       - name: "Content de ejemplo"
+#         cnnsmm: "C01S01"
+#         book: "1.1-1.2"
+#         concepts:
+#           - code: ej-concepto-base
+#             label: "Concepto base"
+#             domain: Información
+#           - code: ej-concepto-derivado
+#             label: "Concepto derivado"
+#             domain: Procedimiento Mental
+#             parent_code: ej-concepto-base
+#             description: "Se apoya en el concepto base para construir un procedimiento."
+#
+# ---------------------------------------------------------------------------
+# ESQUELETO PARA COMPLETAR (reemplazar cada <placeholder>)
+# ---------------------------------------------------------------------------
+
+discipline_area_code: <DDTTAA>
+discipline_area_name: "<Nombre del área>"
+dewey: "<NNN-NN>"
+books:
+  - cite: "<Autor, Título, edición (año)>"
+    bibkey: "<clavebib>"
+topics:
+  - name: "<Nombre del topic>"
+    serial: <N>
+    unit: "<UN (opcional)>"
+    contents:
+      - name: "<Nombre del content>"
+        cnnsmm: "<CppSnn (opcional)>"
+        book: "<NN.N-NN.N (opcional)>"
+        concepts:
+          - code: <prefijo-slug-concepto>
+            label: "<Nombre visible del concepto>"
+            domain: <Información|Procedimiento Mental|Procedimiento Psicomotor|Metacognitivo>
+            parent_code: <code-ancestro (opcional)>
+            description: "<Descripción libre (opcional)>"
