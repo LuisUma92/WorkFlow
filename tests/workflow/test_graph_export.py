@@ -383,28 +383,44 @@ class TestTagFlags:
         assert result.exit_code == 0
 
     def test_include_tags_filters_nodes(self):
-        """Nodes whose label contains the tag are kept; others excluded."""
+        """Nodes carrying the real tag (GraphNode.tags) are kept; others excluded.
+
+        Freeze-window Phase 5: --include-tags matches real DB-backed
+        GraphNode.tags, not a label substring (the earlier W4 workaround).
+        """
         runner = CliRunner()
-        n_keep = _node("note:1", label="physics-intro")
-        n_drop = _node("note:2", label="chemistry-intro")
+        n_keep = GraphNode(
+            node_id="note:1", node_type="note", label="Intro to mechanics",
+            tags=frozenset({"physics"}),
+        )
+        n_drop = GraphNode(
+            node_id="note:2", node_type="note", label="Intro to reactions",
+            tags=frozenset({"chemistry"}),
+        )
         kg = KnowledgeGraph(nodes=(n_keep, n_drop), edges=())
         with patch("workflow.graph.cli._build_graph_with_filter", return_value=kg):
             result = runner.invoke(graph, ["export-tikz", "--include-tags", "physics"])
         assert result.exit_code == 0
-        assert "physics" in result.output
-        assert "chemistry" not in result.output
+        assert "mechanics" in result.output
+        assert "reactions" not in result.output
 
     def test_exclude_tags_filters_nodes(self):
-        """Nodes whose label contains excluded tag are removed."""
+        """Nodes carrying the real excluded tag (GraphNode.tags) are removed."""
         runner = CliRunner()
-        n_keep = _node("note:1", label="final-version")
-        n_drop = _node("note:2", label="draft-note")
+        n_keep = GraphNode(
+            node_id="note:1", node_type="note", label="final-version",
+            tags=frozenset({"final"}),
+        )
+        n_drop = GraphNode(
+            node_id="note:2", node_type="note", label="draft-note",
+            tags=frozenset({"draft"}),
+        )
         kg = KnowledgeGraph(nodes=(n_keep, n_drop), edges=())
         with patch("workflow.graph.cli._build_graph_with_filter", return_value=kg):
             result = runner.invoke(graph, ["export-tikz", "--exclude-tags", "draft"])
         assert result.exit_code == 0
         assert "final" in result.output
-        assert "draft" not in result.output
+        assert "draft-note" not in result.output
 
 
 # ---------------------------------------------------------------------------

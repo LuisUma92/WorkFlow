@@ -15,11 +15,21 @@ class GraphNode:
     node_id format:  "<type>:<key>"  e.g. "note:42", "exercise:phys-gauss-001"
     node_type:       "note" | "exercise" | "bib_entry" | "content" | "topic" | "course"
     label:           human-readable display string
+    tags:            real DB-backed Tag.name set (currently populated for
+                     "note" nodes via NoteTag; empty frozenset for all other
+                     node types or notes with no tags). Additive field
+                     (freeze-window Phase 5, replaces the W4 label-substring
+                     id-hash workaround).
+    main_topic:      real MainTopic.code resolved from Note.main_topic_id
+                     (currently populated for "note" nodes only); ``None``
+                     when absent or not applicable to the node type.
     """
 
     node_id: str
     node_type: str
     label: str
+    tags: frozenset[str] = frozenset()
+    main_topic: str | None = None
 
 
 @dataclass(frozen=True)

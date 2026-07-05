@@ -133,24 +133,27 @@ def _filter_by_tags(
     include_tags: str | None,
     exclude_tags: str | None,
 ) -> KnowledgeGraph:
-    """Filter graph nodes by tag presence in their label (substring match).
+    """Filter graph nodes by real DB-backed ``GraphNode.tags`` membership.
 
-    *include_tags* / *exclude_tags* are comma-separated strings.  A node is
-    kept when its label contains at least one include-tag (if any specified)
-    and none of the exclude-tags.
+    *include_tags* / *exclude_tags* are comma-separated strings, matched
+    case-insensitively against each node's ``tags`` set (real ``Tag.name``
+    rows propagated by ``collect_notes``, ITEP-0011/freeze-window Phase 5).
+    A node is kept when it has at least one include-tag (if any specified)
+    and none of the exclude-tags. Nodes with no tags (e.g. non-note types,
+    or notes with zero NoteTag rows) never match an include filter and are
+    dropped whenever ``include_tags`` is set.
 
-    Note: ``GraphNode`` does not carry DB-level tag data, so this uses the
-    node label as a best-effort proxy.  Full tag support would require tag
-    metadata to be propagated through the collectors layer.
+    This replaces the earlier W4 label-substring workaround — see
+    ``docs/ADR`` freeze-window plan Phase 5.
     """
     inc = [t.strip().lower() for t in include_tags.split(",") if t.strip()] if include_tags else []
     exc = [t.strip().lower() for t in exclude_tags.split(",") if t.strip()] if exclude_tags else []
 
     def _keep(node: GraphNode) -> bool:
-        label = node.label.lower()
-        if inc and not any(t in label for t in inc):
+        tags = {t.lower() for t in node.tags}
+        if inc and not any(t in tags for t in inc):
             return False
-        if exc and any(t in label for t in exc):
+        if exc and any(t in tags for t in exc):
             return False
         return True
 

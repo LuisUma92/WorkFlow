@@ -461,6 +461,11 @@ amendment to ADR ITEP-0012 (`docs/ADR/ITEP-0012-concept-orm.md`, "Amended
 CLI/importer surface) — no further council/decision step needed, only
 implementation against the locked contract.
 
+**Phase 5 shipped 2026-07-04 — semantics DECIDED (director):** tags are
+note-layer; `--include-tags` intentionally drops non-note nodes
+(exercise/bib/content/topic/concept have no tags); the old substring-on-label
+match on non-note nodes was accidental workaround behavior, removed by design.
+
 **Goal:** Schedule the A/B/C architecture decision conversation with the
 user — **not implementation**. `concepts.slug` vs Spanish-label collision
 handling has three options per the roadmap; council decision requires the

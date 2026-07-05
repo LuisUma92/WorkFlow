@@ -20,9 +20,12 @@ tests while breaking the live picker (stub drift). Pinning the contract here is
 the guard.
 
 The originating request (`tasks/requests/2026-05-28-graph-neighbors-json.md`)
-assumed a richer domain than exists: `GraphNode` has only `node_id/node_type/label`
-(no `path`), and `GraphEdge` has `edge_type/label` — **not** the NoteEdge
-subsystem's `edge_class/relation_type`. The decisions below reconcile that.
+assumed a richer domain than exists: at the time of writing, `GraphNode` had
+only `node_id/node_type/label` (no `path`), and `GraphEdge` has `edge_type/label`
+— **not** the NoteEdge subsystem's `edge_class/relation_type`. The decisions
+below reconcile that. (Note: as of Phase 5, 2026-07-04, `GraphNode` also
+carries `tags: frozenset[str]` and `main_topic: str|None`; the `neighbors`
+`title` contract below is unaffected.)
 
 ## Decision
 

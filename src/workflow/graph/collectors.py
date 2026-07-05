@@ -49,14 +49,48 @@ def collect_notes(
     Link edges connect source note → target note (resolved via Label).
     Citation edges connect note → "bib:{citationkey}".
     """
-    from workflow.db.models.notes import Citation, Label, Link, Note
+    from workflow.db.models.knowledge import MainTopic
+    from workflow.db.models.notes import Citation, Label, Link, Note, NoteTag, Tag
 
     notes = session.scalars(select(Note)).all()
     if not notes:
         return (), ()
 
+    note_ids = [n.id for n in notes]
+
+    # Batch-fetch tags: note_id -> frozenset[str] (single join query, no N+1).
+    tag_rows = session.execute(
+        select(NoteTag.note_id, Tag.name)
+        .join(Tag, Tag.id == NoteTag.tag_id)
+        .where(NoteTag.note_id.in_(note_ids))
+    ).all()
+    tags_by_note: dict[int, set[str]] = {}
+    for note_id, tag_name in tag_rows:
+        tags_by_note.setdefault(note_id, set()).add(tag_name)
+
+    # Batch-fetch MainTopic codes for the distinct main_topic_id values in play.
+    main_topic_ids = {n.main_topic_id for n in notes if n.main_topic_id is not None}
+    main_topic_code_by_id: dict[int, str] = {}
+    if main_topic_ids:
+        mt_rows = session.execute(
+            select(MainTopic.id, MainTopic.code).where(
+                MainTopic.id.in_(main_topic_ids)
+            )
+        ).all()
+        main_topic_code_by_id = dict(mt_rows)
+
     nodes: list[GraphNode] = [
-        GraphNode(node_id=f"note:{n.id}", node_type="note", label=n.filename)
+        GraphNode(
+            node_id=f"note:{n.id}",
+            node_type="note",
+            label=n.filename,
+            tags=frozenset(tags_by_note.get(n.id, ())),
+            main_topic=(
+                main_topic_code_by_id.get(n.main_topic_id)
+                if n.main_topic_id is not None
+                else None
+            ),
+        )
         for n in notes
     ]
 

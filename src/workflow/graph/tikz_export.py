@@ -402,16 +402,36 @@ def _make_color_fn(
 ) -> Callable[[GraphNode], str]:
     """Return a callable ``(GraphNode) -> str`` for the chosen colour strategy.
 
-    ``color_by="main_topic"`` and ``color_by="tag"`` both hash the node's
-    ``node_id`` to a palette colour — they do **not** query real MainTopic or
-    Tag DB data (``GraphNode`` does not carry that metadata).  The mapping is
-    stable across processes thanks to SHA-1 (see ``_palette_color``).
+    ``color_by="main_topic"`` and ``color_by="tag"`` colour nodes from real
+    DB-backed ``GraphNode.main_topic`` / ``GraphNode.tags`` metadata
+    (freeze-window Phase 5 — replaces the earlier W4 id-hash workaround that
+    hashed ``node.node_id`` regardless of DB content). Each distinct real
+    value maps to a stable palette colour via SHA-1 (``_palette_color``).
+    Nodes lacking the requested attribute (empty ``tags``, ``main_topic`` is
+    ``None`` — e.g. non-note node types) fall back to the type-default
+    colour rather than being hashed by id.
     """
+    colors: dict[str, str] = {**_DEFAULT_TIKZ_COLORS, **(node_colors or {})}
+
     if color_by is None or color_by == "type":
-        colors: dict[str, str] = {**_DEFAULT_TIKZ_COLORS, **(node_colors or {})}
         return lambda node: _tikz_color(node.node_type, colors)
-    # "main_topic", "tag", or future keys — stable hash of node_id to palette.
-    return lambda node: _palette_color(node.node_id)
+
+    if color_by == "main_topic":
+        def _by_main_topic(node: GraphNode) -> str:
+            if node.main_topic:
+                return _palette_color(node.main_topic)
+            return _tikz_color(node.node_type, colors)
+        return _by_main_topic
+
+    if color_by == "tag":
+        def _by_tag(node: GraphNode) -> str:
+            if node.tags:
+                return _palette_color(min(node.tags))
+            return _tikz_color(node.node_type, colors)
+        return _by_tag
+
+    # Unknown/future color_by key — degrade to type-default rather than error.
+    return lambda node: _tikz_color(node.node_type, colors)
 
 
 def graph_to_tikz(
@@ -449,9 +469,9 @@ def graph_to_tikz(
         Colouring strategy for nodes.  ``None`` / ``"type"`` → default
         type-based palette (unchanged behaviour).  ``"main_topic"`` or
         ``"tag"`` → each node gets a stable palette colour derived from its
-        ``node_id`` via a SHA-1 hash (process-stable).  Note: these modes do
-        **not** use real MainTopic or Tag DB data; ``GraphNode`` does not carry
-        that metadata.  The coloring is purely id-hash-based.
+        real ``GraphNode.main_topic`` / ``GraphNode.tags`` DB-backed value
+        via a SHA-1 hash (process-stable); nodes without that attribute set
+        fall back to the type-default colour (freeze-window Phase 5).
 
     Returns
     -------

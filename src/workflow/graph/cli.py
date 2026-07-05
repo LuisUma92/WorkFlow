@@ -332,8 +332,8 @@ def export_dot_cmd(
     default=None,
     metavar="TAG[,TAG...]",
     help=(
-        "Keep only nodes whose display label contains at least one of these "
-        "comma-separated strings (substring match on label text; not a DB tag query)."
+        "Keep only nodes carrying at least one of these comma-separated tags "
+        "(case-insensitive match against real Tag rows via NoteTag)."
     ),
 )
 @click.option(
@@ -342,8 +342,8 @@ def export_dot_cmd(
     default=None,
     metavar="TAG[,TAG...]",
     help=(
-        "Remove nodes whose display label contains any of these comma-separated "
-        "strings (substring match on label text; not a DB tag query)."
+        "Remove nodes carrying any of these comma-separated tags "
+        "(case-insensitive match against real Tag rows via NoteTag)."
     ),
 )
 @click.option(
@@ -361,8 +361,9 @@ def export_dot_cmd(
     default=None,
     help=(
         "Colour nodes by this attribute.  'type' (default) uses per-type colours. "
-        "'main_topic' and 'tag' both map each node's id to a stable palette colour "
-        "via SHA-1 hash — they do NOT query real MainTopic/Tag DB data."
+        "'main_topic' and 'tag' map each node's real MainTopic/Tag DB value to a "
+        "stable palette colour via SHA-1 hash; nodes without that attribute fall "
+        "back to the type-default colour."
     ),
 )
 @_filter_options
@@ -409,7 +410,7 @@ def export_tikz_cmd(
         full_kg = _build_full_graph(project)
         kg = _expand_by_depth(full_kg, kg, depth)
 
-    # Tag filters (label-based substring matching).
+    # Tag filters (real DB-backed tag membership; note-layer only — non-note nodes are dropped when include_tags is set).
     if include_tags or exclude_tags:
         kg = _filter_by_tags(kg, include_tags, exclude_tags)
 
