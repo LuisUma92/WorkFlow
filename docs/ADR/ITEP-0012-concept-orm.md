@@ -309,3 +309,32 @@ The note's own `main_topic` frontmatter field continues to be validated against 
 `MainTopic` table independently — that validation path is unchanged.
 
 Reference: `tasks/requests/2026-05-27-topic-reroot-discipline-area.md`, migration `0011`.
+
+---
+
+## Amendment 2026-07-04 — Concept referencing contract: slug-only strict (gap #18)
+
+**Decision (option A of A/B/C):** `Concept.code` (ASCII slug) is the **only** accepted key
+for concept references — every frontmatter `concepts:` list entry and every `--concept`
+CLI flag value must be a `Concept.code` slug. The Spanish `label` field is **display-only**
+and is never accepted as a lookup key anywhere in the system. Unknown or invalid slugs fail
+loud, with a `difflib`-based closest-match suggestion (same UX precedent as the Bundle A
+fail-loud validators).
+
+**Rejected alternatives:**
+
+- **B — normalized Spanish-label resolver on top of canonical slugs:** rejected for the
+  ambiguity of label normalization (accents, synonyms, casing) and the extra uniqueness
+  constraint it would impose on `label` to make resolution deterministic.
+- **C — label-canonical with a derived slug:** rejected because derived slugs are unstable
+  graph IDs (label edits silently reslug and orphan references) and slugify collisions are
+  unresolved; this directly contradicts the 2026-06-30 incident where 11,301 files had to be
+  hand-normalized after silent acceptance of lax input.
+
+**MUST rule:** every future concept-referencing surface (CLI flags, frontmatter schemas,
+importers, graph filters) validates against `Concept.code` strict — no label-based fallback,
+ever. `resolve_concepts()` in `src/workflow/concept/service.py` must never gain a
+label-based resolution path; any PR attempting to add one is out of contract with this ADR.
+
+This amendment unblocks Freeze-Window Phase F5 (concept-referencing semantics), which was
+gated on this decision. See `tasks/plans/2026-07-03-freeze-window-features-plan.md` Phase F4.

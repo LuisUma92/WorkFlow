@@ -449,6 +449,18 @@ Phase 1/2 needs it if they overrun.
 
 ### Phase 4 — concept-slug decision gate (#18)
 
+**DECIDED (2026-07-04):** Option **A — slug-only strict**. `Concept.code`
+is the sole accepted key for concept references (frontmatter `concepts:`
+lists, all `--concept` CLI flags); the Spanish `label` is display-only,
+never a lookup key. Unknown/invalid slugs fail loud with a difflib
+closest-match suggestion (Bundle A precedent). B (normalized-label resolver)
+and C (label-canonical with derived slug) were rejected. Recorded as an
+amendment to ADR ITEP-0012 (`docs/ADR/ITEP-0012-concept-orm.md`, "Amended
+2026-07-04"). This unblocks Phase 5's concept-referencing semantics work
+(the follow-on phase gated on this decision, e.g. any new concept-referencing
+CLI/importer surface) — no further council/decision step needed, only
+implementation against the locked contract.
+
 **Goal:** Schedule the A/B/C architecture decision conversation with the
 user — **not implementation**. `concepts.slug` vs Spanish-label collision
 handling has three options per the roadmap; council decision requires the
