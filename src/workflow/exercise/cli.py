@@ -23,6 +23,7 @@ from workflow.db.repos.sqlalchemy import SqlExerciseRepo
 from workflow.db.errors import with_schema_guard
 from workflow.bibliography.service import get_bib_entry_by_bibkey, BibKeyAmbiguous
 from workflow.concept.service import resolve_concepts
+from workflow.exercise.chapter import filter_by_chapter
 from workflow.exercise.balance import (
     compute_balance,
     coverage_ratio,
@@ -250,6 +251,28 @@ def _exercise_to_dict(ex: Any) -> dict[str, Any]:
     }
 
 
+def _apply_chapter_filter(
+    exercises: list[Exercise], chapter_number: int, session: Session
+) -> list[Exercise]:
+    """Filter exercises to a book chapter, reporting drops/warnings to stderr.
+
+    Exercises with no resolvable chapter (no book_id, no matching
+    BibContent row, or an out-of-range/unparsable numeric suffix) are
+    dropped silently from the returned list but counted — reported as a
+    single stderr note, not an error (Phase 2b, freeze-window plan).
+    """
+    result = filter_by_chapter(exercises, chapter_number, session)
+    for warning in result.warnings:
+        click.echo(f"warning: {warning}", err=True)
+    if result.excluded > 0:
+        click.echo(
+            f"note: {result.excluded} exercise(s) excluded — no resolvable "
+            f"chapter {chapter_number} reference.",
+            err=True,
+        )
+    return list(result.matched)
+
+
 @exercise.command(name="list")
 @click.option(
     "--status",
@@ -268,6 +291,13 @@ def _exercise_to_dict(ex: Any) -> dict[str, Any]:
 @click.option(
     "--concept", "concept_code", type=str, default=None, help="Filter by concept code."
 )
+@click.option(
+    "--chapter",
+    "chapter_number",
+    type=int,
+    default=None,
+    help="Filter to exercises whose reference falls in this book chapter.",
+)
 @click.option("--limit", type=int, default=100, show_default=True)
 @click.option("--json", "as_json", is_flag=True, default=False, help="Emit JSON array.")
 @click.pass_context
@@ -280,6 +310,7 @@ def list_exercises(
     exercise_type,
     course,
     concept_code,
+    chapter_number,
     limit,
     as_json,
 ) -> None:
@@ -314,6 +345,9 @@ def list_exercises(
             concept_ids=concept_ids,
             limit=limit,
         )
+
+        if chapter_number is not None:
+            exercises = _apply_chapter_filter(exercises, chapter_number, session)
 
         if as_json:
             click.echo(
