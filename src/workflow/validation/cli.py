@@ -7,6 +7,12 @@ import click
 from sqlalchemy.orm import Session
 
 from workflow.db.engine import get_engine_from_ctx
+from workflow.latex.units import (
+    default_units_sty_path,
+    find_undeclared_units,
+    format_unit_warnings,
+    load_declared_units,
+)
 from workflow.validation.parsers import parse_md_frontmatter, parse_tex_metadata
 from workflow.validation.schemas import (
     check_concepts_against_db,
@@ -146,6 +152,17 @@ def notes(
         sys.exit(1)
 
 
+def _lint_unit_warnings(filepath: Path, declared_units: frozenset[str]) -> list[str]:
+    """Warn (never error) on `\\si`/`\\SI` unit macros not in builtins ∪ declared."""
+    try:
+        tex_body = filepath.read_text(encoding="utf-8")
+    except OSError:
+        return []
+    if not tex_body:
+        return []
+    return format_unit_warnings(find_undeclared_units(tex_body, declared_units))
+
+
 @validate.command()
 @click.argument("path", type=click.Path(exists=True))
 @click.option("--recursive/--no-recursive", default=True, show_default=True)
@@ -153,6 +170,7 @@ def exercises(path: str, recursive: bool) -> None:
     """Validate commented YAML metadata in exercise .tex files."""
     root = Path(path)
     files = sorted(root.rglob("*.tex") if recursive else root.glob("*.tex"))
+    declared_units = load_declared_units(default_units_sty_path())
 
     total = 0
     valid = 0
@@ -161,13 +179,21 @@ def exercises(path: str, recursive: bool) -> None:
 
     for filepath in files:
         total += 1
+        unit_warnings = _lint_unit_warnings(filepath, declared_units)
+
         metadata = parse_tex_metadata(filepath)
 
         if metadata is None:
             click.echo(f"{filepath}: [SKIP] no metadata block found")
+            if unit_warnings:
+                warned += 1
+                click.echo(f"{filepath}:")
+                for w in unit_warnings:
+                    click.echo(f"  ! {w}")
             continue
 
         _, errors, warnings = validate_exercise_metadata(metadata)
+        warnings = warnings + unit_warnings
         if errors:
             invalid += 1
             click.echo(f"{filepath}:")
