@@ -64,7 +64,7 @@ Defined in `pyproject.toml` under `[project.scripts]`:
 
 - **`src/itep/`** — Init TeX Project (ITeP). Project scaffolding and management. Uses `workflow.db` for models. Config is `config.yaml` per project (pointer to DB record, see ADR ITEP/0003).
 
-- **`src/latexzettel/`** — Zettelkasten engine. CLI + JSONL/NDJSON RPC server + Neovim Lua client. Uses `workflow.db.models.notes` via compatibility shim in `infra/orm.py`.
+- **`src/latexzettel/`** — Zettelkasten engine. CLI + JSONL/NDJSON RPC server + Neovim Lua client. Uses `workflow.db.models.notes` directly (`Note`, `Citation`, `Label`, `Link`, `Tag`, `NoteTag`); the former Peewee→SQLAlchemy compatibility shim (`infra/orm.py`) was removed in v1.6.0 — see LZK-0004 retrospective. Live `infra/` now holds `db.py`, `fs.py`, `platform.py`, `processes.py`, `regexes.py`.
 
 - **`src/lectkit/`** — Lecture utilities: `cleta` (cleanup), `nofi` (note splitting), `crete` (exercise generation — **deprecated**, use `workflow exercise create`).
 

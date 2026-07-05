@@ -1,5 +1,10 @@
 # Add CLI surface for `BibContent` (Content ↔ BibEntry link) under `workflow content`
 
+**Status: RESOLVED — Implemented.** `workflow content link-bib | bib-links | unlink-bib`
+shipped in `src/workflow/content/cli.py` (+ `content/bib_links.py`). Retroactive closure
+annotation applied 2026-07-05 (legacy no-frontmatter request; feature was already shipped
+with no closure marker) per `tasks/audit/2026-07-05-tasks-adr-completeness-audit.md` Summary #7.
+
 ## Summary
 
 `BibContent` exists as a fully-defined ORM table

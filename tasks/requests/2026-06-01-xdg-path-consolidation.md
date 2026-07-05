@@ -1,7 +1,10 @@
 # Request: XDG path consolidation — align code with ADR-0008
 
 - **Date:** 2026-06-01
-- **Status:** Proposed
+- **Status:** RESOLVED — Implemented (executed via `tasks/plans/2026-06-05-wave-e-xdg-path-consolidation-plan.md`;
+  `src/workflow/paths.py` platformdirs-based resolver shipped, ADR-0008 amended 2026-06-05; closure
+  annotation applied retroactively 2026-07-05 per `tasks/audit/2026-07-05-tasks-adr-completeness-audit.md`
+  Summary #6)
 - **Related:** ADR-0008 (Accepted, 2026-03-25), ADR-0003, ITEP-0011
 - **Type:** Refactor / infrastructure (no new feature surface)
 

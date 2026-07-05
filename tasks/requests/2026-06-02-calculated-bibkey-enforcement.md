@@ -1,7 +1,10 @@
 # Request — Enforce a calculated bibkey format
 
 Date: 2026-06-02
-Status: Proposed
+Status: RESOLVED — Implemented (executed via `tasks/plans/2026-06-02-calculated-bibkey-plan.md`;
+`workflow prisma bib recompute-keys` CLI shipped, `src/workflow/prisma/cli.py:484`; closure
+annotation applied retroactively 2026-07-05 per `tasks/audit/2026-07-05-tasks-adr-completeness-audit.md`
+Summary #6)
 Related: ADR-0019 (bibliography dialect); supersedes the rejected P2.4 `UNIQUE(bibkey)`
 identity change (see `tasks/plans/2026-06-01-bibliography-dialect-plan.md`).
 

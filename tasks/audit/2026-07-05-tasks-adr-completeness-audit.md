@@ -24,16 +24,16 @@ Scope: verify tasks/{roadmap,requests,plans} lifecycle truthfulness and docs/ADR
 |---|---|---|
 | 2026-05-27.md | ✅ resolved | frontmatter `status: completed`, no contradicting evidence found |
 | 2026-05-29.md | ✅ resolved | `status: completed`; completion note cites 5 waves — spot-checked v1.14–v1.16 shipped |
-| 2026-06-03-bibliography-and-two-workflow-roadmap.md | ⚠️ open | Waves A/C/D/E claimed shipped elsewhere (2026-07-03 roadmap); Wave B (bib-block stdin import) **is now also shipped** (commit `037e572`) but this roadmap has no closure annotation — file itself has no status field at all |
+| 2026-06-03-bibliography-and-two-workflow-roadmap.md | ✅ resolved | **RESOLVED 2026-07-05: added top-of-file "Status: partially superseded" note + Wave B section correction `[CORRECTED 2026-07-05: SHIPPED — commit 037e572]`.** |
 | 2026-06-06-note-graph-and-editor-tooling-roadmap.md | ✅ resolved | W1–W5 all cited with commits (`7d8c385`,`e0a1a49`,`4bba8ab`+`c19afaa`,`3035684`,`1c908b9`) — all verified present in `git log --all` |
-| 2026-07-03-pre-candidatura-window-roadmap.md | ⚠️ open | Newest roadmap — 3 stale lines found (see Findings #1–#3 below); rest of table is accurate |
+| 2026-07-03-pre-candidatura-window-roadmap.md | ✅ resolved | **RESOLVED 2026-07-05: #14 line annotated `[CORRECTED 2026-07-05: ...]` in place (stale claim, request already shipped/closed).** |
 | route-map-post-itep-0011.md | ✅ resolved | frontmatter `status: completed` |
 
 ### Findings
 
 1. **Bundle A/B falsely appear "in progress" via their own request files, but the roadmap correctly shows them planned — the request files are the stale artifact, not the roadmap** (see Section B, Findings #1–#2). Roadmap text itself ("Housekeeping done 2026-07-03") is accurate as of its own snapshot date; no fix needed in the roadmap file.
-2. **Roadmap #14 line is stale**: `2026-07-03-pre-candidatura-window-roadmap.md` line "`#14 course add-practice | post-window P2 (surface decision needed; course --help unverified)`" — but `workflow course add-practice` **already shipped** 2026-05-27 (commit `87e3420`, request `2026-04-29-course-add-practice-quiz.md` closed same day, `tests/workflow/test_course_practices.py` exists). This is the exact case primer.md already flagged as stale — confirms it is still unfixed in the roadmap file. **OPEN.**
-3. **2026-06-03-bibliography roadmap has no frontmatter/status marker at all** and its "Wave B open" claim is now also stale (Wave B shipped via `037e572`) — but that roadmap is a historical snapshot doc, not actively maintained; flagging for hygiene only, not urgent. **OPEN.**
+2. ~~**Roadmap #14 line is stale**: `2026-07-03-pre-candidatura-window-roadmap.md` line "`#14 course add-practice | post-window P2 (surface decision needed; course --help unverified)`" — but `workflow course add-practice` **already shipped** 2026-05-27 (commit `87e3420`, request `2026-04-29-course-add-practice-quiz.md` closed same day, `tests/workflow/test_course_practices.py` exists). This is the exact case primer.md already flagged as stale — confirms it is still unfixed in the roadmap file. **OPEN.**~~ **RESOLVED 2026-07-05: bracketed `[CORRECTED 2026-07-05: ...]` note added in place, dated snapshot preserved as-is per convention.**
+3. ~~**2026-06-03-bibliography roadmap has no frontmatter/status marker at all** and its "Wave B open" claim is now also stale (Wave B shipped via `037e572`) — but that roadmap is a historical snapshot doc, not actively maintained; flagging for hygiene only, not urgent. **OPEN.**~~ **RESOLVED 2026-07-05: top-of-file status note + Wave B section correction added.**
 4. The 2026-07-03 roadmap's own "Status of prior roadmaps" table is otherwise accurate (2026-06-06 W1–W5 commits all verified in git log).
 5. `2026-07-04-build-exam-balanceo.md` (#17, closed same day as its own creation, commit `47a50ec` verified) postdates the 2026-07-03 roadmap snapshot — the roadmap's "post-window" disposition for #17 is just aged, not an error given the snapshot date.
 
@@ -59,34 +59,34 @@ Scope: verify tasks/{roadmap,requests,plans} lifecycle truthfulness and docs/ADR
 | 2026-05-23-nvim-plugin-review-hardening.md | ✅ resolved | closed 2026-05-27, files exist |
 | 2026-05-26-database-normalization.md | ✅ resolved | closed 2026-05-27, 8 commits cited, all verified in git log |
 | 2026-05-27-topic-reroot-discipline-area.md | ✅ resolved | closed_by v1.11.0, module knowledge.py has MainTopicSyllabus/Topic.discipline_area_id |
-| 2026-05-28-content-bib-link-cli.md | ⚠️ open | **No status/closure annotation at all** (legacy no-frontmatter format) despite feature being fully shipped: `content/bib_links.py` + `link-bib`/`bib-links`/`unlink-bib` CLI commands all present in `src/workflow/content/cli.py` |
+| 2026-05-28-content-bib-link-cli.md | ✅ resolved | **RESOLVED 2026-07-05: in-body "Status: RESOLVED — Implemented" marker added.** |
 | 2026-05-28-graph-neighbors-json.md | ✅ resolved | in-body "Status: RESOLVED — v1.16.0" marker (no YAML field, but present); `neighbors_cmd` verified |
 | 2026-05-28-nvim-plugin-taxonomy-coverage.md | ✅ resolved | in-body Tier-2 update marker; nvim pickers (topics.lua, contents.lua, concepts.lua, graph_neighbors.lua) verified present |
-| 2026-05-28-topic-content-cli-surface.md | ⚠️ open | **No status/closure annotation at all** despite `workflow topic add\|list\|show\|import` and `workflow content add\|list\|show` all shipped and verified in `src/workflow/topic/cli.py` + `content/cli.py` |
+| 2026-05-28-topic-content-cli-surface.md | ✅ resolved | **RESOLVED 2026-07-05: in-body "Status: RESOLVED — Implemented" marker added.** |
 | 2026-05-29-bibliography-service-extraction.md | ✅ resolved | in-body "RESOLVED — v1.14.0" marker; `src/workflow/bibliography/service.py` exists |
 | 2026-05-29-content-service-split.md | ✅ resolved | in-body "RESOLVED — v1.14.0" marker; `content/bib_links.py` split confirmed |
 | 2026-05-29-nvim-plugin-plenary-harness.md | ✅ resolved | in-body "ALL PHASES DONE" marker; `nvim-plugin/tests/plenary/*.lua` specs present (5+ files) |
 | 2026-05-29-v1.14.0-reviewer-esquema-followups.md | ✅ resolved | in-body "Status: completed (2026-06-03)" — all 10 items closed across 4 waves, commits verified (`dc5d603`,`07979b5`,`0903476`,`c12a7e0`,`8ac1089`,`02b7aaa`,`2b1789d`) |
 | 2026-05-30-topic-content-concept-bulk-import.md | ✅ resolved | in-body "RESOLVED — v1.17.0"; `src/workflow/importer/engine.py` + ADR-0018 confirmed |
 | 2026-06-01-bibliography-dialect-biblatex-bibtex-compat.md | ⚠️ open | genuinely still open (P2, no implementation listed) — but not orphaned: referenced by 2026-06-03 roadmap Wave A/C/D/E (mostly shipped under this umbrella) and by `2026-06-03-wave-a-biblatex-100-plan.md` |
-| 2026-06-01-literature-note-bib-block-import.md | ⚠️ open | **STALE — feature already shipped.** `status: open`, no closed_on/closed_by, yet `workflow prisma bib import --stdin` (commit `037e572`) + nvim `:WorkflowBibImport` (`nvim-plugin/lua/workflow/bib_import.lua`, wired in `commands.lua`) are fully implemented end-to-end. This is a **third stale-claim case** beyond the 2 the user already knew about |
-| 2026-06-01-xdg-path-consolidation.md | ⚠️ open | **STALE** — `Status: Proposed` (legacy format, no frontmatter) but `tasks/plans/2026-06-05-wave-e-xdg-path-consolidation-plan.md` executed this and CLAUDE.md documents `src/workflow/paths.py` (platformdirs) as shipped |
-| 2026-06-02-calculated-bibkey-enforcement.md | ⚠️ open | **STALE** — `Status: Proposed` (legacy format) but `workflow prisma bib recompute-keys` CLI command exists (`src/workflow/prisma/cli.py:484`), matching `tasks/plans/2026-06-02-calculated-bibkey-plan.md` |
+| 2026-06-01-literature-note-bib-block-import.md | ✅ resolved | **RESOLVED 2026-07-05: closed — `status: closed`, `resolution: implemented`, `closed_on: 2026-06-01`, `closed_by: 037e572`, acceptance boxes ticked, progress log updated.** |
+| 2026-06-01-xdg-path-consolidation.md | ✅ resolved | **RESOLVED 2026-07-05: `Status:` line flipped to "RESOLVED — Implemented" with pointer to the executed plan.** |
+| 2026-06-02-calculated-bibkey-enforcement.md | ✅ resolved | **RESOLVED 2026-07-05: `Status:` line flipped to "RESOLVED — Implemented" with pointer to the executed plan.** |
 | 2026-06-03-prisma-to-literature-note.md | ⚠️ open | genuinely still partially open (Wave D shipped per plan, but request itself carries no closure annotation — blocked_by note says "B1 stdin + A5 renderer have both landed") — orphaned-looking but is referenced live by 2026-07-03 roadmap backlog ("PRISMA Wave C needs C0 request rewrite") |
 | 2026-07-03-convention-engine-batch-transform.md | ⚠️ open | correctly open, explicitly deferred post-candidatura, referenced by pre-candidatura roadmap backlog — not orphaned |
-| 2026-07-03-exercise-composability-flags.md | ⚠️ open | **STALE — shipped.** `status: open`, empty `closed_on`/`closed_by`, but commit `39e4d6f` ("feat(exercise): Bundle B — sync --json/--dry-run/--status + list --concept") exists and all 4 flags verified present in `src/workflow/exercise/cli.py` |
-| 2026-07-03-exercise-failloud-validators.md | ⚠️ open | **STALE — shipped.** `status: open`, empty `closed_on`/`closed_by`, but commit `7257024` ("feat(exercise): Bundle A — fail-loud validators") exists and `--strict-concepts` flag verified in `src/workflow/exercise/cli.py:377` |
+| 2026-07-03-exercise-composability-flags.md | ✅ resolved | **RESOLVED 2026-07-05: closed — `status: closed`, `resolution: implemented`, `closed_on: 2026-07-03`, `closed_by: 39e4d6f`, acceptance boxes ticked.** |
+| 2026-07-03-exercise-failloud-validators.md | ✅ resolved | **RESOLVED 2026-07-05: closed — `status: closed`, `resolution: implemented`, `closed_on: 2026-07-03`, `closed_by: 7257024`, acceptance boxes ticked.** |
 | 2026-07-03-exercise-moodle-validate-scaffold.md | ✅ resolved | closed 2026-07-03, `f0aa62d`+`14a0f21` both verified in git log, all listed files exist |
 | 2026-07-03-graphify-ideas.md | ⚠️ open | genuinely open/untracked (git status shows `??`), correctly unclosed, not referenced by any roadmap yet — orphaned by design (very new, same-day) |
 | 2026-07-04-build-exam-balanceo.md | ✅ resolved | closed 2026-07-04, commit `47a50ec` verified, `src/workflow/exercise/balance.py` exists, 21 tests file present |
 
 ### Findings
 
-1. **Bundle A request** (`2026-07-03-exercise-failloud-validators.md`) is fully shipped (commit `7257024`) but frontmatter still reads `status: open` with blank `closed_on`/`closed_by` — needs a closure update. **OPEN.**
-2. **Bundle B request** (`2026-07-03-exercise-composability-flags.md`) is fully shipped (commit `39e4d6f`) but frontmatter still reads `status: open` — same fix needed. **OPEN.**
-3. **literature-note-bib-block-import** (`2026-06-01-literature-note-bib-block-import.md`) is fully shipped end-to-end (CLI `--stdin` + nvim `:WorkflowBibImport`, commit `037e572`) but marked `status: open` — a third, previously-undetected stale-claim case (beyond the 2 the user already knew: #14 add-practice, note-frontmatter-main-topic). **OPEN.**
-4. Two **legacy no-frontmatter requests** (`2026-05-28-content-bib-link-cli.md`, `2026-05-28-topic-content-cli-surface.md`) describe features that are fully shipped in code but carry no closure annotation of any kind — format/hygiene gap, not a functional risk. **OPEN.**
-5. Two **legacy "Status: Proposed" requests** (`2026-06-01-xdg-path-consolidation.md`, `2026-06-02-calculated-bibkey-enforcement.md`) are both actually shipped (Wave E plan executed; `recompute-keys` CLI exists) — stale status labels. **OPEN.**
+1. ~~**Bundle A request** (`2026-07-03-exercise-failloud-validators.md`) is fully shipped (commit `7257024`) but frontmatter still reads `status: open` with blank `closed_on`/`closed_by` — needs a closure update. **OPEN.**~~ **RESOLVED 2026-07-05: closed with `closed_by: 7257024`.**
+2. ~~**Bundle B request** (`2026-07-03-exercise-composability-flags.md`) is fully shipped (commit `39e4d6f`) but frontmatter still reads `status: open` — same fix needed. **OPEN.**~~ **RESOLVED 2026-07-05: closed with `closed_by: 39e4d6f`.**
+3. ~~**literature-note-bib-block-import** (`2026-06-01-literature-note-bib-block-import.md`) is fully shipped end-to-end (CLI `--stdin` + nvim `:WorkflowBibImport`, commit `037e572`) but marked `status: open` — a third, previously-undetected stale-claim case (beyond the 2 the user already knew: #14 add-practice, note-frontmatter-main-topic). **OPEN.**~~ **RESOLVED 2026-07-05: closed with `closed_by: 037e572`.**
+4. ~~Two **legacy no-frontmatter requests** (`2026-05-28-content-bib-link-cli.md`, `2026-05-28-topic-content-cli-surface.md`) describe features that are fully shipped in code but carry no closure annotation of any kind — format/hygiene gap, not a functional risk. **OPEN.**~~ **RESOLVED 2026-07-05: in-body "Status: RESOLVED — Implemented" markers added to both.**
+5. ~~Two **legacy "Status: Proposed" requests** (`2026-06-01-xdg-path-consolidation.md`, `2026-06-02-calculated-bibkey-enforcement.md`) are both actually shipped (Wave E plan executed; `recompute-keys` CLI exists) — stale status labels. **OPEN.**~~ **RESOLVED 2026-07-05: both flipped to "RESOLVED — Implemented" with pointers to their executed plans.**
 
 ---
 
@@ -145,18 +145,18 @@ Scope: verify tasks/{roadmap,requests,plans} lifecycle truthfulness and docs/ADR
 | 0011-latex-exercise-parser-strategy.md | ✅ resolved | `parser.py:159` docstring "Never raises exceptions"; `ParseResult.errors` (line 162) holds invalid-status errors (`INVALID_STATUS_ERROR_PREFIX`, line 39); amendment text (parser-never-raises, explicit invalid status → errors) is present and matches code exactly. |
 | 0012-moodle-xml-export-mapping.md | ✅ resolved | `src/workflow/exercise/moodle.py`, `src/workflow/latex/normalize.py` exist. |
 | 0013-codebase-consolidation.md | ✅ resolved | CLI split across modules (exercise/lecture/graph/evaluation/prisma each own `cli.py`). |
-| 0014-zettelkasten-implementation.md | ⚠️ open | **Status mismatch**: file frontmatter says `status: Accepted` but `INDEX.md:173` lists it as **Proposed**. INDEX is stale — needs correction to Accepted. |
+| 0014-zettelkasten-implementation.md | ✅ resolved | **RESOLVED 2026-07-05: INDEX.md row status corrected Proposed → Accepted, matching the ADR's own frontmatter.** |
 | 0015-zettelkasten-dailly-work.md | ✅ resolved | Notes/demos/images/exercises workflow all present (notes/, tikz/, exercise/ modules). |
 | 0016-evaluation-cli.md | ✅ resolved | `evaluations`, `item`, `course` Click groups confirmed in `src/workflow/evaluation/cli.py:45,55`. |
-| 0017-graph-neighbors-json-contract.md | ⚠️ open | Contract itself matches code (`--json` flag on `neighbors_cmd`, `graph/cli.py:512-516`), **but ADR is entirely missing from INDEX.md** — no row exists for 0017 in any section. |
-| 0018-bulk-import-contract.md | ⚠️ open | Contract verified byte-accurate: `importer/cli.py:30,44,48,52` → `ctx.exit(1)`, `ctx.exit(2)`, `ctx.exit(3 if result.has_errors else 0)` matches ADR's documented exit codes 0/1/2/3. **But ADR is entirely missing from INDEX.md**, same as 0017. |
+| 0017-graph-neighbors-json-contract.md | ✅ resolved | **RESOLVED 2026-07-05: added row to new "Graph CLI & Bulk Import Contracts" section in INDEX.md.** |
+| 0018-bulk-import-contract.md | ✅ resolved | **RESOLVED 2026-07-05: added row to new "Graph CLI & Bulk Import Contracts" section in INDEX.md (same edit as 0017).** |
 | 0019-bibliography-dialect-biblatex-bibtex.md | ✅ resolved | `src/workflow/bibliography/dialect.py`, `render.py`, `inheritance.py` exist. |
 | 0020-bibliography-module-boundary.md | ✅ resolved | `src/workflow/bibliography/service.py`, `bibkey.py` present; foundation-layer boundary intact. |
 
 ### Findings
 
-1. **0014 INDEX row stale** — INDEX row status (Proposed) contradicts the ADR's own frontmatter (Accepted) — likely never updated after the ADR was accepted. **OPEN.**
-2. **0017 and 0018 missing from INDEX** — both recently added, both describing shipped/pinned contracts, yet **zero rows in INDEX.md** — a structural indexing gap, not just a stale status. **OPEN.**
+1. ~~**0014 INDEX row stale** — INDEX row status (Proposed) contradicts the ADR's own frontmatter (Accepted) — likely never updated after the ADR was accepted. **OPEN.**~~ **RESOLVED 2026-07-05: INDEX row corrected to Accepted.**
+2. ~~**0017 and 0018 missing from INDEX** — both recently added, both describing shipped/pinned contracts, yet **zero rows in INDEX.md** — a structural indexing gap, not just a stale status. **OPEN.**~~ **RESOLVED 2026-07-05: both added under a new "Graph CLI & Bulk Import Contracts" INDEX section.**
 3. 0011's fail-loud amendment (parser-never-raises / explicit invalid status → `ParseResult.errors`) lines up exactly with commits `7257024`/`39e4d6f` — text and code are in sync.
 
 ---
@@ -178,13 +178,13 @@ Scope: verify tasks/{roadmap,requests,plans} lifecycle truthfulness and docs/ADR
 | ITEP-0010-schema-versioning-and-migrations.md | ✅ resolved | `workflow db migrate-xdg` command exists per CLAUDE.md/live code. |
 | ITEP-0011-vault-unification.md | ✅ resolved | `src/workflow/vault/{unify,cli,paths}.py` all present; `.vault_pointer` marker logic confirmed by CLAUDE.md description. |
 | ITEP-0012-concept-orm.md | ✅ resolved | Amendment "2026-07-04 — Concept referencing contract: slug-only strict (gap #18)" text present at line 315; matches this week's work. |
-| ITEP-0013-note-relation-graph.md | ⚠️ open | File/INDEX both say **Accepted**, but per primer/commit history the full surface has shipped: `NoteEdge` model (`db/models/notes.py:273`), `graph trace`/`graph resume` commands (`graph/cli.py:698,736`), `notes sync --rebuild-edges` (`notes/sync.py:282,372`), `notes link --relation` (`notes/cli.py:463,755,801`) — all present and wired, with 30 tests per commit `39e4d6f`'s predecessor. This is a **status-upgrade candidate**: Accepted → Implemented. |
+| ITEP-0013-note-relation-graph.md | ✅ resolved | **RESOLVED 2026-07-05: status flipped Accepted → Implemented (frontmatter + Status section dated note + Change Log entry); INDEX.md row updated to match.** |
 | ITEP-0014-incremental-sync-via-content-hash.md | ➖ | Correctly Proposed — `fm_hash` does not exist anywhere in `src/` (grep confirmed zero hits). Nothing shipped ahead of the decision. |
 | ITEP-0015-editor-first-authoring-tooling.md | ➖ | Correctly Proposed. Note: nvim-plugin already has 49 `.lua` files (pickers, validate.lua etc. from W5, commit `1c908b9`), but those predate/are outside this ADR's specific "editor-first authoring tooling for the note graph" scope — no overlap confirmed, not a violation. |
 
 ### Findings
 
-1. **ITEP-0013 is the clearest status-lag case in the whole audit**: every named primitive (note_edge table, DAG trace/resume, `--rebuild-edges`, `--relation`) is live and tested, yet the ADR still reads "Accepted" rather than "Implemented" — inconsistent with how ITEP-0008/0009/0010/0011/0012 were bumped to Implemented once shipped. **OPEN.**
+1. ~~**ITEP-0013 is the clearest status-lag case in the whole audit**: every named primitive (note_edge table, DAG trace/resume, `--rebuild-edges`, `--relation`) is live and tested, yet the ADR still reads "Accepted" rather than "Implemented" — inconsistent with how ITEP-0008/0009/0010/0011/0012 were bumped to Implemented once shipped. **OPEN.**~~ **RESOLVED 2026-07-05: bumped to Implemented, dated amendment + Change Log entry added, INDEX row updated.**
 2. ITEP-0014/0015 are honestly Proposed; verified no premature implementation (`fm_hash` absent, no editor-first-specific module found).
 
 ---
@@ -201,7 +201,7 @@ Scope: verify tasks/{roadmap,requests,plans} lifecycle truthfulness and docs/ADR
 
 ### Findings
 
-1. LZK-0004 is a model ADR: it was updated post-hoc with a Retrospective + Change Log documenting shim removal, so the "Implemented" status and code truth are perfectly aligned. (Aside, out of ADR-audit scope: CLAUDE.md's architecture section still describes notes.py access "via compatibility shim in infra/orm.py" — that line is now stale relative to LZK-0004's own retrospective; flagged for doc hygiene, carried into the Summary as an out-of-scope aside.)
+1. LZK-0004 is a model ADR: it was updated post-hoc with a Retrospective + Change Log documenting shim removal, so the "Implemented" status and code truth are perfectly aligned. ~~(Aside, out of ADR-audit scope: CLAUDE.md's architecture section still describes notes.py access "via compatibility shim in infra/orm.py" — that line is now stale relative to LZK-0004's own retrospective; flagged for doc hygiene, carried into the Summary as an out-of-scope aside.)~~ **RESOLVED 2026-07-05: CLAUDE.md `src/latexzettel/` bullet rewritten — verified live `infra/` contents (`db.py`, `fs.py`, `platform.py`, `processes.py`, `regexes.py`; no `orm.py`) and now states direct `workflow.db.models.notes` usage with the shim-removal note.**
 
 ---
 
@@ -251,13 +251,21 @@ Scope: verify tasks/{roadmap,requests,plans} lifecycle truthfulness and docs/ADR
 |------|---------|-------|
 | 0000-TEMPLATE.md | ✅ resolved | Correctly listed in INDEX under "Planning & Review Documents", not in a status table (as expected for a template). |
 | git-action.md | ✅ resolved | Correctly listed in INDEX as a plain doc ("CI/CD pipeline notes"), no status field expected/present — appropriate treatment. |
-| INDEX.md | ⚠️ open | Carries the 0014 status mismatch + 0017/0018 missing rows — INDEX's own integrity bugs (see Summary #9–#10). |
+| INDEX.md | ✅ resolved | **RESOLVED 2026-07-05: 0014 status corrected, 0017/0018 rows added, ITEP-0013 row bumped to Implemented (see Summary #11–#13).** |
 
 ---
 
 ## Summary / open items
 
 Counts recap (✅ / ⚠️ / ⚪-or-➖ per group):
+
+**Post-fix recount (2026-07-05):** Roadmaps 6/6 ✅; Requests 32 ✅ / 2 ⚠️ open-by-design
+(convention-engine, graphify-ideas) / 1 ⚠️ genuinely open (bibliography-dialect-compat) / 1 ⚠️
+partially-open-with-followup (prisma-to-literature-note); Plans unchanged (15 ✅ / 8 ⚪); ADRs
+61/61 ✅. See the executed-fix annotations inline above and the Summary table below (rows
+struck through where resolved).
+
+Original counts (pre-fix, 2026-07-05 audit run):
 
 | Group | ✅ resolved | ⚠️ open | ⚪ WIP-accepted / ➖ | Total |
 |---|---|---|---|---|
@@ -272,17 +280,17 @@ Only ⚠️-open items, merged from Sections A–I:
 
 | # | File | Issue | Action needed |
 |---|------|-------|---------------|
-| 1 | `tasks/roadmap/2026-07-03-pre-candidatura-window-roadmap.md` | Audit-slug #14 line claims "post-window, surface decision needed" — `course add-practice` shipped 2026-05-27 (`87e3420`), request already closed | Fix the roadmap #14 line: mark shipped 2026-05-27, commit `87e3420` |
-| 2 | `tasks/roadmap/2026-06-03-bibliography-and-two-workflow-roadmap.md` | No status field at all; "Wave B open" claim stale — Wave B shipped via `037e572` | Add frontmatter/status + closure annotation noting Wave B shipped (`037e572`); hygiene, not urgent |
-| 3 | `tasks/requests/2026-07-03-exercise-failloud-validators.md` | Bundle A shipped but `status: open`, blank closure fields | Close request: `status: completed`, `closed_on: 2026-07-03`, `closed_by: 7257024` |
-| 4 | `tasks/requests/2026-07-03-exercise-composability-flags.md` | Bundle B shipped but `status: open`, blank closure fields | Close request: `status: completed`, `closed_on: 2026-07-03`, `closed_by: 39e4d6f` |
-| 5 | `tasks/requests/2026-06-01-literature-note-bib-block-import.md` | Feature shipped end-to-end (CLI `--stdin` + nvim `:WorkflowBibImport`) but `status: open` | Close request with `closed_by: 037e572` (third stale-claim case) |
-| 6 | `tasks/requests/2026-06-01-xdg-path-consolidation.md` + `tasks/requests/2026-06-02-calculated-bibkey-enforcement.md` | Both legacy `Status: Proposed` but both shipped (Wave E plan executed; `recompute-keys` at `src/workflow/prisma/cli.py:484`) | Flip both to implemented/closed with pointers to their executed plans |
-| 7 | `tasks/requests/2026-05-28-content-bib-link-cli.md` + `tasks/requests/2026-05-28-topic-content-cli-surface.md` | No status/closure annotation of any kind; both features fully shipped (`content/cli.py`, `topic/cli.py`) | Add retroactive closure annotations (in-body "Status: RESOLVED" marker at minimum) |
-| 8 | `tasks/requests/2026-06-03-prisma-to-literature-note.md` | Genuinely partially open; blocked_by note says prerequisites landed; roadmap backlog says "PRISMA Wave C needs C0 request rewrite" | Write the C0 request rewrite per the 2026-07-03 roadmap backlog note (post-freeze) |
-| 9 | `tasks/requests/2026-06-01-bibliography-dialect-biblatex-bibtex-compat.md` | Genuinely still open (P2) — the one true remaining bibliography-dialect gap | No doc fix; keep open and tracked (referenced by 2026-06-03 roadmap + Wave A plan) |
-| 10 | `tasks/requests/2026-07-03-convention-engine-batch-transform.md` + `tasks/requests/2026-07-03-graphify-ideas.md` | Correctly open (deferred post-candidatura / brand-new untracked) | No status fix; commit `2026-07-03-graphify-ideas.md` (currently `??` in git status) and keep both tracked |
-| 11 | `docs/ADR/INDEX.md:173` | ADR-0014 row shows "Proposed"; file frontmatter says "Accepted" | Update INDEX row for 0014 → `Accepted` |
-| 12 | `docs/ADR/INDEX.md` | ADR-0017 and ADR-0018 have zero rows anywhere in INDEX.md despite being Accepted, code-verified contracts | Add INDEX rows for 0017 and 0018 (one edit fixes both; e.g. Graph CLI / Import CLI placement) — this is the pending Phase 0a of `tasks/plans/2026-07-03-freeze-window-features-plan.md` |
-| 13 | `docs/ADR/ITEP-0013-note-relation-graph.md` | Marked "Accepted" but full surface (NoteEdge, graph trace/resume, `--rebuild-edges`, `--relation`) shipped + tested | Flip ITEP-0013 → Implemented with a dated amendment note (and matching INDEX row update), consistent with ITEP-0008..0012 practice |
-| 14 | `CLAUDE.md` (architecture section, `src/latexzettel/` bullet) — out-of-scope aside | Describes notes.py access "via compatibility shim in infra/orm.py"; LZK-0004's retrospective says that file was deleted in v1.6.0 | Update the CLAUDE.md wording (doc hygiene; not an ADR fix) |
+| 1 | `tasks/roadmap/2026-07-03-pre-candidatura-window-roadmap.md` | ~~Audit-slug #14 line claims "post-window, surface decision needed" — `course add-practice` shipped 2026-05-27 (`87e3420`), request already closed~~ | **RESOLVED 2026-07-05**: Fix the roadmap #14 line: mark shipped 2026-05-27, commit `87e3420` — done via bracketed `[CORRECTED 2026-07-05: ...]` annotation in place |
+| 2 | `tasks/roadmap/2026-06-03-bibliography-and-two-workflow-roadmap.md` | ~~No status field at all; "Wave B open" claim stale — Wave B shipped via `037e572`~~ | **RESOLVED 2026-07-05**: Add frontmatter/status + closure annotation noting Wave B shipped (`037e572`); hygiene, not urgent — done |
+| 3 | `tasks/requests/2026-07-03-exercise-failloud-validators.md` | ~~Bundle A shipped but `status: open`, blank closure fields~~ | **RESOLVED 2026-07-05**: Close request: `status: completed`, `closed_on: 2026-07-03`, `closed_by: 7257024` — done (`status: closed`, `resolution: implemented`) |
+| 4 | `tasks/requests/2026-07-03-exercise-composability-flags.md` | ~~Bundle B shipped but `status: open`, blank closure fields~~ | **RESOLVED 2026-07-05**: Close request: `status: completed`, `closed_on: 2026-07-03`, `closed_by: 39e4d6f` — done |
+| 5 | `tasks/requests/2026-06-01-literature-note-bib-block-import.md` | ~~Feature shipped end-to-end (CLI `--stdin` + nvim `:WorkflowBibImport`) but `status: open`~~ | **RESOLVED 2026-07-05**: Close request with `closed_by: 037e572` (third stale-claim case) — done |
+| 6 | `tasks/requests/2026-06-01-xdg-path-consolidation.md` + `tasks/requests/2026-06-02-calculated-bibkey-enforcement.md` | ~~Both legacy `Status: Proposed` but both shipped (Wave E plan executed; `recompute-keys` at `src/workflow/prisma/cli.py:484`)~~ | **RESOLVED 2026-07-05**: Flip both to implemented/closed with pointers to their executed plans — done |
+| 7 | `tasks/requests/2026-05-28-content-bib-link-cli.md` + `tasks/requests/2026-05-28-topic-content-cli-surface.md` | ~~No status/closure annotation of any kind; both features fully shipped (`content/cli.py`, `topic/cli.py`)~~ | **RESOLVED 2026-07-05**: Add retroactive closure annotations (in-body "Status: RESOLVED" marker at minimum) — done |
+| 8 | `tasks/requests/2026-06-03-prisma-to-literature-note.md` | Genuinely partially open; blocked_by note says prerequisites landed; roadmap backlog says "PRISMA Wave C needs C0 request rewrite" | **SKIPPED (by design)**: writing the C0 request rewrite is substantive new content generation, not a docs-hygiene fix, and is explicitly scheduled post-freeze by the 2026-07-03 roadmap backlog — left open and tracked, consistent with the roadmap's own scheduling |
+| 9 | `tasks/requests/2026-06-01-bibliography-dialect-biblatex-bibtex-compat.md` | Genuinely still open (P2) — the one true remaining bibliography-dialect gap | No doc fix; keep open and tracked (referenced by 2026-06-03 roadmap + Wave A plan) — **unchanged, by design** |
+| 10 | `tasks/requests/2026-07-03-convention-engine-batch-transform.md` + `tasks/requests/2026-07-03-graphify-ideas.md` | Correctly open (deferred post-candidatura / brand-new untracked) | No status fix — **unchanged, by design**. (The `git add`/commit of the untracked graphify-ideas file is a git operation, out of scope for this docs-only pass; left for the user per "do not commit" instruction.) |
+| 11 | `docs/ADR/INDEX.md:173` | ~~ADR-0014 row shows "Proposed"; file frontmatter says "Accepted"~~ | **RESOLVED 2026-07-05**: Update INDEX row for 0014 → `Accepted` — done |
+| 12 | `docs/ADR/INDEX.md` | ~~ADR-0017 and ADR-0018 have zero rows anywhere in INDEX.md despite being Accepted, code-verified contracts~~ | **RESOLVED 2026-07-05**: Add INDEX rows for 0017 and 0018 — done via new "Graph CLI & Bulk Import Contracts" section |
+| 13 | `docs/ADR/ITEP-0013-note-relation-graph.md` | ~~Marked "Accepted" but full surface (NoteEdge, graph trace/resume, `--rebuild-edges`, `--relation`) shipped + tested~~ | **RESOLVED 2026-07-05**: Flip ITEP-0013 → Implemented with a dated amendment note (and matching INDEX row update) — done |
+| 14 | `CLAUDE.md` (architecture section, `src/latexzettel/` bullet) — out-of-scope aside | ~~Describes notes.py access "via compatibility shim in infra/orm.py"; LZK-0004's retrospective says that file was deleted in v1.6.0~~ | **RESOLVED 2026-07-05**: Update the CLAUDE.md wording — done, verified live `infra/` contents (no `orm.py`; `db.py` present) |

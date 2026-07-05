@@ -1,5 +1,11 @@
 # Add CLI surface for `workflow topic` and `workflow content`
 
+**Status: RESOLVED — Implemented.** `workflow topic add|list|show|import` and
+`workflow content add|list|show` shipped in `src/workflow/topic/cli.py` +
+`src/workflow/content/cli.py`. Retroactive closure annotation applied 2026-07-05
+(legacy no-frontmatter request; feature was already shipped with no closure marker)
+per `tasks/audit/2026-07-05-tasks-adr-completeness-audit.md` Summary #7.
+
 ## Summary
 
 `Topic` and `Content` models exist in `src/workflow/db/models/knowledge.py`

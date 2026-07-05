@@ -1,5 +1,12 @@
 # Roadmap — 100% biblatex compat + the two-workflow handoff (2026-06-03)
 
+**Status: partially superseded (2026-07-05).** This roadmap carried no status field at all
+prior to this note. Waves A/C/D/E are shipped elsewhere (see 2026-07-03 roadmap "Status of
+prior roadmaps" table); **Wave B (bib-block stdin import) is now also shipped** — commit
+`037e572` (2026-06-01), request `2026-06-01-literature-note-bib-block-import.md` closed
+2026-07-05. Flagged for hygiene only per `tasks/audit/2026-07-05-tasks-adr-completeness-audit.md`
+(Section A Finding #3 / Summary #2) — not urgent, this is a historical snapshot doc.
+
 > Snapshot. Sequences the open bibliography + notes work against two hard constraints:
 > **(1)** 100% biblatex compatibility (alternative normalized structures allowed if they
 > keep the DB normalized); **(2)** two coexisting workflows that share one bibliography
@@ -75,6 +82,10 @@ Gate: round-trip test — import biblatex `.bib` → export `--dialect biblatex`
 **including** the long-tail fields now preserved via `BibExtraField`.
 
 ## Wave B — bib-block stdin import + nvim (small; unblocks C3)
+
+**[CORRECTED 2026-07-05: SHIPPED — commit `037e572` (2026-06-01). B1 (`--stdin` on
+`prisma bib import`) and B2 (`:WorkflowBibImport`) both landed same-day as the request;
+request closed 2026-07-05 per audit.]**
 
 - **B1** — factor `import_bib_file` → `read file` + `import_bib_text(session, text, …)`;
   add `--stdin` / `-` to `prisma bib import`. Zero change to parse/map/dedup/guards/`ImportResult`.

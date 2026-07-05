@@ -74,7 +74,7 @@ Same request as #3.
 | #11 scaffold-quiz, #16 category-style flat | Bundle D-scaffold |
 | #12 register UCIMED verify | ✅ closed — verified live; note appended to 2026-04-29 request |
 | #13 topic import deprecation | ✅ closed — healthy alias → `workflow import` (ADR-0018) |
-| #14 course add-practice | post-window P2 (surface decision needed; `course --help` unverified) |
+| #14 course add-practice | post-window P2 (surface decision needed; `course --help` unverified) [CORRECTED 2026-07-05: stale — `workflow course add-practice` already shipped 2026-05-27, commit `87e3420`; request `2026-04-29-course-add-practice-quiz.md` closed same day; per `tasks/audit/2026-07-05-tasks-adr-completeness-audit.md` Section A Finding #2, no further action needed] |
 | #15 NoteFrontmatter.main_topic real propagation | post-candidatura (see below) |
 | #17 build-exam --balanceo | post-window, first post-freeze sprint candidate |
 | #18 concept slug vs Spanish labels | **DECISION-NEEDED** (user-deferred A/B/C) — architecture, do not implement |

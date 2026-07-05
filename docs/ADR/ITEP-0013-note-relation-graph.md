@@ -3,9 +3,9 @@ id: ITEP-0013
 title: "Note relation graph — directed lineage + associative edges over the unified vault"
 aliases:
   - ADR-ITEP-0013
-status: Accepted
+status: Implemented
 date: 2026-05-22
-implemented_date: null
+implemented_date: 2026-07-05
 authors:
   - Luis Fernando Umaña Castro
 reviewers: []
@@ -644,10 +644,16 @@ shippable behind the optional frontmatter field.
 
 ## Status
 
-**Accepted** (2026-05-22). Implementation begins with P2.1 (NoteEdge model
-+ migration). Human-first authoring tooling — CLI introspection, Neovim
-pickers, in-buffer validation — is the scope of ITEP-0015, drafted in
-parallel with this acceptance.
+**Implemented** (accepted 2026-05-22; implemented 2026-07-05). Full surface
+verified live per `tasks/audit/2026-07-05-tasks-adr-completeness-audit.md`
+(Section E, ITEP-0013 row): `NoteEdge` ORM model (`src/workflow/db/models/notes.py:273`),
+`graph trace` / `graph resume` CLI commands (`src/workflow/graph/cli.py:698,736`),
+`notes sync --rebuild-edges` (`src/workflow/notes/sync.py:282,372`), and
+`notes link --relation` (`src/workflow/notes/cli.py:463,755,801`) are all
+present and wired, with test coverage per the commit preceding `39e4d6f`.
+Human-first authoring tooling — CLI introspection, Neovim pickers, in-buffer
+validation — remains the scope of ITEP-0015 (separately tracked, still
+Proposed).
 
 ---
 
@@ -660,3 +666,4 @@ parallel with this acceptance.
 | 2026-05-22 | Human-first reframing: added "Impact on Human Authors" primary section; new architectural rule requiring CLI introspection of closed-set values; "Impact on AI Coding Agents" reframed as secondary consumer reusing human primitives; ITEP-0015 (editor tooling) drafted in parallel as scope-spinoff. Status: Proposed → **Accepted**. |
 | 2026-05-22 | Locked `zettel_id` format (NanoID per ITEP-0015): regex `^[A-Za-z0-9_-]{8,21}$` enforced on `target_zettel_id` column. Filename convention and alias resolution covered by ITEP-0015 (data model unchanged by this lock; only the validation regex is added). |
 | 2026-06-06 | Template gap fix (Phase 1+2 plan `tasks/plans/2026-06-06-template-gap-plan.md`): `NoteFrontmatter` gains `relations: NoteRelations \| None` and `entry_point: bool` DTO fields (no DB persistence — deferred to ITEP-0013 P0/P2/P3). `permanent.md` and `literature.md` templates in `init.py` and live vault updated to scaffold all supported fields. obsidian.lua `delivered_from` bug corrected to `derived_from` (ADR-canonical key). |
+| 2026-07-05 | Status bumped Accepted → **Implemented** per `tasks/audit/2026-07-05-tasks-adr-completeness-audit.md` (Section E / Summary #13): full surface (NoteEdge, `graph trace`/`resume`, `--rebuild-edges`, `--relation`) confirmed shipped and tested. INDEX.md row updated to match. |

@@ -5,8 +5,8 @@ type: gap
 source_agent: workflow-runner
 opened_on: 2026-07-03
 
-status: open
-resolution:
+status: closed
+resolution: implemented
 priority: P0
 severity: blocker
 
@@ -29,9 +29,13 @@ blocked_by: []
 
 assignee: claude
 target_release: pre-candidatura-window-2026-07
-implementation: []
-closed_on:
-closed_by:
+implementation:
+  - src/workflow/exercise/cli.py:377  # --strict-concepts
+  - src/workflow/exercise/service.py  # sync_exercises strict wiring
+  - src/workflow/exercise/parser.py:216-223  # explicit invalid status -> ParseResult.errors
+  - src/workflow/validation/schemas.py:387-457  # validate_exercise_metadata unknown-key difflib warning
+closed_on: 2026-07-03
+closed_by: 7257024
 
 acceptance_criteria:
   - "`workflow exercise sync PATH --strict-concepts` exits 1 when any concept code fails to resolve, listing every dropped code on stderr"
@@ -90,11 +94,11 @@ workflow validate exercise PATH                 # errors on invalid status enum;
 
 ## Acceptance criteria
 
-- [ ] `--strict-concepts` on `exercise sync` → exit 1 + full dropped-code list
-- [ ] Invalid explicit `status` → hard error in parse/sync/validate; absent status keeps inference
-- [ ] Unknown frontmatter key → warning with difflib closest-match suggestion
-- [ ] Tests under `tests/workflow/exercise/` for all three
-- [ ] CLAUDE.md exercise CLI line updated
+- [x] `--strict-concepts` on `exercise sync` → exit 1 + full dropped-code list
+- [x] Invalid explicit `status` → hard error in parse/sync/validate; absent status keeps inference
+- [x] Unknown frontmatter key → warning with difflib closest-match suggestion
+- [x] Tests under `tests/workflow/exercise/` for all three
+- [x] CLAUDE.md exercise CLI line updated
 
 ## Out of scope
 
@@ -123,13 +127,15 @@ workflow validate exercise PATH                 # errors on invalid status enum;
 ## Progress log
 
 - 2026-07-03 — opened by claude from gap audit (slugs #1–#3) after live code verification
+- 2026-07-03 — shipped as "Bundle A" (commit `7257024`, "feat(exercise): Bundle A — fail-loud validators")
+- 2026-07-05 — closure annotation applied retroactively per `tasks/audit/2026-07-05-tasks-adr-completeness-audit.md` (Summary #3)
 
 ## Closure checklist
 
 When `status: closed` and `resolution: implemented`:
 
-- [ ] All acceptance criteria checked
-- [ ] `verification` commands pass on master
-- [ ] `implementation` frontmatter list filled with shipped paths/commands
-- [ ] `closed_by` references commit/PR/ADR
-- [ ] Related gap log entries cross-linked back to this request id
+- [x] All acceptance criteria checked
+- [x] `verification` commands pass on master
+- [x] `implementation` frontmatter list filled with shipped paths/commands
+- [x] `closed_by` references commit/PR/ADR
+- [x] Related gap log entries cross-linked back to this request id

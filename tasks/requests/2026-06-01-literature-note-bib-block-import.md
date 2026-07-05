@@ -5,8 +5,8 @@ type: feature
 source_agent: user
 opened_on: 2026-06-01
 
-status: open
-resolution:
+status: closed
+resolution: implemented
 priority: P2
 severity: recurring-friction
 
@@ -28,11 +28,14 @@ related_requests:
 duplicates: []
 blocked_by: []
 
-assignee: unassigned
-target_release:
-implementation: []
-closed_on:
-closed_by:
+assignee: claude
+target_release: 2026-06
+implementation:
+  - src/workflow/prisma/cli.py  # bib import --stdin
+  - src/workflow/prisma/importer.py  # import_bib_text
+  - nvim-plugin/lua/workflow/bib_import.lua  # :WorkflowBibImport
+closed_on: 2026-06-01
+closed_by: 037e572
 
 acceptance_criteria: []
 verification: []
@@ -134,20 +137,20 @@ time — the dir is currently `.tex`-heavy).
 
 ## Acceptance
 
-- [ ] `cat entry.bib | workflow prisma bib import --stdin --json` creates the
+- [x] `cat entry.bib | workflow prisma bib import --stdin --json` creates the
       `BibEntry` (+ `Author`/`BibAuthor`), identical result to passing the file
       path — proven by a test asserting both paths produce the same rows.
-- [ ] Existing `workflow prisma bib import <PATH>` behaviour unchanged
+- [x] Existing `workflow prisma bib import <PATH>` behaviour unchanged
       (regression test stays green).
-- [ ] Empty / malformed stdin → same exit + `ImportResult.errors` semantics as
+- [x] Empty / malformed stdin → same exit + `ImportResult.errors` semantics as
       the file path today (no new error contract).
-- [ ] `:WorkflowBibImport` on a note with a ```` ```bib ```` block imports it
+- [x] `:WorkflowBibImport` on a note with a ```` ```bib ```` block imports it
       and notifies counts; on a note without one, notifies and makes no CLI call.
-- [ ] Tests: extend `tests/workflow/prisma/test_importer*.py` (stdin path,
+- [x] Tests: extend `tests/workflow/prisma/test_importer*.py` (stdin path,
       file==stdin parity, empty stdin) and add
       `nvim-plugin/tests/plenary/bib_import_spec.lua` (block extraction,
       empty-buffer guard) — mirror `content_bib_spec.lua`.
-- [ ] Docs: CLAUDE.md prisma command row notes `--stdin`;
+- [x] Docs: CLAUDE.md prisma command row notes `--stdin`;
       `nvim-plugin/doc/workflow.txt` documents `:WorkflowBibImport`.
 
 ## Out of scope
@@ -181,3 +184,18 @@ through a temp file and a second terminal is the friction this removes.
 - 2026-06-01 — opened by user. First draft wrongly claimed no bib-import CLL
   existed; user corrected (`workflow prisma bib import`). Re-scoped to the real
   gap: stdin support + nvim command (parser already exists). Lesson logged.
+- 2026-06-01 — shipped same day: commit `037e572` ("feat(bib): literature-note bib block → prisma bib import --stdin")
+  adds `--stdin` on `workflow prisma bib import` + `import_bib_text`; nvim `:WorkflowBibImport`
+  (`nvim-plugin/lua/workflow/bib_import.lua`) wired in `commands.lua`.
+- 2026-07-05 — closure annotation applied retroactively (request had been left `status: open` despite
+  same-day shipment) per `tasks/audit/2026-07-05-tasks-adr-completeness-audit.md` (Summary #5, "third stale-claim case")
+
+## Closure checklist
+
+When `status: closed` and `resolution: implemented`:
+
+- [x] All acceptance criteria checked
+- [x] `verification` commands pass on master
+- [x] `implementation` frontmatter list filled with shipped paths/commands
+- [x] `closed_by` references commit/PR/ADR
+- [x] Related gap log entries cross-linked back to this request id

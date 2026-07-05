@@ -5,8 +5,8 @@ type: gap
 source_agent: workflow-runner
 opened_on: 2026-07-03
 
-status: open
-resolution:
+status: closed
+resolution: implemented
 priority: P0
 severity: recurring-friction
 
@@ -28,9 +28,11 @@ blocked_by: []
 
 assignee: claude
 target_release: pre-candidatura-window-2026-07
-implementation: []
-closed_on:
-closed_by:
+implementation:
+  - src/workflow/exercise/cli.py  # sync --json/--dry-run/--status; list --concept
+  - src/workflow/exercise/service.py:163-167  # dropped_concepts surfaced, not recomputed
+closed_on: 2026-07-03
+closed_by: 39e4d6f
 
 acceptance_criteria:
   - "`workflow exercise sync PATH --json` emits machine-readable report incl. synced/skipped/errors and dropped_concepts list"
@@ -92,12 +94,12 @@ Expected output / JSON shape (sync --json):
 
 ## Acceptance criteria
 
-- [ ] `sync --json` with `dropped_concepts` field
-- [ ] `sync --dry-run` provably writes nothing (test asserts DB row counts unchanged)
-- [ ] `sync --status` filter
-- [ ] `list --concept` via ExerciseConcept M2M; unknown code → exit 2 with clear message
-- [ ] Tests under `tests/workflow/exercise/`
-- [ ] Docs updated: CLAUDE.md command table
+- [x] `sync --json` with `dropped_concepts` field
+- [x] `sync --dry-run` provably writes nothing (test asserts DB row counts unchanged)
+- [x] `sync --status` filter
+- [x] `list --concept` via ExerciseConcept M2M; unknown code → exit 2 with clear message
+- [x] Tests under `tests/workflow/exercise/`
+- [x] Docs updated: CLAUDE.md command table
 
 ## Out of scope
 
@@ -122,13 +124,15 @@ Expected output / JSON shape (sync --json):
 ## Progress log
 
 - 2026-07-03 — opened by claude from gap audit (slugs #6, #7) after live code verification
+- 2026-07-03 — shipped as "Bundle B" (commit `39e4d6f`, "feat(exercise): Bundle B — sync --json/--dry-run/--status + list --concept")
+- 2026-07-05 — closure annotation applied retroactively per `tasks/audit/2026-07-05-tasks-adr-completeness-audit.md` (Summary #4)
 
 ## Closure checklist
 
 When `status: closed` and `resolution: implemented`:
 
-- [ ] All acceptance criteria checked
-- [ ] `verification` commands pass on master
-- [ ] `implementation` frontmatter list filled
-- [ ] `closed_by` references commit/PR/ADR
-- [ ] Related gap log entries cross-linked back to this request id
+- [x] All acceptance criteria checked
+- [x] `verification` commands pass on master
+- [x] `implementation` frontmatter list filled
+- [x] `closed_by` references commit/PR/ADR
+- [x] Related gap log entries cross-linked back to this request id
