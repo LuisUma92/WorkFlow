@@ -25,6 +25,29 @@ def _isolate_workflow_data_dir(tmp_path_factory, monkeypatch):
     monkeypatch.setenv("WORKFLOW_DATA_DIR", str(data_dir))
 
 
+@pytest.fixture(autouse=True)
+def _isolate_workflow_config(tmp_path_factory, monkeypatch):
+    """Point XDG_CONFIG_HOME at a per-test temp dir and clear WORKFLOW_VAULT_ROOT.
+
+    ``workflow.config.load_config()`` reads ``config_dir()/config.yaml``, where
+    ``config_dir()`` is ``platformdirs.user_config_dir("workflow")`` — which honors
+    ``XDG_CONFIG_HOME``. A real ``~/.config/workflow/config.yaml`` (e.g. one with a
+    user-set ``vault_path``) would otherwise leak into every test that resolves the
+    vault root or other config-backed defaults, making results depend on the
+    developer's machine instead of the documented defaults. Redirecting
+    ``XDG_CONFIG_HOME`` to an empty per-test temp dir guarantees ``load_config()``
+    sees a missing file (``{}``) unless a test writes its own config.yaml there.
+    ``WORKFLOW_VAULT_ROOT`` (env precedence over config.yaml, see
+    ``workflow.config.get_vault_path``) is cleared for the same reason.
+
+    Tests that need specific config/env values still override them (their own
+    ``monkeypatch.setenv``/``monkeypatch.delenv`` runs after this fixture and wins).
+    """
+    config_home = tmp_path_factory.mktemp("workflow_config")
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(config_home))
+    monkeypatch.delenv("WORKFLOW_VAULT_ROOT", raising=False)
+
+
 def _enable_fk(dbapi_conn, _connection_record):
     """Enable SQLite foreign key enforcement."""
     cursor = dbapi_conn.cursor()
