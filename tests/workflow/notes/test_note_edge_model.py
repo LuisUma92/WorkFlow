@@ -256,3 +256,69 @@ def test_migration_round_trip():
                 "INSERT INTO note_edge (source_id, target_zettel_id, edge_class, "
                 "relation_type) VALUES (1, 'tgt3', 'structural', 'UNKNOWN')"
             )
+
+
+# ---------------------------------------------------------------------------
+# Live-table drift regression (production bug, Wave 0 D2 backfill 2026-07-05)
+#
+# The deployed note_edge table was created by SQLAlchemy metadata.create_all()
+# *before* server_default=text("CURRENT_TIMESTAMP") was added to the model.
+# Migration 0007's CREATE TABLE is idempotent (skips if the table already
+# exists) so it never retrofit the missing DEFAULT onto that live table.
+# created_at is therefore NOT NULL with *no* default at the DDL level there —
+# an ORM insert that omits created_at relies entirely on a Python-side
+# default now. This test builds that exact DDL (copied from migration 0007
+# verbatim, minus "DEFAULT CURRENT_TIMESTAMP") to reproduce it.
+# ---------------------------------------------------------------------------
+
+
+def test_note_edge_insert_against_table_without_server_default():
+    """ORM insert must supply created_at itself; DB-level default cannot be relied on."""
+    engine = create_engine("sqlite:///:memory:")
+    with engine.begin() as conn:
+        conn.exec_driver_sql(
+            "CREATE TABLE note (id INTEGER PRIMARY KEY, "
+            "filename TEXT NOT NULL UNIQUE, reference TEXT NOT NULL UNIQUE)"
+        )
+        conn.exec_driver_sql(
+            """
+            CREATE TABLE note_edge (
+                id              INTEGER PRIMARY KEY,
+                source_id       INTEGER NOT NULL
+                                    REFERENCES note(id) ON DELETE CASCADE,
+                target_id       INTEGER
+                                    REFERENCES note(id) ON DELETE SET NULL,
+                target_zettel_id VARCHAR(21) NOT NULL,
+                edge_class      VARCHAR(16) NOT NULL,
+                relation_type   VARCHAR(24) NOT NULL,
+                weight          REAL NOT NULL DEFAULT 1.0,
+                rationale       TEXT,
+                created_at      DATETIME NOT NULL,
+                CONSTRAINT ck_note_edge_class_valid
+                    CHECK (edge_class IN ('structural', 'associative')),
+                CONSTRAINT ck_note_edge_relation_type_valid
+                    CHECK (relation_type IN (
+                        'continuation', 'refines', 'branches', 'synthesis', 'rebuttal',
+                        'supports', 'contradicts', 'expands', 'see_also'
+                    )),
+                CONSTRAINT uq_note_edge_src_tgt_rel
+                    UNIQUE (source_id, target_zettel_id, relation_type)
+            )
+            """
+        )
+        conn.exec_driver_sql(
+            "INSERT INTO note (id, filename, reference) VALUES (1, 'a.md', 'a')"
+        )
+
+    with Session(engine) as session:
+        session.add(NoteEdge(
+            source_id=1,
+            target_zettel_id="tgt-live-ddl",
+            edge_class="structural",
+            relation_type="continuation",
+        ))
+        session.flush()
+
+        e = session.scalars(select(NoteEdge)).first()
+        assert e is not None
+        assert e.created_at is not None

@@ -10,7 +10,7 @@ Models:
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
@@ -291,9 +291,14 @@ class NoteEdge(GlobalBase):
     relation_type: Mapped[str] = mapped_column(String(24))
     weight: Mapped[float] = mapped_column(Float, default=1.0)
     rationale: Mapped[str | None] = mapped_column(Text)
-    # server_default keeps ORM and raw-SQL inserts consistent (both use DB UTC).
+    # Python-side default is authoritative: it guarantees a NOT-NULL value on
+    # ORM inserts even against live tables created before server_default was
+    # added to this model (drift found 2026-07-05 — see docs/ADR note below).
+    # server_default kept too so raw-SQL/DDL-level inserts stay covered.
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=text("CURRENT_TIMESTAMP")
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        server_default=text("CURRENT_TIMESTAMP"),
     )
 
     __table_args__ = (
