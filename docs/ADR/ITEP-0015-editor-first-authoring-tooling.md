@@ -3,7 +3,7 @@ id: ITEP-0015
 title: "Editor-first authoring tooling for the note graph"
 aliases:
   - ADR-ITEP-0015
-status: Proposed
+status: Accepted (2026-07-05, scope corrected)
 date: 2026-05-22
 authors:
   - Luis Fernando Umaña Castro
@@ -189,10 +189,14 @@ the table itself is a `notes sync` concern.
    convention `<zettel_id>-<slug>.md`. Aliases auto-populated for Obsidian
    compatibility. Legacy Obsidian IDs (`YYYYMMDD-slug` style) match the
    regex and continue to validate — no migration required.
-3. **Pre-commit hook semantics** — Should editor diagnostics and
-   `workflow validate notes --graph` share exit-code conventions?
-4. **Multi-vault picker scope** — Single active vault or all known vaults?
-5. **Snippet ownership** — Lua-inline, LuaSnip file, or CLI-generated?
+3. ~~Pre-commit hook semantics~~ — **RESOLVED 2026-07-05**: YES, shared exit
+   codes. The CLI exit code (`workflow validate notes --graph`) is the CI
+   authority; editor diagnostics are advisory only and never gate CI on their
+   own.
+4. ~~Multi-vault picker scope~~ — **RESOLVED 2026-07-05**: Single active vault
+   via `resolve_vault_root()`. Multi-vault picker scope is deferred.
+5. ~~Snippet ownership~~ — **RESOLVED 2026-07-05**: Lua-inline snippets.
+   LuaSnip integration is deferred.
 
 ## Alternatives Considered
 
@@ -220,8 +224,29 @@ Ships only after ITEP-0013 P2.1 (NoteEdge model) lands.
 
 ## Status
 
-**Proposed.** Drafted alongside ITEP-0013 acceptance. Implementation scheduled
-for ITEP-0013 Phase 2.3, or as a parallel sub-track once P2.1 lands.
+**Accepted (2026-07-05, scope corrected).** Drafted alongside ITEP-0013
+acceptance. Implementation scheduled for ITEP-0013 Phase 2.3, or as a parallel
+sub-track once P2.1 lands.
+
+### Shipped subset (as of 2026-07-05)
+
+Sections A/B/C-partial/D/E were already implemented under the "Wave 5 EDITOR"
+label (`keymaps.lua:85`) **predating** this ADR's formal acceptance:
+
+- `workflow notes enums --json` (`cli.py:590`)
+- `workflow notes new-id` (`cli.py:645`)
+- Pickers: `enums.lua`, `edges.lua`, `notes.lua`, `concepts.lua`
+- Keymaps: `<prefix>en`, `<prefix>er`, `<prefix>ec`, `<prefix>eg`
+- `BufWritePost` validation wiring (Section D)
+
+This ADR is **accepted describing that work, not authorizing it anew.** The
+true remaining delta is:
+
+- `note_alias` table + migration — folded into the FTS `0017` migration per
+  the W1 plan (see ADR-0021)
+- Keymap wiring for `<prefix>ei`, `<prefix>eI`, `<prefix>eb`, `<prefix>ek`
+- `notes capture` and `notes promote` commands (new; cross-ref the wave1
+  plan)
 
 ## References
 
@@ -237,3 +262,4 @@ for ITEP-0013 Phase 2.3, or as a parallel sub-track once P2.1 lands.
 | ---------- | ------------------------------------------------------------------------------- |
 | 2026-05-22 | Initial draft — editor-first authoring tooling for the note graph. Spinoff from ITEP-0013 human-first reframing. |
 | 2026-05-22 | Locked decisions: NanoID format (alphabet `A-Za-z0-9_-`, len 8–21, default 12); filename convention `<id>-<slug>.md` with auto-populated aliases for Obsidian compatibility; LSP rejected for this domain (multi-editor via LZK-0001 RPC server instead). Open Questions Q1 and Q2 resolved. |
+| 2026-07-05 | F0 honesty amendment: Status Proposed → Accepted (2026-07-05, scope corrected). Added "Shipped subset" note — sections A/B/C-partial/D/E already implemented under the "Wave 5 EDITOR" label predating acceptance; this ADR accepts that prior work, it does not authorize it anew. True remaining delta: `note_alias` table+migration (folded into the 0017 FTS migration), keymap wiring `ei`/`eI`/`eb`/`ek`, and new `notes capture` + `notes promote` commands (cross-ref the wave1 plan). Open Questions Q3/Q4/Q5 resolved: shared exit codes (CLI is CI authority, editor advisory); single active vault via `resolve_vault_root`, multi-vault deferred; Lua-inline snippets, LuaSnip deferred. |

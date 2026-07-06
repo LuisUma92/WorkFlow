@@ -67,14 +67,41 @@ new top-level command touches the vault; sync remains the single writer.
 - **Schema footprint**: one new virtual table in GlobalBase; no change to
   `Note` itself.
 
+## Resolved design questions (2026-07-05, W1 gate ★b/★c)
+
+- **FTS5 table shape → external-content.** `note_fts` is an external-content
+  FTS5 table: `content='note', content_rowid='id'` (rowid aliases
+  `Note.id`). No shadow/synced copy of the body is stored redundantly.
+- **Rebuild semantics → delete + repopulate from `.md` files.** A rebuild
+  pass drops and re-inserts all `note_fts` rows by re-reading the vault's
+  `.md` files directly — never from the DB body cache. This keeps ADR-0010
+  (file-as-truth) intact: `note_fts` is fully reconstructible from disk
+  alone, with no dependency on any in-DB derived state.
+- **No `fm_hash` (ITEP-0014) coupling required.** Confirmed: FTS indexing
+  does not require ITEP-0014's `fm_hash` skip-check as a precondition to
+  ship. The coupling noted in Consequences above remains an optimization,
+  not a dependency.
+- **Neovim surface → CLI-subprocess.** `:WorkflowNoteSearch` shells out to
+  `workflow notes search --json`, consistent with every other live picker
+  in `nvim-plugin/workflow` (evaluations, items, courses, PRISMA, enums).
+  The LZK-0001 JSONL/NDJSON RPC server was considered and **rejected** for
+  this surface — it is not wired into the current picker pattern today and
+  introducing it here would be a one-off inconsistency.
+- **`note_alias` migration → folded into this ADR's migration.** The
+  `note_alias` table proposed under ITEP-0015 (note picker aliasing) is
+  folded into the same schema migration that ships `note_fts` (migration
+  `0017`), rather than shipped as a separate migration.
+
 ## Status
 
 **Proposed.** Implementation deferred to post-freeze (target: November 2026).
 Originates from the 2026-07-05 council evaluation. No code is written by this
-ADR.
+ADR. Design questions above are resolved; implementation itself remains
+in-progress under the W1 plan.
 
 ## Change Log
 
 | Date       | Change                                                    |
 | ---------- | ---------------------------------------------------------- |
 | 2026-07-05 | Initial placeholder — register FTS5 vault search proposal. |
+| 2026-07-05 | W1 gate ★b/★c design resolved: external-content FTS5 (`content='note'`, `rowid=Note.id`); rebuild = delete+repopulate from `.md` files (ADR-0010 intact, no `fm_hash` coupling required); nvim surface = CLI-subprocess (RPC rejected, not wired today); `note_alias` folded into the same `0017` migration. |

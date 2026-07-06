@@ -182,6 +182,23 @@ abort, manual}`. Default: `abort`.
   authors the migration before the first `vault unify` run on a
   populated DB.
 
+## Amendment — 2026-07-05: Flat vault layout
+
+User decision (W1 gate ★d): permanent and literature notes coexist **flat**
+in the vault root. `type:` frontmatter (plus the DB `note_type` column) is
+the **only** type authority; directory placement carries **no** semantics.
+
+- No tool may infer a note's type from its path, nor move a file when its
+  `type:` changes.
+- `workflow notes promote` (ITEP-0015 delta) is a flip-only operation on
+  `type:` / `note_type` — it does not relocate the file. Re-promoting an
+  already-promoted note is an error, not a no-op move.
+- Tools MAY continue writing to configured default subdirectories (e.g.
+  `lectures split` → `notes/permanent/`, unchanged) — that placement is
+  convenience/organizational only, never semantics. `resolve_vault_root()`
+  and any directory-based defaults remain unaffected; this amendment only
+  forbids reading meaning back out of the path.
+
 ## Related
 
 - Plan: `tasks/itep-0011-vault-unification-plan.md` (P0–P7 detailed).
