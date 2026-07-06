@@ -282,6 +282,10 @@ Wave 5 keymaps (under `keymap_prefix`, default `<leader>z`):
   <prefix>er   Pick relation_type from live enums (insert)
   <prefix>ec   Pick edge_class from live enums (insert)
   <prefix>eg   Graph-validate current note (diagnostics)
+  <prefix>ei   Pick a note, insert its zettel_id at cursor
+  <prefix>eI   Pick a note, insert a `- id: …\n  type: …` YAML item
+  <prefix>eb   Pick a bibkey (yanks to `+` register)
+  <prefix>ek   Pick a concept code, insert at cursor
 
 LuaSnip triggers (markdown):
 

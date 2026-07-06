@@ -2,11 +2,28 @@
 -- Snacks.picker for `workflow notes list --json`
 -- Filters: tag, concept, note_type, candidate_project
 -- Preview: frontmatter table + first 30 body lines
--- <CR>: edit note file; <C-t>: tag prompt; <C-l>: link prompt
+-- <CR>: edit note file (default) OR insert at cursor when opts.mode is set;
+--       <C-t>: tag prompt; <C-l>: link prompt
+--
+-- opts.mode (Wave 1 Phase 3a, ITEP-0015 <prefix>ei/<prefix>eI):
+--   nil/"open"    -- default: <CR> opens the note file (unchanged behavior)
+--   "insert_id"   -- <CR> inserts the zettel_id at cursor, yanks to + register
+--   "insert_yaml" -- <CR> inserts a `- id: …\n  type: …` YAML item at cursor
 
 local server = require("workflow.server")
 
 local M = {}
+
+--- Insert text (one or more lines) at cursor and yank the first line to
+--- the " and + registers.
+local function _insert_at_cursor(lines)
+	local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+	vim.api.nvim_buf_set_text(0, row - 1, col, row - 1, col, lines)
+	local last_col = #lines[#lines] + (#lines == 1 and col or 0)
+	vim.api.nvim_win_set_cursor(0, { row + #lines - 1, last_col })
+	vim.fn.setreg('"', lines[1])
+	vim.fn.setreg("+", lines[1])
+end
 
 ---@param opts table|nil  tag, concept, note_type, candidate_project filter keys
 function M.pick(opts)
@@ -102,14 +119,32 @@ function M.pick(opts)
 			end,
 			confirm = function(picker, item)
 				picker:close()
-				if item and item.item and item.item.path then
+				if not item or not item.item then
+					return
+				end
+				if opts.mode == "insert_id" then
+					local id = item.item.id or ""
+					if id == "" then
+						vim.notify("Note has no id", vim.log.levels.WARN, { title = "workflow" })
+						return
+					end
+					_insert_at_cursor({ id })
+					return
+				end
+				if opts.mode == "insert_yaml" then
+					local id = item.item.id or ""
+					local note_type = item.item.type or ""
+					_insert_at_cursor({ "- id: " .. id, "  type: " .. note_type })
+					return
+				end
+				if item.item.path then
 					local expanded = vim.fn.expand(item.item.path)
 					if require("workflow.config").is_in_workspace(expanded, config.vault_root) or require("workflow.config").is_in_workspace(expanded, config.workspace_dir) then
 						vim.cmd("edit " .. vim.fn.fnameescape(expanded))
 					else
 						vim.notify("Path outside workspace — refusing to open: " .. expanded, vim.log.levels.ERROR, { title = "workflow" })
 					end
-				elseif item then
+				else
 					vim.notify("No file path for note " .. (item.item.id or "?"), vim.log.levels.WARN, { title = "workflow" })
 				end
 			end,

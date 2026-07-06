@@ -102,6 +102,28 @@ function M.setup(prefix, workflow)
 	vim.keymap.set("n", prefix .. "eg", function()
 		workflow.validate_graph({})
 	end, vim.tbl_extend("force", opts, { desc = "workflow: graph-validate current note" }))
+
+	-- <prefix>ei — pick a note by zettel_id, insert the id at cursor
+	vim.keymap.set("n", prefix .. "ei", function()
+		workflow.pick_notes({ mode = "insert_id" })
+	end, vim.tbl_extend("force", opts, { desc = "workflow: pick note, insert zettel_id" }))
+
+	-- <prefix>eI — pick a note, insert as full YAML `- id: …\n  type: …` item
+	vim.keymap.set("n", prefix .. "eI", function()
+		workflow.pick_notes({ mode = "insert_yaml" })
+	end, vim.tbl_extend("force", opts, { desc = "workflow: pick note, insert YAML item" }))
+
+	-- <prefix>eb — pick a bibkey (yanks to + register; see picker/prisma_bib.lua)
+	vim.keymap.set("n", prefix .. "eb", function()
+		workflow.pick_prisma_bib({})
+	end, vim.tbl_extend("force", opts, { desc = "workflow: pick bibkey" }))
+
+	-- <prefix>ek — pick a concept code, insert at cursor
+	vim.keymap.set("n", prefix .. "ek", function()
+		workflow.pick_concepts({})
+	end, vim.tbl_extend("force", opts, { desc = "workflow: pick concept code" }))
+
+	-- <prefix>nC — capture note from... (TODO: CLI lands in a parallel track; do not bind yet)
 end
 
 return M
