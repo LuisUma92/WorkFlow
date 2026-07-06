@@ -653,6 +653,122 @@ def new_id_cmd(length: int) -> None:
     click.echo(zid)
 
 
+@notes.command(name="capture")
+@click.option("--title", required=True, help="Note title (also seeds the filename slug).")
+@click.option(
+    "--type",
+    "note_type",
+    type=click.Choice(["fleeting", "literature", "permanent"]),
+    default="fleeting",
+    show_default=True,
+)
+@click.option("--tags", default="", help="Comma-separated tags.")
+@click.option("--concepts", default="", help="Comma-separated concept slugs (slug-only, ITEP-0012).")
+@click.option("--bibkey", default=None, help="Bibliography key written to frontmatter bibkey:.")
+@click.option(
+    "--strict-concepts",
+    "strict_concepts",
+    is_flag=True,
+    default=False,
+    help="Treat unknown concept slugs as errors (nothing written on failure).",
+)
+@click.option("--json", "as_json", is_flag=True)
+@click.pass_context
+@with_schema_guard
+def capture_cmd(
+    ctx: click.Context,
+    title: str,
+    note_type: str,
+    tags: str,
+    concepts: str,
+    bibkey: str | None,
+    strict_concepts: bool,
+    as_json: bool,
+) -> None:
+    """Capture a note in one gesture: create .md in the vault + register in DB."""
+    from sqlalchemy.orm import Session
+
+    from workflow.db.engine import get_engine_from_ctx
+    from workflow.notes.capture import CaptureValidationError, capture_note
+
+    tags_list = [t.strip() for t in tags.split(",") if t.strip()]
+    concepts_list = [c.strip() for c in concepts.split(",") if c.strip()]
+
+    engine = get_engine_from_ctx(ctx)
+    try:
+        with Session(engine) as session:
+            result = capture_note(
+                session,
+                title=title,
+                note_type=note_type,
+                tags=tags_list,
+                concepts=concepts_list,
+                bibkey=bibkey,
+                strict=strict_concepts,
+            )
+    except FileExistsError as exc:
+        raise click.ClickException(str(exc))
+    except CaptureValidationError as exc:
+        raise click.ClickException(str(exc))
+
+    for issue in result.issues:
+        click.echo(f"Warning: {issue['message']}", err=True)
+
+    if as_json:
+        click.echo(json.dumps(
+            {
+                "note_path": str(result.note_path),
+                "zettel_id": result.zettel_id,
+                "created": result.created,
+            },
+            ensure_ascii=False,
+        ))
+    else:
+        click.echo(str(result.note_path))
+
+
+@notes.command(name="promote")
+@click.argument("reference")
+@click.option("--json", "as_json", is_flag=True)
+@click.pass_context
+@with_schema_guard
+def promote_cmd(ctx: click.Context, reference: str, as_json: bool) -> None:
+    """Promote a fleeting/literature note to permanent (flip-only, never moves the file)."""
+    from sqlalchemy.orm import Session
+
+    from workflow.db.engine import get_engine_from_ctx
+    from workflow.notes.promote import PromoteError, promote_note
+
+    _validate_cli_id(reference)
+
+    engine = get_engine_from_ctx(ctx)
+    try:
+        with Session(engine) as session:
+            result = promote_note(session, reference)
+    except PromoteError as exc:
+        raise click.ClickException(str(exc))
+    except NoteNotFound as exc:
+        raise click.ClickException(str(exc))
+    except AmbiguousNoteId as exc:
+        raise click.ClickException("ambiguous id: " + str(exc))
+
+    if as_json:
+        click.echo(json.dumps(
+            {
+                "reference": result.reference,
+                "from": result.from_type,
+                "to": result.to_type,
+                "note_path": str(result.note_path),
+            },
+            ensure_ascii=False,
+        ))
+    else:
+        click.echo(
+            f"{result.reference}: {result.from_type} -> {result.to_type} "
+            f"({result.note_path})"
+        )
+
+
 def _run_classic_link(
     root: Path,
     note_id: str,
