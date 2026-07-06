@@ -141,6 +141,19 @@ workflow notes sync --dry-run
 
 # Restringir a un subdirectorio del vault
 workflow notes sync --project 0001AA-proj1
+
+# Abortar si algun slug de concepto no resuelve (en vez de solo advertir)
+workflow notes sync --strict-concepts
+
+# Reconstruccion completa de aristas: borra NoteEdge existentes por nota
+# antes de reimportar desde frontmatter (limpia aristas obsoletas/renombradas)
+workflow notes sync --rebuild-edges
+
+# Reconstruccion completa del indice FTS5 (borra note_fts y repuebla desde disco)
+workflow notes sync --rebuild-index
+
+# Reporte en JSON
+workflow notes sync --json
 ```
 
 ### Qué hace
@@ -339,60 +352,126 @@ El campo `bibkey: serway2019` conecta con `bib_entry.bibkey` en la DB global. PR
 
 ---
 
-## Creacion de notas (fleeting / permanent / literature)
+## Capturar, crear y promover notas
 
-**Decision de diseno:** Ni el CLI `workflow notes` ni el plugin `nvim-plugin/workflow` exponen un comando para *crear* notas nuevas. Esto es intencional, no un bug.
+El CLI `workflow notes` SI expone comandos completos para crear, capturar, promover, buscar y enlazar notas — no dependen de `obsidian.nvim`. `obsidian.nvim` sigue siendo un editor valido para escribir en los `.md`, pero la creacion/registro ya no requiere una herramienta externa.
 
-### Responsabilidades
+### `notes new` — Crear una nota Markdown desde cero
 
-| Herramienta | Crea notas | Rol |
-|-------------|-----------|-----|
-| `obsidian.nvim` (externo) | SI | Creacion de notas fleeting/permanent/literature en `0000AA-Vault/inbox/` o raiz del vault. Usa `:ObsidianNew`. |
-| `workflow notes init` | NO | Scaffold del workspace y plantillas (`templates/fleeting.md`, `permanent.md`, `literature.md`). |
-| `nvim-plugin/workflow` | NO | **Complementa** obsidian.nvim: sync DB, validacion frontmatter, promote fleeting→permanent, pickers. |
+```bash
+workflow notes new --id gauss-law --title "Ley de Gauss" \
+  --type permanent --tags physics,electrostatics --concepts flujo-electrico
+```
 
-### Keymaps disponibles en `nvim-plugin/workflow`
+- `--id` es el slug base (el `zettel_id` real se deriva/valida por separado; ver [ITEP-0015](../ADR/ITEP-0015-editor-first-authoring.md)).
+- `--type` (default depende del comando): `permanent|literature|fleeting`.
+- `--candidate-project DDTTAA-YYPP` — referencia adelantada a un proyecto aun no creado.
+- `--dir DIRECTORY` — sobreescribe el destino (por default resuelve por `type` dentro del vault).
+- `--force` — sobreescribe si ya existe.
+- `--json` — imprime `{note_path, zettel_id, ...}`.
 
-Prefijo configurable (default `<leader>w`):
+### `notes capture` — Captura en un solo gesto (recomendado para ideas rapidas)
 
-| Keymap | Accion | Funcion |
-|--------|--------|---------|
-| `<prefix>s` | Sync DB | `workflow.sync_current()` |
-| `<prefix>v` | Validar frontmatter | `workflow.validate_frontmatter()` |
-| `<prefix>p` | Promote fleeting→permanent | `workflow.promote_note()` — mueve de `inbox/` a raiz del vault y cambia `type:` |
-| `<prefix>te/ti/tc` | Pickers Snacks (evaluations/items/courses) | |
-| `<prefix>tb/tk/tr` | Pickers PRISMA (bib/keywords/reviews) | |
+```bash
+# Fleeting por default
+workflow notes capture --title "Idea: simetria esferica" --tags physics
 
-### Flujo recomendado para crear una fleeting
+# Con concepto y validacion estricta
+workflow notes capture --title "Conductores en equilibrio" \
+  --type permanent --concepts conductores,equilibrio-electrostatico --strict-concepts
 
-1. `:ObsidianNew fleeting-<tema>` — obsidian.nvim aplica plantilla y abre buffer en `0000AA-Vault/inbox/`
-2. Escribir la idea
-3. `<prefix>v` — validar frontmatter contra `workflow.validation`
-4. Cuando este madura: `<prefix>p` — mueve a raiz del vault + cambia `type: permanent`
-5. `<prefix>s` — indexa en `slipbox.db`
+# Literatura, enlazando un bibkey directo
+workflow notes capture --title "Notas de Griffiths cap. 2" --type literature --bibkey griffiths2017
+```
 
-### Por que no un `workflow notes new`?
+`capture` crea el `.md` en el vault **y** lo registra en la DB en un solo paso (create + sync), a diferencia de `new` (solo crea el archivo). `--strict-concepts` aborta sin escribir nada si algun slug de concepto no resuelve.
 
-- **Separacion de responsabilidades:** obsidian.nvim ya resuelve creacion con plantillas, autocompletado de wiki-links y UI. Duplicarlo seria trabajo redundante.
-- **WorkFlow se enfoca en el pipeline DB/LaTeX/exercises** — lo que obsidian.nvim no hace.
-- Si no usas obsidian.nvim, las plantillas en `0000AA-Vault/templates/` son copiables manualmente con cualquier editor.
+### `notes create` — Nota de literatura desde un bibkey (sin contexto PRISMA)
 
-Si en el futuro se requiere independencia de obsidian.nvim, se podria agregar `workflow notes new --type fleeting <titulo>` que renderice la plantilla con `id` generado + timestamp. Ver backlog.
+```bash
+workflow notes create --bibkey serway2019
+workflow notes create --bibkey serway2019 --bib-entry-id 42   # desambiguar
+workflow notes create --bibkey serway2019 --origin manual --dry-run --json
+```
+
+Reusa el mismo renderer que `prisma bib accept-to-note`. Idempotente: correr de nuevo devuelve `created: false` sin sobreescribir.
+
+### `notes promote` — Madurar una fleeting/literature a permanent
+
+```bash
+workflow notes promote VTr3k8pLmnQ4-gauss-law
+workflow notes promote VTr3k8pLmnQ4-gauss-law --json
+```
+
+**Flip-only, nunca mueve el archivo** — solo cambia `type:` en el frontmatter y la fila `Note.note_type` en la DB. El archivo permanece en su ruta actual bajo `<vault_root>/notes/<type>/` (la vieja nocion de "mover de inbox/ a raiz del vault" ya no aplica desde ITEP-0011: el layout es plano por `type`, no por inbox/raiz).
+
+### `notes search` — Full-text search (FTS5, ranking bm25)
+
+```bash
+workflow notes search "ley de gauss"
+workflow notes search "conductores equilibrio" --limit 5 --json
+```
+
+Busca en titulo/aliases/cuerpo. Requiere haber corrido `notes sync` (o `sync --rebuild-index`) al menos una vez para poblar `note_fts`.
+
+### `notes link` — Enlazar concepto / referencia / ejercicio / main_topic / relacion
+
+```bash
+# Vincular un concepto (slug-only, ITEP-0012)
+workflow notes link VTr3k8pLmnQ4 --concept flujo-electrico --strict
+
+# Vincular un main_topic (reescribe frontmatter + FK)
+workflow notes link VTr3k8pLmnQ4 --main-topic FS0121-electromagnetismo
+
+# Declarar una relacion tipada hacia otra nota (ver seccion NoteEdge abajo)
+workflow notes link VTr3k8pLmnQ4 --relation refines --target Ab9Xk2mPqR7w
+
+# Remover un vinculo
+workflow notes link VTr3k8pLmnQ4 --concept flujo-electrico --remove
+```
+
+### `notes tag` — Agregar/quitar tags
+
+```bash
+workflow notes tag VTr3k8pLmnQ4 --add physics --add electrostatics
+workflow notes tag VTr3k8pLmnQ4 --remove electrostatics
+```
+
+### `notes new-id` / `notes enums` — Utilidades
+
+```bash
+workflow notes new-id                 # emite un zettel_id fresco (^[A-Za-z0-9_-]{8,21}$)
+workflow notes new-id --length 16
+
+workflow notes enums                  # vocabulario cerrado: note types, edge classes, relation types
+workflow notes enums --json
+```
+
+### Flujo recomendado (captura → maduracion)
+
+1. `workflow notes capture --title "..." --type fleeting` — captura instantanea, ya indexada
+2. Escribir/editar el `.md` con cualquier editor (obsidian.nvim opcional para autocompletado de wiki-links)
+3. `workflow notes link <id> --concept ... --strict` — vincular taxonomia cuando este clara
+4. Cuando la idea madura: `workflow notes promote <id>` — flip a `type: permanent` (no mueve el archivo)
+5. `workflow notes sync` — reindexar tras editar frontmatter/wiki-links a mano
+6. `workflow notes search "..."` — recuperarla despues
+
+Ver tambien: [Fleeting-Monolith-Flow](Fleeting-Monolith-Flow.md) (flujo `lectures split --sync` → `concept harvest` → `import` para notas grandes de curso) y [Concept Skyfolding](Concept-Skyfolding.md) (ciclo de vida de conceptos). El plugin de Neovim envuelve varios de estos comandos como pickers/keymaps — ver [Neovim Plugin](Neovim-Plugin.md).
 
 ---
 
 ## Flujo de trabajo diario
 
 ```
-1. Idea rapida          →  :ObsidianNew fleeting-* en 0000AA-Vault/inbox/
-2. Procesar fleeting    →  <prefix>p: promote a raiz del vault, type → permanent
-3. Leer un articulo     →  Crear nota literature con bibkey
+1. Idea rapida          →  workflow notes capture --title "..." --type fleeting
+2. Procesar fleeting     →  workflow notes promote <id>          (flip-only, type → permanent)
+3. Leer un articulo     →  workflow notes create --bibkey <key>  (nota literature desde bib)
 4. Escribir/editar      →  Agregar wiki-links [[id]] a otras notas
 5. Registrar en DB      →  workflow notes sync          (para notas .md del vault)
                            workflow lectures scan/link   (para notas .tex de cursos)
-6. Construir grafo      →  workflow graph stats --project proyecto/
-7. Compilar a LaTeX     →  Pipeline Pandoc (futuro: workflow notes convert)
-8. Verificar grafo      →  workflow graph stats --project proyecto/
+6. Recuperar            →  workflow notes search "..."
+7. Construir grafo      →  workflow graph stats --project proyecto/
+8. Compilar a LaTeX     →  Pipeline Pandoc (futuro: workflow notes convert)
 ```
 
 ---

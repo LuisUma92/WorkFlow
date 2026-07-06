@@ -20,22 +20,29 @@ Herramientas para integrar proyectos de cursos con el sistema de notas, referenc
 ### scan — Registrar archivos
 
 ```bash
-workflow lectures scan /ruta/al/curso/ --project-root /ruta/al/curso/
+workflow lectures scan /ruta/al/curso/
 ```
 
-Descubre archivos `.tex` en `lect/tex/` y `eval/tex/`, y registra cada uno como `Note` en la base de datos local (`slipbox.db`). Es idempotente.
+Descubre archivos `.tex` en `lect/tex/` y `eval/tex/`, y registra cada uno como `Note` en la capa unificada de notas (`GlobalBase`, ITEP-0011 P3 — no en un `slipbox.db` local). Es idempotente.
+
+> `--project-root` sigue existiendo por compatibilidad futura con el layer
+> de notas por-proyecto (ITEP-0011 P5), pero **actualmente se ignora**
+> (`currently ignored` per `--help`). No hace falta pasarlo.
 
 **Que hace internamente:**
 1. Busca `*.tex` en los subdirectorios `lect/tex/` y `eval/tex/`
 2. Para cada archivo, genera una referencia unica (ruta relativa con `-` en lugar de `/`)
-3. Crea un registro `Note` en `slipbox.db` si no existe
+3. Crea un registro `Note` en la DB global si no existe
 4. Reporta nuevos vs ya registrados
 
 ### link — Construir referencias cruzadas
 
 ```bash
-workflow lectures link /ruta/al/curso/ --project-root /ruta/al/curso/
+workflow lectures link /ruta/al/curso/
 ```
+
+> Igual que `scan`, `--project-root` se acepta pero se ignora hoy (reservado
+> para ITEP-0011 P5). `Link`/`Citation` viven en `GlobalBase`.
 
 Escanea los archivos registrados buscando patrones LaTeX:
 
@@ -80,7 +87,18 @@ Resultado:
 
 Opciones:
 - `--overwrite` — sobreescribir archivos existentes (por defecto se omiten)
+- `--sync / --no-sync` (default: **`--sync`**) — indexa los archivos
+  divididos inmediatamente en la DB de notas (`Note`/`Label`/`Link`/`Edge`/
+  `Concept` via `sync_note_files`). Usar `--no-sync` para solo escribir los
+  `.tex` sin tocar la DB (por ejemplo, para revisar el resultado antes de
+  indexar).
 - Incluye proteccion contra path traversal (`%>../../` se bloquea)
+
+`split` es el mecanismo detras del flujo de monolito semanal (fleeting notes
+de clase → notas permanentes → DB). Ver
+[Fleeting-Monolith Flow](Fleeting-Monolith-Flow.md) para el flujo completo
+(captura en `inbox/`, dos zonas STAGING/split, `concept harvest` + `import`
+para cerrar el ciclo).
 
 ### build-eval — Construir evaluacion
 
@@ -116,7 +134,7 @@ inittex                              # Seleccionar lecture, institucion, curso
 vim lect/tex/001-Cinematica/posicion.tex
 
 # Registrar
-workflow lectures scan . --project-root .
+workflow lectures scan .
 ```
 
 ### Durante el ciclo
@@ -124,8 +142,8 @@ workflow lectures scan . --project-root .
 ```bash
 # Cada sesion de trabajo
 vim lect/tex/002-Dinamica/newton.tex    # Escribir
-workflow lectures scan . --project-root .   # Registrar
-workflow lectures link . --project-root .   # Actualizar enlaces
+workflow lectures scan .   # Registrar
+workflow lectures link .   # Actualizar enlaces
 
 # Verificar estado
 workflow graph stats --project .

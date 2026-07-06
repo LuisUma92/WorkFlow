@@ -70,6 +70,13 @@ workflow prisma bib search --year 2023 [--json]
 workflow prisma bib import refs.bib
 workflow prisma bib import refs.bib --database-name PubMed --verbose
 workflow prisma bib import refs.bib --json
+
+# Read biblatex from stdin instead of a file
+cat refs.bib | workflow prisma bib import --stdin --database-name Scopus
+
+# Force bibkey recalculation for every imported entry (default: keep source
+# IDs verbatim, only calculate missing/empty ones)
+workflow prisma bib import refs.bib --recompute-bibkeys
 ```
 
 Dedup is automatic: duplicate (title, year, volume) triples are skipped.
@@ -85,10 +92,76 @@ workflow prisma bib export --output refs.bib                       # to file
 workflow prisma bib export --output refs.bib --force               # overwrite
 workflow prisma bib export --keyword-id 1
 workflow prisma bib export --keyword-id 1 --status included
+
+# Dialect: default is biblatex (canonical fields, no type downgrade).
+# --dialect bibtex downgrades biblatex-only entry types and reverse-maps
+# field names (journaltitle -> journal, etc).
+workflow prisma bib export --dialect bibtex --output refs.bib
+
+# Inline crossref/xdata inheritance into each entry instead of round-tripping
+# the pointer fields verbatim (ADR-0019 A4).
+workflow prisma bib export --resolve-xref --output refs.bib
 ```
 
 `--status` requires `--keyword-id`. `--output` refuses to overwrite
 existing files unless `--force` is passed.
+
+### Recompute Bibkeys (ADR-0019)
+
+```bash
+# Fill only entries with a missing/empty bibkey (default, safe)
+workflow prisma bib recompute-keys --dry-run
+workflow prisma bib recompute-keys
+
+# Normalize every key, including already-populated ones (requires confirmation)
+workflow prisma bib recompute-keys --all
+workflow prisma bib recompute-keys --all --yes --json   # --yes required with --json --all
+```
+
+The DB is backed up before any write. `--dry-run` previews the diff without
+writing or backing up.
+
+### Accept-to-Note (Wave C)
+
+Generates a literature note from a PRISMA-accepted (`included == 1`)
+bibliography entry, writing to
+`<vault_root>/notes/literature/<YYYYMMDD>-lit-<bibkey>.md`.
+
+```bash
+# Single entry, resolved by bibkey (embeds screening rationale if a
+# keyword/review-record context is given)
+workflow prisma bib accept-to-note serway2018 --keyword-id 1
+workflow prisma bib accept-to-note serway2018 --dry-run          # preview only
+workflow prisma bib accept-to-note --bib-entry-id 42 --json      # disambiguate
+
+# Bulk: one note per included==1 review record for a keyword
+workflow prisma bib accept-to-note --all-accepted --keyword-id 1 --json
+```
+
+PRISMA context (`--keyword-id`/`--review-record-id`) is optional in single
+mode — without it, `origin` is written as `manual`. In bulk mode
+(`--all-accepted`), ambiguous/unsafe entries and already-existing notes are
+skipped (not fatal), and skip counts are included in the result. `--json`
+emits `{note_path, bibkey, created}` (single) or the bulk shape.
+
+Neovim: `:WorkflowPrismaAcceptToNote` prompts for a bibkey (single) or
+keyword-id (bulk), shells out with `--json`, and opens the result in a
+vsplit.
+
+### Manual Literature Note (no PRISMA context)
+
+When a bibkey needs a literature note outside of any PRISMA screening
+workflow, `workflow notes create` reuses the same renderer as
+`accept-to-note`:
+
+```bash
+workflow notes create --type literature --bibkey serway2018
+workflow notes create --type literature --bibkey serway2018 --origin import --json
+workflow notes create --type literature --bibkey serway2018 --bib-entry-id 42
+```
+
+Idempotent: a second run reports `created: false` without overwriting the
+existing note. `--dry-run` computes the content without writing.
 
 ### Review Records
 
@@ -183,5 +256,10 @@ The Django web app (`src/PRISMAreview/`) is preserved for BibTeX import (WebSock
 |-------|--------|----------|
 | P0 | Done | bib list/show, keyword list, review list |
 | P1 | Done | bib search, review screen, keyword/tag/rationale add |
-| P2 | Done | bib import, bib export, review stats, checklist show |
-| P3 | Planned | Telescope pickers for Neovim |
+| P2 | Done | bib import (+ `--stdin`, `--recompute-bibkeys`), bib export (+ `--dialect`, `--resolve-xref`), bib recompute-keys, review stats, checklist show |
+| P3 | Done | Telescope pickers for Neovim |
+| Wave C | Done | `bib accept-to-note` (single + bulk), `notes create --bibkey` (manual literature note, no PRISMA context) |
+
+See [ADR-0019](../ADR/0019-bibliography-dialect-biblatex-bibtex.md) (biblatex-native
+model + bibtex compat) and [ADR-0020](../ADR/0020-bibliography-module-boundary.md)
+(foundation layer + 0/1/2+ lookup contract) for the dialect/export work.

@@ -17,30 +17,67 @@ WorkFlow es un toolkit CLI en Python para gestionar proyectos LaTeX y un sistema
 
 ## Guias
 
+### Empezar
+
 | Guia | Descripcion |
 |------|-------------|
-| [Getting Started](Getting-Started.md) | Instalacion, primer proyecto, primeras notas |
-| [Zettelkasten Notes](Zettelkasten-Notes.md) | Vault unificado (ITEP-0011), tipos de nota, wiki-links, Pandoc. Creacion via obsidian.nvim; migracion de slipbox legacy via `workflow vault unify`. Grafo de relaciones entre notas (ITEP-0013): frontmatter `relations:`, `NoteEdge`, CLI `workflow notes edges`. |
-| [Exercise Workflow](Exercise-Workflow.md) | Crear, parsear, sincronizar y exportar ejercicios |
-| [Lectures Workflow](Lectures-Workflow.md) | Escaneo de cursos, enlaces cruzados, evaluaciones |
-| [Knowledge Graph](Knowledge-Graph.md) | Analisis de conexiones, exportacion DOT/TikZ |
+| [Getting Started](Getting-Started.md) | Instalacion, los 18 grupos de comandos, primer proyecto, quickstart de notas |
+
+### Notas & Zettelkasten
+
+| Guia | Descripcion |
+|------|-------------|
+| [Zettelkasten Notes](Zettelkasten-Notes.md) | Vault unificado (ITEP-0011): `notes capture/new/create/promote/search/sync/link/tag`, frontmatter, relaciones `NoteEdge` (ITEP-0013) |
+| [Fleeting Monolith Flow](Fleeting-Monolith-Flow.md) | Flujo de notas grandes de curso: `lectures split --sync` → `concept harvest` → `import` |
+| [Concept Skyfolding](Concept-Skyfolding.md) | Ciclo de vida de conceptos: taxonomia slug-only (ITEP-0012), `concept harvest`, `import` YAML |
+| [Knowledge Graph](Knowledge-Graph.md) | Analisis de conexiones: stats/orphans/export-dot/export-tikz/clusters/neighbors/resume/trace, filtros de taxonomia y tags |
+| [Neovim Plugin](Neovim-Plugin.md) | Pickers y keymaps `<leader>z*`: captura, sync, promote, pickers de evaluations/concept/PRISMA |
+
+### Docencia
+
+| Guia | Descripcion |
+|------|-------------|
+| [Lectures Workflow](Lectures-Workflow.md) | Escaneo de cursos, enlaces cruzados, split de notas |
+| [Exercise Workflow](Exercise-Workflow.md) | Crear, parsear, sincronizar y exportar ejercicios; balance de taxonomia |
+| [Exam Workflow](Exam-Workflow.md) | Scaffolding de examenes Moodle XML (legacy + weekly) y `exam validate` |
+| [Evaluation CLI](Evaluation-CLI.md) | Plantillas de evaluacion, items taxonomicos, cursos y practicas |
 | [LaTeX Macros](LaTeX-Macros.md) | Referencia de macros personalizados y normalizacion |
-| [Evaluation CLI](Evaluation-CLI.md) | Plantillas de evaluacion, items taxonomicos, cursos |
-| [PRISMA Review](PRISMA-Review.md) | Bibliografia, keywords, screening sistematico |
+
+### Investigacion
+
+| Guia | Descripcion |
+|------|-------------|
+| [PRISMA Review](PRISMA-Review.md) | Bibliografia, keywords, screening sistematico, accept-to-note |
+
+### Sistema
+
+| Guia | Descripcion |
+|------|-------------|
 | [Architecture](Architecture.md) | Modulos, base de datos, patrones de diseno |
 
 ## Referencia rapida
 
 ```bash
-# Comandos principales
-workflow notes    init | new | list | show | tag | link | sync
+# Notas Zettelkasten (vault unificado, ITEP-0011/0012/0013/0015)
+workflow notes    init|new|capture|create|promote|search|list|show|tag|link|sync|new-id|enums
 workflow notes edges  list | show | check | resolve  # ITEP-0013 nota relation graph
-workflow exercise parse|list|sync|gc|export-moodle|create|create-range|build-exam
-workflow lectures scan|split|link|build-eval
-workflow graph    orphans|stats|export-dot|export-tikz|clusters|neighbors
-workflow tikz     build|list|clean
-workflow validate notes|exercises [--strict-main-topic]
 workflow vault    info|validate|unify  # ITEP-0011 vault unification
+workflow concept  list|show|add|tree|rm|rename|harvest  # ITEP-0012 taxonomia slug-only
+workflow import   <archivo.yaml>  # bulk DisciplineArea → Topic → Content → Concept
+workflow topic    add|list|show
+workflow content  add|list|show|link-bib|bib-links|unlink-bib
+
+# Ejercicios y examenes
+workflow exercise parse|list|sync|gc|export-moodle|create|create-range|build-exam|register|register-batch
+workflow exam     scaffold-xml|validate  # legacy + weekly, Moodle XML lint
+workflow lectures scan|split|link|build-eval
+
+# Grafo de conocimiento
+workflow graph    orphans|stats|export-dot|export-tikz|clusters|neighbors|resume|trace
+
+# TikZ y validacion
+workflow tikz     build|list|clean
+workflow validate notes|exercises [--strict-main-topic] [--strict-concepts]
 
 # Base de datos global, migraciones y taxonomia (ITEP-0008 / ITEP-0009 / ITEP-0010)
 workflow db migrate           [--base global|local|all] [--to REV] [--dry-run] [--json]
@@ -52,7 +89,7 @@ workflow project propose-maturation [--json] [--area DDTTAA]
 # Evaluaciones y PRISMA
 workflow evaluations list|show|add|edit
 workflow item         list|add|taxonomy
-workflow course       list|add
+workflow course       list|add|add-practice|practices
 workflow prisma bib       list|show
 workflow prisma keyword   list
 workflow prisma review    list

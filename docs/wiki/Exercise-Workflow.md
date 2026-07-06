@@ -142,12 +142,41 @@ Compara el hash SHA-256 de cada archivo con la DB. Solo actualiza registros que 
 Sync complete: 5 new, 2 updated, 13 unchanged, 0 skipped.
 ```
 
+Flags adicionales:
+
+```bash
+# Vista previa sin escribir en la DB
+workflow exercise sync 00EE-ExamplesExercises/ --dry-run --json
+
+# Solo sincronizar archivos con un status especifico
+workflow exercise sync 00EE-ExamplesExercises/ --status complete
+
+# Codigos de concepto sin resolver abortan el sync (exit 1) en vez de solo advertir
+workflow exercise sync 00EE-ExamplesExercises/ --strict-concepts
+```
+
+`--strict-concepts` es todo-o-nada: si algun codigo de concepto no resuelve,
+el sync completo se revierte y se listan todos los codigos descartados
+(archivo + codigo) por stderr. Sin la flag, los codigos no resueltos solo
+generan una advertencia (archivo + codigo) y el sync continua.
+
 ### Listar con filtros
 
 ```bash
 workflow exercise list --status complete --difficulty medium --type multichoice
 workflow exercise list --taxonomy-level "Usar-Aplicar"
+
+# Filtrar por codigo de concepto
+workflow exercise list --concept fisica-cinematica-01
+
+# Filtrar por capitulo de libro (usa BibContent.first/last_exercise)
+workflow exercise list --chapter 24 --json
 ```
+
+`--chapter N` resuelve el capitulo via `Exercise.book_id` -> `BibContent`
+(rango `first_exercise..last_exercise`, parseando el sufijo numerico final de
+la referencia del ejercicio). Ejercicios que no resuelven quedan excluidos,
+con una unica nota de conteo por stderr. Compone con `--concept`/`--json`.
 
 ### Limpiar registros huerfanos
 
@@ -160,6 +189,19 @@ workflow exercise gc --yes
 ```
 
 Elimina registros cuyo `source_path` apunta a archivos que ya no existen.
+
+### Validar unidades `\si`/`\SI` (lint, warn-only)
+
+```bash
+workflow validate exercises 00EE-ExamplesExercises/
+workflow validate exercises 00EE-ExamplesExercises/ --no-recursive
+```
+
+Ademas de validar el YAML de metadatos comentado, `validate exercises` lintea
+cada uso de `\si{...}`/`\SI{...}{...}` contra las unidades declaradas en
+`SetUnits.sty` (`\DeclareSIUnit`) union los builtins de `siunitx`. Es
+solo-advertencia — nunca cambia el exit code — y sugiere la unidad mas
+cercana (difflib) cuando detecta una probable errata.
 
 ### Construir un examen
 
@@ -174,6 +216,10 @@ workflow exercise build-exam \
 ```
 
 Selecciona ejercicios del banco que coincidan con los niveles taxonomicos solicitados. Nunca selecciona el mismo ejercicio dos veces. Advierte si no hay suficientes ejercicios.
+
+Para el reporte de balance taxonomia x concepto (`--balanceo`/`--balanceo-csv`/
+`--json`/`--fail-under`) y el flujo semanal completo con `exam scaffold-xml` +
+`exam validate`, ver [Exam Workflow](Exam-Workflow.md).
 
 ### Exportar a Moodle XML
 

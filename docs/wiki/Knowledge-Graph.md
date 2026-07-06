@@ -13,21 +13,41 @@ images: []
 
 # Knowledge Graph
 
-El grafo de conocimiento unifica datos de ambas bases de datos (global + local) para visualizar y analizar las conexiones entre notas, ejercicios, bibliografia y cursos.
+El grafo de conocimiento consulta el GlobalBase unificado (ITEP-0011) para visualizar y analizar las conexiones entre notas, ejercicios, bibliografia y cursos.
 
 ## Fuentes de datos
 
+Desde ITEP-0011 (vault unificado) **todas** las notas, citas, etiquetas y conceptos viven en el **GlobalBase** (`workflow.db`) — no hay una DB local por proyecto para este layer. `slipbox.db` por proyecto sigue existiendo pero solo para `ProjectNote`/`PrismaDecision`, que el grafo no consulta.
+
 | Fuente | Base de datos | Tipo de nodo | Tipo de arista |
 |--------|--------------|-------------|----------------|
-| Notas | Local (slipbox.db) | `note` | `link` (nota → nota via Label) |
-| Citas | Local (slipbox.db) | — | `citation` (nota → bib_entry) |
-| Relaciones de notas | Global (workflow.db) | — | `note_edge:structural`, `note_edge:associative` |
-| Ejercicios | Global (workflow.db) | `exercise` | `exercise_content`, `exercise_book` |
-| Contenidos | Global (workflow.db) | `content`, `topic` | `bib_content`, `course_content` |
-| Bibliografia | Global (workflow.db) | `bib_entry` | — |
-| Cursos | Global (workflow.db) | `course` | — |
+| Notas | GlobalBase (workflow.db) | `note` | `link` (nota → nota via Label) |
+| Citas | GlobalBase (workflow.db) | — | `citation` (nota → bib_entry) |
+| Relaciones de notas | GlobalBase (workflow.db) | — | `note_edge:structural`, `note_edge:associative` |
+| Ejercicios | GlobalBase (workflow.db) | `exercise` | `exercise_content`, `exercise_book` |
+| Contenidos | GlobalBase (workflow.db) | `content`, `topic` | `bib_content`, `course_content` |
+| Bibliografia | GlobalBase (workflow.db) | `bib_entry` | — |
+| Cursos | GlobalBase (workflow.db) | `course` | — |
 
 Las aristas `note_edge:structural` y `note_edge:associative` provienen de la tabla `note_edge` (ITEP-0013). El campo `GraphEdge.label` contiene el `relation_type` de la arista (ej. `"refines"`, `"see_also"`). Solo se incluyen aristas con `target_id` resuelto; para resolver referencias pendientes usar `workflow notes edges resolve`. Los comandos `graph stats`, `graph export-dot` y `graph export-tikz` incorporan estas aristas automaticamente sin flag adicional.
+
+Cada nodo `note` ahora carga sus `tags` reales (M2M `NoteTag`) y su `main_topic` (FK `Note.main_topic_id`) — propagacion real batch, sin N+1 (F5, freeze-window plan). Estos atributos alimentan los filtros `--include-tags`/`--exclude-tags`/`--color-by tag|main_topic` de `export-tikz` (ver abajo).
+
+## Filtros de taxonomia (Phase 4E)
+
+`stats`, `orphans`, `export-dot`, `export-tikz`, `clusters` y `neighbors` aceptan los mismos tres flags para restringir el grafo antes de analizarlo:
+
+```bash
+workflow graph stats --topic SLUG_OR_ID
+workflow graph stats --discipline-area SLUG_OR_ID
+workflow graph stats --main-topic SLUG_OR_ID
+```
+
+- `--topic` — restringe a nodos bajo ese `Topic`.
+- `--discipline-area` — restringe a nodos bajo esa `DisciplineArea`.
+- `--main-topic` — restringe a nodos alcanzables desde ese `MainTopic`.
+
+Los tres aceptan slug o id numerico. Combinables con los demas flags de cada comando (`--project`, `--type`, `--json`, etc).
 
 ## Comandos
 
@@ -75,7 +95,7 @@ workflow graph orphans --type note --project .
 workflow graph orphans --type exercise --project .
 ```
 
-Nodos huerfanos son aquellos sin ninguna arista (ni entrante ni saliente). Indica contenido aislado que deberia conectarse.
+Nodos huerfanos son aquellos sin ninguna arista (ni entrante ni saliente). Indica contenido aislado que deberia conectarse. `orphans` tambien reporta **lineage roots**: notas sin aristas estructurales entrantes (no tienen "padre" en el grafo de relaciones ITEP-0013), aunque si tengan otras conexiones.
 
 ### neighbors — Vecindad de un nodo
 
@@ -145,12 +165,50 @@ workflow graph export-tikz --project . -o grafo.tex --standalone
 workflow graph export-tikz --project . -o grafo.tex --no-standalone
 ```
 
-Usa un layout force-directed (Fruchterman-Reingold) implementado en Python puro. Para grafos grandes (>500 nodos) emite una advertencia.
+Usa un layout force-directed (Fruchterman-Reingold) por default. Para grafos grandes (>500 nodos) emite una advertencia.
 
 ```bash
 # Compilar el TikZ standalone
 pdflatex grafo.tex
 ```
+
+#### Filtros por tags, color y layout (F5)
+
+```bash
+# Solo nodos con al menos uno de estos tags reales (via NoteTag, case-insensitive)
+workflow graph export-tikz --project . --include-tags physics,electrostatics -o grafo.tex
+
+# Excluir nodos con cualquiera de estos tags
+workflow graph export-tikz --project . --exclude-tags borrador -o grafo.tex
+
+# Colorear por MainTopic o Tag (hash SHA-1 → paleta estable) en vez de por tipo
+workflow graph export-tikz --project . --color-by main_topic -o grafo.tex
+workflow graph export-tikz --project . --color-by tag -o grafo.tex
+
+# Layout alternativo y expansion por anillos BFS
+workflow graph export-tikz --project . --layout radial --main-topic FS0121-electromagnetismo --depth 1 -o grafo.tex
+
+# Restringir a una comunidad ya calculada por `graph clusters`
+workflow graph export-tikz --project . --cluster "Cluster 2" -o grafo.tex
+```
+
+- `--include-tags`/`--exclude-tags` matchean contra filas `Tag` reales via `NoteTag` — **solo nodos de tipo `note` cargan tags**; nodos no-nota (exercise, bib_entry, etc.) quedan fuera de un filtro `--include-tags` **by design** (behavior change ratificado en F5: antes de la propagacion real, un substring accidental en labels colaba algunos nodos no-nota; ya no).
+- `--color-by type|main_topic|tag` — `type` (default) usa colores por tipo de nodo (ver tabla de colores mas abajo); `main_topic`/`tag` mapean el valor real de `MainTopic`/`Tag` de cada nodo a un color estable via hash; nodos sin ese atributo caen al color default de su tipo.
+- `--layout force|radial|hierarchical` — algoritmo de posicionamiento de nodos.
+- `--depth N` — expande el conjunto de nodos filtrado por N anillos de vecinos (BFS), 0 = coincidencia exacta del filtro.
+- `--cluster NAME` — restringe a una comunidad precomputada de `graph clusters` (numero 1-based o `"Cluster N"`); mutuamente exclusivo con `--main-topic`.
+
+### resume / trace — Lineage a lo largo de aristas estructurales (ITEP-0013)
+
+```bash
+# Descendientes: notas que continuan desde esta (BFS hacia adelante)
+workflow graph resume VTr3k8pLmnQ4 --max-depth 5 --node-budget 30
+
+# Ancestros: lineage hacia las raices (BFS hacia atras)
+workflow graph trace VTr3k8pLmnQ4 --json
+```
+
+Ambos recorren solo aristas `structural` (nunca `associative`) de la tabla `NoteEdge`. `--max-depth` limita la profundidad BFS (default 10); `--node-budget` detiene el recorrido tras recolectar ese numero de nodos (default 50) — util para evitar explosion combinatoria en grafos densos. Sin `--project`/filtros de taxonomia: operan directamente sobre `zettel_id`, sobre todo el GlobalBase.
 
 ---
 
@@ -187,3 +245,10 @@ pdflatex grafo.tex
 - **dot_export.py** — Generacion DOT (Graphviz)
 - **tikz_export.py** — Generacion TikZ con layout spring (Fruchterman-Reingold)
 - **clustering.py** — Deteccion de comunidades (networkx opcional)
+
+## ADRs relacionados
+
+- [ADR-0017](../ADR/0017-graph-neighbors-json-contract.md) — Contrato JSON de `graph neighbors`
+- [ITEP-0011](../ADR/ITEP-0011-vault-unification.md) — Vault unificado: GlobalBase como unica fuente de notas
+- [ITEP-0013](../ADR/ITEP-0013-note-relation-graph.md) — `NoteEdge`, `graph resume`/`trace`, lineage roots en `orphans`
+- [Zettelkasten Notes](Zettelkasten-Notes.md) — `notes link --concept/--main-topic/--relation`, `notes edges` (fuente de las aristas y el `main_topic`/tags que colorea el grafo)
