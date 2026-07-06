@@ -14,7 +14,7 @@ import yaml
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from workflow.db.models.notes import Label, Link, Note, NoteEdge
+from workflow.db.models.notes import Label, Link, Note, NoteEdge, NoteTag, Tag
 from workflow.notes.edges import parse_relations_frontmatter
 from workflow.notes.linker_ops import upsert_label, upsert_link, upsert_note_concept, upsert_note_edge
 from workflow.notes.wikilinks import (
@@ -38,10 +38,15 @@ class SyncReport:
     edges_created: int = 0
     concept_links_created: int = 0
     concept_issues: list = None  # list[dict[str, str]]
+    tags_created: int = 0
+    tag_links_created: int = 0
+    tag_issues: list = None  # list[dict[str, str]]
 
     def __post_init__(self) -> None:
         if self.concept_issues is None:
             self.concept_issues = []
+        if self.tag_issues is None:
+            self.tag_issues = []
 
 
 def _parse_md(path: Path) -> tuple[dict[str, object], str] | None:
@@ -320,6 +325,116 @@ def _sync_note_concepts(
     return upserted, issues
 
 
+def _parse_note_tags(note: "Note", fm: dict) -> tuple[list[str] | None, list[dict]]:
+    """Extract clean tag names from frontmatter ``tags:``.
+
+    Returns (names, issues). ``names`` is None when ``tags:`` itself is
+    malformed (non-list) — the caller must treat that as skip-untouched,
+    distinct from an empty/valid list (which means "clear all tags").
+    """
+    raw = fm.get("tags")
+    if raw is None:
+        raw = []
+
+    if not isinstance(raw, list):
+        return None, [{
+            "severity": "warning",
+            "message": f"note {note.zettel_id}: tags: is not a list, skipped",
+        }]
+
+    names: list[str] = []
+    issues: list[dict] = []
+    for entry in raw:
+        if isinstance(entry, str) and entry.strip():
+            names.append(entry.strip())
+        else:
+            issues.append({
+                "severity": "warning",
+                "message": f"note {note.zettel_id}: malformed tag entry {entry!r} skipped",
+            })
+    return names, issues
+
+
+def _get_or_create_tags(session: Session, names: list[str]) -> tuple[list[int], int]:
+    """Get-or-create Tag rows by name. Returns (tag_ids, tags_created)."""
+    if not names:
+        return [], 0
+
+    existing_by_name = {
+        t.name: t.id
+        for t in session.scalars(select(Tag).where(Tag.name.in_(names))).all()
+    }
+    tag_ids: list[int] = []
+    tags_created = 0
+    for name in names:
+        tag_id = existing_by_name.get(name)
+        if tag_id is None:
+            new_tag = Tag(name=name)
+            session.add(new_tag)
+            session.flush()
+            existing_by_name[name] = new_tag.id
+            tag_id = new_tag.id
+            tags_created += 1
+        tag_ids.append(tag_id)
+    return tag_ids, tags_created
+
+
+def _reconcile_note_tags(session: Session, note: "Note", wanted_tag_ids: set[int]) -> int:
+    """REPLACE NoteTag rows for note to exactly wanted_tag_ids. Returns links created."""
+    current_links = session.scalars(
+        select(NoteTag).where(NoteTag.note_id == note.id)
+    ).all()
+    current_tag_ids = {nt.tag_id for nt in current_links}
+
+    for nt in current_links:
+        if nt.tag_id not in wanted_tag_ids:
+            session.delete(nt)
+
+    tag_links_created = 0
+    for tag_id in wanted_tag_ids - current_tag_ids:
+        session.add(NoteTag(note_id=note.id, tag_id=tag_id))
+        tag_links_created += 1
+
+    if tag_links_created or (current_tag_ids - wanted_tag_ids):
+        session.flush()
+
+    return tag_links_created
+
+
+def _sync_note_tags(
+    session: Session,
+    note: "Note",
+    fm: dict,
+) -> tuple[int, int, list[dict]]:
+    """Upsert Tag/NoteTag rows from frontmatter ``tags:`` list.
+
+    REPLACE semantics (frontmatter is truth): NoteTag rows for tags no longer
+    listed are removed; the Tag row itself is never deleted (it may still be
+    referenced by other notes). Unlike ``_sync_note_concepts`` (additive-only,
+    dependent on an external taxonomy that may reject unknown codes), tags have
+    no external vocabulary to violate, so a full per-note reconciliation is safe.
+
+    A non-list ``tags:`` value is malformed: emits a warning issue and leaves
+    existing NoteTag rows for this note untouched (skip, not a partial write).
+    Individual non-string/blank entries within an otherwise-valid list are
+    warned on and simply excluded from the wanted set.
+
+    Returns (tags_created, tag_links_created, issues). Issues follow the same
+    ``{"severity": "warning"|"error", "message": str}`` shape as concept_issues.
+    """
+    names, issues = _parse_note_tags(note, fm)
+    if names is None:
+        return 0, 0, issues
+
+    tag_ids, tags_created = _get_or_create_tags(session, names)
+    tag_links_created = _reconcile_note_tags(session, note, set(tag_ids))
+
+    if tags_created:
+        session.flush()
+
+    return tags_created, tag_links_created, issues
+
+
 def _drop_orphan_links(
     session: Session,
     scope_prefix: str,
@@ -395,6 +510,12 @@ def _run_write_passes(
         created, issues = _sync_note_concepts(session, note, fm, strict=strict_concepts)
         report.concept_links_created += created
         report.concept_issues.extend(issues)
+
+    for note, _body, fm in note_data:
+        tags_created, tag_links_created, tag_issues = _sync_note_tags(session, note, fm)
+        report.tags_created += tags_created
+        report.tag_links_created += tag_links_created
+        report.tag_issues.extend(tag_issues)
 
 
 def sync_vault(
