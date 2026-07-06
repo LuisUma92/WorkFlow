@@ -1,17 +1,21 @@
 """ITEP-0012 — workflow concept CLI group.
 
-Six subcommands: list, show, add, tree, rm, rename.
+Seven subcommands: list, show, add, tree, rm, rename, harvest.
 Delegates to service layer; sessions via get_engine_from_ctx.
 Mirrors src/workflow/evaluation/cli.py pattern.
 """
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import click
 from sqlalchemy.orm import Session
 
 from workflow.db.engine import get_engine_from_ctx
 from workflow.db.errors import with_schema_guard
+from workflow.concept.harvest import harvest as run_harvest
 from workflow.concept.formatters import (
     format_concept_json,
     format_concept_show_json,
@@ -251,3 +255,72 @@ def cmd_rename(ctx: click.Context, old_code: str, new_code: str) -> None:
             raise click.ClickException(str(exc))
 
     click.echo(f"Renamed concept {old_code!r} → {new_code!r}.")
+
+
+# ── harvest ───────────────────────────────────────────────────────────────
+
+
+@concept.command(name="harvest")
+@click.option(
+    "--notes",
+    "notes_paths",
+    multiple=True,
+    type=click.Path(exists=True, path_type=Path),
+    help="Directory or file to scan (repeatable). Default: vault root.",
+)
+@click.option(
+    "--out",
+    "out_path",
+    default=None,
+    type=click.Path(path_type=Path),
+    help="Write the delta YAML to this path. Default: tasks/harvest/<timestamp>-delta.yaml.",
+)
+@click.option("--json", "as_json", is_flag=True, help="JSON output.")
+@click.pass_context
+@with_schema_guard
+def cmd_harvest(
+    ctx: click.Context,
+    notes_paths: tuple[Path, ...],
+    out_path: Path | None,
+    as_json: bool,
+) -> None:
+    """Scan notes for unknown concept slugs; emit a skyfolding-delta YAML.
+
+    Read-only against the DB — never writes. `workflow import` remains the
+    sole concept-creation path.
+    """
+    engine = _get_engine(ctx)
+    with Session(engine) as session:
+        result = run_harvest(
+            notes=list(notes_paths) or None,
+            out=out_path,
+            session=session,
+        )
+
+    if as_json:
+        click.echo(json.dumps({
+            "unknown_concepts": result.unknown_concepts,
+            "notes_scanned": result.notes_scanned,
+            "out_path": result.out_path,
+            "files": list(result.files),
+        }))
+        return
+
+    if result.unknown_concepts == 0:
+        click.echo("no unknown concepts found — nothing to harvest.")
+        return
+
+    if len(result.files) == 1:
+        click.echo(
+            f"scanned {result.notes_scanned} notes; "
+            f"found {result.unknown_concepts} unknown concept(s); "
+            f"wrote delta to {result.files[0]}"
+        )
+    else:
+        click.echo(
+            f"scanned {result.notes_scanned} notes; "
+            f"found {result.unknown_concepts} unknown concept(s) across "
+            f"{len(result.files)} discipline-area buckets:"
+        )
+        for f in result.files:
+            click.echo(f"  wrote {f}")
