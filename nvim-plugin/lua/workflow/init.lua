@@ -153,6 +153,16 @@ function M.pick_notes(opts)
 	require("workflow.picker.notes").pick(opts)
 end
 
+-- Wave 1 Phase 3b: search + capture
+
+function M.pick_search(opts)
+	require("workflow.picker.search").pick(opts)
+end
+
+function M.capture_note(title, opts)
+	require("workflow.notes").capture(title, opts)
+end
+
 function M.pick_edges(opts)
 	require("workflow.picker.edges").pick(opts)
 end

@@ -324,6 +324,28 @@ Configuration flag: >
   Then enter a bibkey at the prompt (e.g. `Smith2020`) for single mode, or
   press Enter with a blank bibkey and supply a keyword-id for bulk mode.
 
+2.13 Note search + capture (Wave 1 Phase 3b)              *workflow-search-cmds*
+
+*:WorkflowNoteSearch*
+  Prompt for a query and open a Snacks picker over: >
+    workflow notes search <query> --json
+<
+  Results show title + snippet (FTS5 bm25 ranking, `<b>` highlight tags
+  stripped).  <CR> opens the matched note file (path resolved against the
+  configured vault root when the CLI returns a vault-relative path).
+
+*:WorkflowNoteCapture* [title words ...]
+  Capture a note in one gesture: >
+    workflow notes capture --title "<title>" --json
+<
+  If no title is given as an argument, prompts for one via `vim.ui.input`.
+  On success opens the created (or already-existing) note file and shows
+  a notification with the zettel_id.
+
+  Example: >
+    :WorkflowNoteCapture Quantum tunneling recap
+<
+
 ==============================================================================
 3. KEYMAPS                                                   *workflow-keymaps*
 
@@ -331,6 +353,11 @@ All keymaps are prefixed with `keymap_prefix` (default `<leader>z`).
 Set `keymaps = false` in setup to disable all keymaps.
 
 See `lua/workflow/keymaps.lua` for the full mapping table.
+
+Wave 1 Phase 3b keymaps:
+
+  <prefix>nC   Capture note: prompts for title, opens the created file
+  <prefix>nf   Search notes (FTS5) via Snacks picker, <CR> opens the file
 
 ==============================================================================
 4. CONFIGURATION                                              *workflow-config*

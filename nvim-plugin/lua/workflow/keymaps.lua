@@ -123,7 +123,20 @@ function M.setup(prefix, workflow)
 		workflow.pick_concepts({})
 	end, vim.tbl_extend("force", opts, { desc = "workflow: pick concept code" }))
 
-	-- <prefix>nC — capture note from... (TODO: CLI lands in a parallel track; do not bind yet)
+	-- <prefix>nC — capture note: title prompt → `workflow notes capture --json` → open
+	vim.keymap.set("n", prefix .. "nC", function()
+		vim.ui.input({ prompt = "Capture note title: " }, function(title)
+			if not title or title == "" then
+				return
+			end
+			workflow.capture_note(title, {})
+		end)
+	end, vim.tbl_extend("force", opts, { desc = "workflow: capture note" }))
+
+	-- <prefix>nf — search notes (FTS5) via Snacks picker
+	vim.keymap.set("n", prefix .. "nf", function()
+		workflow.pick_search({})
+	end, vim.tbl_extend("force", opts, { desc = "workflow: search notes (FTS5)" }))
 end
 
 return M

@@ -217,6 +217,62 @@ function M.new(id, title, opts)
 	end)
 end
 
+--- Capture a note in one gesture (Wave 1 Phase 3b): create .md in the vault
+--- + register in DB, then open the resulting file.
+---@param title string
+---@param opts table|nil  opts.type, opts.tags (comma string), opts.concepts (comma string),
+---            opts.bibkey, opts.strict_concepts
+function M.capture(title, opts)
+	opts = opts or {}
+	if not title or title == "" then
+		vim.notify("notes capture: title is required", vim.log.levels.WARN, { title = "workflow" })
+		return
+	end
+	local config = require("workflow.config").resolve(opts)
+	local args = { "notes", "capture", "--title", title, "--json" }
+	if opts.type and opts.type ~= "" then
+		table.insert(args, "--type")
+		table.insert(args, opts.type)
+	end
+	if opts.tags and opts.tags ~= "" then
+		table.insert(args, "--tags")
+		table.insert(args, opts.tags)
+	end
+	if opts.concepts and opts.concepts ~= "" then
+		table.insert(args, "--concepts")
+		table.insert(args, opts.concepts)
+	end
+	if opts.bibkey and opts.bibkey ~= "" then
+		table.insert(args, "--bibkey")
+		table.insert(args, opts.bibkey)
+	end
+	if opts.strict_concepts then
+		table.insert(args, "--strict-concepts")
+	end
+	server.run_cli(args, config, function(ok, output)
+		if not ok then
+			vim.notify("notes capture error:\n" .. output, vim.log.levels.ERROR, { title = "workflow" })
+			return
+		end
+		local ok_json, data = pcall(vim.json.decode, output)
+		if not ok_json or type(data) ~= "table" or not data.note_path then
+			vim.notify(
+				"notes capture: unexpected JSON: " .. tostring(output),
+				vim.log.levels.ERROR,
+				{ title = "workflow" }
+			)
+			return
+		end
+		local verb = data.created and "Created" or "Already exists"
+		vim.notify(
+			string.format("%s: %s (%s)", verb, data.note_path, data.zettel_id or "?"),
+			vim.log.levels.INFO,
+			{ title = "workflow" }
+		)
+		vim.cmd("edit " .. vim.fn.fnameescape(data.note_path))
+	end)
+end
+
 --- Check for cycles in the structural edge graph.
 --- On cycles (exit code 1) populates quickfix list.
 ---@param opts table|nil

@@ -320,6 +320,31 @@ function M.setup(workflow)
 		require("workflow.prisma_note").accept_to_note({})
 	end, { nargs = 0 })
 
+	-- Wave 1 Phase 3b: search + capture ---------------------------------------
+
+	-- :WorkflowNoteSearch
+	-- Prompt for a query and open a Snacks picker over `workflow notes search`.
+	vim.api.nvim_create_user_command("WorkflowNoteSearch", function()
+		workflow.pick_search({})
+	end, { nargs = 0 })
+
+	-- :WorkflowNoteCapture [title words ...]
+	-- Capture a note in one gesture: `workflow notes capture --title ... --json`,
+	-- then open the resulting note file. Prompts for the title if omitted.
+	vim.api.nvim_create_user_command("WorkflowNoteCapture", function(cmd_opts)
+		local fargs = cmd_opts.fargs
+		if #fargs >= 1 then
+			workflow.capture_note(table.concat(fargs, " "), {})
+			return
+		end
+		vim.ui.input({ prompt = "Capture note title: " }, function(title)
+			if not title or title == "" then
+				return
+			end
+			workflow.capture_note(title, {})
+		end)
+	end, { nargs = "*" })
+
 	-- Wave 5 EDITOR commands ------------------------------------------------
 
 	-- :WorkflowReloadEnums
