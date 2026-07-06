@@ -41,6 +41,7 @@ class SyncReport:
     tags_created: int = 0
     tag_links_created: int = 0
     tag_issues: list = None  # list[dict[str, str]]
+    fts_indexed: int = 0
 
     def __post_init__(self) -> None:
         if self.concept_issues is None:
@@ -435,6 +436,83 @@ def _sync_note_tags(
     return tags_created, tag_links_created, issues
 
 
+def _sqlite_table_exists(session: Session, table: str) -> bool:
+    """Return True if ``table`` exists in the connection's SQLite schema.
+
+    Guards the FTS pass against test/legacy sessions that create tables via
+    ``GlobalBase.metadata.create_all`` only (no migration run) — ``note_fts``
+    and ``note_alias`` are migration-0017-only additions, absent there.
+    """
+    row = session.connection().exec_driver_sql(
+        "SELECT name FROM sqlite_master WHERE type IN ('table', 'view') AND name=?",
+        (table,),
+    ).fetchone()
+    return row is not None
+
+
+def _note_aliases_text(session: Session, note_id: int) -> str:
+    """Space-joined ``note_alias.alias`` values for ``note_id`` (or '' if none/absent)."""
+    if not _sqlite_table_exists(session, "note_alias"):
+        return ""
+    rows = session.connection().exec_driver_sql(
+        "SELECT alias FROM note_alias WHERE note_id = ?", (note_id,)
+    ).fetchall()
+    return " ".join(r[0] for r in rows)
+
+
+def _upsert_note_fts(session: Session, note: "Note", body: str) -> int:
+    """Delete+reinsert this note's ``note_fts`` row (idempotent). Returns 1 if
+    indexed, 0 if ``note_fts`` is absent (pre-migration session — no-op, not
+    an error, per ADR-0021's rebuild-from-disk invariant).
+    """
+    if not _sqlite_table_exists(session, "note_fts"):
+        return 0
+
+    conn = session.connection()
+    conn.exec_driver_sql("DELETE FROM note_fts WHERE rowid = ?", (note.id,))
+    aliases = _note_aliases_text(session, note.id)
+    conn.exec_driver_sql(
+        "INSERT INTO note_fts(rowid, title, aliases, body) VALUES (?, ?, ?, ?)",
+        (note.id, note.title or "", aliases, body or ""),
+    )
+    return 1
+
+
+def rebuild_fts_index(vault_root: Path, session: Session) -> int:
+    """Full ``note_fts`` rebuild: delete all rows, re-populate from ``.md`` files.
+
+    Proves the ADR-0010 invariant that ``note_fts`` is fully derivable from
+    disk alone — never reads note bodies back out of any in-DB cache. Only
+    considers ``.md`` files whose frontmatter ``id:`` already matches a
+    synced ``Note.zettel_id`` (unsynced files are skipped; run ``notes sync``
+    first). Returns the number of rows (re)inserted. No-ops (returns 0) if
+    ``note_fts`` is absent (pre-migration session).
+    """
+    if not _sqlite_table_exists(session, "note_fts"):
+        return 0
+
+    session.connection().exec_driver_sql("DELETE FROM note_fts")
+
+    count = 0
+    for md_path in vault_root.resolve().rglob("*.md"):
+        parsed = _parse_md(md_path)
+        if parsed is None:
+            continue
+        fm, body = parsed
+        zettel_id = fm.get("id")
+        if not zettel_id or not isinstance(zettel_id, str):
+            continue
+        note = session.scalars(
+            select(Note).where(Note.zettel_id == zettel_id)
+        ).first()
+        if note is None:
+            continue
+        count += _upsert_note_fts(session, note, body)
+
+    session.commit()
+    return count
+
+
 def _drop_orphan_links(
     session: Session,
     scope_prefix: str,
@@ -516,6 +594,9 @@ def _run_write_passes(
         report.tags_created += tags_created
         report.tag_links_created += tag_links_created
         report.tag_issues.extend(tag_issues)
+
+    for note, body, _fm in note_data:
+        report.fts_indexed += _upsert_note_fts(session, note, body)
 
 
 def sync_vault(

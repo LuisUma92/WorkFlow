@@ -377,6 +377,16 @@ def tag_cmd(
     default=False,
     help="Bypass any future hash gate (accepted but currently a no-op).",
 )
+@click.option(
+    "--rebuild-index",
+    "rebuild_index",
+    is_flag=True,
+    default=False,
+    help=(
+        "Full note_fts rebuild: delete all FTS rows, then re-populate from "
+        ".md files on disk (ADR-0021 rebuild story), after the regular sync."
+    ),
+)
 @click.pass_context
 @with_schema_guard
 def sync_cmd(
@@ -387,6 +397,7 @@ def sync_cmd(
     as_json: bool,
     rebuild_edges: bool,
     force: bool,
+    rebuild_index: bool,
 ) -> None:
     """Sync notes vault: upsert Note/Label/Link rows from .md files."""
     import json as _json
@@ -395,11 +406,12 @@ def sync_cmd(
     from sqlalchemy.orm import Session
 
     from workflow.db.engine import get_engine_from_ctx
-    from workflow.notes.sync import sync_vault
+    from workflow.notes.sync import rebuild_fts_index, sync_vault
     from workflow.vault.paths import resolve_vault_root
 
     engine = get_engine_from_ctx(ctx)
     vault_root = resolve_vault_root()
+    fts_rebuilt: int | None = None
     with Session(engine) as session:
         report = sync_vault(
             vault_root,
@@ -411,6 +423,8 @@ def sync_cmd(
         )
         if not dry_run:
             session.commit()
+            if rebuild_index:
+                fts_rebuilt = rebuild_fts_index(vault_root, session)
 
     # Emit report
     if as_json:
@@ -423,6 +437,8 @@ def sync_cmd(
             "orphans_dropped": report.orphans_dropped,
             "concept_links_created": report.concept_links_created,
             "concept_issues": report.concept_issues,
+            "fts_indexed": report.fts_indexed,
+            "fts_rebuilt": fts_rebuilt,
             "dry_run": dry_run,
         }
         click.echo(_json.dumps(data, ensure_ascii=False, indent=2))
@@ -435,8 +451,11 @@ def sync_cmd(
             f"{report.citations_registered} citations registered, "
             f"{report.edges_created} edges registered, "
             f"{report.orphans_dropped} orphans dropped, "
-            f"{report.concept_links_created} concept links created."
+            f"{report.concept_links_created} concept links created, "
+            f"{report.fts_indexed} notes FTS-indexed."
         )
+        if fts_rebuilt is not None:
+            click.echo(f"FTS index rebuilt: {fts_rebuilt} notes re-indexed from disk.")
         if report.concept_issues:
             for issue in report.concept_issues:
                 click.echo(f"  [{issue['severity'].upper()}] {issue['message']}", err=True)
@@ -444,6 +463,38 @@ def sync_cmd(
     # Non-zero exit when strict concept errors present
     if report.concept_issues and any(i["severity"] == "error" for i in report.concept_issues):
         sys.exit(1)
+
+
+@notes.command(name="search")
+@click.argument("query")
+@click.option("--limit", type=int, default=20, show_default=True, help="Max results.")
+@click.option("--json", "as_json", is_flag=True)
+@click.pass_context
+@with_schema_guard
+def search_cmd(ctx: click.Context, query: str, limit: int, as_json: bool) -> None:
+    """Full-text search the vault's notes (title/aliases/body, FTS5 bm25 ranking)."""
+    from sqlalchemy.orm import Session
+
+    from workflow.db.engine import get_engine_from_ctx
+    from workflow.notes.search import SearchQueryError, search_notes
+
+    engine = get_engine_from_ctx(ctx)
+    try:
+        with Session(engine) as session:
+            results = search_notes(query, session, limit=limit)
+    except SearchQueryError as exc:
+        raise click.ClickException(str(exc))
+
+    if as_json:
+        click.echo(json.dumps({"query": query, "results": results}, ensure_ascii=False))
+        return
+
+    if not results:
+        click.echo("No results.")
+        return
+    for r in results:
+        click.echo(f"{r['zettel_id']}  {r['title']}  ({r['path']})  rank={r['rank']:.3f}")
+        click.echo(f"    {r['snippet']}")
 
 
 @notes.group(name="edges")
