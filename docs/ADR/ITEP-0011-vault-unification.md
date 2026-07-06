@@ -54,7 +54,7 @@ The current architecture splits `Note` rows into per-project LocalBase
 
 User mandate (2026-05-04): all zettelkasten notes MUST live as `.md`
 under a single configurable vault root, default
-`~/Documents/01-U/0000AA-Vault/`. LocalBase shrinks to two layers:
+`~/Documents/01-U/0000AA-Vault/` [2026-07-06: el vault vive en `~/01-U/0000AV-Vault/`; las menciones 0000AA de este ADR son históricas]. LocalBase shrinks to two layers:
 
 1. **PRISMA decisions** — inclusion/exclusion + motive + phase
    (identification → screening → eligibility → included/excluded), per

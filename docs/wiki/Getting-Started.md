@@ -71,14 +71,14 @@ WorkFlow centraliza el conocimiento en el **vault unificado** (ITEP-0011): todas
 ```
 ~/.local/share/workflow/workflow.db      # GlobalBase: notas, citas, conceptos, ejercicios,
                                           #   instituciones, cursos, libros
-~/Documents/01-U/0000AA-Vault/           # Vault: archivos .md en notes/{permanent,literature,fleeting}
+~/01-U/0000AV-Vault/                     # Vault: archivos .md en notes/{permanent,literature,fleeting}
 <proyecto>/slipbox.db                    # LocalBase: solo ProjectNote (ideas/hipotesis) y PrismaDecision
 ```
 
 La configuracion vive en `~/.config/workflow/config.yaml`:
 
 ```yaml
-vault_path: ~/Documents/01-U/0000AA-Vault
+vault_path: ~/01-U/0000AV-Vault
 default_institution: UCR
 default_timezone: America/Costa_Rica
 ```
@@ -108,7 +108,7 @@ uv sync
 # 2. Configurar el vault (opcional si usas el default)
 mkdir -p ~/.config/workflow
 cat > ~/.config/workflow/config.yaml <<'EOF'
-vault_path: ~/Documents/01-U/0000AA-Vault
+vault_path: ~/01-U/0000AV-Vault
 EOF
 
 # 3. Capturar una idea (crea el .md + la registra en la DB en un solo paso)

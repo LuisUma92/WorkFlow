@@ -12,7 +12,7 @@ from pathlib import Path
 
 __all__ = ["DEFAULT_VAULT_ROOT", "ENV_VAULT_ROOT", "resolve_vault_root"]
 
-DEFAULT_VAULT_ROOT = Path.home() / "01-U" / "0000AA-Vault"
+DEFAULT_VAULT_ROOT = Path.home() / "01-U" / "0000AV-Vault"
 ENV_VAULT_ROOT = "WORKFLOW_VAULT_ROOT"
 
 
@@ -22,7 +22,7 @@ def resolve_vault_root() -> Path:
     Precedence:
       1. ``WORKFLOW_VAULT_ROOT`` env var (existing behaviour, highest priority).
       2. ``vault_path`` key in ``~/.config/workflow/config.yaml`` (lazy import).
-      3. ``DEFAULT_VAULT_ROOT`` (``~/01-U/0000AA-Vault``).
+      3. ``DEFAULT_VAULT_ROOT`` (``~/01-U/0000AV-Vault``).
 
     The ``workflow.config`` import is intentionally LAZY (inside this function)
     so that this module stays dependency-free at import time.  Any failure in

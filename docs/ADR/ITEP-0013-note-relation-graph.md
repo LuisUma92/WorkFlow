@@ -64,7 +64,7 @@ in-flight workstreams (Phase A `notes` CRUD, ITEP-0012 Concept ORM) are actively
 extending the note model; the edge model should be fixed before `notes link`
 grows a relation surface.
 
-> **Path note:** the live vault is `~/01-U/0000AA-Vault/` and the live index
+> **Path note:** the live vault is `~/01-U/0000AA-Vault/` [2026-07-06: el vault vive en `~/01-U/0000AV-Vault/`; las menciones 0000AA de este ADR son históricas] and the live index
 > DB is `~/01-U/workflow/workflow.db` (confirmed on disk). These diverge from
 > the XDG layout in ADR-0008 and the `~/Documents/01-U` default cited in
 > ITEP-0011 — a pre-existing inconsistency to reconcile separately. It does not

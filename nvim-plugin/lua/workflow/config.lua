@@ -12,7 +12,7 @@ M.defaults = {
 	-- Set to false to disable the on-save graph check.
 	auto_graph_validate_on_save = true,
 	workspace_dir = nil, -- auto-detected from .workflow/config.yaml
-	vault_dir = "/home/luis/01-U/0000AA-Vault",
+	vault_dir = "/home/luis/01-U/0000AV-Vault",
 	keymaps = true,
 	keymap_prefix = "<leader>z",
 	snippets = true,

@@ -21,7 +21,7 @@ Add to your lazy.nvim / packer spec: >
     config = function()
       require("workflow").setup({
         workflow_cmd = nil,        -- auto-detected
-        vault_dir   = "~/01-U/0000AA-Vault",
+        vault_dir   = "~/01-U/0000AV-Vault",
         keymaps     = true,
         keymap_prefix = "<leader>z",
       })
@@ -378,7 +378,7 @@ Pass options to `require("workflow").setup(opts)`: >
     workspace_dir = nil,
 
     -- Vault root override (env WORKFLOW_VAULT_ROOT takes precedence).
-    vault_dir = "~/01-U/0000AA-Vault",
+    vault_dir = "~/01-U/0000AV-Vault",
 
     -- Register <leader>z* keymaps.
     keymaps = true,

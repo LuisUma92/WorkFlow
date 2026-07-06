@@ -27,7 +27,7 @@ Ver también: [Zettelkasten Notes](Zettelkasten-Notes.md),
       auto_validate_on_save = true,     -- valida frontmatter en :w
       auto_graph_validate_on_save = true, -- `validate notes --graph` en :w (diagnostics)
       workspace_dir = nil,              -- nil = auto-detectado (.workflow/config.yaml)
-      vault_dir = "~/01-U/0000AA-Vault",
+      vault_dir = "~/01-U/0000AV-Vault",
       keymaps = true,                  -- registra todos los <leader>z*
       keymap_prefix = "<leader>z",
       snippets = true,                 -- LuaSnip: yaml/markdown/tex

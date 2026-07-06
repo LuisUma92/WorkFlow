@@ -1,6 +1,6 @@
 """Workspace initialization for WorkFlow Zettelkasten system.
 
-Single-vault model: all Markdown notes live in 0000AA-Vault/.
+Single-vault model: all Markdown notes live in 0000AV-Vault/.
 Project directories (0010MC-, 0040EM-, etc.) are LaTeX output only.
 One slipbox.db at the workspace root indexes all notes.
 """
@@ -18,7 +18,7 @@ __all__ = [
     "VAULT_NAME",
 ]
 
-VAULT_NAME = "0000AA-Vault"
+VAULT_NAME = "0000AV-Vault"
 
 
 @dataclass(frozen=True)
@@ -36,8 +36,8 @@ def init_workspace(workspace_dir: Path) -> InitResult:
 
     Single-vault model:
     - .workflow/config.yaml (workspace marker)
-    - 0000AA-Vault/inbox/ (fleeting notes landing zone)
-    - 0000AA-Vault/templates/ (note templates)
+    - 0000AV-Vault/inbox/ (fleeting notes landing zone)
+    - 0000AV-Vault/templates/ (note templates)
     - slipbox.db at workspace root (single DB for all notes)
 
     Does NOT create per-project notes/ directories.

@@ -105,7 +105,7 @@ cleta                              # Limpiar archivos auxiliares TeX
 
 ## Vault layout (ITEP-0011)
 
-El vault unificado vive bajo `WORKFLOW_VAULT_ROOT` (default `~/Documents/01-U/0000AA-Vault`):
+El vault unificado vive bajo `WORKFLOW_VAULT_ROOT` (default `~/01-U/0000AV-Vault`):
 
 ```
 <vault_root>/
@@ -123,7 +123,7 @@ Bases de datos:
 Env vars relevantes:
 | Variable | Descripcion | Default |
 |---|---|---|
-| `WORKFLOW_VAULT_ROOT` | Raiz del vault unificado | `~/Documents/01-U/0000AA-Vault` |
+| `WORKFLOW_VAULT_ROOT` | Raiz del vault unificado | `~/01-U/0000AV-Vault` |
 | `WORKFLOW_DATA_DIR` | Directorio del GlobalBase | `~/01-U/workflow` |
 
 ## Decisiones de arquitectura

@@ -148,7 +148,7 @@ Each ITEP project directory contains its own `slipbox.db` (local DB, per ADR-000
 
 ## Amendment — 2026-06-05 (Wave E)
 
-- **Vault path correction**: the canonical vault root is `~/01-U/0000AA-Vault`, not `~/Documents/01-U` as stated in the original Decision section. The vault is intentionally NON-XDG (it is hand-edited documents, not app data). Override at runtime via `WORKFLOW_VAULT_ROOT` env var.
+- **Vault path correction**: the canonical vault root is `~/01-U/0000AV-Vault` (renamed 0000AA→0000AV, 2026-07-06), not `~/Documents/01-U` as stated in the original Decision section. The vault is intentionally NON-XDG (it is hand-edited documents, not app data). Override at runtime via `WORKFLOW_VAULT_ROOT` env var.
 - **`WORKFLOW_DATA_DIR` env override**: this is the canonical escape hatch for the global DB path and always wins over any computed default.
 - **Global DB back-compat resolver** (order of precedence, highest first):
   1. `$WORKFLOW_DATA_DIR` env var — wins unconditionally.

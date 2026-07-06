@@ -246,7 +246,7 @@ class TestSmoke:
         result = runner.invoke(notes, ["init", str(tmp_path)])
         assert result.exit_code == 0, result.output
         # Inbox + templates are created under the vault; typed-subdirs are NOT.
-        vault = tmp_path / "0000AA-Vault"
+        vault = tmp_path / "0000AV-Vault"
         assert vault.is_dir(), "vault dir not created"
         assert (vault / "inbox").is_dir(), "missing inbox/"
         assert (vault / "templates").is_dir(), "missing templates/"

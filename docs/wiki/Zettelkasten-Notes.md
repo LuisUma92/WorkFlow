@@ -19,7 +19,7 @@ El sistema de notas Zettelkasten permite gestionar conocimiento en Markdown (Obs
 
 ### Vault unificado (ITEP-0011)
 
-Todas las notas viven en el vault global bajo `WORKFLOW_VAULT_ROOT` (default `~/01-U/0000AA-Vault/`):
+Todas las notas viven en el vault global bajo `WORKFLOW_VAULT_ROOT` (default `~/01-U/0000AV-Vault/`):
 
 ```
 <vault_root>/
@@ -106,7 +106,7 @@ Esto crea:
 ```
 ~/Documents/01-U/
   .workflow/config.yaml              # Marcador de workspace
-  0000AA-Vault/                      # Zona de triage global
+  0000AV-Vault/                      # Zona de triage global
     inbox/                           # Notas fugaces sin asignar a un proyecto
     templates/
       permanent.md                   # Template para notas permanentes
