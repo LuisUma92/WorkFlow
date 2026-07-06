@@ -10,6 +10,12 @@ until the candidatura exam (nov 2026); this file is the entry point for that
 first post-freeze sprint planning session — it is not itself a plan (no TDD
 phases), just the ordering + evidence + entry criteria a plan will consume._
 
+**[CORRECTED 2026-07-05: the five wave plans (`tasks/plans/2026-07-05-wave{0..4}-*.md`)
+have been written and are orchestration-ready; their live-code verification pass
+surfaced two stale claims in this roadmap — Wave 3/PRISMA item 7 and Wave 1/ITEP-0015
+item 2, both annotated inline below where they occur. Wave sections below now also
+each carry a one-line pointer to their plan file.]**
+
 **Scoring rule (binding, director decision 2026-07-05):**
 `prioridad = urgencia × uso`, plus hard dependency ordering — a later wave is
 not "more important than" an earlier one, it is *blocked by* it. Do not
@@ -50,6 +56,8 @@ Stretch (not a wave): `workflow synth` ── gated on Waves 0-2 populated data
 ---
 
 ## Wave 0 — Semantic-layer ingestion (first, unblocks everything knowledge-side)
+
+**[CORRECTED 2026-07-05: Plan: tasks/plans/2026-07-05-wave0-harvest-loop-plan.md]**
 
 ### 1. Harvest loop D1–D3
 
@@ -93,6 +101,8 @@ Stretch (not a wave): `workflow synth` ── gated on Waves 0-2 populated data
 
 ## Wave 1 — Daily-use surfaces
 
+**[CORRECTED 2026-07-05: Plan: tasks/plans/2026-07-05-wave1-editor-first-fts-plan.md]**
+
 ### 2. ITEP-0015 — Editor-first authoring tooling
 
 - **Source**: `docs/ADR/ITEP-0015-editor-first-authoring-tooling.md`
@@ -103,6 +113,14 @@ Stretch (not a wave): `workflow synth` ── gated on Waves 0-2 populated data
   introspection endpoint (`src/workflow/notes/cli.py`), `workflow notes new-id`,
   `note_alias` table + migration, 7 new nvim keymaps (`<prefix>er/ec/ei/eI/eb/ek/en`),
   `:WorkflowValidate` on `BufWritePost`.
+  **[CORRECTED 2026-07-05: the "no overlap confirmed" framing is stale — the
+  wave1 plan's live-code verification found a substantial subset already
+  shipped unlabeled ("Wave 5 EDITOR keymaps", `nvim-plugin/.../keymaps.lua:85`):
+  `notes enums --json`, `notes new-id`, and pickers for enums/edges/notes/concepts
+  all exist today. ITEP-0015's real remaining scope is the delta only:
+  `note_alias` table, the `ei/eI/eb/ek` keymap wiring, capture/promote (genuinely
+  new), and Open Questions Q3–Q5. The ADR itself needs an honesty correction in
+  its own Phase 0 before further work — see wave1 plan.]**
 - **Effort**: L (new DB table + migration, CLI surface, 5+ new Lua files,
   test gate asserting CLI/ORM enum parity per the ADR's own MUST rule).
 - **Hard dependencies**: **ITEP-0013 P2.1 (NoteEdge model) already shipped**
@@ -149,6 +167,8 @@ Stretch (not a wave): `workflow synth` ── gated on Waves 0-2 populated data
   today.
 
 ## Wave 2 — Scale + research entities
+
+**[CORRECTED 2026-07-05: Plan: tasks/plans/2026-07-05-wave2-fmhash-research-question-plan.md]**
 
 ### 4. ITEP-0014 — `fm_hash` incremental-sync spike
 
@@ -212,6 +232,8 @@ Stretch (not a wave): `workflow synth` ── gated on Waves 0-2 populated data
 
 ## Wave 3 — Bibliography + review pipelines
 
+**[CORRECTED 2026-07-05: Plan: tasks/plans/2026-07-05-wave3-bibliography-prisma-plan.md]**
+
 ### 6. Bibliography dialect remainder
 
 - **Source**: `tasks/requests/2026-06-01-bibliography-dialect-biblatex-bibtex-compat.md`
@@ -260,6 +282,15 @@ Stretch (not a wave): `workflow synth` ── gated on Waves 0-2 populated data
   "deferred" in-request), P3 (`:WorkflowPrismaAcceptToNote` nvim command).
   `blocked_by: []` in the request's own frontmatter — "B1 stdin + A5 renderer
   have both landed."
+  **[CORRECTED 2026-07-05: this roadmap's framing of P1 and P3 as pending
+  implementation is stale — the wave3 plan's live-code verification confirms
+  both are fully shipped and documented: P1 is `workflow prisma bib
+  accept-to-note` (single + bulk modes) at `src/workflow/prisma/cli.py:392-465`
+  plus `accept_to_note.py`; P3 is `:WorkflowPrismaAcceptToNote` at
+  `nvim-plugin/lua/workflow/prisma_note.lua` + `commands.lua:316-320`. The
+  remaining real work for this item is F0 doc reconciliation plus ONE
+  migration (`BibEntry.bibkey` unique/NOT NULL + backfill reconciliation,
+  flagged ★ as a duplicate-strategy gate) — see wave3 plan.]**
 - **Effort**: M (P1 CLI + tests is the bulk; P3 nvim command is S once P1
   exists; P2 explicitly deferred by the request itself, not this roadmap).
 - **Hard dependencies**: none remaining per the request's own `blocked_by: []`
@@ -281,6 +312,8 @@ characterization so whoever plans this doesn't schedule a rewrite that's
 already done.
 
 ## Wave 4 — Platform evolution (ADR-first, schedule last intake)
+
+**[CORRECTED 2026-07-05: Plan: tasks/plans/2026-07-05-wave4-graph-evolution-convention-engine-plan.md]**
 
 ### 8. Graphify / graph evolution strategy
 
