@@ -16,6 +16,7 @@ from workflow.db.errors import with_schema_guard
 from workflow.lecture.linker import link_lecture_files
 from workflow.lecture.note_splitter import split_notes_file
 from workflow.lecture.scanner import register_notes, scan_lecture_directory
+from workflow.notes.sync import sync_note_files
 from workflow.vault.paths import resolve_vault_root
 
 __all__ = ["lectures"]
@@ -86,8 +87,17 @@ def scan(lecture_dir: str, project_root: str) -> None:
     default=False,
     help="Overwrite existing output files.",
 )
+@click.option(
+    "--sync/--no-sync",
+    default=True,
+    show_default=True,
+    help="Index the split files into the note DB immediately "
+    "(Note/Label/Link/Edge/Concept rows via sync_note_files).",
+)
 @with_schema_guard
-def split(source_file: str, output_dir: str | None, overwrite: bool) -> None:
+def split(
+    source_file: str, output_dir: str | None, overwrite: bool, sync: bool
+) -> None:
     """Split a notes file at %>path markers into separate files."""
     src = Path(source_file).resolve()
     if output_dir:
@@ -116,6 +126,19 @@ def split(source_file: str, output_dir: str | None, overwrite: bool) -> None:
 
     if not result.files:
         click.echo("No markers found — nothing to split.")
+
+    if sync and result.files:
+        engine = init_global_db()
+        with Session(engine) as session:
+            report = sync_note_files(
+                [sf.output_path for sf in result.files], session
+            )
+            session.commit()
+
+        click.echo(f"Synced: {report.notes_scanned} note(s) indexed")
+        if report.concept_issues:
+            for issue in report.concept_issues:
+                click.echo(f"  [WARN] {issue['message']}", err=True)
 
 
 @lectures.command()

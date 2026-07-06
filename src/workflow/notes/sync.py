@@ -371,12 +371,21 @@ def _run_write_passes(
     strict_concepts: bool,
     rebuild_edges: bool,
     report: SyncReport,
+    *,
+    skip_orphan_drop: bool = False,
 ) -> None:
-    """Run passes 2-5: links, orphan drop, edges, concepts (all write paths)."""
+    """Run passes 2-5: links, orphan drop, edges, concepts (all write paths).
+
+    ``skip_orphan_drop`` lets an explicit-file-list caller (``sync_note_files``)
+    reuse this orchestration without the orphan-drop pass ever running — see
+    that function's docstring for why deletion-by-absence must stay exclusive
+    to directory-wide ``sync_vault``.
+    """
     for note, body, _fm in note_data:
         report.links_created += _upsert_note_links(session, note, body)
 
-    report.orphans_dropped += _drop_orphan_links(session, scope_prefix, current_filenames)
+    if not skip_orphan_drop:
+        report.orphans_dropped += _drop_orphan_links(session, scope_prefix, current_filenames)
 
     _edge_fn = _rebuild_note_edges if rebuild_edges else _upsert_note_edges
     for note, _body, fm in note_data:
@@ -445,5 +454,59 @@ def sync_vault(
             session, note_data, scope_prefix, current_filenames,
             strict_concepts, rebuild_edges, report,
         )
+
+    return report
+
+
+def sync_note_files(
+    paths: list[Path],
+    session: Session,
+    *,
+    strict_concepts: bool = False,
+    rebuild_edges: bool = False,
+) -> SyncReport:
+    """Sync an explicit list of .md files into DB (Note/Label/Link/Edge/Concept rows).
+
+    This is the Pass-1 equivalent of ``sync_vault`` for an explicit file list —
+    e.g. the files a lecture monolith was just split into (``lectures split
+    --sync``) — instead of a directory-wide ``scan_root.rglob("*.md")``. Pass
+    2-5 (links, edges, concepts) are shared with ``sync_vault`` via
+    ``_run_write_passes``.
+
+    Deliberately never drops orphan links: an explicit file-list sync only
+    ever adds/updates rows for the given ``paths``. Running the orphan-drop
+    pass here would delete Link rows for every note NOT in ``paths`` under
+    whatever scope happened to be inferred — wrong for a partial subset, since
+    "not in this call's file list" does not mean "deleted from disk".
+    Deletion-by-absence stays exclusive to directory-wide ``sync_vault``,
+    which owns the full current-filenames set for its scope.
+    """
+    report = SyncReport()
+    note_data: list[tuple[Note, str, dict]] = []
+
+    for md_path in paths:
+        parsed = _parse_md(md_path)
+        if parsed is None:
+            continue
+        fm, body = parsed
+        zettel_id = fm.get("id")
+        if not zettel_id or not isinstance(zettel_id, str):
+            continue
+        anchors: list[str] = list(fm.get("anchors") or [])
+        bibkeys: list[str] = [
+            k for k in (fm.get("references") or [])
+            if isinstance(k, str) and k.strip()
+        ]
+        note = _upsert_note_row(session, str(md_path), {**fm, "id": zettel_id})
+        report.notes_scanned += 1
+        report.labels_registered += _upsert_note_labels(session, note, anchors)
+        report.citations_registered += _upsert_note_citations(session, note, bibkeys)
+        note_data.append((note, body, fm))
+
+    _run_write_passes(
+        session, note_data, "", set(),
+        strict_concepts, rebuild_edges, report,
+        skip_orphan_drop=True,
+    )
 
     return report
