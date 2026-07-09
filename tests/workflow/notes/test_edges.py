@@ -7,8 +7,13 @@ from pathlib import Path
 import pytest
 from sqlalchemy import select
 
-from workflow.db.models.notes import Note, NoteEdge
-from workflow.notes.edges import RelationEntry, parse_relations_frontmatter
+from workflow.db.models.notes import FRONTMATTER_RELATION_KEYS, Note, NoteEdge
+from workflow.notes.edges import (
+    RelationEntry,
+    has_legacy_relations,
+    parse_relations_frontmatter,
+    relations_to_flat_fm,
+)
 from workflow.notes.sync import SyncReport, sync_vault
 
 
@@ -182,6 +187,147 @@ def test_parse_relations_non_list_block_skipped():
     """derived_from: not a list → empty for that block."""
     fm = {"relations": {"derived_from": "not-a-list"}}
     assert parse_relations_frontmatter(fm) == []
+
+
+# ---------------------------------------------------------------------------
+# parse_relations_frontmatter — flat schema (canonical, F2)
+# ---------------------------------------------------------------------------
+
+
+def test_parse_flat_all_nine_keys():
+    """Every key in FRONTMATTER_RELATION_KEYS parses to a matching entry."""
+    fm = {key: [f"zid-{i:08d}"] for i, key in enumerate(FRONTMATTER_RELATION_KEYS)}
+    result = parse_relations_frontmatter(fm)
+    assert len(result) == len(FRONTMATTER_RELATION_KEYS)
+    for (key, (edge_class, relation_type)), entry in zip(FRONTMATTER_RELATION_KEYS.items(), result):
+        assert entry.edge_class == edge_class
+        assert entry.relation_type == relation_type
+        assert entry.target_zettel_id.startswith("zid-")
+
+
+def test_parse_flat_spot_check_structural_key():
+    fm = {"derived_from_refines": ["ancestor-id"]}
+    result = parse_relations_frontmatter(fm)
+    assert result == [
+        RelationEntry(
+            target_zettel_id="ancestor-id",
+            relation_type="refines",
+            edge_class="structural",
+            weight=1.0,
+            rationale=None,
+        )
+    ]
+
+
+def test_parse_flat_spot_check_associative_key():
+    fm = {"links_supports": ["202604010900", "202604020900"]}
+    result = parse_relations_frontmatter(fm)
+    assert [e.target_zettel_id for e in result] == ["202604010900", "202604020900"]
+    assert all(e.edge_class == "associative" and e.relation_type == "supports" for e in result)
+
+
+def test_parse_flat_empty_list_no_entries():
+    fm = {"links_supports": []}
+    assert parse_relations_frontmatter(fm) == []
+
+
+def test_parse_flat_malformed_zettel_id_skipped_siblings_kept():
+    fm = {"derived_from_continuation": ["short", "valid-zettel-01", "../../etc/passwd"]}
+    result = parse_relations_frontmatter(fm)
+    assert [e.target_zettel_id for e in result] == ["valid-zettel-01"]
+
+
+def test_parse_flat_string_value_skipped_not_iterated_char_by_char():
+    """A str value (not a list) must skip the whole key, never iterate chars."""
+    fm = {"links_supports": "abcdefgh12345678"}  # itself a valid-looking id length
+    result = parse_relations_frontmatter(fm)
+    assert result == []
+
+
+def test_parse_flat_wins_over_nested():
+    fm = {
+        "links_supports": ["flat-target-01"],
+        "relations": {
+            "derived_from": [{"id": "nested-target", "type": "continuation"}],
+        },
+    }
+    result = parse_relations_frontmatter(fm)
+    assert len(result) == 1
+    assert result[0].target_zettel_id == "flat-target-01"
+    assert result[0].edge_class == "associative"
+    assert result[0].relation_type == "supports"
+
+
+def test_parse_flat_entries_always_default_weight_and_rationale():
+    fm = {"derived_from_synthesis": ["src-synth001"]}
+    result = parse_relations_frontmatter(fm)
+    assert result[0].weight == 1.0
+    assert result[0].rationale is None
+
+
+def test_parse_no_relation_keys_at_all_returns_empty():
+    """No flat keys, no nested relations: → valid lineage root."""
+    assert parse_relations_frontmatter({"id": "x", "title": "y"}) == []
+
+
+# ---------------------------------------------------------------------------
+# relations_to_flat_fm
+# ---------------------------------------------------------------------------
+
+
+def test_relations_to_flat_fm_round_trip():
+    fm = {
+        "derived_from_refines": ["ancestor-id"],
+        "links_supports": ["other-note1", "other-note2"],
+    }
+    parsed = parse_relations_frontmatter(fm)
+    assert relations_to_flat_fm(parsed) == fm
+
+
+def test_relations_to_flat_fm_omits_empty_keys_and_dedupes():
+    entries = [
+        RelationEntry(
+            target_zettel_id="dup-target-1",
+            relation_type="supports",
+            edge_class="associative",
+        ),
+        RelationEntry(
+            target_zettel_id="dup-target-1",
+            relation_type="supports",
+            edge_class="associative",
+        ),
+        RelationEntry(
+            target_zettel_id="dup-target-2",
+            relation_type="supports",
+            edge_class="associative",
+        ),
+    ]
+    result = relations_to_flat_fm(entries)
+    assert result == {"links_supports": ["dup-target-1", "dup-target-2"]}
+    assert "derived_from_continuation" not in result
+
+
+# ---------------------------------------------------------------------------
+# has_legacy_relations
+# ---------------------------------------------------------------------------
+
+
+def test_has_legacy_relations_nested_dict_true():
+    fm = {"relations": {"derived_from": [{"id": "x", "type": "continuation"}]}}
+    assert has_legacy_relations(fm) is True
+
+
+def test_has_legacy_relations_corrupted_string_true():
+    """Obsidian-collapsed relations: (a plain string) must be reported, not ignored."""
+    assert has_legacy_relations({"relations": "corrupted string"}) is True
+
+
+def test_has_legacy_relations_absent_false():
+    assert has_legacy_relations({"id": "x"}) is False
+
+
+def test_has_legacy_relations_empty_dict_false():
+    assert has_legacy_relations({"relations": {}}) is False
 
 
 # ---------------------------------------------------------------------------
