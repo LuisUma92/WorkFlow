@@ -10,6 +10,8 @@ Models:
 from __future__ import annotations
 
 import re
+import types
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
@@ -56,6 +58,64 @@ _EDGE_CLASSES_ORDERED = ("structural", "associative")
 STRUCTURAL_RELATION_TYPES: frozenset[str] = frozenset(_STRUCTURAL_RELATION_TYPES_ORDERED)
 ASSOCIATIVE_RELATION_TYPES: frozenset[str] = frozenset(_ASSOCIATIVE_RELATION_TYPES_ORDERED)
 EDGE_CLASSES: frozenset[str] = frozenset(_EDGE_CLASSES_ORDERED)
+
+STRUCTURAL_KEY_PREFIX = "derived_from"
+ASSOCIATIVE_KEY_PREFIX = "links"
+
+
+def relation_frontmatter_key(edge_class: str, relation_type: str) -> str:
+    """Return the flat Obsidian-compatible frontmatter key for a relation.
+
+    Encodes a ``(edge_class, relation_type)`` pair from the ITEP-0013
+    vocabulary as a single flat frontmatter key (e.g.
+    ``("structural", "refines") -> "derived_from_refines"``), per the
+    ITEP-0013 flat-key encoding decision (Obsidian Properties cannot
+    represent the nested ``relations:`` mapping without corrupting it).
+
+    Args:
+        edge_class: Either ``"structural"`` or ``"associative"``.
+        relation_type: A relation type belonging to ``edge_class``'s
+            vocabulary (see ``STRUCTURAL_RELATION_TYPES`` /
+            ``ASSOCIATIVE_RELATION_TYPES``).
+
+    Returns:
+        The flat frontmatter key string.
+
+    Raises:
+        ValueError: If ``edge_class`` is not a recognized edge class, or if
+            ``relation_type`` does not belong to ``edge_class``'s vocabulary.
+    """
+    if edge_class == "structural":
+        prefix = STRUCTURAL_KEY_PREFIX
+        allowed = STRUCTURAL_RELATION_TYPES
+    elif edge_class == "associative":
+        prefix = ASSOCIATIVE_KEY_PREFIX
+        allowed = ASSOCIATIVE_RELATION_TYPES
+    else:
+        raise ValueError(f"Unknown edge_class: {edge_class!r}")
+
+    if relation_type not in allowed:
+        raise ValueError(
+            f"relation_type {relation_type!r} is not a member of the "
+            f"{edge_class!r} vocabulary"
+        )
+
+    return f"{prefix}_{relation_type}"
+
+
+# Derived (never hard-coded) per ADR ITEP-0013 MUST rule: the vocabulary
+# lives solely in _STRUCTURAL_RELATION_TYPES_ORDERED /
+# _ASSOCIATIVE_RELATION_TYPES_ORDERED above.
+FRONTMATTER_RELATION_KEYS: Mapping[str, tuple[str, str]] = types.MappingProxyType(
+    {
+        relation_frontmatter_key("structural", rel_type): ("structural", rel_type)
+        for rel_type in _STRUCTURAL_RELATION_TYPES_ORDERED
+    }
+    | {
+        relation_frontmatter_key("associative", rel_type): ("associative", rel_type)
+        for rel_type in _ASSOCIATIVE_RELATION_TYPES_ORDERED
+    }
+)
 
 
 def edge_class_for_relation_type(rel_type: str) -> str | None:
