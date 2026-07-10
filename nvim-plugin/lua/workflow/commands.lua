@@ -410,11 +410,25 @@ function M.setup(workflow)
 	end, { nargs = 0 })
 
 	-- :WorkflowRelationBlock [relation_type]
-	-- Insert a YAML relation block scaffold (derived_from / links) at cursor.
+	-- Insert a flat-key relation scaffold at cursor (ITEP-0013). If
+	-- relation_type is given, resolves the matching flat frontmatter key
+	-- (e.g. "refines" -> "derived_from_refines") from the live CLI vocab;
+	-- otherwise opens a picker over all 9 flat keys.
 	vim.api.nvim_create_user_command("WorkflowRelationBlock", function(cmd_opts)
 		local rtype = cmd_opts.fargs[1] or nil
 		workflow.insert_relation_block(rtype, {})
 	end, { nargs = "?" })
+
+	-- :WorkflowFrontmatterRelationKeyPicker [mode=insert|yank]
+	-- Pick one of the 9 flat frontmatter relation keys from the live vocab.
+	vim.api.nvim_create_user_command("WorkflowFrontmatterRelationKeyPicker", function(cmd_opts)
+		local opts = {}
+		for _, arg in ipairs(cmd_opts.fargs) do
+			local k, v = arg:match("^([%w%-_]+)=(.+)$")
+			if k and v then opts[k] = v end
+		end
+		workflow.pick_frontmatter_relation_key(opts)
+	end, { nargs = "*" })
 end
 
 return M

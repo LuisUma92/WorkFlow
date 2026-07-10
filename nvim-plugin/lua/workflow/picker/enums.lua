@@ -173,6 +173,113 @@ function M.pick_edge_class(opts)
 	end)
 end
 
+--- Resolve a flat frontmatter relation key from a relation_type using live
+--- enums (`frontmatter_relation_keys`). Never hard-codes the 9 key strings —
+--- always derived from the CLI response (ADR ITEP-0013 MUST rule).
+---@param enums table
+---@param relation_type string
+---@return string|nil key
+local function _key_for_relation_type(enums, relation_type)
+	local frk = enums.frontmatter_relation_keys
+	if not frk then return nil end
+	for key, meta in pairs(frk) do
+		if meta.relation_type == relation_type then
+			return key
+		end
+	end
+	return nil
+end
+
+--- Insert a flat-key relation list scaffold at cursor, e.g.:
+---   derived_from_refines:
+---     -
+---@param key string
+local function _insert_relation_key_scaffold(key)
+	local row = vim.api.nvim_win_get_cursor(0)[1]
+	local block = { key .. ":", "  - " }
+	vim.api.nvim_buf_set_lines(0, row, row, false, block)
+	vim.api.nvim_win_set_cursor(0, { row + 2, 4 })
+end
+
+--- Pick a frontmatter relation key (one of the 9 flat ITEP-0013 keys) from
+--- the live vocab and insert a YAML list scaffold at cursor, or yank it.
+--- opts.mode = "insert" (default) | "yank"
+---@param opts table|nil
+function M.pick_frontmatter_relation_key(opts)
+	opts = opts or {}
+	local config = require("workflow.config").resolve(opts)
+	local mode = opts.mode or "insert"
+	M.get_enums(config, function(ok, enums, err)
+		if not ok then
+			vim.notify("Failed to load enums:\n" .. (err or "?"), vim.log.levels.ERROR, { title = "workflow" })
+			return
+		end
+		local frk = enums.frontmatter_relation_keys
+		if not frk or vim.tbl_isempty(frk) then
+			vim.notify("No frontmatter_relation_keys in enums response", vim.log.levels.WARN, { title = "workflow" })
+			return
+		end
+		local Snacks = _snacks()
+		if not Snacks then return end
+		local items = {}
+		for key, meta in pairs(frk) do
+			table.insert(items, {
+				text = key .. "  (" .. meta.edge_class .. "/" .. meta.relation_type .. ")",
+				value = key,
+			})
+		end
+		table.sort(items, function(a, b) return a.value < b.value end)
+		vim.schedule(function()
+			Snacks.picker({
+				title = "Frontmatter relation keys",
+				items = items,
+				format = function(item) return { { item.text } } end,
+				confirm = function(picker, item)
+					picker:close()
+					if not item then return end
+					local key = item.value
+					if mode == "yank" then
+						vim.fn.setreg('"', key)
+						vim.fn.setreg("+", key)
+						vim.notify("Yanked: " .. key, vim.log.levels.INFO, { title = "workflow" })
+					else
+						_insert_relation_key_scaffold(key)
+					end
+				end,
+			})
+		end)
+	end)
+end
+
+--- Insert a flat-key relation scaffold at cursor.
+--- If rtype (a relation_type, e.g. "refines") is given, resolves the flat
+--- key from the live CLI vocab and inserts it directly. If omitted, opens
+--- the frontmatter-relation-key picker instead.
+---@param rtype string|nil
+---@param opts table|nil
+function M.insert_relation_block(rtype, opts)
+	opts = opts or {}
+	if not rtype or rtype == "" then
+		M.pick_frontmatter_relation_key(opts)
+		return
+	end
+	local config = require("workflow.config").resolve(opts)
+	M.get_enums(config, function(ok, enums, err)
+		if not ok then
+			vim.notify("Failed to load enums:\n" .. (err or "?"), vim.log.levels.ERROR, { title = "workflow" })
+			return
+		end
+		local key = _key_for_relation_type(enums, rtype)
+		if not key then
+			vim.notify("Unknown relation_type: " .. rtype, vim.log.levels.ERROR, { title = "workflow" })
+			return
+		end
+		vim.schedule(function()
+			_insert_relation_key_scaffold(key)
+		end)
+	end)
+end
+
 --- Pick a note_type from the live vocab.
 --- opts.mode = "insert" (default) | "yank"
 ---@param opts table|nil

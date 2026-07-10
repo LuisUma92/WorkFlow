@@ -644,8 +644,16 @@ def enums_cmd(as_json: bool) -> None:
         _STRUCTURAL_RELATION_TYPES_ORDERED,
         _ASSOCIATIVE_RELATION_TYPES_ORDERED,
         _EDGE_CLASSES_ORDERED,
+        FRONTMATTER_RELATION_KEYS,
+        STRUCTURAL_KEY_PREFIX,
+        ASSOCIATIVE_KEY_PREFIX,
     )
     from workflow.validation.schemas import _VALID_NOTE_TYPES
+
+    frontmatter_relation_keys = {
+        key: {"edge_class": edge_class, "relation_type": relation_type}
+        for key, (edge_class, relation_type) in FRONTMATTER_RELATION_KEYS.items()
+    }
 
     if as_json:
         data = {
@@ -665,6 +673,11 @@ def enums_cmd(as_json: bool) -> None:
                 "filename_convention": "<zettel_id>-<slug>.md",
                 "alias_template": ["<zettel_id>-<slug>", "<slug>", "<zettel_id>"],
             },
+            "frontmatter_relation_keys": frontmatter_relation_keys,
+            "relation_key_prefixes": {
+                "structural": STRUCTURAL_KEY_PREFIX,
+                "associative": ASSOCIATIVE_KEY_PREFIX,
+            },
         }
         click.echo(json.dumps(data, ensure_ascii=False))
     else:
@@ -682,6 +695,9 @@ def enums_cmd(as_json: bool) -> None:
             click.echo(f"  {nt}")
         click.echo("\nZettel ID format:")
         click.echo("  library: nanoid  alphabet: A-Za-z0-9_-  length: 8–21 (default 12)")
+        click.echo("\nFrontmatter relation keys:")
+        for key, meta in frontmatter_relation_keys.items():
+            click.echo(f"  {key}  ({meta['edge_class']}/{meta['relation_type']})")
 
 
 @notes.command(name="new-id")

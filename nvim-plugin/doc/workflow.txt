@@ -271,10 +271,26 @@ indexes so `:help :WorkflowXxx` resolves correctly.
   `auto_graph_validate_on_save = true` (default).
 
 *:WorkflowRelationBlock* [relation_type]
-  Insert a YAML relation block scaffold (`derived_from:` / `links:`) at the
-  cursor.  Optional `relation_type` argument pre-fills the field.  Example: >
-    :WorkflowRelationBlock derived_from
+  Insert a flat-key relation list scaffold at the cursor (ITEP-0013).  Note
+  frontmatter uses 9 flat keys instead of a nested `relations:` mapping,
+  because Obsidian Properties can only store scalars and lists of strings —
+  a nested mapping gets silently collapsed and corrupts the graph.  If
+  `relation_type` is given, the matching flat key (e.g. `refines` ->
+  `derived_from_refines`) is resolved from the live CLI vocab and inserted
+  directly; otherwise a picker opens over all 9 flat keys.  Example: >
+    :WorkflowRelationBlock refines
 <
+  inserts: >
+    derived_from_refines:
+      -
+<
+*:WorkflowFrontmatterRelationKeyPicker* [mode=insert|yank]
+  Pick one of the 9 flat frontmatter relation keys
+  (`derived_from_continuation`, `derived_from_refines`,
+  `derived_from_branches`, `derived_from_synthesis`, `derived_from_rebuttal`,
+  `links_supports`, `links_contradicts`, `links_expands`, `links_see_also`)
+  from the live `workflow notes enums --json` vocab.  Unused keys are simply
+  omitted from frontmatter — never emitted as an empty list.
 
 Wave 5 keymaps (under `keymap_prefix`, default `<leader>z`):
 
@@ -289,8 +305,9 @@ Wave 5 keymaps (under `keymap_prefix`, default `<leader>z`):
 
 LuaSnip triggers (markdown):
 
-  rel.    Insert a `derived_from:` YAML block scaffold
-  link.   Insert a `links:` YAML block scaffold
+  (the old `rel.` / `link.` nested-block snippets were retired — the flat
+  key depends on a runtime CLI lookup a static snippet cannot perform; use
+  :WorkflowRelationBlock or :WorkflowFrontmatterRelationKeyPicker instead)
 
 Configuration flag: >
   auto_graph_validate_on_save = true   -- default; set false to disable

@@ -42,9 +42,9 @@ return {
 		i(2, ""),
 		t({ "", "aliases: []", "type: fleeting", "created: " }),
 		f(today, {}),
-		t({ "", "tags: []", "concepts: []", "relations:", "  derived_from:", "    - {id: " }),
+		t({ "", "tags: []", "concepts: []", "derived_from_continuation: [" }),
 		i(3, "note-id"),
-		t({ ", type: continuation}", "  links: []", "entry_point: false", "" }),
+		t({ "]", "entry_point: false", "" }),
 		t({ "---", "", "" }),
 		i(0, ""),
 		t({ "", "" }),
@@ -206,26 +206,18 @@ return {
 		i(0),
 	}),
 
-	-- Wave 5: relation / edge scaffolds for note frontmatter authoring.
-	s({ trig = "rel.", wordTrig = true, name = "derived_from relation block" }, {
-		t("derived_from:"),
-		t({ "", "  - zettel_id: " }),
-		i(1, ""),
-		t({ "", "    relation_type: " }),
-		i(2, ""),
-		t({ "", "" }),
-		i(0),
-	}),
-
-	s({ trig = "link.", wordTrig = true, name = "links relation block" }, {
-		t("links:"),
-		t({ "", "  - zettel_id: " }),
-		i(1, ""),
-		t({ "", "    relation_type: " }),
-		i(2, ""),
-		t({ "", "" }),
-		i(0),
-	}),
+	-- Wave 5 / ITEP-0013: relation scaffolds retired from static snippets.
+	--
+	-- The old nested `derived_from:` / `links:` block shape is gone
+	-- (Obsidian Properties corrupts nested mappings — see ADR ITEP-0013).
+	-- The flat replacement key (e.g. `derived_from_refines:`) depends on
+	-- a runtime lookup against `workflow notes enums --json`, which a
+	-- static LuaSnip text/insert-node snippet cannot perform without
+	-- either hard-coding the 9-key vocabulary here (forbidden by the
+	-- ADR's MUST rule) or blocking on a synchronous shell call. Use the
+	-- `:WorkflowRelationBlock [relation_type]` command instead — it
+	-- resolves the flat key from the live CLI vocab
+	-- (see lua/workflow/picker/enums.lua).
 
 	s({ trig = "bib.online", wordTrig = true, name = "biblatex @online block" }, {
 		t("```bib"),

@@ -104,6 +104,87 @@ class TestEnumsJson:
         assert result.exit_code == 0
         assert "Error" not in result.output
 
+    def test_pre_existing_keys_unchanged(self, runner):
+        """Additive contract: pre-existing keys must still be present with same values."""
+        result = runner.invoke(notes, ["enums", "--json"])
+        data = json.loads(result.output)
+        assert set(data["edge_class"]) == {"structural", "associative"}
+        assert set(data["relation_type"]["structural"]) == {
+            "continuation", "refines", "branches", "synthesis", "rebuttal"
+        }
+        assert set(data["relation_type"]["associative"]) == {
+            "supports", "contradicts", "expands", "see_also"
+        }
+        assert set(data["note_type"]) == {"fleeting", "literature", "permanent"}
+        assert "zettel_id_format" in data
+
+
+class TestFrontmatterRelationKeysJson:
+    def test_key_present(self, runner):
+        result = runner.invoke(notes, ["enums", "--json"])
+        data = json.loads(result.output)
+        assert "frontmatter_relation_keys" in data
+
+    def test_derived_from_source_of_truth(self, runner):
+        from workflow.db.models.notes import FRONTMATTER_RELATION_KEYS
+
+        result = runner.invoke(notes, ["enums", "--json"])
+        data = json.loads(result.output)
+        frk = data["frontmatter_relation_keys"]
+
+        assert set(frk.keys()) == set(FRONTMATTER_RELATION_KEYS.keys())
+        for key, (edge_class, relation_type) in FRONTMATTER_RELATION_KEYS.items():
+            assert frk[key] == {
+                "edge_class": edge_class,
+                "relation_type": relation_type,
+            }, f"mismatch for {key!r}"
+
+    def test_order_matches_source_of_truth(self, runner):
+        from workflow.db.models.notes import FRONTMATTER_RELATION_KEYS
+
+        result = runner.invoke(notes, ["enums", "--json"])
+        data = json.loads(result.output)
+        frk = data["frontmatter_relation_keys"]
+
+        assert list(frk.keys()) == list(FRONTMATTER_RELATION_KEYS.keys())
+
+    def test_structural_then_associative_ordering(self, runner):
+        result = runner.invoke(notes, ["enums", "--json"])
+        data = json.loads(result.output)
+        keys = list(data["frontmatter_relation_keys"].keys())
+        structural_keys = [k for k in keys if k.startswith("derived_from_")]
+        associative_keys = [k for k in keys if k.startswith("links_")]
+        assert keys == structural_keys + associative_keys
+        assert len(structural_keys) == 5
+        assert len(associative_keys) == 4
+
+    def test_relation_key_prefixes_present(self, runner):
+        from workflow.db.models.notes import (
+            STRUCTURAL_KEY_PREFIX,
+            ASSOCIATIVE_KEY_PREFIX,
+        )
+
+        result = runner.invoke(notes, ["enums", "--json"])
+        data = json.loads(result.output)
+        assert "relation_key_prefixes" in data
+        assert data["relation_key_prefixes"] == {
+            "structural": STRUCTURAL_KEY_PREFIX,
+            "associative": ASSOCIATIVE_KEY_PREFIX,
+        }
+
+
+class TestFrontmatterRelationKeysHuman:
+    def test_contains_flat_keys(self, runner):
+        from workflow.db.models.notes import FRONTMATTER_RELATION_KEYS
+
+        result = runner.invoke(notes, ["enums"])
+        for key in FRONTMATTER_RELATION_KEYS:
+            assert key in result.output, f"missing flat key: {key}"
+
+    def test_contains_section_heading(self, runner):
+        result = runner.invoke(notes, ["enums"])
+        assert "Frontmatter relation keys:" in result.output
+
 
 # ---------------------------------------------------------------------------
 # Task 1: enums human-readable (non-json)

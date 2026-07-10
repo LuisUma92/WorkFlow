@@ -9,9 +9,6 @@ entry_point: false
 exercises: []
 images: []
 references: []
-relations:
-  derived_from: []
-  links: []
 title: "<Notas fleeting — Semana NN: Título del tema (parte N)>"
 type: permanent
 ---
@@ -60,9 +57,6 @@ type: permanent
 created: <YYYY-MM-DD>
 tags: [<tag-tema>, <tag-área>]
 concepts: [<slug-concepto>]
-relations:
-  derived_from: []
-  links: []
 entry_point: <true|false>
 ---
 

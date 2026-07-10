@@ -258,6 +258,10 @@ function M.pick_note_type(opts)
 	require("workflow.picker.enums").pick_note_type(opts)
 end
 
+function M.pick_frontmatter_relation_key(opts)
+	require("workflow.picker.enums").pick_frontmatter_relation_key(opts)
+end
+
 function M.reload_enums()
 	require("workflow.picker.enums").reload()
 end
@@ -305,28 +309,20 @@ function M.pick_edges_filtered(opts)
 	require("workflow.picker.edges").pick_with_class_filter(opts)
 end
 
--- Wave 5 EDITOR: relation block insert
+-- Wave 5 EDITOR / ITEP-0013: relation block insert
+--
+-- Delegates to workflow.picker.enums, which resolves the flat frontmatter
+-- relation key (e.g. "derived_from_refines") from the live
+-- `workflow notes enums --json` vocab — never a hard-coded key table.
 
---- Insert a YAML relation block scaffold at the cursor.
---- If rtype is provided, the relation_type field is pre-filled.
----@param rtype string|nil  pre-filled relation_type value
+--- Insert a flat-key YAML relation scaffold at the cursor.
+--- If rtype (a relation_type, e.g. "refines") is provided, the matching
+--- flat key is resolved and inserted directly; otherwise a picker opens
+--- over all 9 flat keys.
+---@param rtype string|nil  relation_type to pre-resolve
 ---@param opts table|nil
 function M.insert_relation_block(rtype, opts)
-	local rt_line = rtype and ("  - relation_type: " .. rtype) or "  - relation_type: "
-	local block = {
-		"",
-		"# Relation block (remove or complete as needed)",
-		"derived_from:",
-		"  - zettel_id: ",
-		rt_line,
-		"links:",
-		"  - zettel_id: ",
-		"    relation_type: ",
-	}
-	local row = vim.api.nvim_win_get_cursor(0)[1]
-	vim.api.nvim_buf_set_lines(0, row, row, false, block)
-	-- Position cursor on the first zettel_id field.
-	vim.api.nvim_win_set_cursor(0, { row + 4, #"  - zettel_id: " })
+	require("workflow.picker.enums").insert_relation_block(rtype, opts)
 end
 
 return M

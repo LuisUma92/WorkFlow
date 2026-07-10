@@ -115,12 +115,17 @@ class TestInitWorkspace:
         assert "main_topic:" in content
         assert "discipline_area:" in content
 
-    def test_permanent_template_has_relations_scaffold(self, tmp_path):
+    def test_permanent_template_has_no_nested_relations_key(self, tmp_path):
+        """ITEP-0013 flat-key encoding: nested relations: block is gone.
+
+        Empty relation keys are omitted by design — a fresh note has no
+        relations, so nothing is emitted in their place.
+        """
         init_workspace(tmp_path)
         content = (tmp_path / VAULT_NAME / "templates" / "permanent.md").read_text()
-        assert "relations:" in content
-        assert "derived_from:" in content
-        assert "links:" in content
+        assert "relations:" not in content
+        assert "derived_from:" not in content
+        assert "links:" not in content
         assert "entry_point:" in content
 
     def test_permanent_template_no_delivered_from(self, tmp_path):
@@ -136,11 +141,12 @@ class TestInitWorkspace:
         assert "discipline_area:" in content
         assert "origin:" in content
 
-    def test_literature_template_has_relations_scaffold(self, tmp_path):
+    def test_literature_template_has_no_nested_relations_key(self, tmp_path):
+        """ITEP-0013 flat-key encoding: nested relations: block is gone."""
         init_workspace(tmp_path)
         content = (tmp_path / VAULT_NAME / "templates" / "literature.md").read_text()
-        assert "relations:" in content
-        assert "derived_from:" in content
+        assert "relations:" not in content
+        assert "derived_from:" not in content
         assert "entry_point:" in content
 
     def test_fleeting_template_has_no_main_topic(self, tmp_path):
@@ -180,20 +186,24 @@ class TestInitWorkspace:
     # Wave 1 — template parity guard (lock against field drift in init.py templates)
 
     def test_permanent_template_parity_guard(self, tmp_path):
-        """Lock: permanent.md template must always contain all four required fields."""
+        """Lock: permanent.md template must always contain all three required fields.
+
+        `relations` dropped from this guard — ITEP-0013 flat-key encoding
+        omits empty relation keys entirely, so a fresh template has none.
+        """
         init_workspace(tmp_path)
         content = (tmp_path / VAULT_NAME / "templates" / "permanent.md").read_text()
-        for field in ("main_topic", "discipline_area", "relations", "entry_point"):
+        for field in ("main_topic", "discipline_area", "entry_point"):
             assert field in content, (
                 f"permanent.md template missing field {field!r} — "
                 "update init.py _create_note_templates to restore it"
             )
 
     def test_literature_template_parity_guard(self, tmp_path):
-        """Lock: literature.md template must always contain all four required fields."""
+        """Lock: literature.md template must always contain all three required fields."""
         init_workspace(tmp_path)
         content = (tmp_path / VAULT_NAME / "templates" / "literature.md").read_text()
-        for field in ("main_topic", "discipline_area", "relations", "entry_point"):
+        for field in ("main_topic", "discipline_area", "entry_point"):
             assert field in content, (
                 f"literature.md template missing field {field!r} — "
                 "update init.py _create_note_templates to restore it"
