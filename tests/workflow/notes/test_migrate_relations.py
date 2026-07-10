@@ -225,7 +225,8 @@ type: permanent
     assert path.read_text(encoding="utf-8") == before
 
 
-def test_empty_relations_dict_skipped(tmp_path):
+def test_empty_relations_dict_stripped_and_migrated(tmp_path):
+    # Empty {} is a dead scaffold key -> strip it, count as migrated.
     vault = tmp_path / "vault"
     vault.mkdir()
     fm = """id: aaaaaaaa1111
@@ -238,8 +239,18 @@ relations: {}
     result = _invoke(vault, ["migrate-relations", "--json"])
     assert result.exit_code == 0, result.output
     data = json.loads(result.stdout)
-    assert data["migrated"] == []
-    assert data["skipped"] == 1
+    assert len(data["migrated"]) == 1
+    assert data["skipped"] == 0
+
+    raw, body, _ = _read_raw(path)
+    assert "relations" not in raw
+    assert body == "Body text.\n"
+
+    # Second run: key already gone -> no-op skip.
+    result2 = _invoke(vault, ["migrate-relations", "--json"])
+    data2 = json.loads(result2.stdout)
+    assert data2["migrated"] == []
+    assert data2["skipped"] == 1
 
 
 def test_json_shape_and_stdout_purity(tmp_path):
@@ -299,3 +310,191 @@ def test_numeric_id_edge_survives_migration(tmp_path):
     data = json.loads(result.stdout)
     assert len(data["migrated"]) == 1
     assert data["failed"] == []
+
+
+# ---------------------------------------------------------------------------
+# Real-vault shapes that crashed the run (ITEP-0013 F5, round 3).
+# ---------------------------------------------------------------------------
+
+
+def test_unquoted_colon_in_title_fails_sibling_still_migrates(tmp_path):
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    # Invalid YAML: unquoted ':' in the title value.
+    bad = vault / "aaaaaaaa1111-bad.md"
+    bad.write_text(
+        "---\nid: aaaaaaaa1111\n"
+        "title: Estrategia de solución: Ecuación de Bernoulli\n"
+        "type: permanent\nrelations:\n  links:\n    - id: bbbbbbbb2222\n"
+        "      type: supports\n---\nBody.\n",
+        encoding="utf-8",
+    )
+    before_bad = bad.read_text(encoding="utf-8")
+    good = _write(vault, "eeeeeeee4444-good.md", """id: eeeeeeee4444
+title: Good Note
+type: permanent
+relations:
+  derived_from:
+    - id: ffffffff5555
+      type: continuation
+""")
+
+    result = _invoke(vault, ["migrate-relations", "--json"])
+    assert result.exit_code == 1, result.output
+    data = json.loads(result.stdout)
+
+    assert len(data["failed"]) == 1
+    assert data["failed"][0]["path"] == str(bad)
+    assert "yaml" in data["failed"][0]["reason"].lower()
+    assert len(data["migrated"]) == 1
+
+    assert bad.read_text(encoding="utf-8") == before_bad  # untouched
+    raw, _, _ = _read_raw(good)
+    assert raw["derived_from_continuation"] == ["ffffffff5555"]
+
+
+def test_empty_relations_list_stripped(tmp_path):
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    path = _write(vault, "aaaaaaaa1111-emptylist.md", """id: aaaaaaaa1111
+title: Empty List
+type: permanent
+relations: []""")
+
+    result = _invoke(vault, ["migrate-relations", "--json"])
+    assert result.exit_code == 0, result.output
+    data = json.loads(result.stdout)
+    assert len(data["migrated"]) == 1
+    raw, body, _ = _read_raw(path)
+    assert "relations" not in raw
+    assert body == "Body text.\n"
+
+
+def test_bare_relations_none_stripped(tmp_path):
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    # Bare `relations:` with no value -> parses to None.
+    path = _write(vault, "aaaaaaaa1111-none.md", """id: aaaaaaaa1111
+title: Bare Relations
+type: permanent
+relations:""")
+
+    result = _invoke(vault, ["migrate-relations", "--json"])
+    assert result.exit_code == 0, result.output
+    data = json.loads(result.stdout)
+    assert len(data["migrated"]) == 1
+    raw, _, _ = _read_raw(path)
+    assert "relations" not in raw
+
+    # Idempotent.
+    result2 = _invoke(vault, ["migrate-relations", "--json"])
+    data2 = json.loads(result2.stdout)
+    assert data2["migrated"] == []
+    assert data2["skipped"] == 1
+
+
+def test_non_empty_list_relations_fails_untouched(tmp_path):
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    path = _write(vault, "aaaaaaaa1111-list.md", """id: aaaaaaaa1111
+title: List Relations
+type: permanent
+relations:
+  - bbbbbbbb2222
+  - cccccccc3333""")
+    before = path.read_text(encoding="utf-8")
+
+    result = _invoke(vault, ["migrate-relations", "--json"])
+    assert result.exit_code == 1, result.output
+    data = json.loads(result.stdout)
+    assert len(data["failed"]) == 1
+    assert data["failed"][0]["path"] == str(path)
+    assert "list" in data["failed"][0]["reason"].lower()
+    assert path.read_text(encoding="utf-8") == before  # untouched
+
+
+def test_no_frontmatter_skipped(tmp_path):
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    path = vault / "plain.md"
+    path.write_text("Just a plain markdown file, no frontmatter.\n", encoding="utf-8")
+    before = path.read_text(encoding="utf-8")
+
+    result = _invoke(vault, ["migrate-relations", "--json"])
+    assert result.exit_code == 0, result.output
+    data = json.loads(result.stdout)
+    assert data["skipped"] == 1
+    assert data["migrated"] == []
+    assert data["failed"] == []
+    assert path.read_text(encoding="utf-8") == before
+
+
+def test_unreadable_file_recorded_as_failure_run_continues(tmp_path):
+    import os
+    import stat
+
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    bad = vault / "aaaaaaaa1111-unreadable.md"
+    bad.write_text("""---
+id: aaaaaaaa1111
+title: Unreadable
+type: permanent
+relations:
+  links:
+    - id: bbbbbbbb2222
+      type: supports
+---
+Body.
+""", encoding="utf-8")
+    good = _write(vault, "eeeeeeee4444-good.md", """id: eeeeeeee4444
+title: Good
+type: permanent
+relations:
+  derived_from:
+    - id: ffffffff5555
+      type: continuation
+""")
+    os.chmod(bad, 0)
+    try:
+        # Running as root bypasses file permissions; skip if so.
+        if os.access(bad, os.R_OK):
+            import pytest
+            pytest.skip("permissions not enforced (running as root)")
+
+        result = _invoke(vault, ["migrate-relations", "--json"])
+        assert result.exit_code == 1, result.output
+        data = json.loads(result.stdout)
+        assert len(data["failed"]) == 1
+        assert data["failed"][0]["path"] == str(bad)
+        assert len(data["migrated"]) == 1  # good sibling still migrated
+        raw, _, _ = _read_raw(good)
+        assert raw["derived_from_continuation"] == ["ffffffff5555"]
+    finally:
+        os.chmod(bad, stat.S_IRUSR | stat.S_IWUSR)
+
+
+def test_dry_run_writes_nothing_on_empty_and_failure_paths(tmp_path):
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    empty = _write(vault, "aaaaaaaa1111-empty.md", """id: aaaaaaaa1111
+title: Empty
+type: permanent
+relations: {}""")
+    listnote = _write(vault, "bbbbbbbb2222-list.md", """id: bbbbbbbb2222
+title: List
+type: permanent
+relations:
+  - cccccccc3333""")
+    before_empty = empty.read_text(encoding="utf-8")
+    before_list = listnote.read_text(encoding="utf-8")
+
+    result = _invoke(vault, ["migrate-relations", "--dry-run", "--json"])
+    # dry-run still surfaces the failure -> exit 1
+    assert result.exit_code == 1, result.output
+    data = json.loads(result.stdout)
+    assert len(data["migrated"]) == 1  # the empty note is planned-migrated
+    assert len(data["failed"]) == 1
+
+    assert empty.read_text(encoding="utf-8") == before_empty
+    assert listnote.read_text(encoding="utf-8") == before_list

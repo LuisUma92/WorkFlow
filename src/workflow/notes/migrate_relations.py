@@ -26,7 +26,6 @@ from workflow.notes.discovery import parse_frontmatter, walk_note_files
 from workflow.notes.edges import (
     RelationEntry,
     _parse_nested,
-    has_legacy_relations,
     relations_to_flat_fm,
 )
 
@@ -128,38 +127,106 @@ def migrate_relations(
 
     for path in walk_note_files(vault_root):
         report.scanned += 1
-
-        try:
-            fm, body = parse_frontmatter(path)
-        except ValueError as exc:
-            report.failed.append(MigrationFailure(path=str(path), reason=str(exc)))
-            continue
-
-        if not has_legacy_relations(fm):
-            report.skipped += 1
-            continue
-
-        relations = fm.get("relations")
-        if isinstance(relations, str):
-            report.failed.append(
-                MigrationFailure(path=str(path), reason=_CORRUPTED_REASON)
-            )
-            continue
-
-        source_id = fm.get("id")
-        source_label = source_id if isinstance(source_id, str) else str(path)
-
-        entries = _parse_nested(fm)
-        flat = relations_to_flat_fm(entries)
-        dropped = _collect_dropped(source_label, entries)
-        report.dropped.extend(dropped)
-
-        new_raw = _rebuild_raw_dict(fm, flat)
-
-        if not dry_run:
-            fm_yaml = yaml.safe_dump(new_raw, allow_unicode=True, sort_keys=False)
-            path.write_text(f"---\n{fm_yaml}---\n{body}", encoding="utf-8")
-
-        report.migrated.append(str(path))
+        _migrate_one(path, report, dry_run=dry_run)
 
     return report
+
+
+def _migrate_one(path: Path, report: MigrationReport, *, dry_run: bool) -> None:
+    """Migrate a single note in place. Never raises — every failure mode is
+    recorded on *report* so one bad note can never abort the run (per-note
+    atomicity, the spec's core guarantee)."""
+    # --- read + parse frontmatter (all failure modes recorded, never raised) --
+    try:
+        fm, body = parse_frontmatter(path)
+    except ValueError:
+        # No/blank frontmatter fences, or frontmatter that is not a mapping —
+        # not a note we manage. Skip silently.
+        report.skipped += 1
+        return
+    except yaml.YAMLError as exc:
+        # Malformed YAML (e.g. an unquoted ':' in a title). Fail loudly,
+        # continue with the next note.
+        report.failed.append(
+            MigrationFailure(path=str(path), reason=f"invalid YAML frontmatter: {exc}")
+        )
+        return
+    except (OSError, UnicodeDecodeError) as exc:
+        report.failed.append(
+            MigrationFailure(path=str(path), reason=f"could not read file: {exc}")
+        )
+        return
+
+    # --- dispatch on the shape of the `relations:` value --------------------
+    if "relations" not in fm:
+        report.skipped += 1
+        return
+
+    relations = fm["relations"]
+
+    # Corrupted: Obsidian collapsed the nested mapping to a plain string.
+    if isinstance(relations, str):
+        report.failed.append(MigrationFailure(path=str(path), reason=_CORRUPTED_REASON))
+        return
+
+    # Empty in any spelling ({}, [], bare `relations:` -> None): a dead scaffold
+    # key the new templates no longer emit; strip it and rewrite. Counted as
+    # migrated (leaving it makes `validate notes` warn forever).
+    if relations is None or relations == {} or relations == []:
+        _finish(path, report, fm, body, flat={}, entries=[], dry_run=dry_run)
+        return
+
+    # Well-formed legacy nested mapping -> the real migration.
+    if isinstance(relations, dict):
+        entries = _parse_nested(fm)
+        flat = relations_to_flat_fm(entries)
+        _finish(path, report, fm, body, flat=flat, entries=entries, dry_run=dry_run)
+        return
+
+    # Anything else (a non-empty list, or a bare scalar) is an unexpected shape
+    # we refuse to interpret. Fail loudly, never guess.
+    report.failed.append(
+        MigrationFailure(
+            path=str(path),
+            reason=(
+                f"relations: is an unexpected {type(relations).__name__} "
+                f"({relations!r:.60}); cannot interpret — inspect and fix by hand."
+            ),
+        )
+    )
+
+
+def _finish(
+    path: Path,
+    report: MigrationReport,
+    fm: dict,
+    body: str,
+    *,
+    flat: dict[str, list[str]],
+    entries: list[RelationEntry],
+    dry_run: bool,
+) -> None:
+    """Write the rewritten note (unless dry-run) and record it as migrated.
+
+    A write failure is recorded as a MigrationFailure — the note is NOT counted
+    as migrated (per-note atomicity: fully rewritten or not touched at all)."""
+    source_id = fm.get("id")
+    source_label = source_id if isinstance(source_id, str) else str(path)
+    dropped = _collect_dropped(source_label, entries)
+
+    new_raw = _rebuild_raw_dict(fm, flat)
+
+    if not dry_run:
+        try:
+            fm_yaml = yaml.safe_dump(new_raw, allow_unicode=True, sort_keys=False)
+            path.write_text(f"---\n{fm_yaml}---\n{body}", encoding="utf-8")
+        except OSError as exc:
+            # Write did not happen: record a failure, do NOT count as migrated
+            # and do NOT report the dropped fields (nothing was lost on disk).
+            report.failed.append(
+                MigrationFailure(path=str(path), reason=f"could not write file: {exc}")
+            )
+            return
+
+    report.dropped.extend(dropped)
+    report.migrated.append(str(path))
