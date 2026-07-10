@@ -484,3 +484,73 @@ def test_sync_dry_run_does_not_write_edges(tmp_path, global_session):
     )
     sync_vault(tmp_path, global_session, dry_run=True)
     assert global_session.scalars(select(NoteEdge)).all() == []
+
+
+# ---------------------------------------------------------------------------
+# Numeric (timestamp-style) zettel ids — YAML parses bare digits as int.
+# Regression: these must NOT be silently dropped (data loss). ITEP-0013 F5.
+# ---------------------------------------------------------------------------
+
+
+def test_parse_flat_numeric_id_accepted():
+    # 202604010900 is a valid NanoID-format id but parses as int under YAML.
+    fm = {"links_supports": [202604010900]}
+    result = parse_relations_frontmatter(fm)
+    assert len(result) == 1
+    assert result[0].target_zettel_id == "202604010900"
+    assert isinstance(result[0].target_zettel_id, str)
+    assert result[0].relation_type == "supports"
+
+
+def test_parse_nested_numeric_id_accepted():
+    fm = {
+        "relations": {
+            "links": [{"id": 202604010900, "type": "supports"}],
+        }
+    }
+    result = parse_relations_frontmatter(fm)
+    assert len(result) == 1
+    assert result[0].target_zettel_id == "202604010900"
+    assert isinstance(result[0].target_zettel_id, str)
+
+
+def test_parse_flat_bool_id_rejected():
+    # isinstance(True, int) is True in Python — must be rejected explicitly.
+    assert parse_relations_frontmatter({"links_supports": [True]}) == []
+    assert parse_relations_frontmatter({"links_supports": [False]}) == []
+
+
+def test_parse_nested_bool_id_rejected():
+    fm = {"relations": {"links": [{"id": True, "type": "supports"}]}}
+    assert parse_relations_frontmatter(fm) == []
+
+
+def test_parse_flat_float_id_rejected():
+    assert parse_relations_frontmatter({"links_supports": [2026.04]}) == []
+
+
+def test_parse_nested_float_id_rejected():
+    fm = {"relations": {"links": [{"id": 2026.04, "type": "supports"}]}}
+    assert parse_relations_frontmatter(fm) == []
+
+
+def test_numeric_id_full_roundtrip_survives_yaml():
+    """Unquoted numeric id -> parse -> flat_fm -> yaml dump -> load -> parse."""
+    import yaml
+
+    fm = {"links_supports": [202604010900], "derived_from_refines": ["0dJk2mPq91xA"]}
+    entries = parse_relations_frontmatter(fm)
+    flat = relations_to_flat_fm(entries)
+
+    dumped = yaml.safe_dump(flat, allow_unicode=True, sort_keys=False)
+    # A digit-only str must be quoted by yaml so it re-loads as str, not int.
+    assert "'202604010900'" in dumped
+
+    reloaded = yaml.safe_load(dumped)
+    entries2 = parse_relations_frontmatter(reloaded)
+    assert {(e.target_zettel_id, e.relation_type) for e in entries2} == {
+        (e.target_zettel_id, e.relation_type) for e in entries
+    }
+    assert ("202604010900", "supports") in {
+        (e.target_zettel_id, e.relation_type) for e in entries2
+    }

@@ -87,6 +87,27 @@ def parse_relations_frontmatter(fm: dict) -> list[RelationEntry]:
     return _parse_nested(fm)
 
 
+def _coerce_zettel_id(value: object) -> str | None:
+    """Coerce a frontmatter id scalar to a validated zettel_id string.
+
+    Accepts ``str`` and ``int`` — timestamp-style ids (e.g. ``202604010900``)
+    are bare digits and YAML parses them as ``int``; rejecting them here would
+    silently drop the edge (permanent data loss in ``migrate-relations``).
+    ``bool`` is rejected explicitly because ``isinstance(True, int)`` is True
+    in Python. ``float``/``None``/``dict``/``list`` are rejected too. Coerce
+    with ``str(value)`` FIRST, then ``.strip()``, then validate against
+    ``ZETTEL_ID_RE`` exactly as before. Returns the id, or ``None`` to skip.
+    """
+    if isinstance(value, bool):
+        return None
+    if not isinstance(value, (str, int)):
+        return None
+    target_id = str(value).strip()
+    if not target_id or not _ZETTEL_ID_RE.match(target_id):
+        return None
+    return target_id
+
+
 def _parse_flat(fm: dict) -> list[RelationEntry]:
     entries: list[RelationEntry] = []
     for key, (edge_class, relation_type) in FRONTMATTER_RELATION_KEYS.items():
@@ -94,10 +115,8 @@ def _parse_flat(fm: dict) -> list[RelationEntry]:
         if not isinstance(raw, list):
             continue
         for item in raw:
-            if not isinstance(item, str):
-                continue
-            target_id = item.strip()
-            if not target_id or not _ZETTEL_ID_RE.match(target_id):
+            target_id = _coerce_zettel_id(item)
+            if target_id is None:
                 continue
             entries.append(
                 RelationEntry(
@@ -172,12 +191,9 @@ def _parse_block(
     for item in raw:
         if not isinstance(item, dict):
             continue
-        target_id = item.get("id")
+        target_id = _coerce_zettel_id(item.get("id"))
         relation_type = item.get("type")
-        if not isinstance(target_id, str) or not target_id.strip():
-            continue
-        target_id = target_id.strip()
-        if not _ZETTEL_ID_RE.match(target_id):
+        if target_id is None:
             continue
         if not isinstance(relation_type, str) or relation_type not in valid_types:
             continue
@@ -194,7 +210,7 @@ def _parse_block(
         rationale = rationale_raw if isinstance(rationale_raw, str) and rationale_raw else None
         entries.append(
             RelationEntry(
-                target_zettel_id=target_id.strip(),
+                target_zettel_id=target_id,
                 relation_type=relation_type,
                 edge_class=edge_class,
                 weight=weight,

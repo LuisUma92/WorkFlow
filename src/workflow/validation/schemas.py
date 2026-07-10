@@ -257,13 +257,17 @@ def _validate_relations(
                 "(mapping value looks like the legacy nested 'relations:' format)"
             )
             continue
-        if not isinstance(raw, list) or not all(isinstance(x, str) for x in raw):
-            errors.append(f"{key}: must be a list of strings")
+        if not isinstance(raw, list) or not all(
+            isinstance(x, (str, int)) and not isinstance(x, bool) for x in raw
+        ):
+            errors.append(f"{key}: must be a list of zettel ids (strings or bare-digit ids)")
             continue
 
         bucket = derived if edge_class == "structural" else links
         for item in raw:
-            target_id = item.strip()
+            # Timestamp-style ids (e.g. 202604010900) parse as int under YAML;
+            # coerce to str before validating so the edge is never dropped.
+            target_id = str(item).strip()
             if not target_id or not _ZETTEL_ID_RE.match(target_id):
                 # Mirror the sync/ingest contract (workflow.notes.edges) — an id
                 # that fails the NanoID format is silently dropped there, so

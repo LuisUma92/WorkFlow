@@ -820,6 +820,66 @@ def promote_cmd(ctx: click.Context, reference: str, as_json: bool) -> None:
         )
 
 
+@notes.command(name="migrate-relations")
+@click.option("--vault-root", "vault_root", type=click.Path(file_okay=False), default=None,
+              help="Override vault root directory.")
+@click.option("--dry-run", is_flag=True, default=False,
+              help="Report the plan without writing any file.")
+@click.option("--json", "as_json", is_flag=True)
+@with_schema_guard
+def migrate_relations_cmd(
+    vault_root: str | None,
+    dry_run: bool,
+    as_json: bool,
+) -> None:
+    """Rewrite legacy nested `relations:` frontmatter into the flat schema."""
+    import sys
+
+    from workflow.notes.migrate_relations import migrate_relations
+    from workflow.vault.paths import resolve_vault_root
+
+    root = Path(vault_root).resolve() if vault_root else resolve_vault_root()
+    report = migrate_relations(root, dry_run=dry_run)
+
+    for d in report.dropped:
+        if d.field == "weight":
+            click.echo(
+                f"dropped weight={d.value} on {d.source} -> {d.target}", err=True
+            )
+        else:
+            click.echo(
+                f"dropped note={d.value!r} on {d.source} -> {d.target}", err=True
+            )
+
+    for f in report.failed:
+        click.echo(f"FAILED {f.path}: {f.reason}", err=True)
+
+    if as_json:
+        click.echo(json.dumps(
+            {
+                "scanned": report.scanned,
+                "migrated": report.migrated,
+                "skipped": report.skipped,
+                "failed": [{"path": f.path, "reason": f.reason} for f in report.failed],
+                "dropped": [
+                    {"source": d.source, "target": d.target, "field": d.field, "value": d.value}
+                    for d in report.dropped
+                ],
+            },
+            ensure_ascii=False,
+        ))
+    else:
+        suffix = " (dry run)" if dry_run else ""
+        click.echo(
+            f"Migration complete{suffix}: {report.scanned} scanned, "
+            f"{len(report.migrated)} migrated, {report.skipped} skipped, "
+            f"{len(report.failed)} failed."
+        )
+
+    if report.failed:
+        sys.exit(1)
+
+
 def _run_classic_link(
     root: Path,
     note_id: str,

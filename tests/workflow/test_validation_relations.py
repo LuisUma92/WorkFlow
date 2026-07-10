@@ -113,9 +113,18 @@ class TestDerivedFrom:
             assert errors == [], f"type '{t}' should be valid"
             assert fm.relations.derived_from[0].type == t
 
-    def test_derived_from_missing_id_list_item_type_error(self):
+    def test_derived_from_wrong_type_list_item_type_error(self):
+        # float is a genuinely wrong id type (int/str are valid — see numeric-id
+        # regression); the whole-list type guard rejects it.
+        _, errors = validate_note_frontmatter(_note(derived_from_continuation=[2026.04]))
+        assert any("derived_from_continuation" in e and "zettel ids" in e for e in errors)
+
+    def test_derived_from_short_int_is_format_error(self):
+        # 123 is a valid int scalar but fails the NanoID length rule; it is a
+        # FORMAT error now (not a "wrong type" error) — the edge is not dropped
+        # silently, it is flagged.
         _, errors = validate_note_frontmatter(_note(derived_from_continuation=[123]))
-        assert any("derived_from_continuation" in e and "list of strings" in e for e in errors)
+        assert any("derived_from_continuation" in e and "NanoID" in e for e in errors)
 
     def test_derived_from_dict_value_is_error_mentions_legacy(self):
         _, errors = validate_note_frontmatter(_note(
@@ -353,3 +362,26 @@ class TestValidateNotesCliLegacyWarning:
         assert result.exit_code == 0, result.stderr
         assert "legacy nested relations" in result.stderr
         assert "legacy nested relations" not in result.stdout
+
+
+class TestNumericZettelId:
+    """Timestamp-style ids (bare digits) parse as int under YAML — F5 regression."""
+
+    def test_unquoted_int_id_validates_with_zero_errors(self):
+        fm, errors = validate_note_frontmatter(
+            _note(derived_from_refines=[202604010900])
+        )
+        assert errors == []
+        assert fm is not None
+        assert fm.relations is not None
+        ids = [e.id for e in fm.relations.derived_from]
+        assert ids == ["202604010900"]
+        assert isinstance(fm.relations.derived_from[0].id, str)
+
+    def test_int_id_via_validate_relations_helper(self):
+        errors: list[str] = []
+        rel = _validate_relations({"links_supports": [202604010900]}, errors)
+        assert errors == []
+        assert rel is not None
+        assert [e.id for e in rel.links] == ["202604010900"]
+        assert isinstance(rel.links[0].id, str)
