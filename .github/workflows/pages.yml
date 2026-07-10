@@ -8,6 +8,8 @@ on:
     branches: ["master"]
     paths:
       - "docs/**"
+      - "src/**"
+      - "pyproject.toml"
       - "README.md"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
@@ -41,6 +43,22 @@ jobs:
         with:
           source: "docs/"
           destination: "./_site"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Build API docs with pdoc
+        # numpy/networkx are optional imports of latexzettel.api.analysis and
+        # graph clustering; pdoc imports every module, so they must be present.
+        # PRISMAreview is excluded: Django app, needs settings + MariaDB to import.
+        run: |
+          pip install -e . pdoc numpy networkx
+          pdoc workflow itep latexzettel lectkit appfunc -o ./pdoc_out
+
+      - name: Merge API docs into site
+        # jekyll-build-pages runs in Docker; _site is root-owned.
+        run: sudo mv ./pdoc_out ./_site/api
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

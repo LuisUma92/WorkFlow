@@ -10,3 +10,4 @@ knowledge system for academic writing.
 
 - [Wiki](wiki/Home.md) — getting started, architecture, and per-module workflows
 - [Architecture decisions](ADR/INDEX.md) — cross-referenced ADR index
+- [API reference](api/) — pdoc-generated Python API docs (workflow, itep, latexzettel, lectkit, appfunc)

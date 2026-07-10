@@ -9,6 +9,12 @@ heading_anchors: true
 aux_links:
   GitHub: https://github.com/LuisUma92/WorkFlow
 
+# pdoc output is merged into _site/api/ by the Pages workflow (outside Jekyll).
+nav_external_links:
+  - title: API reference (pdoc)
+    url: /WorkFlow/api/
+    hide_icon: true
+
 exclude:
   - temp.md
   - superpowers/
