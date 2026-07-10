@@ -108,16 +108,16 @@ Label
 
 ```latex
 % Cross-reference to another note (defined in texnote.cls)
-\newcommand{\excref}[2][]{%
-  \ifthenelse{\isempty{#1}}{%
+\newcommand{\excref}[2][]\{
+  \ifthenelse{\isempty{#1}}\{
     \hyperref[zk:#2]{\textit{→ #2}}%
-  }{%
+  }\{
     \hyperref[zk:#2]{\textit{→ #1}}%
   }%
 }
 
 % Hyperlinked reference with custom text
-\newcommand{\exhyperref}[2][]{%
+\newcommand{\exhyperref}[2][]\{
   \hyperref[#1]{\textit{#2}}%
 }
 ```

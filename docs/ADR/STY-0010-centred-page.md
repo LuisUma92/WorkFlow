@@ -70,8 +70,8 @@ Default behavior (no star): applies `\thispagestyle{empty}`.
 ### Centering model
 
 ```latex
-\makebox[\paperwidth][c]{%
-  \vbox to \paperheight{%
+\makebox[\paperwidth][c]\{
+  \vbox to \paperheight\{
     \vfill
     <content>
     \vfill
