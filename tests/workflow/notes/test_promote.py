@@ -135,6 +135,36 @@ class TestPromoteAllowed:
         assert fm["origin"] == "manual"
         assert "Reading notes here." in path.read_text(encoding="utf-8")
 
+    def test_flat_relation_keys_survive_promote_byte_equivalent(
+        self, global_engine, global_session, tmp_path
+    ):
+        """A note with flat relation keys keeps them (same keys, ids, order)
+        after promote — promote.py round-trips the RAW parsed dict, it never
+        interprets ``derived_from_*``/``links_*`` keys (F3+F4 amendment)."""
+        vault = tmp_path / "vault"
+        vault.mkdir()
+        path = _seed_note(
+            vault, global_session, zid="relpromote12", note_type="literature",
+            extra_fm=(
+                "derived_from_refines:\n  - parent0001\n"
+                "links_supports:\n  - other00001\n  - other00002"
+            ),
+        )
+        before = _read_fm(path)
+
+        result = _invoke(global_engine, vault, ["promote", "relpromote12"])
+        assert result.exit_code == 0, result.output
+
+        after = _read_fm(path)
+        assert after["type"] == "permanent"
+        assert after["derived_from_refines"] == before["derived_from_refines"] == ["parent0001"]
+        assert (
+            after["links_supports"]
+            == before["links_supports"]
+            == ["other00001", "other00002"]
+        )
+        assert "relations" not in after
+
 
 # ---------------------------------------------------------------------------
 # Forbidden transitions

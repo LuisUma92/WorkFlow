@@ -1,15 +1,25 @@
-"""Phase 1 tests — relations + entry_point in NoteFrontmatter (ITEP-0013 DTO).
+"""Flat-key relations tests (ITEP-0013 amended 2026-07-09, F3+F4).
 
 zettel_id values in fixtures MUST satisfy the NanoID format
-^[A-Za-z0-9_-]{8,21}$ (ITEP-0015) — the validator now enforces it, mirroring
+^[A-Za-z0-9_-]{8,21}$ (ITEP-0015) — the validator enforces it, mirroring
 the sync/ingest contract in workflow.notes.edges.
+
+Frontmatter schema is 9 FLAT keys (Obsidian Properties cannot represent the
+old nested ``relations:`` mapping without corrupting it):
+
+    derived_from_continuation / _refines / _branches / _synthesis / _rebuttal
+    links_supports / _contradicts / _expands / _see_also
+
+Each value is a plain list of zettel_id strings. ``weight``/``note`` are
+DELIBERATELY absent from frontmatter (decision 2026-07-09).
 """
 
-import pytest
-
+from workflow.db.models.notes import FRONTMATTER_RELATION_KEYS
+from workflow.notes.edges import parse_relations_frontmatter, relations_to_flat_fm
 from workflow.validation.schemas import (
     _validate_relations,
     validate_note_frontmatter,
+    validate_note_frontmatter_with_warnings,
 )
 
 
@@ -65,7 +75,7 @@ class TestEntryPoint:
     def test_entry_point_true_with_relations(self):
         fm, errors = validate_note_frontmatter(_note(
             entry_point=True,
-            relations={"derived_from": [{"id": _PARENT, "type": "refines"}]},
+            derived_from_refines=[_PARENT],
         ))
         assert errors == []
         assert fm.entry_point is True
@@ -73,30 +83,14 @@ class TestEntryPoint:
 
 
 # ---------------------------------------------------------------------------
-# relations absent / null / malformed top-level
+# relations absent
 # ---------------------------------------------------------------------------
 
 class TestRelationsAbsent:
-    def test_no_relations_key_is_valid(self):
+    def test_no_relation_keys_is_valid(self):
         fm, errors = validate_note_frontmatter(_note())
         assert errors == []
         assert fm.relations is None
-
-    def test_null_relations_is_valid(self):
-        fm, errors = validate_note_frontmatter(_note(relations=None))
-        assert errors == []
-        assert fm.relations is None
-
-    def test_empty_relations_dict_is_valid(self):
-        fm, errors = validate_note_frontmatter(_note(relations={}))
-        assert errors == []
-        assert fm.relations is not None
-        assert fm.relations.derived_from == ()
-        assert fm.relations.links == ()
-
-    def test_relations_as_list_is_error(self):
-        _, errors = validate_note_frontmatter(_note(relations=[{"id": _PARENT}]))
-        assert any("relations" in e and "mapping" in e for e in errors)
 
 
 # ---------------------------------------------------------------------------
@@ -105,96 +99,45 @@ class TestRelationsAbsent:
 
 class TestDerivedFrom:
     def test_valid_derived_from_entry(self):
-        fm, errors = validate_note_frontmatter(_note(relations={
-            "derived_from": [{"id": _PARENT, "type": "continuation"}]
-        }))
+        fm, errors = validate_note_frontmatter(_note(derived_from_continuation=[_PARENT]))
         assert errors == []
         assert len(fm.relations.derived_from) == 1
         edge = fm.relations.derived_from[0]
         assert edge.id == _PARENT
         assert edge.type == "continuation"
-        assert edge.weight is None
-        assert edge.note is None
 
     def test_derived_from_all_structural_types(self):
         for t in ("continuation", "refines", "branches", "synthesis", "rebuttal"):
-            fm, errors = validate_note_frontmatter(_note(relations={
-                "derived_from": [{"id": _PARENT, "type": t}]
-            }))
+            key = f"derived_from_{t}"
+            fm, errors = validate_note_frontmatter(_note(**{key: [_PARENT]}))
             assert errors == [], f"type '{t}' should be valid"
             assert fm.relations.derived_from[0].type == t
 
-    def test_derived_from_with_optional_weight_and_note(self):
-        fm, errors = validate_note_frontmatter(_note(relations={
-            "derived_from": [{"id": _PARENT, "type": "refines", "weight": 0.9, "note": "tightened"}]
-        }))
-        assert errors == []
-        edge = fm.relations.derived_from[0]
-        assert edge.weight == pytest.approx(0.9)
-        assert edge.note == "tightened"
+    def test_derived_from_missing_id_list_item_type_error(self):
+        _, errors = validate_note_frontmatter(_note(derived_from_continuation=[123]))
+        assert any("derived_from_continuation" in e and "list of strings" in e for e in errors)
 
-    def test_derived_from_missing_id_is_error(self):
-        _, errors = validate_note_frontmatter(_note(relations={
-            "derived_from": [{"type": "continuation"}]
-        }))
-        assert any("id" in e for e in errors)
-
-    def test_derived_from_missing_type_is_error(self):
-        _, errors = validate_note_frontmatter(_note(relations={
-            "derived_from": [{"id": _PARENT}]
-        }))
-        assert any("type" in e for e in errors)
-
-    def test_derived_from_rejects_associative_type(self):
-        # associative type ('supports') in a structural slot must fail
-        _, errors = validate_note_frontmatter(_note(relations={
-            "derived_from": [{"id": _PARENT, "type": "supports"}]
-        }))
-        assert any("derived_from" in e and "invalid type" in e for e in errors)
-
-    def test_derived_from_invalid_type_is_error(self):
-        _, errors = validate_note_frontmatter(_note(relations={
-            "derived_from": [{"id": _PARENT, "type": "delivered_from"}]
-        }))
-        assert any("derived_from" in e and "invalid type" in e for e in errors)
-
-    def test_derived_from_empty_list_is_valid(self):
-        fm, errors = validate_note_frontmatter(_note(relations={"derived_from": []}))
-        assert errors == []
-        assert fm.relations.derived_from == ()
+    def test_derived_from_dict_value_is_error_mentions_legacy(self):
+        _, errors = validate_note_frontmatter(_note(
+            derived_from_refines={"id": _PARENT, "type": "refines"}
+        ))
+        assert any(
+            "derived_from_refines" in e and "list of strings" in e and "legacy" in e.lower()
+            for e in errors
+        )
 
     def test_derived_from_not_a_list_is_error(self):
-        _, errors = validate_note_frontmatter(_note(relations={"derived_from": "x"}))
-        assert any("derived_from" in e for e in errors)
+        _, errors = validate_note_frontmatter(_note(derived_from_continuation="x"))
+        assert any("derived_from_continuation" in e for e in errors)
 
-    def test_derived_from_non_dict_item_is_error(self):
-        _, errors = validate_note_frontmatter(_note(relations={
-            "derived_from": ["just_a_string"]
-        }))
-        assert any("derived_from" in e and "mapping" in e for e in errors)
-
-    def test_derived_from_bool_weight_is_error(self):
-        _, errors = validate_note_frontmatter(_note(relations={
-            "derived_from": [{"id": _PARENT, "type": "refines", "weight": True}]
-        }))
-        assert any("weight" in e for e in errors)
-
-    def test_derived_from_string_weight_is_error(self):
-        _, errors = validate_note_frontmatter(_note(relations={
-            "derived_from": [{"id": _PARENT, "type": "refines", "weight": "heavy"}]
-        }))
-        assert any("weight" in e for e in errors)
-
-    def test_derived_from_non_string_note_is_error(self):
-        _, errors = validate_note_frontmatter(_note(relations={
-            "derived_from": [{"id": _PARENT, "type": "refines", "note": 123}]
-        }))
-        assert any("note" in e for e in errors)
+    def test_derived_from_empty_list_is_valid(self):
+        fm, errors = validate_note_frontmatter(_note(derived_from_continuation=[]))
+        assert errors == []
+        # An empty flat key list still counts as "key present" -> derived_from empty tuple
+        assert fm.relations.derived_from == ()
 
     def test_derived_from_short_id_rejected(self):
-        _, errors = validate_note_frontmatter(_note(relations={
-            "derived_from": [{"id": "x", "type": "refines"}]
-        }))
+        _, errors = validate_note_frontmatter(_note(derived_from_refines=["x"]))
         assert any("NanoID" in e for e in errors)
 
 
@@ -204,9 +147,7 @@ class TestDerivedFrom:
 
 class TestLinks:
     def test_valid_links_entry(self):
-        fm, errors = validate_note_frontmatter(_note(relations={
-            "links": [{"id": _OTHER, "type": "supports"}]
-        }))
+        fm, errors = validate_note_frontmatter(_note(links_supports=[_OTHER]))
         assert errors == []
         assert len(fm.relations.links) == 1
         edge = fm.relations.links[0]
@@ -215,67 +156,94 @@ class TestLinks:
 
     def test_links_all_associative_types(self):
         for t in ("supports", "contradicts", "expands", "see_also"):
-            fm, errors = validate_note_frontmatter(_note(relations={
-                "links": [{"id": _OTHER, "type": t}]
-            }))
+            key = f"links_{t}"
+            fm, errors = validate_note_frontmatter(_note(**{key: [_OTHER]}))
             assert errors == [], f"type '{t}' should be valid"
             assert fm.relations.links[0].type == t
 
-    def test_links_rejects_structural_type(self):
-        # structural type ('continuation') in an associative slot must fail
-        _, errors = validate_note_frontmatter(_note(relations={
-            "links": [{"id": _OTHER, "type": "continuation"}]
-        }))
-        assert any("links" in e and "invalid type" in e for e in errors)
-
-    def test_links_missing_id_is_error(self):
-        _, errors = validate_note_frontmatter(_note(relations={
-            "links": [{"type": "supports"}]
-        }))
-        assert any("id" in e for e in errors)
-
     def test_links_empty_list_is_valid(self):
-        fm, errors = validate_note_frontmatter(_note(relations={"links": []}))
+        fm, errors = validate_note_frontmatter(_note(links_supports=[]))
         assert errors == []
         assert fm.relations.links == ()
 
     def test_links_not_a_list_is_error(self):
-        _, errors = validate_note_frontmatter(_note(relations={"links": {"id": _OTHER}}))
-        assert any("links" in e for e in errors)
+        _, errors = validate_note_frontmatter(_note(links_supports={"id": _OTHER}))
+        assert any("links_supports" in e for e in errors)
 
 
 # ---------------------------------------------------------------------------
-# both families together + lenient collect
+# both families together
 # ---------------------------------------------------------------------------
 
 class TestBothFamilies:
     def test_derived_from_and_links_together(self):
-        fm, errors = validate_note_frontmatter(_note(relations={
-            "derived_from": [{"id": _PARENT, "type": "refines"}],
-            "links": [{"id": _OTHER, "type": "contradicts"}],
-        }))
+        fm, errors = validate_note_frontmatter(_note(
+            derived_from_refines=[_PARENT],
+            links_contradicts=[_OTHER],
+        ))
         assert errors == []
         assert len(fm.relations.derived_from) == 1
         assert len(fm.relations.links) == 1
 
 
-class TestLenientCollect:
-    def test_mixed_valid_invalid_items_collects_valid(self):
-        # _validate_relations builds the valid sibling AND reports the error;
-        # validate_note_frontmatter discards the DTO when errors exist, so we
-        # exercise the helper directly to pin both behaviours.
-        errors: list[str] = []
-        relations = _validate_relations(
-            {"relations": {"derived_from": [
-                {"id": _PARENT, "type": "refines"},      # valid
-                {"id": _SECOND, "type": "bogus_type"},   # invalid
-            ]}},
-            errors,
+# ---------------------------------------------------------------------------
+# unknown key warning (difflib suggestion)
+# ---------------------------------------------------------------------------
+
+class TestUnknownKeyWarning:
+    def test_typo_key_warns_with_suggestion(self):
+        fm, errors, warnings = validate_note_frontmatter_with_warnings(
+            _note(derived_from_typo=[_PARENT])
         )
-        assert relations is not None
-        assert len(relations.derived_from) == 1            # valid sibling survived
-        assert relations.derived_from[0].id == _PARENT
-        assert any("invalid type" in e for e in errors)    # error still recorded
+        assert errors == []
+        assert any("did you mean" in w for w in warnings)
+        # unknown key is ignored for parsing purposes (no matching FRONTMATTER key)
+        assert fm.relations is None
+
+    def test_unknown_links_key_warns(self):
+        _fm, errors, warnings = validate_note_frontmatter_with_warnings(
+            _note(links_bogus=[_OTHER])
+        )
+        assert errors == []
+        assert any("links_bogus" in w for w in warnings)
+
+    def test_delegator_drops_warnings(self):
+        # The 2-tuple delegator stays byte-identical for existing callers.
+        result = validate_note_frontmatter(_note(links_bogus=[_OTHER]))
+        assert len(result) == 2
+        _fm, errors = result
+        assert errors == []
+
+
+# ---------------------------------------------------------------------------
+# legacy nested relations: -> warning, not error
+# ---------------------------------------------------------------------------
+
+class TestLegacyNestedWarning:
+    def test_nested_relations_block_warns_not_errors(self):
+        fm, errors, warnings = validate_note_frontmatter_with_warnings(
+            _note(relations={"derived_from": [{"id": _PARENT, "type": "refines"}]})
+        )
+        assert errors == []
+        assert any("legacy nested relations" in w for w in warnings)
+        # nested block is never descended by the flat validator
+        assert fm.relations is None
+
+    def test_corrupted_relations_string_warns_not_errors(self):
+        fm, errors, warnings = validate_note_frontmatter_with_warnings(
+            _note(relations="derived_from_refines")
+        )
+        assert errors == []
+        assert any("legacy nested relations" in w for w in warnings)
+        assert fm.relations is None
+
+    def test_empty_relations_dict_no_warning(self):
+        # An empty dict is not "legacy present" per has_legacy_relations semantics.
+        _fm, errors, warnings = validate_note_frontmatter_with_warnings(
+            _note(relations={})
+        )
+        assert errors == []
+        assert not any("legacy nested relations" in w for w in warnings)
 
 
 # ---------------------------------------------------------------------------
@@ -315,3 +283,73 @@ class TestRegression:
         fm, errors = validate_note_frontmatter(data)
         assert errors == []
         assert fm.relations is None
+
+
+# ---------------------------------------------------------------------------
+# _validate_relations helper — direct exercise (lenient collect)
+# ---------------------------------------------------------------------------
+
+class TestValidateRelationsHelper:
+    def test_mixed_valid_invalid_items_collects_valid(self):
+        errors: list[str] = []
+        relations = _validate_relations(
+            {
+                "id": "abc123def456",
+                "title": "t",
+                "derived_from_refines": [_PARENT, "x"],  # second id malformed
+            },
+            errors,
+        )
+        assert relations is not None
+        assert len(relations.derived_from) == 1
+        assert relations.derived_from[0].id == _PARENT
+        assert any("NanoID" in e for e in errors)
+
+
+# ---------------------------------------------------------------------------
+# round-trip: flat fm -> parse_relations_frontmatter -> relations_to_flat_fm
+# ---------------------------------------------------------------------------
+
+class TestRoundTrip:
+    def test_flat_dict_round_trips_through_entries(self):
+        flat = {
+            "derived_from_refines": [_PARENT],
+            "links_supports": [_OTHER, _SECOND],
+        }
+        entries = parse_relations_frontmatter(flat)
+        assert relations_to_flat_fm(entries) == flat
+
+    def test_all_nine_keys_are_recognized(self):
+        assert len(FRONTMATTER_RELATION_KEYS) == 9
+
+
+# ---------------------------------------------------------------------------
+# CLI: legacy warning goes to stderr, exit stays 0
+# ---------------------------------------------------------------------------
+
+class TestValidateNotesCliLegacyWarning:
+    def _write(self, path, extra):
+        path.write_text(
+            "---\nid: cliwarn00001\ntitle: Legacy note\ntype: permanent\n"
+            f"{extra}\n---\nbody\n",
+            encoding="utf-8",
+        )
+
+    def test_nested_relations_prints_stderr_warning_exit_0(self, global_engine, tmp_path):
+        from click.testing import CliRunner
+
+        from workflow.validation.cli import validate
+
+        self._write(
+            tmp_path / "n.md",
+            "relations:\n  derived_from:\n    - id: parent000001\n      type: refines",
+        )
+        result = CliRunner().invoke(
+            validate,
+            ["notes", str(tmp_path)],
+            obj={"engine": global_engine},
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stderr
+        assert "legacy nested relations" in result.stderr
+        assert "legacy nested relations" not in result.stdout

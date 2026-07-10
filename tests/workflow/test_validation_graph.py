@@ -5,11 +5,9 @@ TDD RED → GREEN:
 """
 from __future__ import annotations
 
-import math
 from pathlib import Path
 from textwrap import dedent
 
-import pytest
 from click.testing import CliRunner
 from sqlalchemy.orm import Session
 
@@ -224,78 +222,6 @@ def test_graph_warnings_do_not_cause_error_severity(global_session):
     errors = [i for i in issues if i["severity"] == "error"]
     assert errors == []
     assert any(i["severity"] == "warning" for i in issues)
-
-
-# ---------------------------------------------------------------------------
-# Tiny fold: weight guard in _validate_relation_edge (via validate_note_frontmatter)
-# ---------------------------------------------------------------------------
-
-_BASE_FM = {
-    "id": "testid-aaaaa",
-    "title": "T",
-    "type": "permanent",
-}
-
-
-def _fm_with_edge(weight_val) -> dict:
-    fm = dict(_BASE_FM)
-    fm["relations"] = {
-        "derived_from": [
-            {"id": "refnote-bbbbb", "type": "continuation", "weight": weight_val}
-        ]
-    }
-    return fm
-
-
-def test_weight_infinite_is_rejected():
-    """weight=inf is rejected with an error."""
-    from workflow.validation.schemas import validate_note_frontmatter
-
-    _, errors = validate_note_frontmatter(_fm_with_edge(math.inf))
-    assert any("weight" in e.lower() and ("finite" in e.lower() or "inf" in e.lower()) for e in errors)
-
-
-def test_weight_nan_is_rejected():
-    """weight=nan is rejected with an error."""
-    from workflow.validation.schemas import validate_note_frontmatter
-
-    _, errors = validate_note_frontmatter(_fm_with_edge(math.nan))
-    assert any("weight" in e.lower() and ("finite" in e.lower() or "nan" in e.lower()) for e in errors)
-
-
-def test_weight_zero_is_rejected():
-    """weight=0 is rejected (must be > 0)."""
-    from workflow.validation.schemas import validate_note_frontmatter
-
-    _, errors = validate_note_frontmatter(_fm_with_edge(0.0))
-    assert any("weight" in e.lower() for e in errors)
-
-
-def test_weight_negative_is_rejected():
-    """weight=-1.0 is rejected (must be > 0)."""
-    from workflow.validation.schemas import validate_note_frontmatter
-
-    _, errors = validate_note_frontmatter(_fm_with_edge(-1.0))
-    assert any("weight" in e.lower() for e in errors)
-
-
-def test_weight_positive_is_accepted():
-    """weight=0.5 is valid."""
-    from workflow.validation.schemas import validate_note_frontmatter
-
-    fm, errors = validate_note_frontmatter(_fm_with_edge(0.5))
-    assert fm is not None
-    assert fm.relations is not None
-    edge = fm.relations.derived_from[0]
-    assert edge.weight == pytest.approx(0.5)
-
-
-def test_weight_large_positive_is_accepted():
-    """weight=99.9 is valid."""
-    from workflow.validation.schemas import validate_note_frontmatter
-
-    fm, errors = validate_note_frontmatter(_fm_with_edge(99.9))
-    assert fm is not None
 
 
 # ---------------------------------------------------------------------------

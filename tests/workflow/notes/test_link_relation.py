@@ -1,4 +1,10 @@
-"""Tests for `workflow notes link --relation --target` (Wave 3 D2)."""
+"""Tests for `workflow notes link --relation --target` (Wave 3 D2, amended F3+F4).
+
+Frontmatter schema is 9 FLAT keys (Obsidian Properties compatible) — see
+``workflow.db.models.notes.FRONTMATTER_RELATION_KEYS``. A relation write
+appends the target zettel_id to the flat key's list; removing the last id
+of a relation type deletes the key from the file entirely.
+"""
 from __future__ import annotations
 
 from pathlib import Path
@@ -33,12 +39,12 @@ def _read_fm(path: Path) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Tests: --relation appends to frontmatter
+# Tests: --relation appends to the flat frontmatter key
 # ---------------------------------------------------------------------------
 
 
 def test_link_relation_structural_appends(tmp_path):
-    """--relation continuation creates a derived_from entry in the relations block."""
+    """--relation continuation creates a derived_from_continuation flat key."""
     note_path = _write_note(tmp_path / "noteAAAAAAAA.md")
 
     result = CliRunner().invoke(
@@ -54,16 +60,12 @@ def test_link_relation_structural_appends(tmp_path):
     assert result.exit_code == 0, result.output
 
     fm = _read_fm(note_path)
-    relations = fm.get("relations", {})
-    derived = relations.get("derived_from", [])
-    assert any(
-        e.get("id") == "noteBBBBBBBB" and e.get("type") == "continuation"
-        for e in derived
-    ), f"Expected continuation edge in derived_from, got: {derived}"
+    assert fm.get("derived_from_continuation") == ["noteBBBBBBBB"]
+    assert "relations" not in fm
 
 
 def test_link_relation_associative_appends(tmp_path):
-    """--relation supports creates a links entry in the relations block."""
+    """--relation supports creates a links_supports flat key."""
     note_path = _write_note(tmp_path / "noteAAAAAAAA.md")
 
     CliRunner().invoke(
@@ -78,12 +80,8 @@ def test_link_relation_associative_appends(tmp_path):
     )
 
     fm = _read_fm(note_path)
-    relations = fm.get("relations", {})
-    links = relations.get("links", [])
-    assert any(
-        e.get("id") == "noteCCCCCCCC" and e.get("type") == "supports"
-        for e in links
-    ), f"Expected supports edge in links, got: {links}"
+    assert fm.get("links_supports") == ["noteCCCCCCCC"]
+    assert "relations" not in fm
 
 
 def test_link_relation_unknown_type_exits_2(tmp_path):
@@ -137,13 +135,13 @@ def test_link_relation_duplicate_is_noop(tmp_path):
         )
 
     fm = _read_fm(note_path)
-    derived = fm.get("relations", {}).get("derived_from", [])
-    matching = [e for e in derived if e.get("id") == "noteDDDDDDDD" and e.get("type") == "refines"]
+    derived = fm.get("derived_from_refines", [])
+    matching = [i for i in derived if i == "noteDDDDDDDD"]
     assert len(matching) == 1, f"Expected exactly 1 entry, got: {matching}"
 
 
 def test_link_relation_remove_deletes_entry(tmp_path):
-    """--remove deletes an existing relation entry."""
+    """--remove deletes an existing relation entry; last id removed drops the key."""
     note_path = _write_note(tmp_path / "noteAAAAAAAA.md")
     runner = CliRunner()
 
@@ -160,10 +158,7 @@ def test_link_relation_remove_deletes_entry(tmp_path):
     )
 
     fm_before = _read_fm(note_path)
-    assert any(
-        e.get("id") == "noteEEEEEEEE"
-        for e in fm_before.get("relations", {}).get("derived_from", [])
-    )
+    assert "noteEEEEEEEE" in fm_before.get("derived_from_branches", [])
 
     # Remove
     result = runner.invoke(
@@ -180,9 +175,11 @@ def test_link_relation_remove_deletes_entry(tmp_path):
     assert result.exit_code == 0, result.output
 
     fm_after = _read_fm(note_path)
-    remaining = fm_after.get("relations", {}).get("derived_from", [])
-    assert not any(e.get("id") == "noteEEEEEEEE" for e in remaining), \
-        f"Entry should have been removed, got: {remaining}"
+    assert "derived_from_branches" not in fm_after, (
+        f"Key should be deleted entirely once its last id is removed, got: {fm_after}"
+    )
+    # And it must not survive as an empty list either — checked via raw text.
+    assert "derived_from_branches" not in note_path.read_text(encoding="utf-8")
 
 
 def test_link_relation_requires_target(tmp_path):

@@ -20,7 +20,7 @@ from workflow.validation.schemas import (
     check_graph_against_db,
     check_main_topic_against_db,
     validate_exercise_metadata,
-    validate_note_frontmatter,
+    validate_note_frontmatter_with_warnings,
 )
 
 
@@ -52,9 +52,9 @@ def _validate_note_file(
         click.echo(f"{filepath}: [SKIP] no frontmatter found")
         return [], []
 
-    fm, errors = validate_note_frontmatter(frontmatter)
+    fm, errors, schema_warnings = validate_note_frontmatter_with_warnings(frontmatter)
     file_errors = list(errors)
-    file_warnings: list[str] = []
+    file_warnings: list[str] = list(schema_warnings)
 
     if fm is not None:
         mt_obj, mt_msgs = check_main_topic_against_db(fm.main_topic, session)
@@ -137,9 +137,9 @@ def notes(
                 valid += 1
             if file_warnings:
                 warnings += 1
-                click.echo(f"{filepath}:")
+                click.echo(f"{filepath}:", err=True)
                 for w in file_warnings:
-                    click.echo(f"  ! {w}")
+                    click.echo(f"  ! {w}", err=True)
 
         click.echo(
             f"\nSummary: {total} files checked, {valid} valid, "

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import difflib
-import math
 import re
 from dataclasses import dataclass
 
@@ -14,10 +13,11 @@ from workflow.db.models.academic import (
     _TAXONOMY_LEVELS,
 )
 from workflow.db.models.notes import (
-    ASSOCIATIVE_RELATION_TYPES as _ASSOCIATIVE_REL_TYPES,
+    ASSOCIATIVE_KEY_PREFIX as _ASSOCIATIVE_KEY_PREFIX,
+    FRONTMATTER_RELATION_KEYS as _FRONTMATTER_RELATION_KEYS,
     NoteEdge,
     Note,
-    STRUCTURAL_RELATION_TYPES as _STRUCTURAL_REL_TYPES,
+    STRUCTURAL_KEY_PREFIX as _STRUCTURAL_KEY_PREFIX,
     ZETTEL_ID_RE as _ZETTEL_ID_RE,
 )
 
@@ -27,6 +27,7 @@ __all__ = [
     "NoteRelations",
     "ExerciseMetadata",
     "validate_note_frontmatter",
+    "validate_note_frontmatter_with_warnings",
     "validate_exercise_metadata",
     "check_candidate_project_against_db",
     "check_main_topic_against_db",
@@ -86,12 +87,16 @@ _RECOGNIZED_EXERCISE_KEYS = frozenset({
 
 @dataclass(frozen=True)
 class RelationEdge:
-    """One edge item from ITEP-0013 ``relations.derived_from`` or ``relations.links``."""
+    """One edge item parsed from a flat ``derived_from_*``/``links_*`` frontmatter key.
+
+    ``weight``/``note`` are DELIBERATELY absent (decision 2026-07-09): Obsidian
+    Properties cannot represent the nested ``relations:`` mapping, so the
+    canonical frontmatter schema is 9 flat keys whose values are plain lists
+    of zettel_id strings — there is no slot left for per-edge weight/rationale.
+    """
 
     id: str
     type: str
-    weight: float | None = None
-    note: str | None = None
 
 
 @dataclass(frozen=True)
@@ -182,102 +187,96 @@ def _validate_literature_provenance(
     return bibkey, prr_id, pk_id, origin
 
 
-def _validate_weight(
-    weight: object, slot: str, errors: list[str]
-) -> float | None:
-    """Validate a relation-edge weight value.
+def _check_legacy_relations(data: dict, warnings_out: list[str]) -> None:
+    """Append a warning (never an error) on a legacy nested ``relations:`` block.
 
-    Returns the weight as float on success, or None when an error is recorded.
-    Rules: must be a finite, positive number.
+    Fires for a well-formed nested mapping AND for a corrupted ``relations:``
+    string (the signature Obsidian Properties leaves behind after collapsing
+    the nested mapping on save) — mirrors ``workflow.notes.edges.has_legacy_relations``.
     """
-    if weight is None:
-        return None
-    if isinstance(weight, bool) or not isinstance(weight, (int, float)):
-        errors.append(f"'weight' in 'relations.{slot}' must be a number")
-        return None
-    if not math.isfinite(weight):
-        errors.append(
-            f"'weight' in 'relations.{slot}' must be finite (got {weight!r})"
+    raw = data.get("relations")
+    if isinstance(raw, dict) and raw or isinstance(raw, str):
+        warnings_out.append(
+            "legacy nested relations: — run 'workflow notes migrate-relations'"
         )
-        return None
-    if weight <= 0:
-        errors.append(
-            f"'weight' in 'relations.{slot}' must be > 0 (got {weight!r})"
-        )
-        return None
-    return float(weight)
 
 
-def _validate_relation_edge(
-    item: object,
-    slot: str,
-    allowed_types: frozenset[str],
-    errors: list[str],
-) -> RelationEdge | None:
-    if not isinstance(item, dict):
-        errors.append(f"each item in 'relations.{slot}' must be a mapping")
-        return None
-    edge_id = item.get("id")
-    if not edge_id or not isinstance(edge_id, str):
-        errors.append(f"'id' is required in each 'relations.{slot}' item")
-        return None
-    if not _ZETTEL_ID_RE.match(edge_id):
-        # Mirror the sync/ingest contract (workflow.notes.edges) — an id that
-        # fails the NanoID format is silently dropped there, so flag it here.
-        errors.append(
-            f"'id' {edge_id[:40]!r} in 'relations.{slot}' must match "
-            "the NanoID format ^[A-Za-z0-9_-]{8,21}$"
-        )
-        return None
-    edge_type = item.get("type")
-    if not edge_type or not isinstance(edge_type, str):
-        errors.append(f"'type' is required in each 'relations.{slot}' item")
-        return None
-    if edge_type not in allowed_types:
-        # repr() neutralizes newlines/control chars in echoed user input (CWE-117).
-        errors.append(
-            f"'relations.{slot}' item has invalid type {edge_type[:40]!r}; "
-            f"allowed: {sorted(allowed_types)}"
-        )
-        return None
-    weight = _validate_weight(item.get("weight"), slot, errors)
-    note = item.get("note")
-    if note is not None and not isinstance(note, str):
-        errors.append(f"'note' in 'relations.{slot}' must be a string")
-        note = None
-    return RelationEdge(id=edge_id, type=edge_type, weight=weight, note=note)
+def _check_unknown_relation_keys(data: dict, warnings_out: list[str]) -> None:
+    """Append warnings for ``derived_from_*``/``links_*`` keys outside the vocabulary.
+
+    Any other key shape is none of this validator's business (handled by the
+    rest of ``validate_note_frontmatter``).
+    """
+    for key in data:
+        if key in _FRONTMATTER_RELATION_KEYS:
+            continue
+        if not (
+            key.startswith(f"{_STRUCTURAL_KEY_PREFIX}_")
+            or key.startswith(f"{_ASSOCIATIVE_KEY_PREFIX}_")
+        ):
+            continue
+        suggestion = difflib.get_close_matches(key, _FRONTMATTER_RELATION_KEYS, n=1)
+        if suggestion:
+            warnings_out.append(
+                f"unknown frontmatter key '{key}' — did you mean '{suggestion[0]}'?"
+            )
+        else:
+            warnings_out.append(f"unknown frontmatter key '{key}'")
 
 
 def _validate_relations(
-    data: dict, errors: list[str]
+    data: dict, errors: list[str], warnings_out: list[str] | None = None
 ) -> NoteRelations | None:
-    raw = data.get("relations")
-    if raw is None:
-        return None
-    if not isinstance(raw, dict):
-        errors.append("'relations' must be a mapping or absent")
-        return None
+    """Parse the 9 flat ``derived_from_*``/``links_*`` frontmatter keys.
+
+    Never descends a nested ``relations:`` mapping — that shape is legacy
+    (warning only, see ``_check_legacy_relations``); a note using it has no
+    flat keys and therefore round-trips to ``NoteRelations()`` / ``None``.
+    Key strings are always derived from ``FRONTMATTER_RELATION_KEYS`` — the
+    ITEP-0013 vocabulary lives solely in ``workflow.db.models.notes``.
+
+    ``warnings_out`` collects non-blocking warnings (legacy-nested block,
+    unknown relation keys); ``None`` discards them (direct-helper callers).
+    """
+    sink = warnings_out if warnings_out is not None else []
+    _check_legacy_relations(data, sink)
+    _check_unknown_relation_keys(data, sink)
 
     derived: list[RelationEdge] = []
-    raw_derived = raw.get("derived_from", [])
-    if not isinstance(raw_derived, list):
-        errors.append("'relations.derived_from' must be a list")
-    else:
-        for item in raw_derived:
-            edge = _validate_relation_edge(item, "derived_from", _STRUCTURAL_REL_TYPES, errors)
-            if edge is not None:
-                derived.append(edge)
-
     links: list[RelationEdge] = []
-    raw_links = raw.get("links", [])
-    if not isinstance(raw_links, list):
-        errors.append("'relations.links' must be a list")
-    else:
-        for item in raw_links:
-            edge = _validate_relation_edge(item, "links", _ASSOCIATIVE_REL_TYPES, errors)
-            if edge is not None:
-                links.append(edge)
+    any_key_present = False
 
+    for key, (edge_class, relation_type) in _FRONTMATTER_RELATION_KEYS.items():
+        if key not in data:
+            continue
+        any_key_present = True
+        raw = data[key]
+        if isinstance(raw, dict):
+            errors.append(
+                f"{key}: must be a list of strings "
+                "(mapping value looks like the legacy nested 'relations:' format)"
+            )
+            continue
+        if not isinstance(raw, list) or not all(isinstance(x, str) for x in raw):
+            errors.append(f"{key}: must be a list of strings")
+            continue
+
+        bucket = derived if edge_class == "structural" else links
+        for item in raw:
+            target_id = item.strip()
+            if not target_id or not _ZETTEL_ID_RE.match(target_id):
+                # Mirror the sync/ingest contract (workflow.notes.edges) — an id
+                # that fails the NanoID format is silently dropped there, so
+                # flag it here.
+                errors.append(
+                    f"'id' {target_id[:40]!r} in '{key}' must match "
+                    "the NanoID format ^[A-Za-z0-9_-]{8,21}$"
+                )
+                continue
+            bucket.append(RelationEdge(id=target_id, type=relation_type))
+
+    if not any_key_present:
+        return None
     return NoteRelations(derived_from=tuple(derived), links=tuple(links))
 
 
@@ -306,11 +305,30 @@ def _validate_candidate_project(data: dict, errors: list[str]) -> str | None:
 
 
 def validate_note_frontmatter(data: dict) -> tuple[NoteFrontmatter | None, list[str]]:
-    """Parse and validate note frontmatter dict.
+    """Parse and validate note frontmatter dict (thin delegator).
 
     Returns (NoteFrontmatter, []) on success or (None, [errors]) on failure.
+    Drops the non-blocking warnings channel — signature and behavior are
+    byte-identical for all existing ``fm, errors = ...`` callers. Callers that
+    need warnings (e.g. ``workflow validate notes``) use
+    ``validate_note_frontmatter_with_warnings``.
+    """
+    fm, errors, _warnings = validate_note_frontmatter_with_warnings(data)
+    return fm, errors
+
+
+def validate_note_frontmatter_with_warnings(
+    data: dict,
+) -> tuple[NoteFrontmatter | None, list[str], list[str]]:
+    """Parse and validate note frontmatter, returning ``(fm, errors, warnings)``.
+
+    Mirrors ``validate_exercise_metadata``'s three-tuple channel: ``warnings``
+    are non-blocking (legacy nested ``relations:`` block; unknown
+    ``derived_from_*``/``links_*`` keys with a difflib suggestion) and NEVER
+    affect validity — ``fm`` is ``None`` iff ``errors`` is non-empty.
     """
     errors: list[str] = []
+    warnings: list[str] = []
 
     note_id = data.get("id")
     if not note_id or not isinstance(note_id, str):
@@ -355,10 +373,10 @@ def validate_note_frontmatter(data: dict) -> tuple[NoteFrontmatter | None, list[
         )
 
     entry_point = _validate_entry_point(data, errors)
-    relations = _validate_relations(data, errors)
+    relations = _validate_relations(data, errors, warnings)
 
     if errors:
-        return None, errors
+        return None, errors, warnings
 
     return (
         NoteFrontmatter(
@@ -383,6 +401,7 @@ def validate_note_frontmatter(data: dict) -> tuple[NoteFrontmatter | None, list[
             relations=relations,
         ),
         [],
+        warnings,
     )
 
 

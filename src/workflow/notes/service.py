@@ -16,6 +16,7 @@ import yaml
 
 from workflow.db.errors import AmbiguousLookupError, EntityNotFoundError
 from workflow.notes.discovery import parse_frontmatter, walk_note_files
+from workflow.notes.edges import RelationEntry, relations_to_flat_fm
 from workflow.validation.schemas import (
     NoteFrontmatter,
     NoteRelations,
@@ -77,24 +78,28 @@ def _assert_within(child: Path, root: Path) -> None:
         raise ValueError(f"Path {child} escapes target directory {root}")
 
 
-def _relation_edge_to_dict(e: RelationEdge) -> dict:
-    """Serialize a RelationEdge to a dict suitable for YAML output."""
-    d: dict = {"id": e.id, "type": e.type}
-    if e.weight is not None:
-        d["weight"] = e.weight
-    if e.note is not None:
-        d["note"] = e.note
-    return d
+def _relation_edge_to_entry(edge_class: str, e: RelationEdge) -> RelationEntry:
+    """Adapt a validated RelationEdge (id, type) to a RelationEntry.
+
+    weight/rationale are dropped from frontmatter (decision 2026-07-09); the
+    adapter always emits the RelationEntry defaults (weight=1.0, rationale=None).
+    """
+    return RelationEntry(target_zettel_id=e.id, relation_type=e.type, edge_class=edge_class)
 
 
-def _relations_to_dict(rel: NoteRelations) -> dict:
-    """Serialize a NoteRelations object to a plain dict for YAML/validation."""
-    out: dict = {}
-    if rel.derived_from:
-        out["derived_from"] = [_relation_edge_to_dict(e) for e in rel.derived_from]
-    if rel.links:
-        out["links"] = [_relation_edge_to_dict(e) for e in rel.links]
-    return out
+def _relations_to_flat_dict(rel: NoteRelations) -> dict[str, list[str]]:
+    """Serialize a NoteRelations DTO to the flat frontmatter schema.
+
+    Reuses ``workflow.notes.edges.relations_to_flat_fm`` so the key strings
+    are always derived from ``FRONTMATTER_RELATION_KEYS`` — never hard-coded
+    here (ADR ITEP-0013 MUST rule).
+    """
+    entries = [
+        _relation_edge_to_entry("structural", e) for e in rel.derived_from
+    ] + [
+        _relation_edge_to_entry("associative", e) for e in rel.links
+    ]
+    return relations_to_flat_fm(entries)
 
 
 def _fm_to_yaml(fm: NoteFrontmatter) -> str:
@@ -119,9 +124,7 @@ def _fm_to_yaml(fm: NoteFrontmatter) -> str:
     if fm.discipline_area is not None:
         d["discipline_area"] = fm.discipline_area
     if fm.relations is not None:
-        rel_dict = _relations_to_dict(fm.relations)
-        if rel_dict:
-            d["relations"] = rel_dict
+        d.update(_relations_to_flat_dict(fm.relations))
     return yaml.safe_dump(d, allow_unicode=True, sort_keys=False)
 
 
@@ -148,9 +151,7 @@ def _write_note_file(path: Path, fm: NoteFrontmatter, body: str) -> None:
         "discipline_area": fm.discipline_area,
     }
     if fm.relations is not None:
-        rel_dict = _relations_to_dict(fm.relations)
-        if rel_dict:
-            fm_dict["relations"] = rel_dict
+        fm_dict.update(_relations_to_flat_dict(fm.relations))
     result, errors = validate_note_frontmatter(fm_dict)
     if errors:
         raise NoteValidationError(
