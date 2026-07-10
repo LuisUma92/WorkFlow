@@ -18,6 +18,8 @@ on:
       - "nvim-plugin/**"
       - "Makefile"
       - ".github/workflows/nvim-plugin.yml"
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   test:
@@ -29,10 +31,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
 
       - name: Install Neovim ${{ matrix.nvim_version }}
         uses: rhysd/action-setup-vim@v1
