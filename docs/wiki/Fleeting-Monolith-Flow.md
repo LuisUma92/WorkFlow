@@ -48,20 +48,20 @@ type: permanent
 created: 2026-06-18
 tags: [propiedades-magneticas, electromagnetismo]
 concepts: [em-magnetizacion]
-relations:
-  derived_from: []
-  links: []
 entry_point: true
 ---
 ```
 
 - `concepts:` — lista de slugs `Concept.code` (nunca labels — ver §3).
-- `relations.derived_from` — lista de `{id, type}`; `type` documenta la
-  relación semántica entre notas dentro de la misma sesión de captura, p. ej.
-  `continuation` ("esta nota continúa el hilo de la anterior") o
-  `entry_point` como flag booleano top-level (no dentro de `relations`) que
-  marca la nota como punto de entrada al tema de la semana.
-- `entry_point: true/false` — top-level, no confundir con `relations`.
+- Relaciones a otras notas (opcional; desde 2026-07-09, ITEP-0013 amendment) —
+  9 claves planas `derived_from_{continuation,refines,branches,synthesis,rebuttal}`
+  / `links_{supports,contradicts,expands,see_also}`, cada una una lista de
+  `zettel_id`. `derived_from_continuation` documenta que "esta nota continúa
+  el hilo de la anterior" dentro de la misma sesión de captura. Una nota sin
+  relaciones **no lleva ninguna de estas claves** (se omiten, nunca `[]`) —
+  ver [Zettelkasten-Notes.md](Zettelkasten-Notes.md#claves-planas-de-relacion-en-frontmatter-canonico-desde-2026-07-09)
+  para el esquema completo y el comando de migración de notas legadas.
+- `entry_point: true/false` — top-level, no confundir con las claves de relación.
 
 ## 2. Dividir el monolito
 
@@ -72,7 +72,7 @@ workflow lectures split inbox/semanaNN-tema.md
 Por defecto escribe en `<vault_root>/notes/permanent/` y (con el diseño D1,
 `--sync` es el default) **también sincroniza cada archivo emitido**: registra
 la `Note`, sus `Tag`/`Label`, los `NoteConcept` (contra slugs ya existentes en
-la DB), y los `NoteEdge` desde `relations.derived_from`. Es idempotente — correr
+la DB), y los `NoteEdge` desde las claves planas `derived_from_*`. Es idempotente — correr
 `split` dos veces sobre el mismo monolito no duplica nada.
 
 Si querés revisar los archivos antes de tocar la DB: `--no-sync`.
@@ -142,8 +142,6 @@ title: "Magnetización"
 type: permanent
 tags: [propiedades-magneticas, electromagnetismo]
 concepts: [em-magnetizacion]
-relations:
-  derived_from: []
 entry_point: true
 ---
 La magnetización M es el momento dipolar magnético por unidad de volumen...
@@ -156,10 +154,8 @@ title: "Puente: nanopartículas magnéticas en biomateriales"
 type: permanent
 tags: [propiedades-magneticas, electromagnetismo, biomateriales, puente]
 concepts: [em-nps-magneticas]
-relations:
-  derived_from:
-    - id: 20260618-MaterialesMagneticos
-      type: continuation
+derived_from_continuation:
+  - 20260618-MaterialesMagneticos
 entry_point: false
 ---
 Las SPION son el biomaterial magnético más usado...

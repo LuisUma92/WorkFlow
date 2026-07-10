@@ -276,7 +276,7 @@ workflow graph stats --project /ruta/al/proyecto/
 # Encontrar notas huerfanas (sin conexiones)
 workflow graph orphans --project /ruta/al/proyecto/
 
-# Ver relaciones entre notas (declaradas en frontmatter relations:)
+# Ver relaciones entre notas (declaradas en frontmatter, claves derived_from_*/links_*)
 workflow notes edges list [--source ZETTEL_ID] [--edge-class structural|associative]
 ```
 

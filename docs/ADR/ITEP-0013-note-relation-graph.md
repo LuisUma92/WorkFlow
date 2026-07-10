@@ -156,7 +156,55 @@ continue to validate — no migration burden. New notes via
 use the filename convention `<zettel_id>-<slug>.md` with auto-populated
 `aliases:` for wiki-link robustness.
 
-### Canonical YAML schema
+### Canonical YAML schema (flat keys, since 2026-07-09)
+
+Obsidian Properties only supports scalars and lists of strings; it cannot
+represent a nested mapping or a list of dicts, and silently **collapses one
+to a single string on save, destroying the graph**. The canonical schema is
+therefore **9 flat keys**, one per `relation_type`, prefixed by edge-class
+family (`derived_from_*` for structural, `links_*` for associative). Each
+value is a plain list of `zettel_id` strings:
+
+```yaml
+# In the frontmatter of note 202605221430 (a refinement of an earlier note)
+derived_from_refines:
+  - 202605211200 # zettel_id of the ancestor — REQUIRED, stable
+derived_from_synthesis:
+  - 202604300900 # second ancestor → this note is a synthesis/merge
+links_supports:
+  - '202604010900'
+links_contradicts:
+  - '202604020900'
+entry_point:
+  true # OPTIONAL — declares an intentional root,
+  # suppresses the orphan warning
+```
+
+- The 9 keys are `derived_from_{continuation,refines,branches,synthesis,rebuttal}`
+  (structural) and `links_{supports,contradicts,expands,see_also}`
+  (associative). A key is **omitted entirely** when its list would be empty —
+  never emit e.g. `links_supports: []`.
+- Absent relation keys ⇒ the note is a lineage root. Fully backward compatible.
+- The list item is always a **`zettel_id`** (stable string), never a filename,
+  never a DB integer id. A bare-digit timestamp id (e.g. `202604010900`) is
+  parsed by `yaml.safe_load` as an `int`; the parser coerces `str|int` (never
+  `bool`) to a validated string rather than silently dropping the entry.
+- `weight` and `note` (rationale) are **not representable in frontmatter**
+  (decision 2026-07-09, below) — every flat-parsed edge carries `weight=1.0,
+  rationale=None`.
+- The **9 keys themselves are derived, never hard-coded**: they are computed
+  from `_STRUCTURAL_RELATION_TYPES_ORDERED` /
+  `_ASSOCIATIVE_RELATION_TYPES_ORDERED` (the same single source of truth as
+  before) via `relation_frontmatter_key()` into the
+  `FRONTMATTER_RELATION_KEYS` mapping, both in
+  `src/workflow/db/models/notes.py`. This extends, and does not relax, the
+  existing MUST rule that the vocabulary lives in exactly one place.
+
+#### LEGACY schema (nested `relations:`, pre-2026-07-09)
+
+Still parsed for backward compatibility with un-migrated notes — see
+"Compatibility / Migration" below for the dual-parser and migration command.
+**Do not author new notes in this form**; it is what Obsidian corrupts.
 
 ```yaml
 # In the frontmatter of note 202605221430 (a refinement of an earlier note)
@@ -178,8 +226,7 @@ entry_point:
   # suppresses the orphan warning
 ```
 
-- `derived_from` and `links` are both **lists of `{id, type, weight?, note?}`**.
-- Absent `relations:` ⇒ the note is a lineage root. Fully backward compatible.
+- `derived_from` and `links` were both **lists of `{id, type, weight?, note?}`**.
 - `id` is always a **`zettel_id`** (stable string), never a filename, never a
   DB integer.
 
@@ -350,7 +397,12 @@ incremental upsert + orphan cleanup.
 
 ### MAY
 
-- An edge **MAY** carry `weight` and a free-text `rationale`.
+- An edge **MAY** carry `weight` and a free-text `rationale` at the DB level
+  (`note_edge.weight` / `.rationale` remain nullable columns). Since
+  2026-07-09 neither is representable in frontmatter — they were MAY, not
+  MUST, and unused in the live vault, so they were dropped from the flat
+  schema rather than kept as a 10th/11th key pair. The flat parser always
+  produces `weight=1.0, rationale=None`; no SQL migration was needed.
 - Traversal callers **MAY** supply a `score` function for heuristic/semantic
   ranking.
 - A future `note_embedding` table **MAY** be added for semantic similarity;
@@ -628,6 +680,31 @@ No backfill of sequential data is required (none exists). Wiki-links are **not**
 auto-promoted to lineage edges — lineage is curated. Each phase is independently
 shippable behind the optional frontmatter field.
 
+### Flat-key migration (2026-07-09)
+
+`parse_relations_frontmatter()` (`src/workflow/notes/edges.py`) is a dual
+dispatcher: if any of the 9 flat keys is present, flat wins outright and the
+legacy nested `relations:` block (if also present) is ignored entirely —
+deterministic, no silent merge of two sources of truth. Otherwise it falls
+back to the legacy nested parser. `sync.py` and `linker_ops.upsert_note_edge`
+were not touched; the dispatcher preserves `parse_relations_frontmatter`'s
+existing signature.
+
+`workflow notes migrate-relations [--vault-root PATH] [--dry-run] [--json]`
+rewrites legacy nested notes to the flat schema on disk (filesystem-only,
+DB-free). Per-note atomicity; idempotent (a migrated note no longer matches
+`has_legacy_relations`, so re-running skips it); `--dry-run` writes nothing;
+`--json` keeps stdout pure; any dropped `weight`/`note` value is reported to
+stderr before the write. A note whose `relations:` was parsed as a plain
+**string** was already collapsed by Obsidian Properties before migration ran
+— its graph is unrecoverable from the file, so the command fails loudly for
+that note (exit 1 for the run) and directs the user to restore from git
+rather than guessing.
+
+`workflow validate notes` warns (never errors) on a legacy nested
+`relations:` block still present in a note, and on any unrecognized
+`derived_from_*`/`links_*` key (with a difflib suggestion).
+
 ---
 
 ## References
@@ -667,3 +744,4 @@ Proposed).
 | 2026-05-22 | Locked `zettel_id` format (NanoID per ITEP-0015): regex `^[A-Za-z0-9_-]{8,21}$` enforced on `target_zettel_id` column. Filename convention and alias resolution covered by ITEP-0015 (data model unchanged by this lock; only the validation regex is added). |
 | 2026-06-06 | Template gap fix (Phase 1+2 plan `tasks/plans/2026-06-06-template-gap-plan.md`): `NoteFrontmatter` gains `relations: NoteRelations \| None` and `entry_point: bool` DTO fields (no DB persistence — deferred to ITEP-0013 P0/P2/P3). `permanent.md` and `literature.md` templates in `init.py` and live vault updated to scaffold all supported fields. obsidian.lua `delivered_from` bug corrected to `derived_from` (ADR-canonical key). |
 | 2026-07-05 | Status bumped Accepted → **Implemented** per `tasks/audit/2026-07-05-tasks-adr-completeness-audit.md` (Section E / Summary #13): full surface (NoteEdge, `graph trace`/`resume`, `--rebuild-edges`, `--relation`) confirmed shipped and tested. INDEX.md row updated to match. |
+| 2026-07-09 | Canonical schema changed from nested `relations:` to **9 flat frontmatter keys** (`derived_from_*` / `links_*`), because Obsidian Properties cannot represent a nested mapping/list-of-dicts and silently collapses it to a string on save, destroying the graph. `weight`/`note` (rationale) — MAY, unused in the live vault — are deliberately dropped from frontmatter; `note_edge.weight`/`.rationale` stay nullable DB columns, no SQL migration. Parser is now dual (flat wins when both present); new `workflow notes migrate-relations` command rewrites legacy notes; `validate notes` warns (never errors) on legacy nested blocks. Status remains Implemented. |

@@ -164,11 +164,11 @@ workflow notes sync --json
    - `title:`, `type:` → metadatos de la nota
    - `anchors:` → lista de anclas de sección → filas `Label` en la DB
    - `references:` → lista de bibkeys → filas `Citation` en la DB (ej: `[serway2019, griffiths2017]`)
-   - `relations:` → lista de relaciones entre notas → filas `NoteEdge` en la DB (ver sección siguiente)
+   - claves planas `derived_from_*`/`links_*` (o el LEGACY `relations:` anidado) → filas `NoteEdge` en la DB (ver sección siguiente)
 3. **Upserta** filas `Note` (por `zettel_id`) y `Label` (una sintética `__note__` por nota + las de `anchors:`)
 4. **Registra citas**: procesa `references:` → filas `Citation` vinculadas a la nota
 5. **Parsea wikilinks** del cuerpo: `[[ref]]`, `[[ref#anchor]]`, `[[ref|texto]]`, `[[ref#anchor|texto]]` → filas `Link`
-6. **Registra relaciones** (Pass 4): procesa `relations:` → llama `upsert_note_edge()` (idempotente) → filas `NoteEdge`
+6. **Registra relaciones** (Pass 4): procesa las claves planas de relacion → llama `upsert_note_edge()` (idempotente) → filas `NoteEdge`
 7. **Limpia huerfanos**: elimina filas `Link` cuyo archivo fuente ya no existe en disco
 8. Reporta: `N notes scanned, M labels registered, K links created, C citations registered, J orphans dropped, E edges created`
 
@@ -196,31 +196,88 @@ Antes de:
 
 ## Relaciones entre notas (ITEP-0013)
 
-### Bloque `relations:` en frontmatter
+### Claves planas de relacion en frontmatter (canonico desde 2026-07-09)
 
-Las notas pueden declarar relaciones tipadas hacia otras notas mediante un bloque `relations:` en su frontmatter YAML:
+Obsidian Properties solo soporta escalares y listas de strings: no puede representar
+un bloque anidado (mapping de listas de dicts), y lo colapsa a un unico string al
+guardar — **destruyendo el grafo**. Por eso el esquema canonico son **9 claves planas**,
+una por `relation_type`, con prefijo de familia (`derived_from_*` estructural,
+`links_*` asociativa). El valor es una lista simple de `zettel_id`:
+
+```yaml
+---
+id: VTr3k8pLmnQ4
+title: ...
+derived_from_refines:
+  - Ab9Xk2mPqR7w      # NanoID del destino, ^[A-Za-z0-9_-]{8,21}$
+links_supports:
+  - '202604010900'
+---
+```
+
+Las 9 claves: `derived_from_continuation`, `derived_from_refines`, `derived_from_branches`,
+`derived_from_synthesis`, `derived_from_rebuttal` (estructurales) y `links_supports`,
+`links_contradicts`, `links_expands`, `links_see_also` (asociativas). Una clave vacia
+se **omite por completo** (nunca `links_supports: []`). En Obsidian estas claves se ven
+y editan como Properties de tipo List normales — ese es el punto del cambio.
+
+`weight` y `note` (rationale) **ya no son representables en el frontmatter** (eran
+opcionales y no se usaban en el vault real); las columnas `note_edge.weight` /
+`.rationale` siguen existiendo y son nullable en la DB (sin migracion SQL), y el
+parser plano siempre produce `weight=1.0, rationale=None`.
+
+`workflow notes sync` sigue parseando esto en Pass 4 y persistiendo cada entrada como
+una fila `NoteEdge` (tabla `note_edge`). La operacion es idempotente (insert-or-skip).
+El parser es **dual**: si el frontmatter tiene alguna de las 9 claves planas, esas
+ganan y el bloque `relations:` anidado (si tambien esta presente) se ignora por
+completo. Si no hay ninguna clave plana, cae al parser legado (ver abajo).
+
+Clases de arista:
+
+| `class` | Uso |
+|---------|-----|
+| `structural` (`derived_from_*`) | Dependencia conceptual directa; participa en la deteccion de ciclos DAG |
+| `associative` (`links_*`) | Enlace tematico libre; no participa en ciclos |
+
+#### Esquema LEGADO (anidado, previo a 2026-07-09)
+
+Notas antiguas aun sin migrar pueden tener este bloque anidado — el parser lo sigue
+leyendo, pero **no lo escribas en notas nuevas**: es justo lo que Obsidian corrompe.
 
 ```yaml
 ---
 id: VTr3k8pLmnQ4
 title: ...
 relations:
-  - target: Ab9Xk2mPqR7w      # NanoID del destino, ^[A-Za-z0-9_-]{8,21}$
-    class: structural          # o associative
-    type: refines              # continuation | refines | branches | synthesis | rebuttal | supports | contradicts | expands | see_also
-    weight: 1.0                # opcional, default 1.0; valores no-finitos → 1.0
-    rationale: optional one-line text
+  derived_from:
+    - id: Ab9Xk2mPqR7w      # NanoID del destino, ^[A-Za-z0-9_-]{8,21}$
+      type: refines          # continuation | refines | branches | synthesis | rebuttal
+      weight: 1.0            # opcional, default 1.0; valores no-finitos → 1.0
+      note: optional one-line text
+  links:
+    - id: '202604010900'
+      type: supports         # supports | contradicts | expands | see_also
 ---
 ```
 
-`workflow notes sync` parsea este bloque en Pass 4 y persiste cada entrada como una fila `NoteEdge` (tabla `note_edge`, migración `0007_add_note_edges`). La operacion es idempotente (insert-or-skip).
+Para migrar notas existentes de este esquema al plano:
 
-Clases de arista:
+```bash
+# Vista previa, sin escribir nada
+workflow notes migrate-relations --dry-run
 
-| `class` | Uso |
-|---------|-----|
-| `structural` | Dependencia conceptual directa; participa en la deteccion de ciclos DAG |
-| `associative` | Enlace tematico libre; no participa en ciclos |
+# Reescribe .md legados a las 9 claves planas
+workflow notes migrate-relations [--vault-root PATH] [--json]
+```
+
+El comando es atomico por nota, idempotente (una nota ya migrada no vuelve a coincidir
+y se salta), y reporta a stderr cualquier `weight`/`note` descartado antes de escribir.
+Una nota cuyo `relations:` ya haya sido colapsado a un string plano por Obsidian
+Properties es irrecuperable desde el archivo: el comando **falla ruidosamente** para
+esa nota (exit 1 al final de la corrida) e indica restaurar desde git en vez de
+adivinar. `workflow validate notes` advierte (nunca falla) si detecta un bloque
+`relations:` anidado sin migrar, o una clave `derived_from_*`/`links_*` desconocida
+(con sugerencia por similitud).
 
 ### workflow notes edges — Consulta y mantenimiento
 
@@ -495,5 +552,5 @@ Ver tambien: [Fleeting-Monolith-Flow](Fleeting-Monolith-Flow.md) (flujo `lecture
 - [LZK-0000](../ADR/LZK-0000-zettelkasten-engine-architecture.md) — Arquitectura del motor
 - [LZK-0002](../ADR/LZK-0002-pandoc-conversion-pipeline.md) — Pipeline Pandoc
 - [LZK-0003](../ADR/LZK-0003-note-reference-system.md) — Sistema de referencias
-- [ITEP-0013](../ADR/ITEP-0013-note-relation-graph.md) — Grafo de relaciones: NoteEdge model, `relations:` frontmatter, `notes edges` CLI (Implemented)
+- [ITEP-0013](../ADR/ITEP-0013-note-relation-graph.md) — Grafo de relaciones: NoteEdge model, frontmatter `derived_from_*`/`links_*` planas (LEGACY `relations:` anidado), `notes edges` CLI, `notes migrate-relations` (Implemented)
 - [ITEP-0015](../ADR/ITEP-0015-editor-first-authoring.md) — NanoID como zettel_id; filename `<id>-<slug>.md`; LSP rechazado (Proposed)

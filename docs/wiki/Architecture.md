@@ -160,13 +160,13 @@ Utilidades de parsing reutilizadas por `exercise`, `lecture`, y `tikz`:
 |---------|----------------|
 | `sync.py` | `notes sync` — 4 pasadas (upsert note, labels, links, edges); `SyncReport.edges_created` |
 | `linker_ops.py` | `upsert_note_edge()` — insert-or-skip, espejo de `upsert_link` |
-| `edges.py` | `RelationEntry` + `parse_relations_frontmatter()` — lee bloque `relations:` del frontmatter |
+| `edges.py` | `RelationEntry` + `parse_relations_frontmatter()` — dual: lee las 9 claves planas `derived_from_*`/`links_*` (canonico) o el bloque LEGACY `relations:` anidado (plano gana si ambos estan presentes) |
 | `edges_service.py` | `list_edges()`, `get_edge()` — helpers de consulta |
 | `dag.py` | `detect_structural_cycles()` — DFS iterativo sobre subgrafo estructural |
 | `resolve.py` | `ResolveReport`, `resolve_edge_targets()` — resuelve `target_zettel_id` → FK `target_id` |
 | `cli.py` | Subgrupo `workflow notes edges list|show|check|resolve` (+ comandos previos) |
 
-La sincronizacion parsea el bloque `relations:` (Pass 4) y llama `upsert_note_edge()`. `target_zettel_id` se valida contra `^[A-Za-z0-9_-]{8,21}$`; pesos no finitos se normalizan a 1.0.
+La sincronizacion parsea las claves planas de relacion (o el `relations:` LEGACY anidado) en Pass 4 y llama `upsert_note_edge()`. `target_zettel_id` se valida contra `^[A-Za-z0-9_-]{8,21}$`; el parser LEGACY normaliza pesos no finitos a 1.0 (el parser plano siempre usa `weight=1.0`, ya que `weight`/`note` no son representables en el frontmatter plano).
 
 ### workflow.graph — Grafo de conocimiento
 
@@ -257,7 +257,7 @@ Ver [docs/ADR/INDEX.md](../ADR/INDEX.md) para el indice completo con dependencia
 | ADR | Decision | Estado |
 |-----|----------|--------|
 | [ITEP-0011](../ADR/ITEP-0011-vault-unification.md) | Vault unificado en GlobalBase | Implemented |
-| [ITEP-0013](../ADR/ITEP-0013-note-relation-graph.md) | Grafo de relaciones entre notas (`note_edge`, `relations:` frontmatter, DAG cycle detection) | Implemented (2026-05-23) |
+| [ITEP-0013](../ADR/ITEP-0013-note-relation-graph.md) | Grafo de relaciones entre notas (`note_edge`, frontmatter `derived_from_*`/`links_*` planas — LEGACY `relations:` anidado, DAG cycle detection) | Implemented (2026-05-23; frontmatter aplanado 2026-07-09) |
 | [ITEP-0014](../ADR/ITEP-0014-fm-hash-incremental-sync.md) | fm_hash para sync incremental | Proposed (deferred) |
 | [ITEP-0015](../ADR/ITEP-0015-editor-first-authoring.md) | Editor-first authoring: NanoID `^[A-Za-z0-9_-]{8,21}$`, filename `<id>-<slug>.md`, LSP rechazado | Proposed |
 
