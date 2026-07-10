@@ -93,6 +93,97 @@ class TestNoteFrontmatterValidation:
         fm = NoteFrontmatter(id="n1", title="T", aliases=("a", "b"))
         assert "aliases" in _fm_to_yaml(fm)
 
+    def test_created_as_date_object(self):
+        """YAML parses an unquoted date literal into datetime.date."""
+        import datetime
+        from workflow.validation.schemas import validate_note_frontmatter
+        data = {"id": "n1", "title": "T", "created": datetime.date(2026, 6, 4)}
+        result, errors = validate_note_frontmatter(data)
+        assert errors == []
+        assert result is not None
+        assert result.created == "2026-06-04"
+        assert isinstance(result.created, str)
+
+    def test_created_as_datetime_object_preserves_timestamp(self):
+        """A full timestamp must not be truncated to a bare date."""
+        import datetime
+        from workflow.validation.schemas import validate_note_frontmatter
+        data = {
+            "id": "n1",
+            "title": "T",
+            "created": datetime.datetime(2026, 6, 4, 14, 30, 0),
+        }
+        result, errors = validate_note_frontmatter(data)
+        assert errors == []
+        assert result is not None
+        assert result.created == "2026-06-04T14:30:00"
+
+    def test_created_as_iso_string_unchanged(self):
+        from workflow.validation.schemas import validate_note_frontmatter
+        data = {"id": "n1", "title": "T", "created": "2026-06-04"}
+        result, errors = validate_note_frontmatter(data)
+        assert errors == []
+        assert result is not None
+        assert result.created == "2026-06-04"
+
+    def test_created_null_or_absent(self):
+        from workflow.validation.schemas import validate_note_frontmatter
+        result, errors = validate_note_frontmatter(
+            {"id": "n1", "title": "T", "created": None}
+        )
+        assert errors == []
+        assert result is not None
+        assert result.created is None
+
+        result2, errors2 = validate_note_frontmatter({"id": "n1", "title": "T"})
+        assert errors2 == []
+        assert result2 is not None
+        assert result2.created is None
+
+    def test_created_non_iso_string_is_error(self):
+        from workflow.validation.schemas import validate_note_frontmatter
+        result, errors = validate_note_frontmatter(
+            {"id": "n1", "title": "T", "created": "ayer"}
+        )
+        assert result is None
+        assert any("created" in e for e in errors)
+
+    def test_created_int_is_error_naming_type(self):
+        from workflow.validation.schemas import validate_note_frontmatter
+        result, errors = validate_note_frontmatter(
+            {"id": "n1", "title": "T", "created": 20260604}
+        )
+        assert result is None
+        assert any("created" in e and "int" in e for e in errors)
+
+    def test_created_bool_is_error_naming_type(self):
+        from workflow.validation.schemas import validate_note_frontmatter
+        result, errors = validate_note_frontmatter(
+            {"id": "n1", "title": "T", "created": True}
+        )
+        assert result is None
+        assert any("created" in e and "bool" in e for e in errors)
+
+    def test_created_roundtrip_stable_and_idempotent(self):
+        """_fm_to_yaml -> yaml.safe_load -> validate yields identical DTO."""
+        import yaml
+        from workflow.notes.service import _fm_to_yaml
+        from workflow.validation.schemas import (
+            NoteFrontmatter,
+            validate_note_frontmatter,
+        )
+        fm = NoteFrontmatter(id="n1", title="T", created="2026-06-04")
+        rendered = _fm_to_yaml(fm)
+        reparsed = yaml.safe_load(rendered)
+        fm2, errors = validate_note_frontmatter(reparsed)
+        assert errors == []
+        assert fm2 is not None
+        assert fm2.created == fm.created == "2026-06-04"
+
+        # Second round-trip must be byte-identical (no quote flip-flop).
+        rendered2 = _fm_to_yaml(fm2)
+        assert rendered2 == rendered
+
 
 class TestTexMetadataParser:
     def test_parse_tex_with_yaml(self, tmp_path):

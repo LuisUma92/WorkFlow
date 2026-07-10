@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import difflib
 import re
 from dataclasses import dataclass
@@ -308,6 +309,46 @@ def _validate_candidate_project(data: dict, errors: list[str]) -> str | None:
     return value
 
 
+def _validate_created(value: object, errors: list[str]) -> str | None:
+    """Normalize frontmatter ``created`` to an ISO-8601 string, or None.
+
+    YAML parses an unquoted date literal (``2026-06-04``) into a
+    ``datetime.date`` — not a ``str`` — and an unquoted timestamp into a
+    ``datetime.datetime``. Both are valid, correctly-authored frontmatter;
+    the validator must accept the types YAML actually produces, not the
+    type a human happens to type. ``datetime.datetime`` is checked before
+    ``datetime.date`` (it is a subclass) so a full timestamp is preserved
+    via ``.isoformat()`` rather than silently truncated to a bare date.
+    """
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        errors.append("'created' must be a date, ISO-8601 string, or null; got bool")
+        return None
+    if isinstance(value, datetime.datetime):
+        return value.isoformat()
+    if isinstance(value, datetime.date):
+        return value.isoformat()
+    if isinstance(value, str):
+        try:
+            datetime.datetime.fromisoformat(value)
+        except ValueError:
+            try:
+                datetime.date.fromisoformat(value)
+            except ValueError:
+                errors.append(
+                    "'created' must be a date, ISO-8601 string, or null; "
+                    f"got non-ISO string '{value}'"
+                )
+                return None
+        return value
+    errors.append(
+        "'created' must be a date, ISO-8601 string, or null; "
+        f"got {type(value).__name__}"
+    )
+    return None
+
+
 def validate_note_frontmatter(data: dict) -> tuple[NoteFrontmatter | None, list[str]]:
     """Parse and validate note frontmatter dict (thin delegator).
 
@@ -349,10 +390,7 @@ def validate_note_frontmatter_with_warnings(
     exercises = _string_list(data, "exercises", errors)
     images = _string_list(data, "images", errors)
 
-    created = data.get("created", None)
-    if created is not None and not isinstance(created, str):
-        errors.append("'created' must be a string (ISO date) or null")
-        created = None
+    created = _validate_created(data.get("created", None), errors)
 
     note_type = data.get("type", "permanent")
     if note_type not in _VALID_NOTE_TYPES:
