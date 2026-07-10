@@ -1,0 +1,8 @@
+title: WorkFlow
+description: Python CLI toolkit for LaTeX projects and a unified Zettelkasten knowledge system.
+theme: minima
+
+exclude:
+  - temp.md
+  - superpowers/
+  - .obsidian/
