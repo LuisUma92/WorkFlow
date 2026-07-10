@@ -10,9 +10,11 @@ aux_links:
   GitHub: https://github.com/LuisUma92/WorkFlow
 
 # pdoc output is merged into _site/api/ by the Pages workflow (outside Jekyll).
+# just-the-docs pipes this url through `relative_url`, which prepends the
+# baseurl (/WorkFlow) injected by configure-pages — so no prefix here.
 nav_external_links:
   - title: API reference (pdoc)
-    url: /WorkFlow/api/
+    url: /api/
     hide_icon: true
 
 exclude:
