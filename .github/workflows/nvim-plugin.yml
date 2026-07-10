@@ -30,6 +30,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
       - name: Install Neovim ${{ matrix.nvim_version }}
         uses: rhysd/action-setup-vim@v1
         with:
