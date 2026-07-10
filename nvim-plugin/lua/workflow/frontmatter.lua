@@ -26,15 +26,26 @@ function M.extract(bufnr)
 		return nil, "No closing frontmatter delimiter"
 	end
 
-	local ok, lyaml = pcall(require, "lyaml")
-	if not ok then
-		return nil, "lyaml not installed (luarocks install lyaml)"
+	-- Flat key/value parser. Values stay strings: a zettel_id like 20240101
+	-- must never be coerced to a number.
+	local data = {}
+	for _, line in ipairs(vim.list_slice(lines, 2, end_line - 1)) do
+		local key, value = line:match("^(%w[%w_]*):(.*)$")
+		if key then
+			value = vim.trim(value)
+			if value:match("^%[.*%]$") then
+				local items = {}
+				for item in value:sub(2, -2):gmatch("[^,]+") do
+					table.insert(items, vim.trim(item))
+				end
+				data[key] = items
+			elseif value == "" then
+				data[key] = nil
+			else
+				data[key] = value
+			end
+		end
 	end
-
-	-- Full YAML body between the --- delimiters
-	local yaml_text = table.concat(vim.list_slice(lines, 2, end_line - 1), "\n")
-
-	local data = lyaml.load(yaml_text)
 
 	return data, nil, end_line
 end

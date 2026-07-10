@@ -33,9 +33,6 @@ Requires: snacks.nvim (https://github.com/folke/snacks.nvim) for pickers.
 Without snacks.nvim pickers display an error notification; all other commands
 continue to function normally.
 
-Requires: lyaml (luarocks install lyaml) for frontmatter parsing. Without it,
-frontmatter extraction returns the error "lyaml not installed".
-
 ==============================================================================
 2. COMMANDS                                                 *workflow-commands*
 
