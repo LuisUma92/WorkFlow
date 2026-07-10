@@ -1,5 +1,7 @@
 ---
 id: ITEP-0006
+nav_order: 29
+parent: ADRs
 title: "Taxonomía de Bloom para evaluaciones"
 aliases:
   - ADR-ITEP-0006

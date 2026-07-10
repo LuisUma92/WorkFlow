@@ -1,5 +1,7 @@
 ---
 id: 0008
+nav_order: 8
+parent: ADRs
 title: "XDG Directory Layout for Shared Data and Configuration"
 aliases:
   - ADR-0008

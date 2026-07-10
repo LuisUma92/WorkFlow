@@ -1,5 +1,7 @@
 ---
 id: STY-0002
+nav_order: 52
+parent: ADRs
 title: "SetCommands — Shared macros and directories"
 aliases:
   - ADR-STY-0002

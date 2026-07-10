@@ -1,5 +1,7 @@
 ---
 
+nav_order: 35
+parent: ADRs
 id: ITEP-0012
 title: "Concept ORM Surface"
 aliases:

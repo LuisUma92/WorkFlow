@@ -1,5 +1,7 @@
 ---
 id: STY-0005
+nav_order: 55
+parent: ADRs
 title: "SetSymbols — Color-coded physics notation"
 aliases:
   - ADR-STY-0005

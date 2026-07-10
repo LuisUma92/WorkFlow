@@ -1,5 +1,7 @@
 ---
 id: ITEP-0009
+nav_order: 32
+parent: ADRs
 title: "Knowledge lifecycle, discipline taxonomy, and AI agent collaboration conventions"
 aliases:
   - ADR-ITEP-0009

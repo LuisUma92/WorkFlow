@@ -1,5 +1,7 @@
 ---
 id: 0001
+nav_order: 1
+parent: ADRs
 title: "Zettelkasten Note Semantic Layer in LaTeX"
 aliases:
   - ADR-0001

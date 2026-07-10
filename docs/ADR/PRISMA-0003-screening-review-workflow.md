@@ -1,5 +1,7 @@
 ---
 id: PRISMA-0003
+nav_order: 47
+parent: ADRs
 title: "Article Screening and Review Workflow"
 aliases:
   - ADR-PRISMA-0003

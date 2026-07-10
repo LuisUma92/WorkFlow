@@ -1,5 +1,7 @@
 ---
 id: 0015
+nav_order: 15
+parent: ADRs
 title: "Zettelkasten System Refactor"
 aliases:
   - ADR-0015

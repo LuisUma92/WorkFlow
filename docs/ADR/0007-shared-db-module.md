@@ -1,5 +1,7 @@
 ---
 id: 0007
+nav_order: 7
+parent: ADRs
 title: "Shared DB Module with Repository API"
 aliases:
   - ADR-0007

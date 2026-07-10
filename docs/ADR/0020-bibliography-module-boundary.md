@@ -1,5 +1,7 @@
 ---
 id: 0020
+nav_order: 20
+parent: ADRs
 title: "Bibliography module boundary: foundation layer + 0/1/2+ lookup contract"
 aliases:
   - ADR-0020

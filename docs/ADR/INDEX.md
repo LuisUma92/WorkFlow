@@ -1,6 +1,8 @@
 ---
 id: 20260510-ard-00000-index
-title: Architecture Decision Records — WorkFlow
+title: ADRs
+nav_order: 3
+has_children: true
 aliases: [ADR-INDEX, ADR-0000-INDEX]
 type: permanent
 created: 2026-05-10
@@ -10,7 +12,7 @@ references: []
 exercises: []
 images: []
 ---
-C
+
 WorkFlow integrates three systems into a unified academic toolkit:
 
 1. **ITeP** (Init TeX Project) — Project scaffolding, academic DB schema,

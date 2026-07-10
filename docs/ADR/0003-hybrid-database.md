@@ -1,5 +1,7 @@
 ---
 id: 0003
+nav_order: 3
+parent: ADRs
 title: "Hybrid Database Architecture (Global + Local)"
 aliases:
   - ADR-0003

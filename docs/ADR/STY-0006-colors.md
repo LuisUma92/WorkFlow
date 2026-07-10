@@ -1,5 +1,7 @@
 ---
 id: STY-0006
+nav_order: 56
+parent: ADRs
 title: "Color system — Physics palette and institutional themes"
 aliases:
   - ADR-STY-0006

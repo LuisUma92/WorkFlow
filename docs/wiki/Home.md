@@ -1,6 +1,8 @@
 ---
 id: 
-title: 
+title: Wiki
+nav_order: 2
+has_children: true
 aliases: []
 type: permanent
 created: 

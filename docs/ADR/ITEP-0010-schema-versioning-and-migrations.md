@@ -1,5 +1,7 @@
 ---
 id: ITEP-0010
+nav_order: 33
+parent: ADRs
 title: "Schema versioning and forward-only migrations for GlobalBase + LocalBase"
 aliases:
   - ADR-ITEP-0010

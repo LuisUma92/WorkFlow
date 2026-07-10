@@ -1,5 +1,7 @@
 ---
 id: STY-0001
+nav_order: 51
+parent: ADRs
 title: "SetLoyaut — Page geometry and spacing"
 aliases:
   - ADR-STY-0001

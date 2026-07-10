@@ -1,5 +1,7 @@
 ---
 id: PRISMA-0001
+nav_order: 45
+parent: ADRs
 title: "Dual-Database Router: MariaDB + Shared SQLite"
 aliases:
   - ADR-PRISMA-0001

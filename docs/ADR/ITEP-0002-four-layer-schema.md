@@ -1,5 +1,7 @@
 ---
 id: ITEP-0002
+nav_order: 25
+parent: ADRs
 title: "Esquema de base de datos en 4 capas"
 aliases:
   - ADR-ITEP-0002

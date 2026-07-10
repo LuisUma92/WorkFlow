@@ -1,5 +1,7 @@
 ---
 id: 0019
+nav_order: 19
+parent: ADRs
 title: "Bibliography dialect: biblatex-native model + bibtex compatibility layer"
 aliases:
   - ADR-0019

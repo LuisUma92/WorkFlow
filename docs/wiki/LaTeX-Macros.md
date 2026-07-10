@@ -1,6 +1,7 @@
 ---
 id: 
-title: 
+parent: Wiki
+title: LaTeX Macros Reference
 aliases: []
 type: permanent
 created: 

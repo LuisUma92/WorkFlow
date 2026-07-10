@@ -1,5 +1,7 @@
 ---
 id: STY-0011
+nav_order: 61
+parent: ADRs
 title: "SetConstant — Physical constants reference table"
 aliases:
   - ADR-STY-0011

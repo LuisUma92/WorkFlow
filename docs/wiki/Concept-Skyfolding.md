@@ -1,3 +1,7 @@
+---
+title: Concept Skyfolding
+parent: Wiki
+---
 # Concept Skyfolding
 
 > Nota de ubicación: junto a las demás páginas prácticas en `docs/wiki/`

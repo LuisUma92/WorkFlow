@@ -1,5 +1,7 @@
 ---
 id: PRISMA-0005
+nav_order: 49
+parent: ADRs
 title: "PRISMA CLI: SQLAlchemy Migration and Unified workflow.db"
 aliases:
   - ADR-PRISMA-0005

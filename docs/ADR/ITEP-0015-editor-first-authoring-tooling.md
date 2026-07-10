@@ -1,5 +1,7 @@
 ---
 id: ITEP-0015
+nav_order: 38
+parent: ADRs
 title: "Editor-first authoring tooling for the note graph"
 aliases:
   - ADR-ITEP-0015

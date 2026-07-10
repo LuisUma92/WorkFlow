@@ -1,5 +1,7 @@
 ---
 id: STY-0000
+nav_order: 50
+parent: ADRs
 title: "SetFormat — Master package loader"
 aliases:
   - ADR-STY-0000

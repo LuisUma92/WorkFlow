@@ -1,5 +1,7 @@
 ---
 id: STY-0008
+nav_order: 58
+parent: ADRs
 title: "SetProfiles — Author, institution, and course metadata"
 aliases:
   - ADR-STY-0008

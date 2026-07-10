@@ -1,6 +1,7 @@
 ---
 id: 
-title: 
+parent: Wiki
+title: Knowledge Graph
 aliases: []
 type: permanent
 created: 

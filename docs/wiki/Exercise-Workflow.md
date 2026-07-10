@@ -1,6 +1,7 @@
 ---
 id:
-title:
+parent: Wiki
+title: Exercise Workflow
 aliases: []
 type: permanent
 created:

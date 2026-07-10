@@ -1,5 +1,7 @@
 ---
 id: PRISMA-0002
+nav_order: 46
+parent: ADRs
 title: "Bibliography Import Pipeline: BibTeX Upload to Structured Data"
 aliases:
   - ADR-PRISMA-0002

@@ -1,5 +1,7 @@
 ---
 id: ITEP-0005
+nav_order: 28
+parent: ADRs
 title: "Configuración LaTeX basada en symlinks"
 aliases:
   - ADR-ITEP-0005

@@ -1,5 +1,7 @@
 ---
 id: 0016
+nav_order: 16
+parent: ADRs
 title: "Evaluation CLI: Template, Item, and Course Management"
 aliases:
   - ADR-0016

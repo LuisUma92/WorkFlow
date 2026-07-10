@@ -1,5 +1,7 @@
 ---
 id: ITEP-0003
+nav_order: 26
+parent: ADRs
 title: "config.yaml como puntero a la base de datos"
 aliases:
   - ADR-ITEP-0003

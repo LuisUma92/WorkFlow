@@ -1,5 +1,7 @@
 ---
 id: ITEP-0001
+nav_order: 24
+parent: ADRs
 title: "Migración de dataclasses a SQLAlchemy ORM"
 aliases:
   - ADR-ITEP-0001

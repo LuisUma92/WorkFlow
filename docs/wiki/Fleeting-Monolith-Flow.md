@@ -1,3 +1,7 @@
+---
+title: Fleeting-Monolith Flow
+parent: Wiki
+---
 # Fleeting-Monolith Flow
 
 > Nota de ubicación: `docs/guides/` no existe en este repo; esta guía vive junto

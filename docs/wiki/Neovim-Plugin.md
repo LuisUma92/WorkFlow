@@ -1,3 +1,7 @@
+---
+title: Neovim Plugin
+parent: Wiki
+---
 # Neovim Plugin
 
 Plugin de Neovim (`nvim-plugin/`) que envuelve el CLI `workflow` con comandos

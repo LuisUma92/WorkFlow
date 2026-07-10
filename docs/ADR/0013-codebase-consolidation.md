@@ -1,5 +1,7 @@
 ---
 id: 0013
+nav_order: 13
+parent: ADRs
 title: "Codebase Consolidation: Session Patterns, Legacy Decoupling, CLI Architecture"
 aliases:
   - ADR-0013

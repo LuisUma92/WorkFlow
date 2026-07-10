@@ -1,5 +1,7 @@
 ---
 id: 0012
+nav_order: 12
+parent: ADRs
 title: "Moodle XML Export with LaTeX Normalization"
 aliases:
   - ADR-0012
@@ -81,6 +83,7 @@ Chosen: **Option C: Normalize custom LaTeX to standard form, then export as CDAT
 Expand all custom macros from `shared/sty/` to their standard LaTeX equivalents.
 The normalization map is derived directly from the `.sty` files:
 
+{% raw %}
 ```python
 # Auto-derived from SetCommands.sty, PartialCommands.sty, etc.
 MACRO_MAP: dict[str, MacroExpansion] = {
@@ -100,6 +103,7 @@ MACRO_MAP: dict[str, MacroExpansion] = {
     # drop color, keep text
 }
 ```
+{% endraw %}
 
 The normalization step also:
 

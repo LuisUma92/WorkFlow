@@ -1,6 +1,7 @@
 ---
 id: 
-title: 
+parent: Wiki
+title: Lectures Workflow
 aliases: []
 type: permanent
 created: 

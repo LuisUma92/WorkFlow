@@ -1,5 +1,7 @@
 ---
 id: LZK-0000
+nav_order: 39
+parent: ADRs
 title: "LaTeXZettel Engine Architecture: 7-Layer Note Management System"
 aliases:
   - ADR-LZK-0000

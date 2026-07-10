@@ -1,6 +1,7 @@
 ---
 id: 
-title: 
+parent: Wiki
+title: Architecture
 aliases: []
 type: permanent
 created: 

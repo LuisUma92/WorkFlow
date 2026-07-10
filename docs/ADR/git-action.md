@@ -1,5 +1,7 @@
 ---
 id:
+nav_order: 62
+parent: ADRs
 title:
 aliases: []
 type: permanent

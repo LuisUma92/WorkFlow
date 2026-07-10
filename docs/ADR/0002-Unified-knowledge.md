@@ -1,5 +1,7 @@
 ---
 id: 0002
+nav_order: 2
+parent: ADRs
 title: "Markdown as Canonical Knowledge Layer"
 aliases:
   - ADR-0002

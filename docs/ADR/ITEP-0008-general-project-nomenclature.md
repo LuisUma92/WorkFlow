@@ -1,5 +1,7 @@
 ---
 id: ITEP-0008
+nav_order: 31
+parent: ADRs
 title: "General project nomenclature: discipline, area, year and project initials"
 aliases:
   - ADR-ITEP-0008

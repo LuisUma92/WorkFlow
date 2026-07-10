@@ -1,5 +1,7 @@
 ---
 id: LZK-0001
+nav_order: 40
+parent: ADRs
 title: "JSONL/NDJSON RPC Server for Editor Integration"
 aliases:
   - ADR-LZK-0001

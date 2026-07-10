@@ -1,5 +1,7 @@
 ---
 id: STY-0007
+nav_order: 57
+parent: ADRs
 title: "VectorPGF — TikZ styles for vector diagrams"
 aliases:
   - ADR-STY-0007

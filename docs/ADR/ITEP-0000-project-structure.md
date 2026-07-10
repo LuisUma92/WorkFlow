@@ -1,5 +1,7 @@
 ---
 id: ITEP-0000
+nav_order: 23
+parent: ADRs
 title: "Project structure"
 aliases:
   - ADR-ITEP-0000

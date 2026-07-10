@@ -1,6 +1,7 @@
 ---
 id: 
-title: 
+parent: Wiki
+title: Evaluation CLI
 aliases: []
 type: permanent
 created: 

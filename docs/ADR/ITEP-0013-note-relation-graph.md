@@ -1,5 +1,7 @@
 ---
 id: ITEP-0013
+nav_order: 36
+parent: ADRs
 title: "Note relation graph — directed lineage + associative edges over the unified vault"
 aliases:
   - ADR-ITEP-0013

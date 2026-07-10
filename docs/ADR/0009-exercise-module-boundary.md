@@ -1,5 +1,7 @@
 ---
 id: 0009
+nav_order: 9
+parent: ADRs
 title: "Exercise Module Boundary and Shared LaTeX Parsing"
 aliases:
   - ADR-0009

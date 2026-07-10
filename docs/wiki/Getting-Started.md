@@ -1,6 +1,7 @@
 ---
 id: 
-title: 
+parent: Wiki
+title: Getting Started
 aliases: []
 type: permanent
 created: 

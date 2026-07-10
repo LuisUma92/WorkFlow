@@ -1,5 +1,7 @@
 ---
 id: 0005
+nav_order: 5
+parent: ADRs
 title: "Exercise DSL Extends Existing LaTeX Macros"
 aliases:
   - ADR-0005

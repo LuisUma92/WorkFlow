@@ -1,5 +1,7 @@
 ---
 id: 0014
+nav_order: 14
+parent: ADRs
 title: "Zettelkasten Implementation: Macros, Note Model, Workspace Init"
 status: Accepted
 date: 2026-03-26

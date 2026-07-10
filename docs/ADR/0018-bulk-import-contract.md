@@ -1,3 +1,8 @@
+---
+title: 0018 — `workflow topic import` bulk-import contract
+nav_order: 18
+parent: ADRs
+---
 # 0018 — `workflow topic import` bulk-import contract
 
 - **Status:** Accepted

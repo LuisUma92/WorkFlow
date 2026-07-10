@@ -1,5 +1,7 @@
 ---
 id: STY-0010
+nav_order: 60
+parent: ADRs
 title: "CentredPage — Full-page centered content command"
 aliases:
   - ADR-STY-0010

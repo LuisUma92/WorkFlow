@@ -1,5 +1,7 @@
 ---
 id: STY-0003
+nav_order: 53
+parent: ADRs
 title: "PartialCommands — Exam scoring and structure"
 aliases:
   - ADR-STY-0003

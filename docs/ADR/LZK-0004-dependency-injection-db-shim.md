@@ -1,5 +1,7 @@
 ---
 id: LZK-0004
+nav_order: 43
+parent: ADRs
 title: "Dependency Injection and ORM Shim: Peewee → SQLAlchemy Migration"
 aliases:
   - ADR-LZK-0004

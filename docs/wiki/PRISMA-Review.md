@@ -1,6 +1,7 @@
 ---
 id: 
-title: 
+parent: Wiki
+title: PRISMA Systematic Review CLI
 aliases: []
 type: permanent
 created: 

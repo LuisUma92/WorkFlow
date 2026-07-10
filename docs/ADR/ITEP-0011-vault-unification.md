@@ -1,5 +1,7 @@
 ---
 id: ITEP-0011
+nav_order: 34
+parent: ADRs
 title: "Vault unification — single global Markdown corpus, Note table relocates to GlobalBase"
 aliases:
   - ADR-ITEP-0011

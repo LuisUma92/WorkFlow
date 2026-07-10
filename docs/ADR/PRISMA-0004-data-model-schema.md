@@ -1,5 +1,7 @@
 ---
 id: PRISMA-0004
+nav_order: 48
+parent: ADRs
 title: "PRISMAreview Data Model: 30+ Django Models for Systematic Review"
 aliases:
   - ADR-PRISMA-0004

@@ -1,5 +1,7 @@
 ---
 id: LZK-0003
+nav_order: 42
+parent: ADRs
 title: "Note Reference System: IDs, Cross-References, and Regex Patterns"
 aliases:
   - ADR-LZK-0003

@@ -1,3 +1,8 @@
+---
+title: 0021 — Vault full-text search via SQLite FTS5
+nav_order: 21
+parent: ADRs
+---
 # 0021 — Vault full-text search via SQLite FTS5
 
 - **Status:** Proposed

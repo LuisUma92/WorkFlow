@@ -1,5 +1,7 @@
 ---
 id: 0004
+nav_order: 4
+parent: ADRs
 title: "SQLAlchemy 2.0 as Single ORM"
 aliases:
   - ADR-0004

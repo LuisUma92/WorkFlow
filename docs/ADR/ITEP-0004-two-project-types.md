@@ -1,5 +1,7 @@
 ---
 id: ITEP-0004
+nav_order: 27
+parent: ADRs
 title: "Dos tipos de proyecto: Lecture y General"
 aliases:
   - ADR-ITEP-0004

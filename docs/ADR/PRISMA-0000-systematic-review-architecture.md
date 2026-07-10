@@ -1,5 +1,7 @@
 ---
 id: PRISMA-0000
+nav_order: 44
+parent: ADRs
 title: "PRISMAreview Systematic Review Architecture"
 aliases:
   - ADR-PRISMA-0000

@@ -1,6 +1,7 @@
 ---
 id:
-title:
+parent: Wiki
+title: Exam Workflow
 aliases: []
 type: permanent
 created:

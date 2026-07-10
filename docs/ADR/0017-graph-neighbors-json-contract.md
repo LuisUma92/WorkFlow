@@ -1,3 +1,8 @@
+---
+title: 0017 — `graph neighbors --json` output contract
+nav_order: 17
+parent: ADRs
+---
 # 0017 — `graph neighbors --json` output contract
 
 - **Status:** Accepted

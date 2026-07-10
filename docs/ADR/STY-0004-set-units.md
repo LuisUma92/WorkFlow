@@ -1,5 +1,7 @@
 ---
 id: STY-0004
+nav_order: 54
+parent: ADRs
 title: "SetUnits — SI unit extensions"
 aliases:
   - ADR-STY-0004

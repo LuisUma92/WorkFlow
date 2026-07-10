@@ -1,3 +1,8 @@
+---
+title: 0022 — ResearchQuestion as a first-class entity
+nav_order: 22
+parent: ADRs
+---
 # 0022 — ResearchQuestion as a first-class entity
 
 - **Status:** Proposed

@@ -1,6 +1,7 @@
 ---
 id: 
-title: 
+parent: Wiki
+title: Zettelkasten Notes
 aliases: []
 type: permanent
 created: 

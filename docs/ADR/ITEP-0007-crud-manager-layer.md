@@ -1,5 +1,7 @@
 ---
 id: ITEP-0007
+nav_order: 30
+parent: ADRs
 title: "Capa CRUD centralizada en manager.py"
 aliases:
   - ADR-ITEP-0007

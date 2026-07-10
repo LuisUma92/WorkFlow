@@ -1,5 +1,7 @@
 ---
 id: LZK-0002
+nav_order: 41
+parent: ADRs
 title: "Pandoc Conversion Pipeline: Markdown ↔ LaTeX with Wiki-Link Support"
 aliases:
   - ADR-LZK-0002

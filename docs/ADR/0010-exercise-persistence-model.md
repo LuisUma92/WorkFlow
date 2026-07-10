@@ -1,5 +1,7 @@
 ---
 id: 0010
+nav_order: 10
+parent: ADRs
 title: "Exercise Persistence: File as Truth Source, DB as Metadata Index"
 aliases:
   - ADR-0010

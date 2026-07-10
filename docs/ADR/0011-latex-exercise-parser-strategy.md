@@ -1,5 +1,7 @@
 ---
 id: 0011
+nav_order: 11
+parent: ADRs
 title: "LaTeX Exercise Parser Strategy: Brace-Aware Extraction"
 aliases:
   - ADR-0011

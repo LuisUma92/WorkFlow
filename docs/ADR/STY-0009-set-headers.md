@@ -1,5 +1,7 @@
 ---
 id: STY-0009
+nav_order: 59
+parent: ADRs
 title: "SetHeaders — Page styles per document type"
 aliases:
   - ADR-STY-0009

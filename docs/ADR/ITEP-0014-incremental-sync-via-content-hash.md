@@ -1,5 +1,7 @@
 ---
 id: ITEP-0014
+nav_order: 37
+parent: ADRs
 title: "Incremental sync via per-note content hashing (`fm_hash`)"
 aliases:
   - ADR-ITEP-0014

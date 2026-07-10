@@ -1,5 +1,7 @@
 ---
 id: 0006
+nav_order: 6
+parent: ADRs
 title: "TikZ Standalone Asset Pipeline"
 aliases:
   - ADR-0006
