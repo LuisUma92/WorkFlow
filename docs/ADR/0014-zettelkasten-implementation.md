@@ -84,7 +84,7 @@ Create `shared/latex/sty/SetZettelkasten.sty`:
 \newcommand{\zlabel}[1]{\hypertarget{zk:#1}{}\label{zk:#1}}
 
 % \begin{zettelnote}{id}{Title} — semantic note wrapper (ADR-0001)
-\newenvironment{zettelnote}[2]{ %
+\newenvironment{zettelnote}[2]{
   \hypertarget{zk:#1}{}%
   \paragraph{#2}\label{zk:#1}%
   \marginpar{\tiny\texttt{#1}}%
