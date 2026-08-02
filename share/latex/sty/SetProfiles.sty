@@ -84,6 +84,7 @@
   \newcommand{\theunishort}{}
   \newcommand{\theschool}{}
   \newsavebox{\ulogo}
+  \newsavebox{\ulogobig}
   \newsavebox{\schoollogo}
   
   \newcommand{\ucr}{
@@ -108,8 +109,11 @@
   \newcommand{\ucimed}{
     \renewcommand{\theuni}{Universidad de las Ciencias Médicas}
     \renewcommand{\theunishort}{UCIMED}
-    \renewcommand{\theschool}{Ciencias Básicas}
+    \renewcommand{\theschool}{\MakeUppercase{Escuela Autónoma de Ciencias Médicas de Centro América}\\Dr. Andrés Vesalio Guzmán Callega}
     \savebox{\ulogo}{
+	    \includegraphics[width=1.9cm]{/home/luis/.local/share/workflow/img/ucimed/ucimed.png}
+    }
+    \savebox{\ulogobig}{
 	    \includegraphics[width=0.2\textwidth]{/home/luis/.local/share/workflow/img/ucimed/ucimed.png}
     }
     \savebox{\schoollogo}{}
@@ -157,7 +161,7 @@
       \efis
     }{
     \ifthenelse{\equal{#1}{CB-09}}{
-      \renewcommand{\classname}{Física para Ciencias Médicas}
+      \renewcommand{\classname}{Física para Ciencias de la Salud}
       \ucimed
     }{
     \ifthenelse{\equal{#1}{CBI-06}}{
