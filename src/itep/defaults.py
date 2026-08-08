@@ -4,7 +4,11 @@ from pathlib import Path
 from workflow import config as _workflow_config
 from workflow import paths
 
-_DEFAULT_PHYSICS_DIR = Path.home() / "Documents" / "01-U" / "00-Fisica"
+# ITEP-0008 amendment 2026-08-08 (tasks/requests/2026-08-08-itep-0008-two-layer-
+# directory-contradiction.md, findings 5-7): the old hardcoded default pointed
+# at a nonexistent ~/Documents/01-U/00-Fisica.  It now derives from
+# workflow.paths.workspace_root(), and WORKFLOW_PHYSICS_DIR still wins when set.
+_DEFAULT_PHYSICS_DIR = paths.workspace_root()
 DEF_ABS_PARENT_DIR = Path(
     os.environ.get("WORKFLOW_PHYSICS_DIR", str(_DEFAULT_PHYSICS_DIR))
 )

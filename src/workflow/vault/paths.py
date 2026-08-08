@@ -10,10 +10,33 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-__all__ = ["DEFAULT_VAULT_ROOT", "ENV_VAULT_ROOT", "resolve_vault_root"]
+__all__ = [
+    "DEFAULT_VAULT_ROOT",
+    "ENV_VAULT_ROOT",
+    "default_vault_root",
+    "resolve_vault_root",
+]
 
+# ITEP-0008 amendment 2026-08-08: the step-3 default now derives from
+# ``workflow.paths.workspace_root()`` instead of a hardcoded ``~/01-U``.
+# ``DEFAULT_VAULT_ROOT`` is kept only for backward-compat reexport/comparison
+# (``workflow.vault.cli``, ``tests/workflow/test_vault_paths.py``); it is no
+# longer read by ``default_vault_root()``.
 DEFAULT_VAULT_ROOT = Path.home() / "01-U" / "0000AV-Vault"
 ENV_VAULT_ROOT = "WORKFLOW_VAULT_ROOT"
+
+
+def default_vault_root() -> Path:
+    """Return the step-3 default vault root, derived from the workspace root.
+
+    Resolved on every call (never cached) so a monkeypatched
+    ``WORKFLOW_WORKSPACE_ROOT`` env var is picked up without reimporting this
+    module. The ``workflow.paths`` import is intentionally LAZY (inside this
+    function) so this module stays dependency-free at import time.
+    """
+    from workflow import paths as _paths  # noqa: PLC0415
+
+    return _paths.workspace_root() / "0000AV-Vault"
 
 
 def resolve_vault_root() -> Path:
@@ -22,11 +45,11 @@ def resolve_vault_root() -> Path:
     Precedence:
       1. ``WORKFLOW_VAULT_ROOT`` env var (existing behaviour, highest priority).
       2. ``vault_path`` key in ``~/.config/workflow/config.yaml`` (lazy import).
-      3. ``DEFAULT_VAULT_ROOT`` (``~/01-U/0000AV-Vault``).
+      3. ``default_vault_root()`` — ``<workspace_root>/0000AV-Vault``.
 
     The ``workflow.config`` import is intentionally LAZY (inside this function)
     so that this module stays dependency-free at import time.  Any failure in
-    the lazy import or config read silently falls back to ``DEFAULT_VAULT_ROOT``.
+    the lazy import or config read silently falls back to ``default_vault_root()``.
     """
     raw = (os.environ.get(ENV_VAULT_ROOT) or "").strip()
     if raw:
@@ -42,4 +65,4 @@ def resolve_vault_root() -> Path:
     except Exception:  # noqa: BLE001 — any failure → fall back silently
         pass
 
-    return DEFAULT_VAULT_ROOT
+    return default_vault_root()

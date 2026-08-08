@@ -165,7 +165,7 @@ def test_split_command_default_output_dir_fallback(
     monkeypatch.delenv("WORKFLOW_VAULT_ROOT", raising=False)
     fallback = tmp_path / "fallback_vault"
     monkeypatch.setattr(
-        "workflow.vault.paths.DEFAULT_VAULT_ROOT", fallback
+        "workflow.vault.paths.default_vault_root", lambda: fallback
     )
     src = tmp_path / "notes.tex"
     src.write_text(

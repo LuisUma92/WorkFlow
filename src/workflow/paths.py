@@ -25,6 +25,7 @@ from pathlib import Path
 import platformdirs
 
 __all__ = [
+    "workspace_root",
     "data_dir",
     "config_dir",
     "cache_dir",
@@ -34,6 +35,13 @@ __all__ = [
 ]
 
 _APP = "workflow"
+
+# Academic workspace root (ITEP-0008 amendment 2026-08-08).  Subsystem defaults
+# that live *inside* the workspace (ITeP parent dir, Zettelkasten vault) derive
+# from this when their own env var is unset.  The XDG data dir does NOT — the
+# global DB stays at its XDG location per ADR-0008.
+ENV_WORKSPACE_ROOT = "WORKFLOW_WORKSPACE_ROOT"
+DEFAULT_WORKSPACE_ROOT = Path.home() / "01-U"
 
 # One-time legacy-fallback notice guard.
 _LEGACY_NOTICE_EMITTED: bool = False
@@ -45,8 +53,30 @@ def reset_notice_for_tests() -> None:
     _LEGACY_NOTICE_EMITTED = False
 
 
+def workspace_root() -> Path:
+    """Return the academic workspace root.
+
+    Precedence:
+      1. ``WORKFLOW_WORKSPACE_ROOT`` env var (non-empty).
+      2. ``~/01-U`` (ITEP-0008 amendment 2026-08-08).
+
+    Resolved on every call — never cached — so tests and shells that change the
+    env var see the new value.  Callers that capture it at import time (e.g.
+    ``itep.models``) must be reloaded for a change to take effect.
+    """
+    raw = (os.environ.get(ENV_WORKSPACE_ROOT) or "").strip()
+    if raw:
+        return Path(raw).expanduser()
+    return DEFAULT_WORKSPACE_ROOT
+
+
 def data_dir() -> Path:
-    """Return the XDG user data directory for the workflow app."""
+    """Return the XDG user data directory for the workflow app.
+
+    Deliberately NOT derived from :func:`workspace_root` — ADR-0008 pins the
+    global DB to the XDG data dir, and deriving it would relocate a live
+    database whenever the workspace moves.
+    """
     return Path(platformdirs.user_data_dir(_APP))
 
 
