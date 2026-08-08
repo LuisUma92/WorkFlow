@@ -116,6 +116,58 @@ def test_unify_no_dry_run_writes(isolated_global_db, tmp_path):
     assert any(backup.iterdir())
 
 
+def test_unify_pointer_has_no_path(isolated_global_db, tmp_path):
+    """The pointer is a timestamped marker, not a third path-resolution
+    mechanism — it must never carry a vault_root path (ITEP-0008 finding 6:
+    it went stale in 23 real directories after a rename)."""
+    from datetime import datetime
+
+    project = _make_project_with_note(tmp_path)
+    backup = tmp_path / "backups"
+    result = CliRunner().invoke(
+        vault,
+        [
+            "unify",
+            "--project-root",
+            str(project),
+            "--backup-dir",
+            str(backup),
+            "--no-dry-run",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    pointer = project / ".vault_pointer"
+    content = pointer.read_text(encoding="utf-8")
+    assert "vault_root:" not in content
+    assert "unified_at:" in content
+    ts = content.split("unified_at:", 1)[1].strip()
+    # Must be a parseable ISO 8601 timestamp.
+    datetime.fromisoformat(ts)
+
+
+def test_unify_legacy_pointer_still_recognized(isolated_global_db, tmp_path):
+    """Backward compatibility: a pre-existing .vault_pointer written in the
+    old 'vault_root: <path>' format must still be treated as already-unified
+    — detection is existence-only, never content parsing."""
+    project = _make_project_with_note(tmp_path)
+    pointer = project / ".vault_pointer"
+    legacy_content = "vault_root: /home/luis/Documents/01-U/0000AA-Vault\n"
+    pointer.write_text(legacy_content, encoding="utf-8")
+
+    result = CliRunner().invoke(
+        vault,
+        [
+            "unify",
+            "--project-root",
+            str(project),
+            "--no-dry-run",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    # Skipped, not reprocessed or rewritten.
+    assert pointer.read_text(encoding="utf-8") == legacy_content
+
+
 def test_unify_manual_collision_exits_nonzero(isolated_global_db, tmp_path):
     """Post-review: skipped collisions must surface as a non-zero exit even
     when --rename-strategy is not 'abort'."""

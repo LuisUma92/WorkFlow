@@ -4,6 +4,17 @@ Migrates a per-project ``slipbox.db`` (LocalBase note layer, pre-P1) into
 the unified GlobalBase note layer, moves the project's ``.md`` notes into
 ``<vault_root>/notes/``, and writes a ``.vault_pointer`` marker.
 
+The ``.vault_pointer`` marker carries only an ``unified_at:`` timestamp,
+never a vault path. It exists solely to make ``unify()`` idempotent
+(presence-checked, never content-parsed) — it is NOT a path-resolution
+mechanism. An earlier version wrote ``vault_root: <path>`` into it, but no
+resolver ever read that value back (the real chain is
+``WORKFLOW_VAULT_ROOT`` -> ``config.yaml`` ``vault_path`` ->
+``default_vault_root()``, see ``workflow.vault.paths``); that unused path
+went stale in every real vault rename/move (ITEP-0008 finding 6). Old
+pointers in the legacy format are still recognized as "already unified"
+and are left untouched.
+
 Note type (permanent/literature/fleeting) is preserved in frontmatter only;
 files are no longer sorted into typed subdirectories.
 
@@ -128,7 +139,7 @@ def unify(
 
     if not legacy.notes:
         if not dry_run:
-            _write_pointer(pointer, vault_root)
+            _write_pointer(pointer)
         return report
 
     existing_refs = {ref for (ref,) in global_session.query(Note.reference).all()}
@@ -281,7 +292,7 @@ def unify(
     )
 
     if not dry_run:
-        _write_pointer(pointer, vault_root)
+        _write_pointer(pointer)
 
     if not dry_run and report.notes_migrated != len(notes_to_migrate):
         raise RuntimeError(
@@ -362,8 +373,22 @@ def _snapshot(slipbox: Path, backup_dir: Path, project_name: str) -> Path:
     return dest
 
 
-def _write_pointer(pointer: Path, vault_root: Path) -> None:
-    pointer.write_text(f"vault_root: {vault_root}\n", encoding="utf-8")
+def _write_pointer(pointer: Path) -> None:
+    """Write the idempotency marker.
+
+    Carries only a timestamp, never a path. Older versions wrote
+    ``vault_root: <path>`` here, but nothing ever read it back — the real
+    resolution chain is ``WORKFLOW_VAULT_ROOT`` env var -> ``config.yaml``
+    ``vault_path`` -> ``default_vault_root()`` (see ``workflow.vault.paths``).
+    A path-carrying pointer was a third, unsynchronized resolution
+    mechanism that went stale on every vault rename/move (23 real
+    directories drifted after one rename — ITEP-0008 finding 6). Detection
+    of "already unified" is existence-only (see ``unify()`` above), so a
+    pre-existing pointer in the old format is still recognized and is never
+    rewritten.
+    """
+    timestamp = datetime.now(timezone.utc).isoformat()
+    pointer.write_text(f"unified_at: {timestamp}\n", encoding="utf-8")
 
 
 def _prefix(project_name: str, value: str, existing: set[str]) -> str:
