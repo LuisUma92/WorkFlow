@@ -9,10 +9,13 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
+from types import SimpleNamespace
+
 from workflow.db.base import GlobalBase
 from workflow.db.models.knowledge import DisciplineArea, MainTopic
 from workflow.db.models.project import GeneralProject
-from itep.create import create_general
+from itep.create import create_general, _create_dirs_from_tree
+from itep.models import LectureProject
 
 
 @pytest.fixture()
@@ -188,3 +191,54 @@ def test_create_general_reuses_existing_area_main_topic(session, tmp_path):
     areas = session.query(MainTopic).filter_by(code="0110EP", parent_id=None).all()
     assert len(areas) == 1
     assert session.query(GeneralProject).count() == 2
+
+
+# ── _create_dirs_from_tree: empty-topics guard (defect B) ──────────────
+
+
+def test_create_dirs_from_tree_skips_placeholder_when_no_topics(tmp_path):
+    _create_dirs_from_tree(tmp_path, ["a", "tex/{t_idx:03}-{t_name}"], [])
+
+    assert (tmp_path / "a").is_dir()
+    leftover_braces = list(tmp_path.rglob("*{*"))
+    assert leftover_braces == []
+
+
+def test_create_dirs_from_tree_expands_placeholder_when_topics_present(tmp_path):
+    topics = [SimpleNamespace(name="Algebra"), SimpleNamespace(name="Calculus")]
+
+    _create_dirs_from_tree(tmp_path, ["a", "tex/{t_idx:03}-{t_name}"], topics)
+
+    assert (tmp_path / "a").is_dir()
+    assert (tmp_path / "tex/001-Algebra").is_dir()
+    assert (tmp_path / "tex/002-Calculus").is_dir()
+    assert list(tmp_path.rglob("*{*")) == []
+
+
+def test_create_general_with_no_topics_leaves_no_brace_paths(session, tmp_path):
+    parent = tmp_path / "parent"
+    src = tmp_path / "src"
+    parent.mkdir()
+    src.mkdir()
+
+    proj = create_general(
+        session,
+        parent_dir=parent,
+        src_dir=src,
+        title="Brace Check",
+        year_init=26,
+        area_code="0110EP",
+        force_no_maturation=True,
+    )
+
+    root = parent / proj.root_dir
+    assert list(root.rglob("*{*")) == []
+
+
+# ── LectureProject.tree: no malformed placeholders (defect C) ──────────
+
+
+def test_lecture_project_tree_placeholders_are_well_formed():
+    for entry in LectureProject.tree:
+        if "{" in entry:
+            entry.format(t_idx=1, t_name="x")

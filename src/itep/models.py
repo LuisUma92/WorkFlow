@@ -67,7 +67,7 @@ class LectureProject(ProjectModel):
         "lect/img",
         "lect/svg",
         "lect/tex",
-        "lect/tex/{t_idx_03d}-{t_name}",  # ->mainT for T in topics
+        "lect/tex/{t_idx:03d}-{t_name}",  # ->mainT for T in topics
     ]
     links = {
         "eval/config": DEF_TEX_CONFIG,

@@ -80,7 +80,9 @@ def _create_dirs_from_tree(
 ):
     """Create directory tree, expanding topic placeholders."""
     for directory in tree:
-        if "{t_idx" in directory and topics:
+        if "{t_idx" in directory:
+            if not topics:
+                continue
             for idx, topic in enumerate(topics, start=1):
                 dir_name = directory.format(t_idx=idx, t_name=topic.name)
                 ensure_dir(base_dir / dir_name, forced=True)

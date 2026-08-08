@@ -51,10 +51,10 @@ class Institution(StrEnum, metaclass=FriendlyEnumMeta):
 
 
 class GeneralDirectory(StrEnum, metaclass=FriendlyEnumMeta):
-    LEC = "00AA-Lectures"
-    IMG = "00II-ImagesFigures"
-    BIB = "00BB-Library"
-    EXE = "00EE-ExamplesExercises"
+    LEC = "0000AL-Lectures"
+    IMG = "0000II-ImagesFigures"
+    BIB = "0000BB-Library"
+    EXE = "0000EE-ExamplesExercises"
 
 
 class TaxonomyLevel(StrEnum, metaclass=FriendlyEnumMeta):
