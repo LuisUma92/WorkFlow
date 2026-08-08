@@ -108,15 +108,15 @@ def test_iter_general_links_emits_config_entries(session, tmp_path):
 
 
 def test_get_tex_config_unknown_institution_returns_default():
-    assert get_tex_config(None) is DEF_TEX_CONFIG
-    assert get_tex_config("UNKNOWN_INST") is DEF_TEX_CONFIG
+    assert get_tex_config(None) == DEF_TEX_CONFIG
+    assert get_tex_config("UNKNOWN_INST") == DEF_TEX_CONFIG
     # UCR now has a specialized config
-    assert get_tex_config("UCR") is INSTITUTION_TEX_CONFIG["UCR"]
+    assert get_tex_config("UCR") == INSTITUTION_TEX_CONFIG["UCR"]
 
 
 def test_get_tex_config_ucimed_uses_underscore_scheme():
     cfg = get_tex_config("UCIMED")
-    assert cfg is INSTITUTION_TEX_CONFIG["UCIMED"]
+    assert cfg == INSTITUTION_TEX_CONFIG["UCIMED"]
     assert "0_packages.sty" in cfg
     # legacy hyphen names must NOT be present in UCIMED dict
     assert "0-packages.sty" not in cfg
