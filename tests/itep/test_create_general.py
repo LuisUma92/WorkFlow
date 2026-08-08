@@ -6,6 +6,7 @@ from datetime import date
 
 import click
 import pytest
+from click.testing import CliRunner
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
@@ -14,7 +15,8 @@ from types import SimpleNamespace
 from workflow.db.base import GlobalBase
 from workflow.db.models.knowledge import DisciplineArea, MainTopic
 from workflow.db.models.project import GeneralProject
-from itep.create import create_general, _create_dirs_from_tree
+import itep.create as itep_create
+from itep.create import cli, create_general, _create_dirs_from_tree
 from itep.models import LectureProject
 
 
@@ -242,3 +244,116 @@ def test_lecture_project_tree_placeholders_are_well_formed():
     for entry in LectureProject.tree:
         if "{" in entry:
             entry.format(t_idx=1, t_name="x")
+
+
+# ── CLI wiring: --area-code/--title/--year-init/--project-initials ─────
+
+
+def test_cli_help_lists_general_project_flags():
+    runner = CliRunner()
+    result = runner.invoke(cli, ["--help"])
+    assert result.exit_code == 0
+    for flag in ("--area-code", "--title", "--year-init", "--project-initials"):
+        assert flag in result.output
+
+
+def test_cli_general_flags_reach_create_general(monkeypatch):
+    calls = {}
+
+    def fake_create_general(session, parent, src, **kwargs):
+        calls.update(kwargs)
+        return SimpleNamespace()
+
+    monkeypatch.setattr(itep_create, "create_general", fake_create_general)
+    monkeypatch.setattr(itep_create, "select_enum_type", lambda *a, **k: "general")
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "--area-code",
+            "X",
+            "--title",
+            "Y",
+            "--year-init",
+            "23",
+            "--project-initials",
+            "BP",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert calls["area_code"] == "X"
+    assert calls["title"] == "Y"
+    assert calls["year_init"] == 23
+    assert calls["project_initials"] == "BP"
+
+
+def test_cli_year_init_out_of_range_fails(monkeypatch):
+    monkeypatch.setattr(itep_create, "select_enum_type", lambda *a, **k: "general")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["--year-init", "2023"])
+    assert result.exit_code != 0
+
+
+def test_cli_project_initials_invalid_fails(monkeypatch):
+    monkeypatch.setattr(itep_create, "select_enum_type", lambda *a, **k: "general")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["--project-initials", "abc"])
+    assert result.exit_code != 0
+
+
+def test_cli_project_initials_lowercase_normalizes(monkeypatch):
+    calls = {}
+
+    def fake_create_general(session, parent, src, **kwargs):
+        calls.update(kwargs)
+        return SimpleNamespace()
+
+    monkeypatch.setattr(itep_create, "create_general", fake_create_general)
+    monkeypatch.setattr(itep_create, "select_enum_type", lambda *a, **k: "general")
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["--project-initials", "bp"])
+
+    assert result.exit_code == 0, result.output
+    assert calls["project_initials"] == "BP"
+
+
+def test_cli_clone_id_with_title_is_usage_error():
+    runner = CliRunner()
+    result = runner.invoke(cli, ["--clone", "1", "--title", "Y"])
+    assert result.exit_code != 0
+    assert "cannot be combined" in result.output
+
+
+def test_cli_no_flags_general_path_passes_none(monkeypatch):
+    calls = {}
+
+    def fake_create_general(session, parent, src, **kwargs):
+        calls.update(kwargs)
+        return SimpleNamespace()
+
+    monkeypatch.setattr(itep_create, "create_general", fake_create_general)
+    monkeypatch.setattr(itep_create, "select_enum_type", lambda *a, **k: "general")
+
+    runner = CliRunner()
+    result = runner.invoke(cli, [])
+
+    assert result.exit_code == 0, result.output
+    assert calls["area_code"] is None
+    assert calls["title"] is None
+    assert calls["year_init"] is None
+    assert calls["project_initials"] is None
+    assert calls["force_no_maturation"] is False
+
+
+def test_cli_lecture_choice_with_general_flags_warns_but_succeeds(monkeypatch):
+    monkeypatch.setattr(itep_create, "select_enum_type", lambda *a, **k: "lecture")
+    monkeypatch.setattr(itep_create, "create_lecture", lambda *a, **k: SimpleNamespace())
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["--title", "Y"])
+
+    assert result.exit_code == 0, result.output
+    assert "only apply to general projects" in result.output

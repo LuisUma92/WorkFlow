@@ -122,6 +122,45 @@ def validate_pp(value: str) -> str:
     return upper
 
 
+_DIRNAME_RE = re.compile(
+    r"^(?P<area_code>[0-9]{4}[A-Z]{2})-(?P<yy>[0-9]{2})(?P<pp>[A-Z]{2})-(?P<title>.+)$"
+)
+
+
+@dataclass(frozen=True)
+class ParsedProjectName:
+    """Parsed components of a ``DDTTAA-YYPP-title`` directory name (ADR ITEP-0008)."""
+
+    area_code: str
+    year_init: int
+    project_initials: str
+    title: str
+
+
+def parse_project_dirname(name: str) -> ParsedProjectName | None:
+    """Parse a ``DDTTAA-YYPP-title`` directory basename (ADR ITEP-0008).
+
+    Returns ``None`` when ``name`` does not match the format — callers must
+    never guess at a malformed name.
+    """
+    match = _DIRNAME_RE.match(name)
+    if match is None:
+        return None
+    try:
+        pp = validate_pp(match.group("pp"))
+    except ValueError:
+        return None
+    title = match.group("title")
+    if not title:
+        return None
+    return ParsedProjectName(
+        area_code=match.group("area_code"),
+        year_init=int(match.group("yy")),
+        project_initials=pp,
+        title=title,
+    )
+
+
 def slugify_title(title: str) -> str:
     """Convert a free-text title into a filesystem-safe CamelCase slug.
 

@@ -29,6 +29,7 @@ from itep.ioconfig import save_config
 from itep.utils import ensure_dir
 from itep import naming
 from workflow.db import maturation
+from workflow.project.service import get_or_create_area_main_topic
 from appfunc.iofunc import gather_input
 from appfunc.options import select_enum_type
 
@@ -191,21 +192,6 @@ def _select_discipline_area(session) -> DisciplineArea | None:
     return by_discipline[dd][idx]
 
 
-def _get_or_create_area_main_topic(session, area: DisciplineArea) -> MainTopic:
-    existing = session.query(MainTopic).filter_by(code=area.code).first()
-    if existing is not None:
-        return existing
-    mt = MainTopic(
-        code=area.code,
-        name=area.name,
-        parent_id=None,
-        discipline_area_id=area.id,
-    )
-    session.add(mt)
-    session.flush()
-    return mt
-
-
 def _prompt_initials(session, area_id: int, yy: int) -> str:
     while True:
         raw = input("Enter project_initials (2 letters A-Z): ").strip()
@@ -292,7 +278,7 @@ def create_general(
 ):
     """Create a general_project under DDTTAA-YYPP-title (ADR ITEP-0008)."""
     area_ref = _resolve_discipline_area(session, area_code)
-    area_topic = _get_or_create_area_main_topic(session, area_ref)
+    area_topic = get_or_create_area_main_topic(session, area_ref)
     if not force_no_maturation:
         _confirm_maturation(session, area_topic)
 
@@ -410,8 +396,67 @@ def clone_cycle(session, source_id: int, parent_dir: Path = None, src_dir: Path 
         "GeneralProject for an area with no queryable signals."
     ),
 )
-def cli(parent_dir, src_dir, clone_id, force_no_maturation):
+@click.option(
+    "--area-code",
+    type=str,
+    default=None,
+    help="DisciplineArea code (DDTTAA) for a general project. General projects only.",
+)
+@click.option(
+    "--title",
+    type=str,
+    default=None,
+    help="Project title for a general project. General projects only.",
+)
+@click.option(
+    "--year-init",
+    type=int,
+    default=None,
+    help="Two-digit init year (YY, 0-99) for a general project. General projects only.",
+)
+@click.option(
+    "--project-initials",
+    type=str,
+    default=None,
+    help="Two-letter project code (PP) for a general project. General projects only.",
+)
+def cli(
+    parent_dir,
+    src_dir,
+    clone_id,
+    force_no_maturation,
+    area_code,
+    title,
+    year_init,
+    project_initials,
+):
     """Create or clone an ITeP project."""
+    general_flags = {
+        "area_code": area_code,
+        "title": title,
+        "year_init": year_init,
+        "project_initials": project_initials,
+    }
+    any_general_flag = any(v is not None for v in general_flags.values())
+
+    if clone_id and any_general_flag:
+        raise click.UsageError(
+            "--clone cannot be combined with --area-code/--title/--year-init/"
+            "--project-initials (those apply only to general projects)."
+        )
+
+    if year_init is not None and not (0 <= year_init <= 99):
+        raise click.BadParameter(
+            "must be a two-digit year between 0 and 99.",
+            param_hint="'--year-init'",
+        )
+
+    if project_initials is not None:
+        try:
+            project_initials = naming.validate_pp(project_initials)
+        except ValueError as e:
+            raise click.BadParameter(str(e), param_hint="'--project-initials'")
+
     parent = Path(parent_dir).expanduser() if parent_dir else DEF_ABS_PARENT_DIR
     src = Path(src_dir).expanduser() if src_dir else DEF_ABS_SRC_DIR
 
@@ -427,9 +472,24 @@ def cli(parent_dir, src_dir, clone_id, force_no_maturation):
     choice = select_enum_type("project type", project_types)
 
     if choice == "lecture":
+        if any_general_flag:
+            click.echo(
+                "Warning: --area-code/--title/--year-init/--project-initials "
+                "only apply to general projects; ignoring.",
+                err=True,
+            )
         create_lecture(session, parent, src)
     else:
-        create_general(session, parent, src, force_no_maturation=force_no_maturation)
+        create_general(
+            session,
+            parent,
+            src,
+            title=title,
+            year_init=year_init,
+            project_initials=project_initials,
+            area_code=area_code,
+            force_no_maturation=force_no_maturation,
+        )
 
 
 if __name__ == "__main__":
