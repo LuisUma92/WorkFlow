@@ -5,8 +5,8 @@ type: bug
 source_agent: user
 opened_on: 2026-08-08
 
-status: open
-resolution: open
+status: closed
+resolution: fixed
 priority: P0
 severity: blocker
 
@@ -37,9 +37,17 @@ blocked_by: []
 
 assignee: unassigned
 target_release: unassigned
-implementation: []
-closed_on: null
-closed_by: null
+implementation:
+  - "8606444 feat(paths): add WORKFLOW_WORKSPACE_ROOT and derive subsystem defaults"
+  - "596ea25 fix(itep): correct GeneralDirectory names and topic placeholder handling"
+  - "ce7a395 test(paths): pin workspace-root derivation contract and fix order-dependent test"
+  - "e068285 feat(itep): expose general-project fields as inittex flags"
+  - "6751bd7 feat(project): add `workflow project adopt` and `workflow project list`"
+  - "c9cc174 refactor(vault): make .vault_pointer a timestamp-only marker"
+  - "2045f7d feat(validate): add `workflow validate config` drift detector"
+  - "Phase 5 (this change, uncommitted at time of writing): docs — ITEP-0008 ADR amended, docs/ADR/INDEX.md and CLAUDE.md updated, this request closed"
+closed_on: 2026-08-08
+closed_by: Luis Fernando Umaña Castro
 
 acceptance_criteria:
   - "ITEP-0008 no longer contains a diagram or prose implying `DDTTAA-YYPP-title/` is nested inside a physical `DDTTAA-title/` directory. The 'Two-layer directory structure' section is rewritten to state the layout is flat on disk: `DDTTAA-YYPP-title` project directories are siblings of an (optional, DB-absent) `DDTTAA-title` area directory under the workspace root, and the area/project hierarchy exists only as `MainTopic.parent_id` in the DB."
@@ -225,7 +233,86 @@ amended, not ITEP-0000. Going forward:
 
 ## Acceptance criteria
 
-(See frontmatter `acceptance_criteria`.)
+(See frontmatter `acceptance_criteria`.) Honest per-criterion status as of
+closure (2026-08-08), verified directly against code and the amended ADR
+text, not assumed from the plan:
+
+1. **ADR no longer implies physical nesting; flat-layout prose added.** MET.
+   "Two-layer directory structure" retitled "Area/project naming and DB
+   hierarchy"; nested diagram replaced with a flat sibling diagram; new prose
+   states the hierarchy lives only in `MainTopic.parent_id`.
+2. **"discipline root" defined or removed everywhere (lines 95, 228, 272).**
+   MET, via removal. `grep -n "discipline root"
+   docs/ADR/ITEP-0008-general-project-nomenclature.md` returns zero matches.
+   The two occurrences inside the deleted SHOULD/MAY rules went with them;
+   the archival-section occurrence was reworded to "workspace root
+   (`${ABS_PARENT_DIR}`)".
+3. **SHOULD/MAY area-directory rules reconciled with the flat-layout
+   correction.** MET, via the "removed as vestigial" branch (not the
+   rewrite-to-marker-directory branch) — both rules only made sense under
+   the incorrect nested model and were deleted outright rather than
+   reinterpreted.
+4. **ITEP-0000 and ITEP-0008 agree on `ABS_PARENT_DIR`; ITEP-0008
+   cross-references the `itep.defaults` fix.** MET. The new 2026-08-08
+   amendment section states `DEF_ABS_PARENT_DIR` derives from
+   `WORKFLOW_WORKSPACE_ROOT` and cross-references `src/workflow/paths.py`
+   and `src/itep/defaults.py`.
+5. **`_DEFAULT_PHYSICS_DIR` no longer points at a nonexistent path.** MET
+   (Phase 1, commit `8606444`): `WORKFLOW_WORKSPACE_ROOT` (default `~/01-U`)
+   is now the source `WORKFLOW_PHYSICS_DIR` derives from when unset —
+   verified directly in `src/workflow/paths.py`
+   (`ENV_WORKSPACE_ROOT = "WORKFLOW_WORKSPACE_ROOT"`).
+6. **`GeneralDirectory` enum values corrected.** MET (commit `596ea25`) —
+   verified directly: `src/itep/structure.py` `GeneralDirectory` now reads
+   `LEC = "0000AL-Lectures"`, `IMG = "0000II-ImagesFigures"`, `BIB =
+   "0000BB-Library"`, `EXE = "0000EE-ExamplesExercises"`, matching the real
+   `~/01-U` names.
+7. **Regression test for `GeneralDirectory` values.** MET — `tests/itep/
+   test_general_directory.py` exists (commit `ce7a395`).
+8. **`inittex`/`create-general` CLI exposes `--area-code --title --year-init
+   --project-initials`.** MET (commit `e068285`) — documented in CLAUDE.md
+   Key Patterns.
+9. **`_create_dirs_from_tree` skips/errors on unexpanded `{t_idx}`
+   placeholders when `topics` is empty, instead of `mkdir`-ing the literal
+   string.** MET (commit `596ea25`) — verified directly:
+   `src/itep/create.py`'s guard is now `if "{t_idx" in directory: if not
+   topics: continue`, i.e. it skips rather than falls through to the
+   literal-mkdir `else` branch.
+10. **`workflow project adopt` command exists, registers without recreating
+    the tree.** MET (commit `6751bd7`) — `src/workflow/project/cli.py`
+    defines `adopt` with `--dry-run`/`--json`.
+11. **`workflow project list` exists.** MET (commit `6751bd7`) — same file,
+    `list` command.
+12. **`workflow validate config` drift detector exists.** MET (commit
+    `2045f7d`) — `src/workflow/validation/cli.py` defines `config` with the
+    finding kinds documented in CLAUDE.md.
+13. **`.vault_pointer` regenerated or removed as a drift-prone mechanism.**
+    MET, via the "mechanism narrowed" reading rather than full removal
+    (commit `c9cc174`): `.vault_pointer` is now timestamp-only
+    (`unified_at:`), carrying no path — verified directly:
+    `src/workflow/vault/unify.py` writes `f"unified_at: {timestamp}\n"` with
+    no `vault_root:` field, so there is no path left in the file to drift.
+14. **Single `WORKFLOW_WORKSPACE_ROOT` env var, with `WORKFLOW_DATA_DIR`,
+    `WORKFLOW_VAULT_ROOT`, `WORKFLOW_PHYSICS_DIR` deriving from it when
+    unset.** PARTIALLY MET, by deliberate design deviation, documented
+    both in code and here: `WORKFLOW_WORKSPACE_ROOT` was added
+    (`src/workflow/paths.py`) and `WORKFLOW_VAULT_ROOT`/`WORKFLOW_PHYSICS_DIR`
+    both derive from it when unset (verified in `src/workflow/paths.py` and
+    `src/workflow/vault/paths.py`). **`WORKFLOW_DATA_DIR` intentionally does
+    NOT derive from it** — `src/workflow/paths.py::data_dir()` carries an
+    explicit docstring: "Deliberately NOT derived from `workspace_root()` —
+    ADR-0008 pins the global DB to the XDG data dir, and deriving it would
+    relocate a live database whenever the workspace moves." This is a
+    conscious scope narrowing of the criterion as originally written, not an
+    oversight: ADR-0008 (XDG directory layout) already governs
+    `WORKFLOW_DATA_DIR` and takes precedence for that one variable, per its
+    own "amended 2026-06-05" status. Two of three subsystem defaults derive
+    from the new root; the third stays independently XDG-anchored on
+    purpose.
+
+**Summary: 13 of 14 acceptance criteria fully met; 1 (criterion 14, the
+`WORKFLOW_DATA_DIR` derivation) met for 2 of its 3 named variables by
+deliberate, documented design choice rather than oversight.**
 
 ## Verification
 
@@ -377,3 +464,38 @@ below.
   with their own default, no unifying `WORKFLOW_WORKSPACE_ROOT`. Added
   matching `acceptance_criteria`/`verification` entries and two new
   `components`. New section: "Findings from the 2026-08-08 real migration".
+- 2026-08-08 (Phases 1-4, implementation) — `8606444` added
+  `WORKFLOW_WORKSPACE_ROOT` (default `~/01-U`) to `src/workflow/paths.py`
+  and rewired `WORKFLOW_VAULT_ROOT`/`WORKFLOW_PHYSICS_DIR` to derive from it
+  when unset, deliberately excluding `WORKFLOW_DATA_DIR` (stays XDG-anchored
+  per ADR-0008). `596ea25` fixed `GeneralDirectory` StrEnum values to the
+  real 4-digit-prefix names and fixed `_create_dirs_from_tree` to skip
+  unexpanded `{t_idx}` placeholder tree entries when `topics=[]` instead of
+  `mkdir`-ing them literally. `ce7a395` added a regression test pinning the
+  workspace-root derivation contract and fixed an order-dependent test.
+  `e068285` exposed `--area-code --title --year-init --project-initials` on
+  `inittex`. `6751bd7` added `workflow project adopt`/`workflow project
+  list`. `c9cc174` made `.vault_pointer` a timestamp-only marker (no path,
+  so it cannot drift out of sync with `WORKFLOW_VAULT_ROOT`). `2045f7d`
+  added `workflow validate config`, a read-only config↔DB↔filesystem drift
+  detector.
+- 2026-08-08 (Phase 5, documentation, this closure) — ITEP-0008 amended:
+  "Two-layer directory structure" retitled and rewritten as flat
+  area/project naming with the hierarchy expressed only via
+  `MainTopic.parent_id`; nested diagram and worked example replaced with a
+  flat one using the real `0060NP-23BP-BerylliumProcess`,
+  `0060NP-25SC-SciFiCharacterization`, `0060NP-26LY-LightYield` project
+  names; the SHOULD/MAY area-directory rules deleted as vestigial; the
+  undefined area-root term removed throughout (verified: zero
+  `discipline root` matches, zero `DDTTAA-title/` matches); `status:`
+  changed `Implemented` → `Amended`; a new "Amendment 2026-08-08" section
+  and Change Log row added, following the same convention as the existing
+  2026-05-27 amendment. `docs/ADR/INDEX.md` and `CLAUDE.md`'s ADR Index
+  table updated to `Amended (2026-08-08)`. `CLAUDE.md` Key Patterns
+  documented the new `workflow project list`/`adopt`, `workflow validate
+  config`, `inittex` flags, `WORKFLOW_WORKSPACE_ROOT`, and the
+  timestamp-only `.vault_pointer`. This request closed; 13/14 acceptance
+  criteria fully met, 1 partially met by deliberate design deviation (see
+  "Acceptance criteria" section below for the honest per-criterion review).
+  Verification commands (greps + full pytest suite) run and confirmed
+  passing before closure.

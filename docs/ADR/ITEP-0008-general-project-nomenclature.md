@@ -5,7 +5,7 @@ parent: ADRs
 title: "General project nomenclature: discipline, area, year and project initials"
 aliases:
   - ADR-ITEP-0008
-status: Implemented
+status: Amended (2026-08-08, physical-nesting correction; naming/DB layer remains Implemented)
 date: 2026-04-21
 implemented_at: 2026-04-28
 authors:
@@ -77,23 +77,25 @@ A systematic naming convention is required that:
 
 ## Decision
 
-### Two-layer directory structure
+### Area/project naming and DB hierarchy
 
-Each discipline area is represented by **two directory layers**:
+The on-disk layout is **flat**. Every `DDTTAA-YYPP-title` project directory is a
+direct child of the workspace root (`${ABS_PARENT_DIR}`, per ITEP-0000) and a
+sibling of every other project directory, including other projects in the same
+area. No physical directory is ever created to represent the area on its own —
+there is no `DDTTAA`-named parent directory to nest project directories inside.
 
-```
-DDTTAA-title/                        ← Area directory  (no GeneralProject in DB)
-└── DDTTAA-YYPP-title/               ← Project directory (GeneralProject in DB)
-```
+Area and project are both encoded lexicographically in the project directory's
+own name (`DDTTAA-YYPP-title`): `DDTTAA` alone already sorts all projects in an
+area together, and `YYPP` sub-sorts them by creation year and initials. This
+achieves the ADR's original ordering goal (discipline → topic → area →
+chronology) in a plain directory listing without any physical nesting.
 
-| Layer   | Has `GeneralProject` in DB | Has `slipbox.db` | Is a Git repo |
-| ------- | -------------------------- | ---------------- | ------------- |
-| Area    | No                         | No               | No            |
-| Project | Yes                        | Yes              | Yes           |
-
-When only one project exists under an area, the area directory MAY be omitted and
-the project directory placed directly in the discipline root. The project directory
-name in that case still carries the full `DDTTAA-YYPP-title` code.
+The area/project **hierarchy** — as opposed to the naming — exists exclusively
+in `workflow.db`, via `MainTopic.parent_id`: an area-level `MainTopic` row
+(`parent_id = NULL`) is the parent of each project-level `MainTopic` row
+(`parent_id` = the area row's id). See "`MainTopic` hierarchy in the database"
+below.
 
 ### Full code format
 
@@ -108,14 +110,18 @@ DDTTAA-YYPP-title
 **Examples:**
 
 ```
-0060NP/                                 ← Nuclear Physics area directory
-├── 0060NP-25SF-ScintillatingFibers/    ← Master's thesis (created 2025)
-├── 0060NP-26BE-BerylliumErosion/       ← 7Be meta-analysis (created 2026)
-└── 0060NP-26SC-ScintillatorCharact/    ← Scintillator characterization (created 2026)
-
-0010MC/                                 ← Classical Mechanics area directory
-└── 0010MC-26HM-HamiltonMechanics/      ← Single project, area dir may be omitted
+${ABS_PARENT_DIR}/                          ← workspace root, e.g. ~/01-U
+├── 0060NP-23BP-BerylliumProcess/           ← Nuclear Physics project (created 2023)
+├── 0060NP-25SC-SciFiCharacterization/      ← Nuclear Physics project (created 2025)
+├── 0060NP-26LY-LightYield/                 ← Nuclear Physics project (created 2026)
+└── 0010MC-26HM-HamiltonMechanics/          ← Classical Mechanics project, unrelated area
 ```
+
+All four directories above are siblings on disk, regardless of area. The three
+`0060NP-*` projects share nothing on the filesystem beyond their common
+`DDTTAA` name prefix; their shared-area relationship is recorded only in
+`workflow.db` (three project-level `MainTopic` rows all pointing at the same
+`0060NP` area-level `MainTopic` row via `parent_id`).
 
 ### `YY` — creation year rule
 
@@ -225,7 +231,7 @@ Allowed values for `status`: `active`, `archived`, `suspended`, `completed`.
 The project directory name and its `DDTTAA-YYPP` code are **immutable** regardless
 of status. A future `workflow project archive <code>` command will update `status`
 and `archived_at` in the DB, move the directory to an `_archive/` subfolder within
-the discipline root, and re-run `relink` for the new path.
+the workspace root (`${ABS_PARENT_DIR}`), and re-run `relink` for the new path.
 
 ---
 
@@ -257,9 +263,6 @@ the discipline root, and re-run `relink` for the new path.
 
 ### SHOULD
 
-- The area directory `DDTTAA` **SHOULD** exist as a physical directory even when
-  only one sub-project is present, to make the two-layer structure explicit from
-  the start.
 - `PP` collision resolution **SHOULD** follow the priority table in order and
   **SHOULD NOT** skip directly to manual assignment without exhausting rules 1–3.
 - Discipline CSV files (`data/DD-Codes.csv`) **SHOULD** be updated before
@@ -267,9 +270,6 @@ the discipline root, and re-run `relink` for the new path.
 
 ### MAY
 
-- When only one project exists under an area and no growth is anticipated, the
-  area directory **MAY** be omitted and the project directory placed directly in
-  the discipline root.
 - A `workflow project archive` CLI command **MAY** automate directory relocation
   and DB status update as a future enhancement.
 
@@ -480,6 +480,67 @@ Reference: ITEP-0002 amendment 2026-05-27 and migration `0011`.
 
 ---
 
+## Amendment 2026-08-08 — Physical-nesting correction: layout is flat, not two-layer
+
+The original "Two-layer directory structure" section (and its worked example,
+SHOULD rule, and MAY rule) described `DDTTAA-YYPP-title` project directories as
+physically nested one level inside a `DDTTAA-title` area directory. **This was
+never correct and was never implemented.** ITEP-0000 (the foundational
+structure ADR, which this ADR does not and cannot supersede) always specified a
+flat layout — `${ABS_PARENT_DIR}/${ROOT}`, one join, no area subdirectory — and
+the shipped code agrees: `GeneralProject.root_dir`
+(`src/workflow/db/models/project.py`) bakes `DDTTAA` into the leaf directory's
+own name and is joined directly under the parent directory in
+`src/itep/create.py`, with no intermediate area-directory segment anywhere.
+Verified directly: `~/01-U` has zero directories in the nested
+two-level form (area directory containing `DDTTAA-YYPP-title` project
+directories); every project directory that exists is a flat sibling of every
+other one.
+
+Only the **naming and DB-hierarchy** half of the original decision was ever
+implemented and remains implemented and correct: the `DDTTAA-YYPP-title` code
+format, the `MUST` rules governing it, and the `MainTopic.parent_id` self-FK
+representing the area/project relationship in `workflow.db`. What is corrected
+by this amendment is exclusively the claim that this hierarchy is *also*
+expressed as physical directory nesting on disk.
+
+Changes made by this amendment:
+
+- "Two-layer directory structure" retitled to "Area/project naming and DB
+  hierarchy"; the nested-tree diagram and the `| Layer | ... |` table (there is
+  no physical area layer to describe) are replaced with a flat sibling diagram
+  and prose stating the hierarchy lives only in `MainTopic.parent_id`.
+- The worked example under "Full code format" now shows the real
+  `0060NP-23BP-BerylliumProcess`, `0060NP-25SC-SciFiCharacterization`,
+  `0060NP-26LY-LightYield` projects as flat siblings under `${ABS_PARENT_DIR}`.
+- The SHOULD rule ("area directory... SHOULD exist as a physical directory")
+  and the MAY rule ("area directory... MAY be omitted") are deleted outright —
+  both only made sense under the incorrect nested model; there is nothing to
+  optionally omit when the area directory never physically exists in the
+  first place.
+- The previously undefined term for the physical parent of a project directory
+  (used in the deleted SHOULD/MAY rules and in the Project archival section)
+  is removed everywhere it referred to an area-level directory, and the
+  remaining occurrence (Project archival section) is reworded to "workspace
+  root (`${ABS_PARENT_DIR}`)", consistent with ITEP-0000's terminology.
+- `status:` changes from `Implemented` to `Amended`, reflecting that this ADR
+  is now correct in full only as of this amendment.
+- `itep.defaults.DEF_ABS_PARENT_DIR` (or its successor) now derives from
+  `WORKFLOW_WORKSPACE_ROOT` (default `~/01-U`) rather than a hardcoded,
+  nonexistent `~/Documents/01-U/00-Fisica` path — see
+  `src/workflow/paths.py` (`WORKFLOW_WORKSPACE_ROOT`, added this cycle) and
+  `src/itep/defaults.py`. `WORKFLOW_PHYSICS_DIR` remains individually
+  overridable and takes precedence when set.
+
+This amendment does not change any `MUST` rule under Architectural Rules — the
+`DDTTAA-YYPP-title` naming format, `YY`/`PP` semantics, and `MainTopic.parent_id`
+requirements were already correct and are unchanged.
+
+Reference: `tasks/requests/2026-08-08-itep-0008-two-layer-directory-contradiction.md`
+(request that identified and specified this correction).
+
+---
+
 ## Change Log
 
 | Date       | Change                                                                     |
@@ -487,6 +548,7 @@ Reference: ITEP-0002 amendment 2026-05-27 and migration `0011`.
 | 2026-04-21 | Initial ADR — design phase, pre-implementation                             |
 | 2026-04-28 | Implemented across three phases (commits `6964d87`, `f5cf015`, `56bbacd`). |
 | 2026-05-27 | DB-level clarification: `Topic` re-rooted at `DisciplineArea` (migration 0011, Phase 4B). Filesystem two-layer rule unchanged. |
+| 2026-08-08 | **Amended**: the "two-layer" physical-nesting claim was never correct/implemented; layout is flat per ITEP-0000. Naming/DB hierarchy (`DDTTAA-YYPP`, `MainTopic.parent_id`) remains implemented. SHOULD/MAY area-directory rules deleted; the undefined area-root term removed. `status` → `Amended`. |
 
 ## Implementation Notes (2026-04-28)
 
