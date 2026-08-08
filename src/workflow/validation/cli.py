@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -12,6 +13,11 @@ from workflow.latex.units import (
     find_undeclared_units,
     format_unit_warnings,
     load_declared_units,
+)
+from workflow.validation.config_check import (
+    check_config,
+    default_config_paths,
+    resolve_config_paths,
 )
 from workflow.validation.parsers import parse_md_frontmatter, parse_tex_metadata
 from workflow.validation.schemas import (
@@ -213,4 +219,56 @@ def exercises(path: str, recursive: bool) -> None:
     )
 
     if invalid:
+        sys.exit(1)
+
+
+@validate.command()
+@click.pass_context
+@click.argument("paths", nargs=-1, type=click.Path())
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Emit findings as a pure JSON list to stdout.",
+)
+def config(ctx: click.Context, paths: tuple[str, ...], as_json: bool) -> None:
+    """Check project config.yaml files for drift (ITEP-0008 finding 5).
+
+    READ-ONLY: this command NEVER writes to config.yaml, the filesystem, or
+    workflow.db. It only reports findings for a human (or a future repair
+    command) to act on.
+
+    PATH accepts a config.yaml file directly, or a project directory
+    containing one; multiple PATHs may be given. With no PATH, scans one
+    level below `workflow.paths.workspace_root()` for `*/config.yaml`.
+
+    Findings kinds: stale_path, path_mismatch, legacy_code_scheme,
+    unregistered, db_mismatch, malformed.
+    """
+    config_paths = resolve_config_paths(paths) if paths else default_config_paths()
+
+    engine = get_engine_from_ctx(ctx)
+    all_findings = []
+    with Session(engine) as session:
+        for cfg_path in config_paths:
+            all_findings.extend(check_config(cfg_path, session))
+
+    if as_json:
+        click.echo(json.dumps([f.to_dict() for f in all_findings]))
+    else:
+        if not all_findings:
+            click.echo("No drift findings.")
+        else:
+            for finding in all_findings:
+                click.echo(
+                    f"{finding.path}: [{finding.severity.upper()}] "
+                    f"{finding.kind} - {finding.detail}"
+                )
+        click.echo(
+            f"\nSummary: {len(config_paths)} config(s) checked, "
+            f"{len(all_findings)} finding(s)."
+        )
+
+    if all_findings:
         sys.exit(1)
