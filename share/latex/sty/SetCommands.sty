@@ -9,6 +9,13 @@
   \newcommand{\IMGfolder}{\FisicaDir/0000II-ImagesFigures}
   \newcommand{\EEfolder}{\FisicaDir/0000EE-ExamplesExercises}
 
+%==< Etiquetas de interfaz bilingües (LabQuest, Graphical Analysis) >==========
+  % El parque de equipos está mezclado: unos configurados en español, otros en
+  % inglés de fábrica. Toda referencia a un rótulo de la interfaz se escribe con
+  % ambos idiomas para que el estudiantado no se pierda por el idioma del menú.
+  % #1 = rótulo en inglés (de fábrica)   #2 = rótulo en español
+  \newcommand{\labq}[2]{\texttt{`#1(#2)'}}
+
 %==< Definición de booleanos >=================================================
   \newboolean{test}
   \setboolean{test}{false}
