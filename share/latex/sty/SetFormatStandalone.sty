@@ -1,0 +1,111 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==< SetFormatStandalone.sty >==================================================
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Propósito: preámbulo compartido para compilar figuras TikZ de forma
+% INDEPENDIENTE (ADR-0006, share/../docs/ADR/0006-tikz-asset-pipeline.md,
+% estado Accepted: los diagramas son assets standalone, nunca fragmentos que
+% dependen del documento que los incluye).
+%
+% Re-exporta lo mínimo que las figuras de 0000II-ImagesFigures/ necesitan:
+% notación semántica (\vc, \fem, \pr, \vv, \av, \uvi/\uvj/\uvk, ...) de
+% SetSymbols.sty, unidades (\SI, \si, \num + unidades custom) de SetUnits.sty,
+% estilos TikZ/pgfplots (Vector, PhysAxis, ...) de VectorPGF.sty, y las
+% librerías tikz que usan los circuitos (circuits.ee.IEC, backgrounds, fit).
+% NO carga SetLoyaut/SetHeaders/SetProfiles (maquetación de página multi-hoja,
+% no aplica a `standalone`) ni babel (bajo babel-spanish, `>` `<` `'` son
+% shorthands activos que rompen TikZ — si tu figura necesita texto en
+% español con acentos, usa fontspec/inputenc directamente en la figura, NO
+% este paquete).
+%
+% Contrato de opción de paleta (fijo, no lo cambies sin actualizar el ADR):
+%   \usepackage[palette=UCR]{SetFormatStandalone}      % default si se omite
+%   \usepackage[palette=UCIMED]{SetFormatStandalone}
+%   \usepackage[palette=Ufide]{SetFormatStandalone}
+%   \usepackage[palette=Nord]{SetFormatStandalone}
+%
+% Ejemplo de uso mínimo:
+%   \documentclass[border=3mm]{standalone}
+%   \usepackage[palette=UCIMED]{SetFormatStandalone}
+%   \begin{document}
+%   \begin{tikzpicture}
+%     \draw[Vector,Fza] (0,0) -- (2,1) node[right] {\(\vc{F}\)};
+%   \end{tikzpicture}
+%   \end{document}
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{SetFormatStandalone}[2026/08/12 v1.0 Standalone preamble for TikZ figures]
+
+%==< Opción de paleta (contrato fijo) >=========================================
+\RequirePackage{kvoptions}
+\SetupKeyvalOptions{family=SFS, prefix=SFS@}
+\DeclareStringOption[UCR]{palette}
+\ProcessKeyvalOptions{SFS}
+
+%==< Matemática y unidades >=====================================================
+\RequirePackage{amsmath}
+\RequirePackage{bm}
+\RequirePackage[table]{xcolor}
+\RequirePackage{siunitx}
+\RequirePackage{physics-patch}
+
+%==< \symbf fallback >============================================================
+% \fem (SetSymbols.sty) usa \symbf{\mathcal{E}}. \symbf lo define unicode-math,
+% que este paquete NO carga (implicaría fontspec/luaotfload/STIX, fuera de
+% alcance de una figura standalone). Sin este fallback, cualquier figura con
+% \fem rompe con "Undefined control sequence" bajo un motor que no cargó
+% unicode-math por su cuenta.
+\providecommand{\symbf}[1]{\boldsymbol{#1}}
+
+%==< Notación semántica del workspace (\vc, \fem, \pr, \vv, \av, ...) >=========
+\RequirePackage{SetSymbols}
+
+%==< Unidades custom del workspace (\SI, \si, \num + \DeclareSIUnit ...) >======
+\RequirePackage{SetUnits}
+
+%==< TikZ + librerías usadas por las figuras de 0000II-ImagesFigures/ >=========
+\RequirePackage{tikz}
+\usetikzlibrary{patterns}
+\usetikzlibrary{angles}
+\usetikzlibrary{calc}
+\usetikzlibrary{arrows}
+\usetikzlibrary{arrows.meta}
+\usetikzlibrary{shapes.arrows}
+\usetikzlibrary{shapes.misc}
+\usetikzlibrary{decorations}
+\usetikzlibrary{decorations.markings}
+\usetikzlibrary{intersections}
+\usetikzlibrary{math}
+\usetikzlibrary{positioning}
+\usetikzlibrary{circuits.ee.IEC}
+\usetikzlibrary{backgrounds}
+\usetikzlibrary{fit}
+
+%==< pgfplots ANTES de VectorPGF — su estilo PhysAxis está guardado con >=======
+%==< \@ifpackageloaded{pgfplots}{...}{}, así que el orden importa. >============
+\RequirePackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\RequirePackage{VectorPGF}
+
+%==< Paleta de color semántica >=================================================
+% ColorsSemantic.sty (share/latex/sty/ColorsSemantic.sty) es la capa que unifica
+% los 4 esquemas de color (UCR/UCIMED/Ufide/Nord) bajo los MISMOS nombres
+% semánticos que usan las figuras (Pos, Vel, Ace, Fza, MomL, MomA, Ene, EneK,
+% EneU, Uceleste*, ...). La construye otro agente en paralelo; si todavía no
+% existe cuando esto se compila, cae a colors-UCR.sty (paleta institucional,
+% SIN esos nombres semánticos — una figura que use \vc{\textcolor{Fza}{F}}
+% fallará con "Undefined color" hasta que ColorsSemantic.sty exista).
+\IfFileExists{ColorsSemantic.sty}{%
+  \PassOptionsToPackage{palette=\SFS@palette}{ColorsSemantic}%
+  \RequirePackage{ColorsSemantic}%
+}{%
+  \PackageWarningNoLine{SetFormatStandalone}{%
+    ColorsSemantic.sty no existe todavía (WIP en paralelo). Usando
+    colors-UCR.sty como respaldo: los nombres semánticos de color (Pos, Vel,
+    Fza, ...) de SetSymbols.sty NO estarán definidos con esta paleta%
+  }%
+  \RequirePackage{colors-UCR}%
+}
+
+\endinput

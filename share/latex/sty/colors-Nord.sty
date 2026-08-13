@@ -1,0 +1,87 @@
+% =============================================================
+%  colors-Nord.sty
+%  Raw Nord palette (+ user-added tones), converted programmatically
+%  from ~/.config/inkscape/palettes/nord_modified.gpl (GIMP Palette
+%  format: "R G B name" per line) via
+%  scratchpad/colorlayer/convert_nord.py (RGB -> HTML verified by
+%  independent re-encode, 0 mismatches, 27/27 entries converted).
+%
+%  This file defines RAW palette tones only -- no semantic names.
+%  For semantic names (primary/accent/Fza/Vel/...) that resolve
+%  correctly under any of {UCR,UCIMED,Ufide,Nord}, see
+%  ColorsSemantic.sty instead.
+%
+%  Mapping (GIMP Palette name -> LaTeX identifier):
+%    nord0             -> Nord0            (polar night, darkest bg)
+%    nord1             -> Nord1
+%    nord2             -> Nord2
+%    nord3             -> Nord3            (polar night, lightest)
+%    slate gray dark   -> SlateGrayDark    (user addition, between nord3/nord4)
+%    slate gray light  -> SlateGrayLight   (user addition)
+%    nord4              -> Nord4            (snow storm, darkest)
+%    nord5              -> Nord5
+%    nord6              -> Nord6            (snow storm, lightest bg)
+%    nord7              -> Nord7            (frost, teal)
+%    nord8              -> Nord8            (frost, ice blue)
+%    nord9              -> Nord9            (frost, sky blue)
+%    nord10             -> Nord10           (frost, deep blue)
+%    nord11             -> Nord11           (aurora, red)
+%    dark red           -> DarkRed          (user addition, darker than nord11)
+%    nord12             -> Nord12           (aurora, orange)
+%    nord13             -> Nord13           (aurora, yellow)
+%    dark yellow        -> DarkYellow       (user addition)
+%    nord14             -> Nord14           (aurora, green)
+%    aurora green       -> AuroraGreen      (user addition, darker than nord14)
+%    nord15             -> Nord15           (aurora, purple)
+%    aurora purple       -> AuroraPurple     (user addition)
+%    pink                -> Pink             (user addition)
+%    dark brown          -> DarkBrown        (user addition)
+%    light brown         -> LightBrown       (user addition)
+%    dark brown 2        -> DarkBrown2       (user addition)
+%    light brown 2       -> LightBrown2      (user addition)
+%
+%  27/27 entries converted. Standard nord0-nord15 hex values match
+%  the canonical Nord spec (https://www.nordtheme.com/docs/colors-and-palettes).
+% =============================================================
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{colors-Nord}[2026/08/12 Nord palette raw color definitions]
+\RequirePackage{xcolor}
+
+% --- Polar Night (dark neutrals) ---
+\definecolor{Nord0}{HTML}{2E3440}
+\definecolor{Nord1}{HTML}{3B4252}
+\definecolor{Nord2}{HTML}{434C5E}
+\definecolor{Nord3}{HTML}{4C566A}
+\definecolor{SlateGrayDark}{HTML}{7B88A1}
+\definecolor{SlateGrayLight}{HTML}{A6AEBF}
+
+% --- Snow Storm (light neutrals) ---
+\definecolor{Nord4}{HTML}{D8DEE9}
+\definecolor{Nord5}{HTML}{E5E9F0}
+\definecolor{Nord6}{HTML}{ECEFF4}
+
+% --- Frost (blues/teals) ---
+\definecolor{Nord7}{HTML}{8FBCBB}
+\definecolor{Nord8}{HTML}{88C0D0}
+\definecolor{Nord9}{HTML}{81A1C1}
+\definecolor{Nord10}{HTML}{5E81AC}
+
+% --- Aurora (accents) ---
+\definecolor{Nord11}{HTML}{BF616A}
+\definecolor{DarkRed}{HTML}{B54A55}
+\definecolor{Nord12}{HTML}{D08770}
+\definecolor{Nord13}{HTML}{EBCB8B}
+\definecolor{DarkYellow}{HTML}{EAC57B}
+\definecolor{Nord14}{HTML}{A3BE8C}
+\definecolor{AuroraGreen}{HTML}{97B67C}
+\definecolor{Nord15}{HTML}{B48EAD}
+\definecolor{AuroraPurple}{HTML}{AD85A5}
+\definecolor{Pink}{HTML}{DBC7C5}
+
+% --- Browns (user addition, warm neutrals) ---
+\definecolor{DarkBrown}{HTML}{6B5756}
+\definecolor{LightBrown}{HTML}{8C7E75}
+\definecolor{DarkBrown2}{HTML}{A88279}
+\definecolor{LightBrown2}{HTML}{C4B0A7}
+
+\endinput

@@ -1,0 +1,237 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==< ColorsSemantic.sty >========================================================
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Propósito: vocabulario de color SEMÁNTICO (no institucional) que resuelve al
+% tono correcto según la paleta activa. colors-UCIMED.sty ya es semántico
+% (primary/accentPrimary/secondary/neutral + magnitudes físicas Pos/Vel/Ace/
+% Fza/Mas/Ene/EneK/EneU/MomL/MomA); colors-UCR.sty y colors-Ufide.sty NO lo
+% son (nombres institucionales: Uazul, Uamarillo, ...). Este paquete permite
+% que una figura escrita con nombres semánticos (p.ej. \vc{\textcolor{Fza}{F}})
+% compile sin cambios bajo cualquiera de las 4 paletas del workspace.
+%
+% UCIMED es el CONTRATO CANÓNICO: es la paleta más completa y ya semántica,
+% así que sus 22 nombres (12 identidad + 10 magnitudes) son la lista mínima
+% que las otras 3 paletas deben cubrir aquí.
+%
+% Contrato de opción de paleta (fijo — coordina con SetFormatStandalone.sty):
+%   \usepackage[palette=UCR]{ColorsSemantic}      % default si se omite
+%   \usepackage[palette=UCIMED]{ColorsSemantic}
+%   \usepackage[palette=Ufide]{ColorsSemantic}
+%   \usepackage[palette=Nord]{ColorsSemantic}
+%
+% Vocabulario expuesto (22 nombres UCIMED + compatibilidad + cargas):
+%   Identidad:  primary, primaryLight, primaryDark,
+%               accentPrimary, accentPrimaryLight, accentPrimaryDark,
+%               secondary, secondaryLight, secondaryDark,
+%               neutral, neutralLight, neutralDark
+%   Magnitudes: Pos, Vel, Ace, Fza, Mas, Ene, EneK, EneU, MomL, MomA
+%   Cargas:     ChargePos, ChargeNeg   (regla global: + = red!85, - = blue!85,
+%               fija en las 4 paletas salvo excepción documentada)
+%   Alias de compatibilidad (figuras existentes usan estos 2 nombres
+%   directamente, no vía el vocabulario semántico de arriba):
+%               Uceleste2, celeste2UCR
+%
+% Dónde cada paleta NO tiene tono nativo para un nombre semántico, se deriva
+% del tono más cercano con un modificador xcolor (`!` mezcla con white/black)
+% y se documenta en el comentario de esa línea con `% [DERIVADO]` o, si no
+% hay ningún tono institucional razonablemente cercano, `% [SIN EQUIVALENTE]`
+% con el fallback explícito usado (nunca un color inventado sin origen).
+%
+% Un ContentSemantic no reescribe colors-UCR.sty / colors-UCIMED.sty /
+% colors-Ufide.sty — sólo los REQUIERE (uno solo, según la opción `palette`,
+% para evitar colisiones de nombre: p.ej. `Uazul` existe en UCR Y en Ufide
+% con hex distinto) y añade \colorlet encima.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{ColorsSemantic}[2026/08/12 v1.0 Semantic color vocabulary over UCR/UCIMED/Ufide/Nord]
+
+%==< Opción de paleta (contrato fijo, mismo mecanismo que SetFormatStandalone) >=
+\RequirePackage{kvoptions}
+\SetupKeyvalOptions{family=ColSem, prefix=ColSem@}
+\DeclareStringOption[UCR]{palette}
+\ProcessKeyvalOptions{ColSem}
+
+\RequirePackage[table]{xcolor}
+\RequirePackage{xstring}
+
+%==< Cargas: SOLO la paleta seleccionada (nombres institucionales colisionan >==
+%==< entre paletas — p.ej. Uazul es 005da4 en UCR y 020e9f en Ufide) >==========
+\IfStrEq{\ColSem@palette}{UCIMED}{%
+  \RequirePackage{colors-UCIMED}%
+}{%
+\IfStrEq{\ColSem@palette}{Ufide}{%
+  \RequirePackage{colors-Ufide}%
+}{%
+\IfStrEq{\ColSem@palette}{Nord}{%
+  \RequirePackage{colors-Nord}%
+}{%
+\IfStrEq{\ColSem@palette}{UCR}{%
+  \RequirePackage{colors-UCR}%
+}{%
+  \PackageError{ColorsSemantic}{Paleta desconocida '\ColSem@palette'.
+    Usa UCR, UCIMED, Ufide o Nord}{Revisa \string\usepackage[palette=...]{ColorsSemantic}}%
+  \RequirePackage{colors-UCR}% fallback para no abortar la compilación
+}}}}
+
+%==< Cargas eléctricas — regla global del workspace, fija en las 4 paletas >====
+% xcolor `red`/`blue` base son siempre std, independientes de la paleta activa.
+\colorlet{ChargePos}{red!85}
+\colorlet{ChargeNeg}{blue!85}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==< UCIMED — identidad: ya semántico, los 22 nombres YA EXISTEN con estos >====
+%==< mismos identificadores tras \RequirePackage{colors-UCIMED} arriba. >=======
+%==< Se re-afirman aquí vía \colorlet por completitud/documentación del >======
+%==< contrato (no cambia el color, primary sigue siendo primary). >============
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\IfStrEq{\ColSem@palette}{UCIMED}{%
+  \colorlet{primary}{primary}%
+  \colorlet{primaryLight}{primaryLight}%
+  \colorlet{primaryDark}{primaryDark}%
+  \colorlet{accentPrimary}{accentPrimary}%
+  \colorlet{accentPrimaryLight}{accentPrimaryLight}%
+  \colorlet{accentPrimaryDark}{accentPrimaryDark}%
+  \colorlet{secondary}{secondary}%
+  \colorlet{secondaryLight}{secondaryLight}%
+  \colorlet{secondaryDark}{secondaryDark}%
+  \colorlet{neutral}{neutral}%
+  \colorlet{neutralLight}{neutralLight}%
+  \colorlet{neutralDark}{neutralDark}%
+  \colorlet{Pos}{Pos}%
+  \colorlet{Vel}{Vel}%
+  \colorlet{Ace}{Ace}%
+  \colorlet{Fza}{Fza}%
+  \colorlet{Mas}{Mas}%
+  \colorlet{Ene}{Ene}%
+  \colorlet{EneK}{EneK}%
+  \colorlet{EneU}{EneU}%
+  \colorlet{MomL}{MomL}%
+  \colorlet{MomA}{MomA}%
+  % [SIN EQUIVALENTE] UCIMED no tiene un celeste institucional con este rol;
+  % se deriva del azul UI claro más cercano (secondaryLight, 6A86C9).
+  \colorlet{Uceleste2}{secondaryLight}%
+  \colorlet{celeste2UCR}{secondaryLight}%
+}{}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==< UCR — identidad institucional sin semántica; mapeo elegido a mano >========
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\IfStrEq{\ColSem@palette}{UCR}{%
+  \colorlet{primary}{Uazul}%              005da4 — identidad institucional
+  \colorlet{primaryLight}{Uceleste}%      00c0f3
+  % [DERIVADO] UCR no tiene un azul oscuro nombrado; se oscurece Uazul.
+  \colorlet{primaryDark}{Uazul!70!black}%
+  \colorlet{accentPrimary}{Uamarillo2}%   ffdd00 — amarillo institucional puro
+  \colorlet{accentPrimaryLight}{Uamarillo}%  ffe06a
+  \colorlet{accentPrimaryDark}{Uamarillo3}%  e9c31e — mostaza, más oscuro que accentPrimary
+  \colorlet{secondary}{Unaranja2}%        f99d1c — familia naranja institucional
+  \colorlet{secondaryLight}{Unaranja1}%   e5b365
+  \colorlet{secondaryDark}{Unaranja3}%    f37021 — NOTA: más saturado, no más oscuro
+                                          % (UCR no trae un naranja realmente
+                                          % más oscuro que Unaranja2; es el
+                                          % tono distinto más cercano).
+  % [SIN EQUIVALENTE] UCR no tiene neutrales grises; fallback a xcolor `gray`.
+  \colorlet{neutral}{gray!10}%
+  \colorlet{neutralLight}{white}%
+  \colorlet{neutralDark}{gray!30}%
+  % --- Magnitudes físicas (sin precedente en UCR; mapeo por familia de color,
+  % misma lógica que colors-UCIMED.sty: azul=cinemática, amarillo=causas,
+  % verde=energía) ---
+  \colorlet{Pos}{Ucafe2}%                 7b3400 — marrón/café, espacial (cf. UCIMED Pos marrón)
+  \colorlet{Vel}{Uazul}%                  cinemática, familia primaria
+  \colorlet{Ace}{Uverde4}%                008641 — verde oscuro
+  \colorlet{Fza}{Unaranja3}%              f37021 — autoridad/fuerza, saturado y distinto de Vel/Ace
+  \colorlet{Mas}{Uamarillo4}%             fdb912 — dorado oscuro (= accentPrimaryDark-ish)
+  \colorlet{Ene}{Uverde}%                 6dc067 — energía total
+  \colorlet{EneK}{Uverde3}%               8dc63f — verde amarillento, cinética
+  \colorlet{EneU}{Uverde4}%               008641 — verde oscuro, potencial (comparte tono con Ace
+                                          % a propósito: ambas son "verde oscuro conservador" en UCR,
+                                          % igual que UCIMED separa Ace de EneU por HUE no por familia)
+  % [DERIVADO] MomL/MomA piden un puente azul-verde (teal); UCR no tiene teal
+  % nombrado, se deriva mezclando Uceleste4 (grisáceo azul-verde) con Uverde.
+  \colorlet{MomL}{Uceleste4!70!Uverde}%
+  \colorlet{MomA}{Uceleste4}%             80a9ba — el más teal de la paleta
+  % Uceleste2 ya existe nativo en colors-UCR.sty (8ed8f8); celeste2UCR es el
+  % nombre que usa el banco Ufide para el MISMO rol — se alía aquí.
+  \colorlet{celeste2UCR}{Uceleste2}%
+}{}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==< Ufide — paleta mínima (5 colores + 3 de resaltado UCR heredados); casi >==
+%==< todo el vocabulario se deriva. >============================================
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\IfStrEq{\ColSem@palette}{Ufide}{%
+  \colorlet{primary}{Uazul}%              020e9f — azul Ufide (distinto del azul UCR)
+  % [DERIVADO] Ufide no tiene un azul claro propio; se aclara Uazul. azulUCR
+  % (0055a4) queda reservado para \Fza más abajo si se quisiera, no se usa aquí
+  % porque es un azul distinto de familia (rompería la progresión light/dark).
+  \colorlet{primaryLight}{Uazul!55!white}%
+  \colorlet{primaryDark}{UazulOscuro}%    001f60 — match exacto, ya existe
+  \colorlet{accentPrimary}{Uamarillo}%    fcd730 — único amarillo Ufide
+  \colorlet{accentPrimaryLight}{Uamarillo!60!white}%   % [DERIVADO]
+  \colorlet{accentPrimaryDark}{Uamarillo!65!black}%    % [DERIVADO]
+  \colorlet{secondary}{Umorado}%          67268e — único acento UI restante
+  \colorlet{secondaryLight}{Umorado!50!white}%         % [DERIVADO]
+  \colorlet{secondaryDark}{Umorado!70!black}%          % [DERIVADO]
+  % [SIN EQUIVALENTE] Ufide no tiene neutrales grises; mismo fallback que UCR.
+  \colorlet{neutral}{gray!10}%
+  \colorlet{neutralLight}{white}%
+  \colorlet{neutralDark}{gray!30}%
+  % --- Magnitudes físicas: Ufide es un instituto de negocios/diseño, sin
+  % precedente físico alguno y SIN verde en su paleta — todo [SIN EQUIVALENTE],
+  % derivado de los 5 colores propios + los 3 de resaltado heredados de UCR. ---
+  \colorlet{Pos}{naranja3UCR}%            e87722 — cálido, espacial (heredado UCR)
+  \colorlet{Vel}{azulUCR}%                0055a4 — azul distinto de primary, cinemática (heredado UCR)
+  % [SIN EQUIVALENTE] sin verde disponible; se oscurece el azul institucional.
+  \colorlet{Ace}{Uazul!70!black}%
+  \colorlet{Fza}{Urosado}%                e31c93 — el tono más "alarma" de la paleta, rol de Fza
+  \colorlet{Mas}{accentPrimaryDark}%      reusa el dorado oscuro ya derivado arriba
+  % [SIN EQUIVALENTE] familia energía normalmente verde; Ufide no tiene verde,
+  % se usa la familia morada (Umorado) como sustituto documentado.
+  \colorlet{Ene}{Umorado}%
+  \colorlet{EneK}{Umorado!55!white}%
+  \colorlet{EneU}{Umorado!70!black}%
+  % [DERIVADO] puente azul-verde; sin verde, se mezcla el celeste heredado con azulUCR.
+  \colorlet{MomL}{celeste2UCR!60!azulUCR}%
+  \colorlet{MomA}{celeste2UCR}%
+  % celeste2UCR ya existe nativo aquí; Uceleste2 es el nombre que usa el banco
+  % UCR para el MISMO rol — se alía en sentido opuesto al bloque UCR de arriba.
+  \colorlet{Uceleste2}{celeste2UCR}%
+}{}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==< Nord — paleta de terminal, sin semántica alguna; mapeo por rol de tono >===
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\IfStrEq{\ColSem@palette}{Nord}{%
+  \colorlet{primary}{Nord10}%             5E81AC — frost, azul profundo (identidad)
+  \colorlet{primaryLight}{Nord9}%         81A1C1 — frost, azul cielo
+  \colorlet{primaryDark}{Nord0}%          2E3440 — polar night, casi negro-azulado
+  \colorlet{accentPrimary}{Nord13}%       EBCB8B — aurora, amarillo
+  \colorlet{accentPrimaryLight}{DarkYellow!40!white}%  % [DERIVADO] aclarado de la variante amarilla oscura
+  \colorlet{accentPrimaryDark}{DarkYellow}%            % EAC57B — más oscuro que Nord13, match razonable
+  \colorlet{secondary}{Nord15}%           B48EAD — aurora, púrpura (acento UI distinto de accent)
+  \colorlet{secondaryLight}{AuroraPurple!60!white}%    % [DERIVADO]
+  \colorlet{secondaryDark}{AuroraPurple}%              % AD85A5 — más oscuro/desaturado que Nord15
+  \colorlet{neutral}{Nord5}%              E5E9F0 — snow storm, gris-azulado claro (SÍ hay neutrales nativos)
+  \colorlet{neutralLight}{Nord6}%         ECEFF4
+  \colorlet{neutralDark}{Nord4}%          D8DEE9
+  % --- Magnitudes físicas: sin precedente Nord (paleta de terminal), mapeo
+  % por rol de familia (frost=cinemática, aurora=causas/energía). ---
+  \colorlet{Pos}{DarkBrown2}%             A88279 — cálido/marrón, espacial (cf. UCIMED Pos marrón)
+  \colorlet{Vel}{Nord9}%                  81A1C1 — frost, cinemática
+  \colorlet{Ace}{Nord14}%                 A3BE8C — aurora, verde
+  \colorlet{Fza}{Nord11}%                 BF616A — aurora, rojo (autoridad/fuerza)
+  \colorlet{Mas}{Nord12}%                 D08770 — aurora, naranja/dorado
+  \colorlet{Ene}{AuroraGreen}%            97B67C — verde más oscuro que Ace, energía total
+  \colorlet{EneK}{Nord14}%                A3BE8C — comparte tono con Ace a propósito (cinética)
+  \colorlet{EneU}{AuroraGreen!70!black}%  % [DERIVADO] potencial, más oscuro que EneK/Ene
+  \colorlet{MomL}{Nord7}%                 8FBCBB — frost, teal (puente azul-verde nativo)
+  \colorlet{MomA}{Nord8}%                 88C0D0 — frost, azul-cian
+  % [SIN EQUIVALENTE] Nord no tiene celeste institucional con este rol;
+  % se usa el ice-blue Nord8, el más cercano en tono/uso a Uceleste2/celeste2UCR.
+  \colorlet{Uceleste2}{Nord8}%
+  \colorlet{celeste2UCR}{Nord8}%
+}{}
+
+\endinput
