@@ -1,0 +1,61 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  headers-UCIMED.sty
+%  ---------------------------------------------------------------------------
+%  Encabezados y pies de página de las EVALUACIONES de la UCIMED.
+%
+%  Extracto AUTOSUFICIENTE de SetHeaders.sty: se conservan sólo las ramas
+%  institucionales de UCIMED (las de UCR y UFide se eliminaron).
+%
+%  Requiere, en este orden:
+%      format-UCIMED.sty    (accesores \thetitle \theauthor \thedate)
+%      colors-UCIMED.sty    (paleta)
+%      comands-UCIMED.sty   (\classcode \classname \thecycle \thegroup \ulogo)
+%      eval-UCIMED.sty      (\thepartial y el contador totalPoints)
+%
+%  Dos estilos de página:
+%      \thispagestyle{partial}  → portada de la prueba: logo, título del
+%                                 parcial, curso, docente, fecha y el puntaje
+%                                 total («N puntos ↔ 100 %»).
+%      \pagestyle{uplain}       → páginas interiores: «Página n/N» arriba a la
+%                                 derecha y «PARCIAL - CÓDIGO - CICLO» al pie.
+%
+%  El puntaje del encabezado es \total{totalPoints}: lo alimentan los
+%  \consolidatePoints{...} de cada sección y necesita DOS pasadas de compilación
+%  (latexmk las hace solo).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{headers-UCIMED}[2026/08/13 v1.0 Encabezados de evaluaciones UCIMED]
+
+\RequirePackage{fancyhdr}
+\pagestyle{fancy}
+\renewcommand{\headrulewidth}{0pt}
+
+%==< Páginas interiores >======================================================
+\fancypagestyle{uplain}{%
+  \fancyhf{}%
+  \fancyhead[R]{Página \thepage/\pageref*{LastPage}}%
+  \fancyhead[L]{}%
+  \fancyfoot[L]{\textsc{\thepartial}\:-\:\classcode\:-\:\thecycle}%
+}
+
+%==< Portada de la prueba >====================================================
+%  Nota: \date{} vacío rompía el encabezado original («There's no line here to
+%  end», porque emitía «\thedate \\»). Aquí la línea de fecha sólo se imprime
+%  si \date no está vacío.
+\fancypagestyle{partial}{%
+  \fancyhf{}%
+  \setlength{\headheight}{120pt}%
+  \fancyhead[LO]{\usebox{\ulogo}}%
+  \fancyhead[C]{%
+    \textbf{\Large{\thepartial}}\\
+    \textbf{\classname}\\[0.5em]
+    \textbf{Prof. \theauthor}\\[0.5em]
+    \ifdefempty{\@date}{}{\@date\\[0.5em]}%
+    \total{totalPoints}\,puntos $\leftrightarrow 100\%$ \\
+  }%
+  \fancyhead[RO]{%
+    \vbox to \ht\ulogo{Página \thepage/\pageref*{LastPage}}%
+  }%
+}
+
+\endinput

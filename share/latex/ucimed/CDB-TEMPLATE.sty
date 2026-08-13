@@ -1,0 +1,163 @@
+% =============================================================================
+%  CDB-TEMPLATE.sty  —  Cuadro de Balanceo UCIMED
+%  Macro LaTeX que importa los temas desde un archivo CSV y calcula la
+%  distribucion proporcional de puntos segun las horas dedicadas a cada tema.
+% =============================================================================
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{CDB-TEMPLATE}[2026/04/17 v1.0 Cuadro de Balanceo UCIMED]
+
+% -----< Dependencias >-------------------------------------------------------
+\RequirePackage{xcolor}
+\RequirePackage{colortbl}
+\RequirePackage{array}
+\RequirePackage{booktabs}
+\RequirePackage{multirow}
+\RequirePackage{pgfplotstable}
+\RequirePackage{dcolumn}
+
+\pgfplotstableset{col sep=comma}
+\pgfplotsset{compat=1.18}
+
+% -----< Tipo de columna L (izquierda con ancho fijo) >----------------------
+\providecommand{\Lcolumnredefine}{}
+\@ifundefined{NC@find@L}{%
+  \newcolumntype{L}[1]{%
+    >{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}%
+  }%
+}{}
+
+% -----< Parametros configurables  (usar \renewcommand para sobreescribir) >-
+\providecommand{\CDBvalorPorcentual}{15}
+\providecommand{\CDBpuntuacionPreliminar}{50}
+\providecommand{\CDBarchivoCSV}{cuadro-balanceo.csv}
+
+% -----< Colores institucionales UCIMED >------------------------------------
+%  Usa los nombres definidos en config/5_colors.sty.  Si ese .sty no se ha
+%  cargado, define versiones de respaldo con los mismos HTML.
+\makeatletter
+\@ifundefined{color@Uazul}{\definecolor{Uazul}{HTML}{0B2B6D}}{}
+\@ifundefined{color@primaryLight}{\definecolor{primaryLight}{HTML}{3B5FA8}}{}
+\@ifundefined{color@neutralBlue}{\definecolor{neutralBlue}{HTML}{E6ECF5}}{}
+\makeatother
+
+% =============================================================================
+%  \CuadroDeBalanceo  —  genera el cuadro completo
+% =============================================================================
+\newcommand{\CuadroDeBalanceo}{%
+  % ---< 1. Cargar CSV >------------------------------------------------------
+  \pgfplotstableread{\CDBarchivoCSV}\cdbTabla%
+  %
+  % ---< 2. Total de horas  =  sum( horas )  >-------------------------------
+  \xdef\CDBtotalHoras{0}%
+  \pgfplotstableforeachcolumnelement{horas}\of\cdbTabla\as\cdbCelda{%
+    \pgfmathparse{\CDBtotalHoras+\cdbCelda}%
+    \xdef\CDBtotalHoras{\pgfmathresult}%
+  }%
+  %
+  % ---< 3. Constante  =  puntuacion preliminar  /  total de horas  >-------
+  \pgfmathsetmacro{\CDBconstanteTmp}{\CDBpuntuacionPreliminar/\CDBtotalHoras}%
+  \xdef\CDBconstante{\CDBconstanteTmp}%
+  %
+  % ---< 4. Columnas calculadas en la tabla  >-------------------------------
+  \pgfplotstablecreatecol[
+    create col/expr={\CDBconstante}
+  ]{constante}\cdbTabla%
+  \pgfplotstablecreatecol[
+    create col/expr={\thisrow{horas}*\CDBconstante}
+  ]{resultadoPrelim}\cdbTabla%
+  \pgfplotstablecreatecol[
+    create col/expr={round(\thisrow{horas}*\CDBconstante)}
+  ]{resultadoRedondeado}\cdbTabla%
+  %
+  % ---< 5. Puntuacion final  =  sum( resultadoRedondeado )  >--------------
+  \xdef\CDBpuntuacionFinal{0}%
+  \pgfplotstableforeachcolumnelement{resultadoRedondeado}\of\cdbTabla\as\cdbCelda{%
+    \pgfmathparse{\CDBpuntuacionFinal+\cdbCelda}%
+    \xdef\CDBpuntuacionFinal{\pgfmathresult}%
+  }%
+  %
+  % =========================================================================
+  %  RENDER
+  % =========================================================================
+  \begingroup
+  \renewcommand{\arraystretch}{1.35}%
+  \centering
+  %
+  % ---< Tabla resumen  >---------------------------------------------------
+  \begin{tabular}{L{7.2cm} c}
+    \toprule
+    \multicolumn{2}{c}{\cellcolor{Uazul}%
+      \color{white}\bfseries CUADRO DE BALANCEO}\\
+    \multicolumn{1}{c}{\cellcolor{white}} &
+      \cellcolor{primaryLight}\color{white}\bfseries CANTIDAD\\
+    \midrule
+    \rowcolor{neutralBlue}
+      Valor porcentual de la prueba &
+      \CDBvalorPorcentual\\
+    \rowcolor{neutralBlue}
+      Puntuaci\'on preliminar &
+      \CDBpuntuacionPreliminar\\
+    \rowcolor{neutralBlue}
+      Total de horas &
+      \pgfmathprintnumber[fixed,precision=0]{\CDBtotalHoras}\\
+    \rowcolor{neutralBlue}
+      Resultado de la constante &
+      \pgfmathprintnumber[fixed,precision=2]{\CDBconstante}\\
+    \rowcolor{neutralBlue}
+      Puntuaci\'on final &
+      \pgfmathprintnumber[fixed,precision=0]{\CDBpuntuacionFinal}\\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{1.2em}
+
+  % ---< Tabla detalle por tema  >------------------------------------------
+  \pgfplotstabletypeset[
+    col sep=comma,
+    every head row/.style={
+      before row={\rowcolor{primaryLight}},
+      after row=\midrule
+    },
+    every row/.style={
+      before row={\rowcolor{neutralBlue}}
+    },
+    every last row/.style={
+      after row=\bottomrule
+    },
+    every first row/.style={
+      before row=\toprule
+    },
+    columns={tema,horas,constante,resultadoPrelim,resultadoRedondeado},
+    columns/tema/.style={
+      string type,
+      column name={\color{white}\bfseries TEMA},
+      column type={L{6.5cm}}
+    },
+    columns/horas/.style={
+      column name={\color{white}\bfseries\shortstack{HORAS\\POR TEMA}},
+      column type={c},
+      fixed,precision=0
+    },
+    columns/constante/.style={
+      column name={\color{white}\bfseries CONSTANTE},
+      column type={c},
+      fixed,precision=2
+    },
+    columns/resultadoPrelim/.style={
+      column name={\color{white}\bfseries\shortstack{RESULTADO\\PRELIMINAR}},
+      column type={c},
+      fixed,precision=2
+    },
+    columns/resultadoRedondeado/.style={
+      column name={\color{white}\bfseries\shortstack{RESULTADO\\REDONDEADO}},
+      column type={c},
+      fixed,precision=0
+    },
+  ]\cdbTabla
+  \endgroup
+}
+
+\endinput
+% =============================================================================
+%  Fin de CDB-TEMPLATE.sty
+% =============================================================================

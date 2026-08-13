@@ -231,3 +231,13 @@ pytest-of-luis/
 .serena/
 tmp*.xml
 graphify-out/
+
+# Artefactos de compilacion LaTeX en share/latex
+share/latex/**/*.pdf
+share/latex/**/*.aux
+share/latex/**/*.out
+share/latex/**/*.toc
+share/latex/**/*.fdb_latexmk
+share/latex/**/*.fls
+share/latex/**/*.synctex.gz
+share/latex/**/ucimed-logo-embedded.png

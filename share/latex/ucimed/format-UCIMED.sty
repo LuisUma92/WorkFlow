@@ -1,0 +1,120 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  format-UCIMED.sty
+%  ---------------------------------------------------------------------------
+%  Preámbulo mínimo para documentos de EVALUACIÓN de la UCIMED.
+%
+%  Extracto AUTOSUFICIENTE de las bibliotecas personales SetFormat / SetLoyaut /
+%  SetUnits / SetSymbols: contiene SÓLO lo que una prueba (parcial, corta, final)
+%  necesita para compilar. No trae bibliografía, glosarios, pgfplots, tcolorbox
+%  ni el resto del andamiaje de las presentaciones de clase.
+%
+%  Orden de carga recomendado en el documento:
+%      \usepackage{format-UCIMED}     % este archivo
+%      \usepackage[table]{xcolor}     % lo carga este archivo; no repetir
+%      \usepackage{colors-UCIMED}     % paleta institucional
+%      \usepackage{comands-UCIMED}    % \setclass \setcycle \setgroup, logo
+%      \usepackage{eval-UCIMED}       % \question \qpart \pts \consolidatePoints
+%      \usepackage{headers-UCIMED}    % \pagestyle{partial} y {uplain}
+%
+%  Compilar con lualatex.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{format-UCIMED}[2026/08/13 v1.0 Preambulo minimo de evaluaciones UCIMED]
+
+%==< Lógica, banderas y utilidades >===========================================
+  \RequirePackage{ifthen}     % \ifthenelse, \boolean, \newboolean, \equal
+  \RequirePackage{xifthen}    % \isundefined, pruebas numéricas
+  \RequirePackage{etoolbox}   % \ifblank, \setbool, \ifbool, \ifdefempty
+  \RequirePackage{totcount}   % \regtotcounter, \total  (puntaje del encabezado)
+
+%==< Idioma y tipografía (lualatex) >==========================================
+  \RequirePackage[spanish]{babel}
+  \RequirePackage{fontspec}
+  \RequirePackage{microtype}
+  % STIX Two es la fuente de los exámenes en el equipo del autor. Si no está
+  % instalada en la máquina del colega, se cae con elegancia a Latin Modern.
+  \IfFontExistsTF{STIX Two Text}{\setmainfont{STIX Two Text}}{}
+
+%==< Geometría de página >=====================================================
+  \RequirePackage{geometry}
+  \geometry{
+    letterpaper,
+    top=15mm, bottom=15mm, left=25mm, right=25mm,
+    includeheadfoot=true,
+    footskip=10mm, headheight=7mm, headsep=3mm
+  }
+  \setlength{\parskip}{1.3em}
+
+%==< Color >===================================================================
+  \PassOptionsToPackage{table}{xcolor}
+  \RequirePackage{xcolor}     % `table` habilita \rowcolor
+
+%==< Matemática y unidades >===================================================
+  \RequirePackage{amsmath}
+  \RequirePackage{bm}
+  \RequirePackage{siunitx}
+  \sisetup{
+    detect-all,
+    mode = math,
+    per-mode = power,
+    inter-unit-product = \,,
+  }
+  % Unidades no-SI de uso frecuente en ciencias de la salud.
+  % Se declaran sólo si siunitx no las trae ya (evita "command already defined").
+  \newcommand{\UCIMED@unit}[2]{%
+    \ifcsname #1\endcsname\else\expandafter\DeclareSIUnit\csname #1\endcsname{#2}\fi}
+  \UCIMED@unit{dioptre}{D}
+  \UCIMED@unit{mmHg}{mmHg}
+  \UCIMED@unit{cmHtwoO}{cmH_2O}
+  \UCIMED@unit{atmosphere}{atm}
+  \UCIMED@unit{calorie}{cal}
+  \UCIMED@unit{poise}{P}
+  \UCIMED@unit{psi}{psi}
+  \UCIMED@unit{inch}{in}
+
+%==< Símbolos y listas >=======================================================
+  \RequirePackage{pifont}     % \ding{51}  (marca de respuesta correcta)
+  \RequirePackage{enumerate}  % \begin{enumerate}[a)]
+  \RequirePackage{multicol}
+  \RequirePackage{booktabs}
+  \RequirePackage{array}
+  \RequirePackage{graphicx}
+
+%==< Referencias internas >====================================================
+  \RequirePackage{lastpage}   % \pageref{LastPage} en el encabezado
+  \RequirePackage{hyperref}   % habilita \ref* y \pageref* (sin hipervínculo)
+  \hypersetup{hidelinks}
+
+%==< Accesores de título/autor/fecha >=========================================
+  % Definidos por expansión diferida (NO con \let) para que funcionen sin
+  % importar si \title/\author/\date se declaran antes o después de este paquete.
+  \makeatletter
+    \providecommand{\thetitle}{}\renewcommand{\thetitle}{\@title}
+    \providecommand{\theauthor}{}\renewcommand{\theauthor}{\@author}
+    \providecommand{\thedate}{}\renewcommand{\thedate}{\@date}
+  \makeatother
+
+%==< Banderas de compilación >=================================================
+  %   test      = true  → los ítems se numeran como \item dentro de un enumerate
+  %                       (formato de examen). false → texto corrido.
+  %   solutions = true  → imprime el solucionario y marca la opción correcta.
+  %   main      = true  → imprime la referencia bibliográfica del ítem (\exa).
+  \newboolean{test}      \setboolean{test}{false}
+  \newboolean{solutions} \setboolean{solutions}{false}
+  \newboolean{main}      \setboolean{main}{false}
+
+%==< Macros de notación mínimas (subconjunto de SetSymbols) >==================
+  % Los ítems del banco de ejercicios usan estas abreviaturas. Se declaran con
+  % \providecommand para no chocar si el documento ya carga SetSymbols.
+  \providecommand{\vc}[1]{\vec{#1}}                    % vector
+  \providecommand{\vh}[1]{\hat{#1}}                    % versor
+  \providecommand{\vi}{\hat{\imath}}
+  \providecommand{\vj}{\hat{\jmath}}
+  \providecommand{\vk}{\hat{k}}
+  \providecommand{\scrp}[1]{_{\mbox{\scriptsize{#1}}}} % subíndice en texto
+  \providecommand{\nc}[2]{$^{#1}$#2}                   % núclido en texto
+  \providecommand{\ncm}[2]{^{#1}\text{#2}}             % núclido en math
+  \providecommand{\abs}[1]{\left\lvert #1 \right\rvert}
+  \providecommand{\dd}[1]{\mathrm{d}#1}
+
+\endinput

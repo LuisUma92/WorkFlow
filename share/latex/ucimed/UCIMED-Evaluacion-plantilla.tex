@@ -1,0 +1,158 @@
+% !TeX program = lualatex
+% !TeX root    = UCIMED-Evaluacion-plantilla.tex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% PLANTILLA de evaluación UCIMED — documento para trabajo colaborativo.
+%
+% Archivos que deben acompañar a este .tex en la misma carpeta:
+%     format-UCIMED.sty   colors-UCIMED.sty   comands-UCIMED.sty
+%     eval-UCIMED.sty     headers-UCIMED.sty
+% (el logo institucional va incrustado en comands-UCIMED.sty; no hace falta PNG)
+%
+% Compilar con lualatex, DOS pasadas (o `latexmk -lualatex`), porque el puntaje
+% total del encabezado y los subtotales por sección viajan por el .aux.
+%
+%   solutions = true   → solucionario: imprime respuestas y marca la correcta.
+%   solutions = false  → versión de aplicación para el estudiantado.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[11pt,twoside]{article}
+
+  \usepackage{format-UCIMED}     % preámbulo mínimo (lualatex)
+  \usepackage{colors-UCIMED}     % paleta institucional
+  \usepackage{comands-UCIMED}    % \setclass \setcycle \setgroup + logo
+
+%==< Datos del documento >=====================================================
+  \title{Prueba Parcial}
+  \author{Luis Fernando Umaña Castro}
+  \date{13 de agosto de 2026}
+
+  \setclass{CB-09}      % CB-09 | CBI-06 | CBI-07  (fija curso e institución)
+  \setcycle{2026-II}
+  \setgroup{01}         % en documentos multiversión, \setgroup = versión
+
+  \usepackage{eval-UCIMED}       % \question \qpart \pts \consolidatePoints …
+  \setpartialnumber{1}           % 1 → «Prueba Parcial I»;  0 → sin numeral
+  \usepackage{headers-UCIMED}    % \pagestyle{partial} y {uplain}
+  \pagestyle{uplain}
+
+%==< Banderas de compilación >=================================================
+  \setbool{test}{true}           % formato de examen (ítems numerados)
+  \setbool{solutions}{true}      % ← cambiar a false para la versión del examen
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\thispagestyle{partial}
+
+\ifthenelse{\boolean{solutions}}{%
+  \begin{center}\large\textbf{Solucionario}\hfill\thegroup\end{center}
+}{%
+  \AANlines
+  \noindent\makebox[\textwidth]{\rule{10cm}{0.4pt}}
+
+  \section*{Instrucciones generales}
+  \begin{enumerate}
+    \item Utilice bolígrafo de color negro o azul. No se aceptan respuestas en
+          lápiz y se calificarán con cero.
+    \item No utilice corrector. Si lo hace se calificará con cero.
+    \item Dispone de 100 minutos para resolver esta prueba y sólo se atenderán
+          consultas generales durante los primeros 30 minutos.
+    \item Durante esta prueba no se permite el uso de aparatos de
+          radiocomunicación.
+  \end{enumerate}
+  \newpage
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==< Sección 1 · Complete >====================================================
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section*{Complete}
+En esta parte se incluyen 2 preguntas de complete.
+\textbf{Puntaje Total = \ref*{CT1} puntos.}
+
+\vspace{5mm}
+\noindent\textbf{Instrucciones}: escriba en el espacio en blanco la palabra que
+completa correctamente cada frase. Dispone únicamente del grupo de conceptos
+dado; \textbf{no se repiten conceptos}.
+
+\vspace{5mm}
+\begin{enumerate}[1.]
+  \item La presión que ejerce una columna de fluido en reposo depende de su
+        densidad, de la gravedad y de la \completeline{profundidad} \upt[add]
+  \item El cociente entre el esfuerzo y la deformación en el régimen elástico
+        se llama módulo de \completeline{Young} \upt[add]
+\end{enumerate}
+\consolidatePoints{CT1}
+
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==< Sección 2 · Selección única >=============================================
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section*{Selección única}
+En esta parte se incluye 1 pregunta de selección única.
+\textbf{Puntaje Total = \ref*{SU1} puntos.}
+
+\vspace{5mm}
+\noindent\textbf{Instrucciones}: marque con una ``\textbf{X}'' la letra que
+acompaña la respuesta correcta.
+
+\begin{enumerate}[1.]
+% --- Un ítem completo. En producción cada ítem vive en su propio archivo y se
+%     trae con \input{...}; aquí va en línea sólo para mostrar la estructura.
+\question{
+  \pts[add]{2}
+  Un recipiente contiene agua (\(\rho = \SI{1.00e3}{\kilo\gram\per\cubic\meter}\)).
+  ¿Cuál es la presión manométrica a una profundidad de \SI{1.50}{\meter}?
+  \begin{enumerate}[a)]
+    \item \SI{1.47}{\kilo\pascal}
+    \item \SI{14.7}{\kilo\pascal} \rightoption
+    \item \SI{147}{\kilo\pascal}
+    \item \SI{1.01e5}{\pascal}
+    \item \SI{9.81}{\kilo\pascal}
+  \end{enumerate}
+}{}
+\end{enumerate}
+\consolidatePoints{SU1}
+
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==< Sección 3 · Desarrollo >==================================================
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section*{Desarrollo}
+A continuación se incluye 1 problema de desarrollo.
+\textbf{Puntaje Total = \ref*{DE1} puntos.}
+
+\vspace{5mm}
+\noindent\textbf{Instrucciones}: resuelva de manera clara y ordenada, mostrando
+todos los pasos.
+
+\partialenumi
+\begin{enumerate}
+  \setthisindent
+% --- Ítem de desarrollo con sub-partes.
+%     Las sub-partes van en el PRIMER argumento de \question, dentro de un
+%     enumerate[a)]; el segundo argumento queda vacío.
+\question{
+  Una arteria de radio \(r = \SI{2.00}{\milli\meter}\) transporta sangre con un
+  caudal volumétrico \(Q = \SI{5.00}{\milli\liter\per\second}\).
+  \begin{enumerate}[a)]
+    \qpart{Calcule la rapidez media del flujo. \pts[add]{3}}{
+      De la ecuación de continuidad, \(Q = A v\), con
+      \(A = \pi r^2 = \SI{1.26e-5}{\square\meter}\):
+      \[ v = \frac{Q}{A}
+           = \frac{\SI{5.00e-6}{\cubic\meter\per\second}}{\SI{1.26e-5}{\square\meter}}
+           = \SI{0.398}{\meter\per\second} \]
+    }
+    \qpart{Si una placa reduce el radio a la mitad, ¿en qué factor cambia la
+           rapidez? \pts[add]{2}}{
+      Como \(A \propto r^2\) y \(Q\) se conserva, \(v \propto 1/r^2\): al
+      reducirse el radio a la mitad, la rapidez se cuadruplica
+      (\(v' = 4v = \SI{1.59}{\meter\per\second}\)).
+    }
+  \end{enumerate}
+}{}
+\end{enumerate}
+\consolidatePoints{DE1}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end{document}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

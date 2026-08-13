@@ -1,0 +1,205 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  eval-UCIMED.sty
+%  ---------------------------------------------------------------------------
+%  Comandos de EVALUACIÓN (ítems, puntaje, solucionario) para documentos UCIMED.
+%
+%  Extracto AUTOSUFICIENTE de SetCommands.sty + PartialCommands.sty: sólo lo que
+%  se usa al escribir una prueba. Los archivos de ítem del banco de ejercicios
+%  compilan sin cambios con este paquete.
+%
+%  Requiere:  format-UCIMED.sty  (banderas test/solutions/main y utilidades)
+%             comands-UCIMED.sty (\setgroup, \setclass, \thecycle)
+%
+%  ---------------------------------------------------------------------------
+%  MAPA DE USO
+%
+%   Estructura de un ítem  (un archivo .tex por ítem):
+%     \question{<enunciado>}{<solución>}
+%       · DOS argumentos obligatorios. El `}{` que los separa es estructural:
+%         si se borra, enunciado y solución se funden y la solución desaparece.
+%       · Sub-partes: dentro del PRIMER argumento, en un enumerate[a)], cada
+%         una con \qpart{<enunciado>}{<solución>}; el segundo argumento queda {}.
+%       · \qpart YA emite su propio \paragraph{Solución:} — no escribirlo a mano.
+%
+%   Puntaje  (vive embebido en el archivo del ítem):
+%     \pts[add]{n}   n puntos, sumados al contador de la sección
+%     \upt[add]      1 punto,  sumado al contador de la sección
+%     \pts{n}        n puntos, SÓLO se imprime (no suma) — para rúbricas
+%     \ptscu{n}      «(n pts c/u.)»      \uptcu  «(1 pt c/u.)»
+%     \ptsdistro     abre el bloque «Distribución de puntos» de una rúbrica
+%     \consolidatePoints{<etiqueta>}
+%                    cierra una sección: vuelca el subtotal a <etiqueta>, lo
+%                    suma al total del examen y pone el contador en cero.
+%                    Se recupera con \ref*{<etiqueta>} en el texto de la sección.
+%
+%   Selección única / complete:
+%     \rightoption      marca ✓ azul la opción correcta (sólo si solutions=true)
+%     \completeline{x}  imprime la línea en blanco, o la respuesta si solutions
+%
+%   Encabezado de la prueba:
+%     \setpartialnumber{n}   n=0 → título tal cual; n>0 → «Título I/II/III…»
+%     \testdefinition{<grupo>}{<ciclo>}{<n>}   atajo de los tres a la vez
+%     \AANlines               tres líneas para apellidos y nombre
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{eval-UCIMED}[2026/08/13 v1.0 Comandos de evaluacion UCIMED]
+
+\RequirePackage{format-UCIMED}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  1) Contadores de puntaje
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcounter{partialNumber}
+\newcounter{totalPoints}
+\newcounter{sectionPoints}
+\newcounter{points}
+
+% El encabezado `partial` imprime \total{totalPoints}. totcount exige que el
+% contador esté registrado ANTES de usarse; se registra aquí, una sola vez, para
+% que \tableofcontents no dispare «\c@totalPoints@totc undefined».
+\regtotcounter{totalPoints}
+\regtotcounter{sectionPoints}
+
+\newcommand{\thepartial}{}
+\newcommand{\setpartialnumber}[1]{%
+  \setcounter{partialNumber}{#1}%
+  \setcounter{totalPoints}{0}%
+  \setcounter{sectionPoints}{0}%
+  \setcounter{points}{0}%
+  \ifthenelse{#1 = 0}{%
+    \renewcommand{\thepartial}{\thetitle}%
+  }{%
+    \renewcommand{\thepartial}{\thetitle\:\Roman{partialNumber}}%
+  }%
+}
+\newcommand{\testdefinition}[3]{%
+  \setgroup{#1}%
+  \setcycle{#2}%
+  \setpartialnumber{#3}%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  2) Puntaje por ítem
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\ptsdistro}{%
+  \paragraph{Distribución de puntos}
+  \ifthenelse{\boolean{test}}{%
+    \renewcommand{\labelenumiii}{\theenumi\theenumii-\arabic{enumiii})}%
+  }{%
+    \renewcommand{\labelenumii}{\arabic{example}\alph{enumi}-\arabic{enumii})}%
+  }%
+}
+\newcommand{\pts}[2][]{%
+  (\textit{#2 pts.})%
+  \ifthenelse{\equal{#1}{add}}{\addtocounter{points}{#2}}{}%
+}
+\newcommand{\upt}[1][]{%
+  (\textit{1 pt.})%
+  \ifthenelse{\equal{#1}{add}}{\addtocounter{points}{1}}{}%
+}
+\newcommand{\uptcu}{(\textit{1 pt c/u.})}
+\newcommand{\ptscu}[1]{(\textit{#1 pts c/u.})}
+\newcommand{\consolidatePoints}[1]{%
+  \setcounter{sectionPoints}{\value{points}}%
+  \addtocounter{totalPoints}{\value{points}}%
+  \setcounter{points}{0}%
+  \protected@write\@auxout{}{%
+    \string\newlabel{#1}{{\arabic{sectionPoints}}{\thepage}}%
+  }%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  3) Ítems
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% #1 = enunciado   #2 = solución  (los DOS son obligatorios)
+\newcommand{\question}[2]{%
+  \ifthenelse{\boolean{test}}{%
+    \item
+    \addcontentsline{toc}{subsection}{Pregunta \theenumi}
+    #1
+    \ifthenelse{\boolean{solutions}}{#2}{}%
+  }{%
+    #1\par
+    \ifthenelse{\boolean{solutions}}{#2}{}%
+  }%
+}
+% Sub-parte. Va DENTRO de un enumerate, en el PRIMER argumento de \question.
+% Emite su propio «Solución:» — no duplicarlo.
+\newcommand{\qpart}[2]{%
+  \item
+  #1
+  \ifthenelse{\boolean{solutions}}{%
+    \paragraph{Solución:}
+    #2
+  }{}%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  4) Selección única y complete
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\rightoption}{%
+  \ifthenelse{\boolean{solutions}}{{\color{blue}\ding{51}}}{}%
+}
+\newcommand{\inputline}{\line(1,0){150}}
+\newcommand{\completeline}[1]{%
+  \ifthenelse{\boolean{solutions}}{\textbf{\color{blue}#1}\;}{\inputline\;}%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  5) Numeración y sangrías de las secciones de desarrollo
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\partialenumi}{\renewcommand{\labelenumi}{\arabic{enumi}.}}
+\newcommand{\setthisindent}{}   % sin sangría extra en UCIMED
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  6) Referencia bibliográfica del ítem (\exa) — sólo si main=true
+%     \exa[<capítulo>]{<número>}  imprime «cap.núm.» con la numeración del libro
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcounter{lastChapter}
+\newcounter{example}[section]
+\newcommand{\exa}[2][]{%
+  \par
+  \ifblank{#2}{\stepcounter{example}}{\setcounter{example}{#2}}%
+  \ifblank{#1}{%
+    \arabic{section}.\arabic{example}.%
+  }{%
+    \setcounter{lastChapter}{\value{section}}%
+    \setcounter{section}{#1}%
+    \arabic{section}.\arabic{example}.%
+    \setcounter{section}{\thelastChapter}%
+  }%
+  \hspace{0.5em}\ignorespaces
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  7) Encabezado de identificación del estudiante
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\AANlines}{%
+\begin{minipage}{0.3\textwidth}
+  \begin{center}
+    \line(1,0){139}
+
+    \textbf{Primer apellido}
+  \end{center}
+\end{minipage}
+\hfill
+\begin{minipage}{0.3\textwidth}
+  \begin{center}
+    \line(1,0){139}
+
+    \textbf{Segundo apellido}
+  \end{center}
+\end{minipage}
+\hfill
+\begin{minipage}{0.3\textwidth}
+  \begin{center}
+    \line(1,0){139}
+
+    \textbf{Nombre completo}
+  \end{center}
+\end{minipage}
+\vspace*{0.5cm}
+
+}
+
+\endinput
