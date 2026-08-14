@@ -1,0 +1,106 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  formulas-UCIMED.sty
+%  ---------------------------------------------------------------------------
+%  Entorno `tema` para hojas de fórmulas ("formularios"): caja con título,
+%  partible entre columnas (multicol). Portado desde el .tex local de curso
+%  UCIMED-CI0006/eval/formulario-estilo.tex — misma definición, mismos
+%  parámetros, para que dejar de copiarlo entre cursos no cambie el resultado
+%  visual de ningún formulario ya compilado.
+%
+%  Requiere: format-UCIMED (para \vc, siunitx, etc. — no lo carga este
+%  archivo, así que \usepackage{format-UCIMED} debe ir antes en el documento
+%  si el formulario usa esas macros).
+%
+%  Uso:
+%      \usepackage[palette=gray]{formulas-UCIMED}    % gris, por defecto
+%      \usepackage[palette=ucimed]{formulas-UCIMED}  % paleta institucional
+%      ...
+%      \begin{multicols}{2}
+%      \begin{tema}{Título del tema}
+%        ...fórmulas...
+%      \end{tema}
+%      \end{multicols}
+%
+%  Para ajustar la caja sin redefinir el entorno: \formulariosetup{<opciones
+%  tcolorbox>} ANTES de \begin{tema}.
+%
+%  Compilar con lualatex.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{formulas-UCIMED}[2026/08/13 v1.0 Entorno tema para formularios UCIMED]
+
+%==< Opción de paleta (kvoptions) >=============================================
+  \RequirePackage{kvoptions}
+  \RequirePackage{xstring}   % \IfStrEq — \ifstrequal de etoolbox falla
+                             % silenciosamente comparando strings de kvoptions
+                             % (desajuste de catcodes); NO usarlo aquí.
+  \SetupKeyvalOptions{family=formulasUCIMED, prefix=formulasUCIMED@}
+  \DeclareStringOption[gray]{palette}
+  \ProcessKeyvalOptions{formulasUCIMED}
+
+%==< Paquetes de la caja >======================================================
+  \RequirePackage{tcolorbox}
+  \tcbuselibrary{skins,breakable}
+  \RequirePackage{multicol}
+
+%==< Paleta: gray (default) vs ucimed >=========================================
+  \IfStrEq{\formulasUCIMED@palette}{ucimed}{%
+    \RequirePackage{colors-UCIMED}
+    \colorlet{formulasUCIMED@colback}{primaryLight!8}
+    \colorlet{formulasUCIMED@colframe}{primaryLight!45}
+    \colorlet{formulasUCIMED@colbacktitle}{primaryLight!30}
+    \colorlet{formulasUCIMED@coltitle}{primaryDark}
+  }{%
+    % palette=gray — reproduce EXACTAMENTE los grises del formulario-estilo.tex
+    % original de CI0006. No requiere colors-UCIMED: sirve fuera de UCIMED.
+    \colorlet{formulasUCIMED@colback}{gray!8}
+    \colorlet{formulasUCIMED@colframe}{gray!45}
+    \colorlet{formulasUCIMED@colbacktitle}{gray!25}
+    \colorlet{formulasUCIMED@coltitle}{black}
+  }
+
+%==< Opciones ajustables del entorno (para \formulariosetup) >=================
+  \tcbset{
+    formulasUCIMED@base/.style={
+      enhanced,
+      breakable,
+      colback=formulasUCIMED@colback,
+      colframe=formulasUCIMED@colframe,
+      boxrule=0.4pt,
+      arc=2pt,
+      boxsep=1pt,
+      left=2pt, right=2pt,
+      top=3pt, bottom=3pt,
+      colbacktitle=formulasUCIMED@colbacktitle,
+      coltitle=formulasUCIMED@coltitle,
+      fonttitle=\bfseries,
+      before upper={%
+        \setlength{\abovedisplayskip}{2pt}%
+        \setlength{\belowdisplayskip}{2pt}%
+        \setlength{\abovedisplayshortskip}{2pt}%
+        \setlength{\belowdisplayshortskip}{2pt}%
+      },
+    },
+  }
+
+  % Acumulador de ajustes extra del documento (vacío por defecto).
+  \tcbset{formulasUCIMED@extra/.style={}}
+
+  % \formulariosetup{<opciones tcolorbox>} — para que un documento ajuste la
+  % caja (p. ej. otro color, otro boxrule) sin tocar la definición del
+  % entorno. Debe llamarse ANTES de \begin{tema}.
+  \newcommand{\formulariosetup}[1]{\tcbset{formulasUCIMED@extra/.style={#1}}}
+
+%==< El entorno `tema` >=========================================================
+  % Guarda obligatoria: los formularios de prueba final hacen \input de los
+  % formularios de ambos parciales, y los dos cargan este paquete/estilo →
+  % sin guarda, la segunda carga daría "Environment tema already defined".
+  \ifcsname tema\endcsname\else
+  \newtcolorbox{tema}[1]{
+    formulasUCIMED@base,
+    formulasUCIMED@extra,
+    title={#1},
+  }
+  \fi
+
+\endinput
