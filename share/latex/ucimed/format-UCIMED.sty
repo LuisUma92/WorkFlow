@@ -16,6 +16,15 @@
 %      \usepackage{eval-UCIMED}       % \question \qpart \pts \consolidatePoints
 %      \usepackage{headers-UCIMED}    % \pagestyle{partial} y {uplain}
 %
+%  Macros de matemática disponibles y su origen:
+%    De physics-patch (TeX Live 2026, estándar — NO es biblioteca personal):
+%      \abs{x}  \dv{f}{t}  \dv[n]{t}f  \pdv{f}{x}  \dd{t}  \eval{...}_a^b
+%      \norm{} \bra{} \ket{} braket … (ver doc de `physics`, physics-patch
+%      corrige errores de esa paquetería sin cambiar su interfaz).
+%    De este archivo (subconjunto de SetSymbols, sólo por \providecommand,
+%    physics-patch NO las provee):
+%      \vc{} \vh{} \vi \vj \vk \scrp{} \nc{}{} \ncm{}{}
+%
 %  Compilar con lualatex.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \NeedsTeXFormat{LaTeX2e}
@@ -52,6 +61,10 @@
 %==< Matemática y unidades >===================================================
   \RequirePackage{amsmath}
   \RequirePackage{bm}
+  % physics-patch (TeX Live 2026 estándar, NO depende de la biblioteca personal
+  % del usuario) da \abs \dv \pdv \dd \eval \norm \bra \ket … — las mismas
+  % macros que usan los formularios de fórmulas de los cursos.
+  \RequirePackage{physics-patch}
   \RequirePackage{siunitx}
   \sisetup{
     detect-all,
@@ -106,6 +119,9 @@
 %==< Macros de notación mínimas (subconjunto de SetSymbols) >==================
   % Los ítems del banco de ejercicios usan estas abreviaturas. Se declaran con
   % \providecommand para no chocar si el documento ya carga SetSymbols.
+  % \abs y \dd YA los da physics-patch (arriba) — NO redeclarar aquí: un
+  % \providecommand que gane la carrera de carga dejaría una versión pobre
+  % (sin el escalado \left\lvert.\right\rvert real de physics, etc.).
   \providecommand{\vc}[1]{\vec{#1}}                    % vector
   \providecommand{\vh}[1]{\hat{#1}}                    % versor
   \providecommand{\vi}{\hat{\imath}}
@@ -114,7 +130,5 @@
   \providecommand{\scrp}[1]{_{\mbox{\scriptsize{#1}}}} % subíndice en texto
   \providecommand{\nc}[2]{$^{#1}$#2}                   % núclido en texto
   \providecommand{\ncm}[2]{^{#1}\text{#2}}             % núclido en math
-  \providecommand{\abs}[1]{\left\lvert #1 \right\rvert}
-  \providecommand{\dd}[1]{\mathrm{d}#1}
 
 \endinput
