@@ -15,7 +15,9 @@ nvim-plugin/
     server.lua            -- server lifecycle, auto-start, health
     wikilink.lua          -- [[id]] parsing, gf navigation, concealment
     completion.lua        -- nvim-cmp source for [[id]] completion
-    autocmds.lua          -- BufWritePost sync, BufEnter detection
+    autocmds.lua          -- BufWritePost sync, BufEnter detection, FileType tex includeexpr wrapper
+    tex_macros.lua        -- pure LaTeX macro scanning/expansion (no Neovim API)
+    tex_paths.lua         -- macro sources (buffer/vimtex main/.sty dirs) + includeexpr wrapper
     keymaps.lua           -- <leader>z namespace
     commands.lua          -- :Workflow* user commands
     statusline.lua        -- lualine component
@@ -51,6 +53,29 @@ nvim-plugin/
 | `<leader>zg` | Graph neighbors | 3 |
 | `<leader>zo` | Orphaned notes | 3 |
 | `<leader>z!` | Server restart | 1 |
+
+## LaTeX path-macro resolution (`gf` in .tex)
+
+`tex_macros.lua` (pure strings) + `tex_paths.lua` (Neovim glue) + a `FileType
+tex` autocmd in `autocmds.lua` let `gf` follow paths written through macros
+such as `\input{\EEfolder/ej.tex}`, whose definitions live in the shipped
+`.sty` files rather than in the buffer.
+
+Design rules (plan `tasks/plans/2026-08-19-tex-gf-macro-expansion.md`):
+
+- **Wrap `includeexpr`, never remap `gf`.** Every builtin that consults
+  `includeexpr` (`gf`, `gF`, `[f`, `<C-w>f`, `:checkpath`, `<C-x><C-i>`) gains
+  the feature at once, and vimtex keeps ownership of its keymaps.
+- **vimtex stays the fallback.** The previous `includeexpr` is saved per buffer
+  and delegated to whenever macro expansion does not yield a readable file, so
+  kpsewhich, `$TEXINPUTS`, `.bib` and `\subimport` resolution are unaffected.
+- **The wrapper is re-asserted via `vim.schedule()`.** The tex ftplugin
+  (vimtex's `setlocal includeexpr=vimtex#include#expr()`, or the runtime one)
+  is sourced *after* our `FileType` callback and would otherwise clobber it;
+  the scheduled re-assert runs once the whole FileType chain is done. The
+  attach is idempotent and never records our own expression as "previous".
+- Config keys: `tex_gf` (default `true`), `tex_macro_sty_dirs`
+  (default `{ "~/.local/share/workflow/latex/sty", "~/.local/share/workflow/sty" }`).
 
 ## Implementation Phases
 

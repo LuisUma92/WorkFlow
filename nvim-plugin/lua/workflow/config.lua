@@ -11,6 +11,15 @@ M.defaults = {
 	-- vault markdown files and surface results as Neovim diagnostics.
 	-- Set to false to disable the on-save graph check.
 	auto_graph_validate_on_save = true,
+	-- Wrap 'includeexpr' in .tex buffers with workflow.tex_paths so `gf` (and
+	-- gF, [f, <C-w>f, :checkpath, <C-x><C-i>) resolves paths written through
+	-- LaTeX macros such as \input{\IMGfolder/fig.tex}.  vimtex's own resolution
+	-- stays as the fallback; set to false to disable the wrapper entirely.
+	tex_gf = true,
+	-- Directories scanned for *.sty files when collecting path macros.  The
+	-- WorkFlow style files shipped there define \FisicaDir, \IMGfolder and
+	-- \EEfolder, which never appear in the buffer itself (ADR ITEP-0005).
+	tex_macro_sty_dirs = { "~/.local/share/workflow/latex/sty", "~/.local/share/workflow/sty" },
 	workspace_dir = nil, -- auto-detected from .workflow/config.yaml
 	vault_dir = "/home/luis/01-U/0000AV-Vault",
 	keymaps = true,

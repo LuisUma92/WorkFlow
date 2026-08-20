@@ -1,6 +1,34 @@
 -- lua/workflow/autocmds.lua
--- Autocommands: sync on save, validate on save
+-- Autocommands: sync on save, validate on save, LaTeX includeexpr wrapper
 local M = {}
+
+-- Substring that identifies an 'includeexpr' we installed ourselves.  Used as
+-- the idempotency guard: without it a second FileType tex would save OUR expr
+-- as the "previous" one and delegation would recurse forever.
+local TEX_EXPR_MARKER = "workflow.tex_paths"
+
+local function tex_includeexpr(sty_dirs)
+	-- vim.fn.string() renders the Lua list as a Vimscript list literal, which
+	-- v:lua converts back into a Lua table when the expression is evaluated.
+	return string.format(
+		"v:lua.require'workflow.tex_paths'.includeexpr(v:fname, {'sty_dirs': %s})",
+		vim.fn.string(sty_dirs or {})
+	)
+end
+
+-- Install the wrapper on `bufnr`, remembering whatever 'includeexpr' was in
+-- effect (typically vimtex's) so tex_paths can delegate to it.  Idempotent.
+function M.attach_tex(bufnr, sty_dirs)
+	if not vim.api.nvim_buf_is_valid(bufnr) then
+		return
+	end
+	local current = vim.bo[bufnr].includeexpr or ""
+	if current:find(TEX_EXPR_MARKER, 1, true) then
+		return -- already ours; never re-save our own expr as "previous"
+	end
+	require("workflow.tex_paths").set_buf_previous(bufnr, current)
+	vim.bo[bufnr].includeexpr = tex_includeexpr(sty_dirs)
+end
 
 function M.setup(config)
 	local group = vim.api.nvim_create_augroup("Workflow", { clear = true })
@@ -60,6 +88,28 @@ function M.setup(config)
 				then
 					require("workflow.validate").validate_buffer(args.buf, config)
 				end
+			end,
+		})
+	end
+
+	-- LaTeX path-macro resolution: wrap 'includeexpr' rather than remapping
+	-- `gf`, so vimtex (kpsewhich, $TEXINPUTS, .bib, \subimport) stays intact.
+	-- vimtex sets includeexpr synchronously from its ftplugin
+	-- (autoload/vimtex.vim: `setlocal includeexpr=vimtex#include#expr()`), and
+	-- with lazy loading that ftplugin may be sourced AFTER this callback.  The
+	-- vim.schedule() re-assert therefore runs once the whole FileType chain is
+	-- done, which no synchronous setter can outrun; attach_tex is idempotent,
+	-- so when we already won the race the scheduled call is a no-op.
+	if config.tex_gf then
+		vim.api.nvim_create_autocmd("FileType", {
+			group = group,
+			pattern = "tex",
+			callback = function(args)
+				local bufnr = args.buf
+				M.attach_tex(bufnr, config.tex_macro_sty_dirs)
+				vim.schedule(function()
+					M.attach_tex(bufnr, config.tex_macro_sty_dirs)
+				end)
 			end,
 		})
 	end

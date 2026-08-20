@@ -394,11 +394,52 @@ Pass options to `require("workflow").setup(opts)`: >
     -- Vault root override (env WORKFLOW_VAULT_ROOT takes precedence).
     vault_dir = "~/01-U/0000AV-Vault",
 
+    -- Wrap 'includeexpr' in .tex buffers so path macros resolve (see below).
+    tex_gf = true,
+
+    -- Directories scanned for *.sty files when collecting path macros.
+    tex_macro_sty_dirs = { "~/.local/share/workflow/latex/sty", "~/.local/share/workflow/sty" },
+
     -- Register <leader>z* keymaps.
     keymaps = true,
     keymap_prefix = "<leader>z",
   }
 <
+
+------------------------------------------------------------------------------
+4.1 LaTeX path macros and `gf`                              *workflow-tex-gf*
+
+In a LaTeX file a path is often written through a macro: >
+
+  \input{\EEfolder/ejercicio.tex}
+  \includegraphics{\IMGfolder/diagrama}
+<
+Those macros (`\FisicaDir`, `\IMGfolder`, `\EEfolder`) are defined in the
+WorkFlow style files, not in the buffer, so neither Neovim nor vimtex can
+follow the reference.
+
+With `tex_gf = true` (default) a `FileType tex` autocommand wraps the
+buffer-local 'includeexpr' with `workflow.tex_paths.includeexpr()`, which:
+
+  1. expands the macros over `v:fname` and returns the result when it is
+     |filereadable()|;
+  2. otherwise delegates to the 'includeexpr' that was in effect before —
+     normally `vimtex#include#expr()`, so kpsewhich, `$TEXINPUTS`, `.bib`
+     resolution and `\subimport` keep working untouched;
+  3. returns `v:fname` unchanged when there is no previous expression.
+
+Wrapping 'includeexpr' instead of remapping `gf` is deliberate: `gf`, `gF`,
+`[f`, `]f`, `<C-w>f`, `:checkpath` and `<C-x><C-i>` all consult 'includeexpr',
+so a single wrapper fixes them all and no keymap is taken over.
+
+Macros are collected in precedence order — buffer first (a local `\def` wins),
+then the vimtex project main file, then every `*.sty` in
+`tex_macro_sty_dirs` (cached and invalidated by mtime).  Commented-out
+definitions are ignored and the first definition wins.  Macros that take
+arguments (`\newcommand{\F}[1]{...}`) are skipped.
+
+Set `tex_gf = false` to leave 'includeexpr' completely alone.
+
 
 The effective vault root is resolved in this priority order:
   1. `$WORKFLOW_VAULT_ROOT` environment variable

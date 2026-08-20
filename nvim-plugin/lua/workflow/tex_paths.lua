@@ -17,7 +17,7 @@ local M = {}
 -- Fallback used when the caller passes no sty dirs.  P2 will feed the real
 -- value from config.lua (`tex_macro_sty_dirs`); the default mirrors it so the
 -- module is useful standalone.
-local DEFAULT_STY_DIRS = { "~/.local/share/workflow/sty" }
+local DEFAULT_STY_DIRS = { "~/.local/share/workflow/latex/sty", "~/.local/share/workflow/sty" }
 
 -- Cache of scanned .sty dirs: resolved_dir -> { signature = "...", macros = {} }.
 -- Invalidated by a signature built from every .sty file's mtime (a dir mtime
@@ -159,6 +159,25 @@ local function delegate(bufnr, fname)
 	return fname
 end
 
+-- Neovim boundary fix: `\` is NOT in 'isfname', so Neovim strips the leading
+-- backslash of `\input{\FSfolder/x.tex}` and hands `includeexpr` the bare
+-- `FSfolder/x.tex`.  Restore it — but ONLY when the leading `[%a@]+` token is
+-- itself a known macro, so a real relative path (`eval/01_vectores/a.tex`) and
+-- a mere prefix match (`FSfolderTwo/...`) are left exactly as they came in.
+--
+-- This lives here, not in tex_macros.lua: the missing backslash is an artifact
+-- of how Neovim tokenizes file names, not a property of LaTeX strings.
+local function restore_backslash(fname, macros)
+	if fname:sub(1, 1) == "\\" then
+		return fname
+	end
+	local token = fname:match("^([%a@]+)")
+	if token and macros["\\" .. token] ~= nil then
+		return "\\" .. fname
+	end
+	return fname
+end
+
 -- The `includeexpr` wrapper itself.
 --
 -- `fname` defaults to `vim.v.fname` so the option can be set to
@@ -173,7 +192,8 @@ function M.includeexpr(fname, opts)
 	local bufnr = vim.api.nvim_get_current_buf()
 
 	local ok, expanded = pcall(function()
-		return tex_macros.expand(fname, M.collect_macros(bufnr, opts))
+		local macros = M.collect_macros(bufnr, opts)
+		return tex_macros.expand(restore_backslash(fname, macros), macros)
 	end)
 
 	if ok and expanded ~= fname and vim.fn.filereadable(expanded) == 1 then
