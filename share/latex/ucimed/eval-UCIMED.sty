@@ -202,4 +202,148 @@
 
 }
 
+%==< Versiones de una misma prueba >===========================================
+% Un solo documento contiene N versiones del examen. El número de versión se
+% lleva en \setgroup, igual que en CI0006 (en registro hay un solo grupo).
+%
+%   \setversion{01}          en el preámbulo: versión que se imprime cuando
+%                            solutions=false
+%   \ifversion{01}{ ... }    en el cuerpo: bloque de esa versión
+%
+%   solutions=false → imprime SÓLO la versión fijada con \setversion.
+%   solutions=true  → imprime TODAS las versiones seguidas, con solucionario,
+%                     y cada bloque rotula su encabezado con su propio grupo.
+%
+% \laversion guarda la versión elegida y es lo único que se compara, así que
+% \ifversion puede reasignar \setgroup para rotular sin romper los bloques
+% siguientes.
+\newcommand{\laversion}{01}
+\newcommand{\setversion}[1]{\renewcommand{\laversion}{#1}\setgroup{#1}}
+
+\newcommand{\ifversion}[2]{%
+  \ifthenelse{\boolean{solutions} \OR \equal{\laversion}{#1}}{%
+    \setgroup{#1}%
+    \ifthenelse{\boolean{solutions}}{%
+      \newpage\phantomsection
+      \addcontentsline{toc}{section}{\thegroup}%
+      \begin{center}
+        \large{\textbf{\thegroup}}\hfill\large{\thecycle}
+      \end{center}
+    }{}%
+    #2%
+  }{}%
+}
+
+%==< Hoja de respuestas >======================================================
+% \hojaRespuestas[<opciones por ítem de selección única; def. 5>]
+%                {<n.º de ítems de Complete>}
+%                {<n.º de ítems de Selección única>}
+%                {<n.º de ítems de Respuesta corta>}
+%
+% Complete y Selección única quedan lado a lado, en dos columnas. La Respuesta
+% corta va debajo, en una tabla del ancho de la página que se parte entre
+% páginas si hace falta. Pasar 0 en cualquiera de los tres omite ese bloque.
+%
+% NOTA: bajo babel-spanish los caracteres < y > son shorthands ACTIVOS, así que
+% aquí no se usa ninguna comparación con ellos. Los bucles avanzan hasta la
+% igualdad (\unless\ifnum ... = ...), que sólo necesita el signo «=».
+\newcounter{hojaresp@i}
+\newcounter{hojaresp@j}
+
+% Renglón en blanco numerado (Complete).
+\newcommand{\hojaResp@lineas}[1]{%
+  \setcounter{hojaresp@i}{0}%
+  \loop\unless\ifnum\value{hojaresp@i}=#1\relax
+    \stepcounter{hojaresp@i}%
+    \noindent\makebox[1.8em][r]{\thehojaresp@i.}\,%
+    \rule[-0.6ex]{\dimexpr\linewidth-2.4em\relax}{0.4pt}\par
+    \vspace{2.4ex}%
+  \repeat}
+
+% Fila de casillas a–e (Selección única).
+\newcommand{\hojaResp@opciones}[2]{%
+  \setcounter{hojaresp@i}{0}%
+  \loop\unless\ifnum\value{hojaresp@i}=#1\relax
+    \stepcounter{hojaresp@i}%
+    \noindent\makebox[1.8em][r]{\thehojaresp@i.}\,%
+    {\setcounter{hojaresp@j}{0}%
+     \loop\unless\ifnum\value{hojaresp@j}=#2\relax
+       \stepcounter{hojaresp@j}%
+       \framebox[1.7em]{\rule[-0.5ex]{0pt}{2.4ex}\small\alph{hojaresp@j}}%
+       \hspace{0.25em}%
+     \repeat}%
+    \par\vspace{2.4ex}%
+  \repeat}
+
+% Cuerpo de la tabla de respuesta corta: se arma primero como lista de tokens y
+% se vuelca de una sola vez, porque un \loop dentro de longtable interfiere con
+% el escaneo de la alineación.
+\newcommand{\hojaResp@fila}[1]{%
+  \multicolumn{1}{|c|}{#1} & & & \tabularnewline[2.6ex]\hline}
+
+\newcommand{\hojaResp@tabla}[1]{%
+  \def\hojaResp@cuerpo{}%
+  \setcounter{hojaresp@i}{0}%
+  \loop\unless\ifnum\value{hojaresp@i}=#1\relax
+    \stepcounter{hojaresp@i}%
+    \edef\hojaResp@tmp{\noexpand\hojaResp@fila{\thehojaresp@i}}%
+    \expandafter\g@addto@macro\expandafter\hojaResp@cuerpo
+      \expandafter{\hojaResp@tmp}%
+  \repeat
+  \begingroup
+    \setlength{\tabcolsep}{4pt}%
+    \renewcommand{\arraystretch}{1.2}%
+    % xltabular: las tres columnas X se reparten el ancho sobrante, así la
+    % tabla ocupa siempre el ancho completo de la página.
+    \begin{xltabular}{\textwidth}{|c|X|X|X|}
+      \hline
+      \textbf{\#} & \textbf{Fórmula} & \textbf{Datos empleados}
+        & \textbf{Resultado numérico}\tabularnewline
+      \hline
+      \endfirsthead
+      \hline
+      \textbf{\#} & \textbf{Fórmula} & \textbf{Datos empleados}
+        & \textbf{Resultado numérico}\tabularnewline
+      \hline
+      \endhead
+      \hojaResp@cuerpo
+    \end{xltabular}
+  \endgroup}
+
+\newcommand{\hojaRespuestas}[4][5]{%
+  \clearpage
+  \phantomsection
+  \section*{Hoja de respuestas}
+  \addcontentsline{toc}{section}{Hoja de respuestas}
+  \noindent\textbf{Nombre:}\,\rule[-0.6ex]{0.44\textwidth}{0.4pt}\hfill
+  \textbf{Carné:}\,\rule[-0.6ex]{0.22\textwidth}{0.4pt}\par
+  \vspace{3mm}
+  \noindent\textit{Traslade aquí sus respuestas. Marque con una «X» la casilla
+  de la opción correcta. Sólo se califica lo consignado en esta hoja.}\par
+  \vspace{4mm}
+  \ifnum\numexpr#2+#3\relax=0\else
+    \noindent
+    \begin{minipage}[t]{0.48\textwidth}
+      \ifnum#2=0\else
+        \noindent\textbf{Complete}\par\vspace{3mm}
+        \hojaResp@lineas{#2}%
+      \fi
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.48\textwidth}
+      \ifnum#3=0\else
+        \noindent\textbf{Selección única}\par\vspace{3mm}
+        \hojaResp@opciones{#3}{#1}%
+      \fi
+    \end{minipage}\par
+    \vspace{5mm}
+  \fi
+  \ifnum#4=0\else
+    \noindent\textbf{Respuesta corta}\par
+    \vspace{2mm}
+    \noindent\textit{Para cada ítem escriba la fórmula que usa, los datos con
+    sus unidades y el resultado del cálculo.}\par
+    \vspace{3mm}
+    \hojaResp@tabla{#4}%
+  \fi}
+
 \endinput

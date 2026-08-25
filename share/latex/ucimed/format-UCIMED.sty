@@ -65,6 +65,7 @@
   % del usuario) da \abs \dv \pdv \dd \eval \norm \bra \ket … — las mismas
   % macros que usan los formularios de fórmulas de los cursos.
   \RequirePackage{physics-patch}
+  \RequirePackage{cancel}     % \cancel, \cancelto en las soluciones
   \RequirePackage{siunitx}
   \sisetup{
     detect-all,
@@ -84,6 +85,11 @@
   \UCIMED@unit{poise}{P}
   \UCIMED@unit{psi}{psi}
   \UCIMED@unit{inch}{in}
+  % Abreviaturas de cinemática usadas por el banco de ejercicios. Mismas
+  % definiciones que SetUnits.sty, para que un ítem del banco compile igual
+  % con la biblioteca completa o con este bundle autocontenido.
+  \UCIMED@unit{ace}{m/s^2}
+  \UCIMED@unit{vel}{m/s}
 
 %==< Símbolos y listas >=======================================================
   \RequirePackage{pifont}     % \ding{51}  (marca de respuesta correcta)
@@ -91,7 +97,10 @@
   \RequirePackage{multicol}
   \RequirePackage{booktabs}
   \RequirePackage{array}
+  \RequirePackage{longtable}  % tabla de respuesta corta (parte entre páginas)
+  \RequirePackage{xltabular}  % longtable con columnas X (ancho total fijo)
   \RequirePackage{graphicx}
+  \RequirePackage{pdfpages}   % \includepdf del formulario al final de la prueba
 
 %==< Referencias internas >====================================================
   \RequirePackage{lastpage}   % \pageref{LastPage} en el encabezado
