@@ -18,6 +18,10 @@
 %                                 total («N puntos ↔ 100 %»).
 %      \pagestyle{uplain}       → páginas interiores: «Página n/N» arriba a la
 %                                 derecha y «PARCIAL - CÓDIGO - CICLO» al pie.
+%      \pagestyle{labguide}     → guías de laboratorio (clase book, twoside):
+%                                 encabezado de dos líneas, espejado por paridad,
+%                                 con universidad, práctica en curso, autor y
+%                                 «Página n de N». Ver el bloque de abajo.
 %
 %  El puntaje del encabezado es \total{totalPoints}: lo alimentan los
 %  \consolidatePoints{...} de cada sección y necesita DOS pasadas de compilación
@@ -59,6 +63,47 @@
     \vbox to \ht\ulogo{Página \thepage/\pageref*{LastPage}\\Versión \laversion}%
     
   }%
+}
+
+%==< Guía de laboratorio >=====================================================
+%  Pensado para la clase `book` en `twoside`. Encabezado de DOS líneas,
+%  espejado por paridad para que los datos institucionales queden siempre del
+%  lado del lomo y la paginación siempre del lado exterior:
+%
+%      recto (impar)   UNIVERSIDAD            │            Lic. Fulano de Tal
+%                      Práctica 3. Título     │        Página 21 de 66
+%      verso (par)     Lic. Fulano de Tal     │              UNIVERSIDAD
+%                      Página 20 de 66        │     Práctica 3. Título
+%
+%  «Práctica N. Título» sale de \leftmark, que en `book` alimenta \chaptermark;
+%  por eso el documento debe declarar \renewcommand{\chaptername}{Práctica}
+%  ANTES del primer \chapter. \nouppercase deshace la versalita forzada de la
+%  clase. En el frontmatter no hay capítulos y esa línea sale vacía a propósito.
+%
+%  Requiere \author{...} en el preámbulo: sin él la línea del autor queda en
+%  blanco (\theauthor se resuelve en \begin{document}, así que da igual si el
+%  \author va antes o después de cargar los paquetes).
+%
+%  Las páginas de apertura de capítulo las fuerza `book` a \thispagestyle{plain}
+%  y por eso NO llevan este encabezado: sólo el folio. Es el comportamiento
+%  normal de un libro; si se quisiera el encabezado también ahí, hay que
+%  redefinir el estilo `plain`.
+\newcommand{\UCL@inst}{\footnotesize\textsc{\theuni}}
+\newcommand{\UCL@pract}{\footnotesize\nouppercase{\leftmark}}
+\newcommand{\UCL@auth}{\footnotesize\theauthor}
+\newcommand{\UCL@page}{\footnotesize Página \thepage\ de \pageref*{LastPage}}
+% Dos líneas alineadas entre sí: al ras del lomo (L) o del margen exterior (R).
+\newcommand{\UCL@stackl}[2]{\begin{tabular}[b]{@{}l@{}}#1\\#2\end{tabular}}
+\newcommand{\UCL@stackr}[2]{\begin{tabular}[b]{@{}r@{}}#1\\#2\end{tabular}}
+
+\fancypagestyle{labguide}{%
+  \fancyhf{}%
+  \setlength{\headheight}{28pt}%
+  \renewcommand{\headrulewidth}{0.4pt}%
+  \fancyhead[LO]{\UCL@stackl{\UCL@inst}{\UCL@pract}}%
+  \fancyhead[RO]{\UCL@stackr{\UCL@auth}{\UCL@page}}%
+  \fancyhead[LE]{\UCL@stackl{\UCL@auth}{\UCL@page}}%
+  \fancyhead[RE]{\UCL@stackr{\UCL@inst}{\UCL@pract}}%
 }
 
 \endinput
