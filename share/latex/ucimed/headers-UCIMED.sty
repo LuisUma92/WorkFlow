@@ -94,6 +94,13 @@
 % Dos líneas alineadas entre sí contra el margen izquierdo.
 \newcommand{\UCL@stackl}[2]{\begin{tabular}[b]{@{}l@{}}#1\\#2\end{tabular}}
 
+%  \chaptermark propio: la clase imprime «Capítulo 0. Título» en los capítulos
+%  del frontmatter (contador en 0). El prefijo sólo tiene sentido cuando el
+%  capítulo está numerado, así que se emite únicamente si el contador > 0.
+\renewcommand{\chaptermark}[1]{%
+  \markboth{\ifnum\value{chapter}>0 \@chapapp\ \thechapter. \fi #1}{}%
+}
+
 \fancypagestyle{labguide}{%
   \fancyhf{}%
   \setlength{\headheight}{28pt}%
