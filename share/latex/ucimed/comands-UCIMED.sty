@@ -479,6 +479,10 @@ end
   \ifthenelse{\equal{#1}{CB-09}}{%
     \renewcommand{\classname}{Física para Ciencias de la Salud}\ucimed
   }{%
+  \ifthenelse{\equal{#1}{CB-09-m}}{%
+    \renewcommand{\classname}{Física para Ciencias Médicas}\ucimed
+    \renewcommand{\classcode}{CB-09}%
+  }{%
   \ifthenelse{\equal{#1}{CBI-06}}{%
     \renewcommand{\classname}{Física I}\ucimed
   }{%
@@ -486,7 +490,7 @@ end
     \renewcommand{\classname}{Física II}\ucimed
   }{%
     \renewcommand{\classname}{#1}\ucimed
-  }}}%
+  }}}}%
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -497,5 +501,26 @@ end
 
 \newcommand{\thegroup}{Grupo 00}
 \newcommand{\setgroup}[1]{\renewcommand{\thegroup}{Grupo #1}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  5) Guías de laboratorio
+%
+%  Portados desde SetCommands / PartialCommands para que el bundle UCIMED sea
+%  autosuficiente. Van con \providecommand: un documento puede cargar además
+%  SetCommands o PartialCommands sin que choquen las definiciones.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Celda de tabla con varias líneas. El PRIMER argumento es OPCIONAL y lleva el
+% preámbulo de columna:  \minitab[c]{\(x\)\\(\unit{mm})}
+\providecommand{\minitab}[2][]{\begin{tabular}{#1}#2\end{tabular}}
+
+% Los equipos Vernier (LabQuest 2, Graphical Analysis) vienen en inglés de
+% fábrica. Todo rótulo de la interfaz se escribe en los dos idiomas para que el
+% estudiantado no se pierda por el idioma del menú.
+% #1 = rótulo en inglés (de fábrica)   #2 = rótulo en español
+\providecommand{\labq}[2]{\texttt{`#1(#2)'}}
+
+% Temas cubiertos por el documento (lo consume el encabezado).
+\providecommand{\topics}{}
+\providecommand{\settopics}[1]{\renewcommand{\topics}{#1}}
 
 \endinput

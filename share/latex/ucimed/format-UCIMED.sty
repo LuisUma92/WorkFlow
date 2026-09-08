@@ -5,8 +5,9 @@
 %
 %  Extracto AUTOSUFICIENTE de las bibliotecas personales SetFormat / SetLoyaut /
 %  SetUnits / SetSymbols: contiene SÓLO lo que una prueba (parcial, corta, final)
-%  necesita para compilar. No trae bibliografía, glosarios, pgfplots, tcolorbox
-%  ni el resto del andamiaje de las presentaciones de clase.
+%  necesita para compilar, más lo que exigen las guías de laboratorio (pgfplots,
+%  pgfplotstable, multirow, amssymb). No trae bibliografía, glosarios ni
+%  tcolorbox, ni el resto del andamiaje de las presentaciones de clase.
 %
 %  Orden de carga recomendado en el documento:
 %      \usepackage{format-UCIMED}     % este archivo
@@ -60,6 +61,7 @@
 
 %==< Matemática y unidades >===================================================
   \RequirePackage{amsmath}
+  \RequirePackage{amssymb}    % \lesssim, \gtrsim y demás relaciones
   \RequirePackage{bm}
   % physics-patch (TeX Live 2026 estándar, NO depende de la biblioteca personal
   % del usuario) da \abs \dv \pdv \dd \eval \norm \bra \ket … — las mismas
@@ -97,9 +99,25 @@
   \RequirePackage{multicol}
   \RequirePackage{booktabs}
   \RequirePackage{array}
+  % Columnas de ancho fijo con alineación. Guardadas por si el documento ya las
+  % definió (config/0_packages.sty, SetFormat*): \newcolumntype no es idempotente.
+  \makeatletter
+  \@ifundefined{NC@rewrite@L}{%
+    \newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}}{}
+  \@ifundefined{NC@rewrite@C}{%
+    \newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}}{}
+  \@ifundefined{NC@rewrite@R}{%
+    \newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}}{}
+  \makeatother
+  \RequirePackage{multirow}   % \multirow en las tablas de las guías de laboratorio
   \RequirePackage{longtable}  % tabla de respuesta corta (parte entre páginas)
   \RequirePackage{xltabular}  % longtable con columnas X (ancho total fijo)
   \RequirePackage{graphicx}
+  \RequirePackage{pgfplots}       % gráficas del material de laboratorio
+  \pgfplotsset{compat=1.18}
+  \RequirePackage{pgfplotstable}  % \pgfplotstabletypeset de los inventarios .csv
+  % Convención del workspace: los .csv importables por LaTeX se separan con «;».
+  \pgfplotstableset{col sep=semicolon}
   \RequirePackage{pdfpages}   % \includepdf del formulario al final de la prueba
 
 %==< Referencias internas >====================================================

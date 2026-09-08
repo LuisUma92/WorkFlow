@@ -1,8 +1,8 @@
 % --- Helper: vector coloreado ---
 % \newcommand{\cvec}[2]{\vec{\symbf{\textcolor{#1}{#2}}}}
 \newcommand{\cvec}[2]{\vec{{\textcolor{#1}{#2}}}}
-  \newcommand{\vc}[1]{\vec{{#1}}}
-  \newcommand{\vh}[1]{\hat{#1}}
+  \providecommand{\vc}[1]{\vec{{#1}}}
+  \providecommand{\vh}[1]{\hat{#1}}
 
 % --- Posición ---
 \newcommand{\vpos}{\cvec{Pos}{r}}                       % \vec{r}
@@ -74,9 +74,9 @@
 
 
 %General vector notation
-\newcommand{\vi}{\hat{\imath}}
-\newcommand{\vj}{\hat{\jmath}}
-\newcommand{\vk}{\hat{k}}
+\providecommand{\vi}{\hat{\imath}}
+\providecommand{\vj}{\hat{\jmath}}
+\providecommand{\vk}{\hat{k}}
 
 \newcommand{\vA}{{\color{red}\vc{A}}}
 \newcommand{\mvA}{|\vc{\textcolor{red}{A}}|}
