@@ -33,7 +33,10 @@
 %==< Páginas interiores >======================================================
 \fancypagestyle{uplain}{%
   \fancyhf{}%
-  \fancyhead[R]{Página \thepage/\pageref*{LastPage}}%
+  \fancyhead[R]{%
+    Página \thepage/\pageref*{LastPage}\\%
+    Versión \laversion
+  }%
   \fancyhead[L]{}%
   \fancyfoot[L]{\textsc{\thepartial}\:-\:\classcode\:-\:\thecycle}%
 }
@@ -44,17 +47,17 @@
 %  si \date no está vacío.
 \fancypagestyle{partial}{%
   \fancyhf{}%
-  \setlength{\headheight}{120pt}%
+  \setlength{\headheight}{66pt}%
   \fancyhead[LO]{\usebox{\ulogo}}%
   \fancyhead[C]{%
-    \textbf{\Large{\thepartial}}\\
-    \textbf{\classname}\\[0.5em]
-    \textbf{Prof. \theauthor}\\[0.5em]
-    \ifdefempty{\@date}{}{\@date\\[0.5em]}%
-    \total{totalPoints}\,puntos $\leftrightarrow 100\%$ \\
+    \textbf{\Large{\thepartial}}\\%
+    \textbf{\classname}\\[0.5em]%
+    \textbf{\theauthor}\\[0.5em]%
+    \ifdefempty{\@date}{}{\@date}\;-\;\thegroup%\\[0.5em]}%
   }%
   \fancyhead[RO]{%
-    \vbox to \ht\ulogo{Página \thepage/\pageref*{LastPage}}%
+    \vbox to \ht\ulogo{Página \thepage/\pageref*{LastPage}\\Versión \laversion}%
+    
   }%
 }
 
