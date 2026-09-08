@@ -39,6 +39,12 @@
 
 %==< Idioma y tipografía (lualatex) >==========================================
   \RequirePackage[spanish]{babel}
+  % babel-spanish rotula las tablas «Cuadro», pero \autoref de hyperref las
+  % llama «Tabla». Se unifica en «Tabla»: en este material las tablas son la
+  % base de datos experimental que el estudiante llena y luego cita desde el
+  % análisis y el cuestionario, y esa referencia cruzada tiene que leerse igual
+  % en el encabezado del objeto y en el texto que lo invoca.
+  \addto\captionsspanish{\renewcommand{\tablename}{Tabla}}
   \RequirePackage{fontspec}
   \RequirePackage{microtype}
   % STIX Two es la fuente de los exámenes en el equipo del autor. Si no está
