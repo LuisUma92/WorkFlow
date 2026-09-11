@@ -1,3 +1,16 @@
+---
+id: 20260601-xdg-path-consolidation
+title: XDG path consolidation — align code with ADR-0008
+type: gap
+source_agent: unknown   # pre-template request
+opened_on: 2026-06-01
+status: closed
+resolution: implemented
+adr_refs: ["0008", "0003", "ITEP-0011"]
+closed_on: 2026-06-05
+closed_by: "tasks/plans/2026-06-05-wave-e-xdg-path-consolidation-plan.md; ADR-0008 amended 2026-06-05"   # frontmatter added 2026-09-10 (audit 2026-09-10 B)
+---
+
 # Request: XDG path consolidation — align code with ADR-0008
 
 - **Date:** 2026-06-01

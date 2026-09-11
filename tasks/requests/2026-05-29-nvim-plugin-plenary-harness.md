@@ -1,3 +1,15 @@
+---
+id: 20260529-nvim-plugin-plenary-harness
+title: Add `plenary.busted` test harness to `nvim-plugin/`
+type: enhancement
+source_agent: unknown   # pre-template request
+opened_on: 2026-05-29
+status: closed
+resolution: implemented
+closed_on: 2026-05-30
+closed_by: "v1.15.0 (P1+P2) + v1.15.1 (P3+P4)"   # frontmatter added retroactively 2026-09-10 (audit 2026-09-10 B)
+---
+
 # Add `plenary.busted` test harness to `nvim-plugin/`
 
 > **Status: ALL PHASES DONE — P1+P2 v1.15.0, P3+P4 v1.15.1 (2026-05-30).**

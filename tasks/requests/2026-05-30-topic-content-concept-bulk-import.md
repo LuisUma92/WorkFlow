@@ -1,3 +1,16 @@
+---
+id: 20260530-topic-content-concept-bulk-import
+title: Bulk import for `DisciplineArea → Topic → Content → Concept` from YAML
+type: feature
+source_agent: unknown   # pre-template request
+opened_on: 2026-05-30
+status: closed
+resolution: implemented
+adr_refs: ["0018"]
+closed_on: 2026-05-30
+closed_by: "v1.17.0"   # frontmatter added retroactively 2026-09-10 (audit 2026-09-10 B)
+---
+
 # Bulk import for `DisciplineArea → Topic → Content → Concept` from YAML
 
 > **Status: RESOLVED — v1.17.0 (2026-05-30).** `workflow topic import <file.yaml>

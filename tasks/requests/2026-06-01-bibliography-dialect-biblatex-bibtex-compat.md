@@ -5,8 +5,8 @@ type: enhancement
 source_agent: user
 opened_on: 2026-06-01
 
-status: open
-resolution:
+status: closed
+resolution: implemented   # P2 bibkey-UNIQUE box superseded — see progress log 2026-09-10
 priority: P2
 severity: recurring-friction
 
@@ -28,9 +28,12 @@ blocked_by: []
 
 assignee: unassigned
 target_release:
-implementation: []
-closed_on:
-closed_by:
+implementation:
+  - src/workflow/bibliography/dialect.py
+  - workflow prisma bib export --dialect biblatex|bibtex
+  - workflow prisma bib export --resolve-xref
+closed_on: 2026-09-10
+closed_by: "3087063 (P3 --dialect), 3c824c7 (A4 relations); 9df3465 (ADR-0019 rejects UNIQUE(bibkey))"
 
 acceptance_criteria: []
 verification: []
@@ -122,3 +125,10 @@ Implement ADR-0019 in phases (each independently shippable):
   (Proposed). Importer already accepts biblatex entry types
   (`ignore_nonstandard_types=False`) and wires `urldate` (done in the
   literature-note-bib-import work).
+- 2026-09-10 — **closed** (audit `tasks/audit/2026-09-10-tasks-and-primer-audit.md` B).
+  P1, P2 (`date`/`chapter`/`type`), P3 exporter and single-module aliasing shipped (evidence:
+  `tasks/plans/2026-07-05-wave3-bibliography-prisma-plan.md` SHIPPED table). The P2 box
+  "`bibkey` unique/non-null" is **superseded, not met**: ADR-0019 §5 note (2026-06-02, `9df3465`)
+  rejects `UNIQUE(bibkey)` — duplicate bibkeys are intentional; calculated-bibkey enforcement
+  (`2026-06-02-calculated-bibkey-enforcement.md`) replaced it. Docs box closed by the
+  `src/workflow/bibliography/` Module Structure bullet added to CLAUDE.md 2026-09-10.

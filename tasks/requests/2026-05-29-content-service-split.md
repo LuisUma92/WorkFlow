@@ -1,3 +1,15 @@
+---
+id: 20260529-content-service-split
+title: Split `workflow.content.service` into CRUD + link-management modules
+type: chore
+source_agent: unknown   # pre-template request
+opened_on: 2026-05-29
+status: closed
+resolution: implemented
+closed_on: 2026-05-29
+closed_by: "v1.14.0"   # frontmatter added retroactively 2026-09-10 (audit 2026-09-10 B)
+---
+
 # Split `workflow.content.service` into CRUD + link-management modules
 
 > **Status: RESOLVED — v1.14.0 (2026-05-29).** `content/service.py` trimmed to

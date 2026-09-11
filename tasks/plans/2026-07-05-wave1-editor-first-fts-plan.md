@@ -1,5 +1,9 @@
 # Implementation plan — Wave 1: editor-first capture + vault FTS5 search
 
+> **Status: SHIPPED** — F0 `c35c33b`, F1 `d8dc066`, F2 `68d348e` (migration 0017), F3a `418a7c6`,
+> F3b `99e2c91`. ITEP-0015 Accepted; ADR-0021 flipped to Accepted 2026-09-10. Recorded 2026-09-10
+> (`tasks/audit/2026-09-10-tasks-and-primer-audit.md` C).
+
 Request: none dedicated — sourced from `tasks/roadmap/2026-07-05-post-freeze-implementation-roadmap.md` (Wave 1, items 2–3)
 ADR: `docs/ADR/ITEP-0015-editor-first-authoring-tooling.md` (**Proposed** — F0 must flip to Accepted with corrected scope)
       `docs/ADR/0021-vault-full-text-search.md` (**Proposed** — no code written by that ADR; F2 makes it real)

@@ -1,5 +1,9 @@
 # Implementation plan — `gf` con expansión de macros de ruta en `.tex`
 
+> **Estado: SHIPPED** — `088dfe8` (`tex_macros.lua`), `84c5895` (wrapper `includeexpr`),
+> `a7ac37a` (cableado + 2 fixes). Registrado 2026-09-10
+> (`tasks/audit/2026-09-10-tasks-and-primer-audit.md` C).
+
 Request: (ninguno todavía — nace de esta sesión)
 ADR: no requiere ADR (feature aditiva de plugin Neovim, sin contrato CLI/DB)
 Methodology: TDD (RED→GREEN→REFACTOR) con plenary, reviewer-esquema, sin migración.

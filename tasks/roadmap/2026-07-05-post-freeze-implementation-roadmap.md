@@ -1,5 +1,10 @@
 # Post-freeze implementation roadmap — window opens nov 2026
 
+> **Status (2026-09-10):** Wave 0 SHIPPED, Wave 1 SHIPPED, Wave 3 CLOSED (bibliography
+> remainder superseded by ADR-0019 note; PRISMA closure was doc-only). Wave 2 (ITEP-0014
+> `fm_hash`, ADR-0022 ResearchQuestion) and Wave 4 (graph evolution, convention engine,
+> ADR-0023 unwritten) **not started**. See plan headers in `tasks/plans/2026-07-05-wave*`.
+
 _Snapshot 2026-07-05. Synthesizes the audit's open-by-design findings
 (`tasks/audit/2026-07-05-tasks-adr-completeness-audit.md` Summary), the four
 proposed ADRs written 2026-07-05 (ITEP-0014, ITEP-0015, 0021, 0022), and the

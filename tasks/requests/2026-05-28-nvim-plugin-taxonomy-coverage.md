@@ -1,3 +1,16 @@
+---
+id: 20260528-nvim-plugin-taxonomy-coverage
+title: Add nvim-plugin coverage for taxonomy + graph CLI surface
+type: enhancement
+source_agent: unknown   # pre-template request
+opened_on: 2026-05-28
+status: closed
+resolution: implemented   # Tier-3 :WorkflowLectureBuildEval deliberately not built — nvim-plugin/lua/workflow/lectures.lua:50
+adr_refs: ["0017"]
+closed_on: 2026-05-30
+closed_by: "v1.12.0 (taxonomy pickers) + v1.16.0 (:WorkflowGraphNeighbors)"   # frontmatter added 2026-09-10 (audit 2026-09-10 B)
+---
+
 # Add nvim-plugin coverage for taxonomy + graph CLI surface
 
 > **Tier-2 update — v1.16.0 (2026-05-30):** the blocked `:WorkflowGraphNeighbors {node-id}`

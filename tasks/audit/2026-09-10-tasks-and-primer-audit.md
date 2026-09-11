@@ -69,15 +69,17 @@ Scope: verify `tasks/**` statuses and the local `.claude/primer.md` (mtime 2026-
 
 ## Summary / open items
 
-| # | File | Issue | Action needed |
-|---|------|-------|---------------|
-| 1 | `.claude/primer.md` | next step already done; push state wrong; 16 commits missing | rewrite state section |
-| 2 | git | 16 commits not on `public`, 11 not on `origin` | push (network check first) |
-| 3 | 2 requests `open` | actually DONE | close with `closed_by` |
-| 4 | 8 requests no frontmatter | DONE, unscannable | add `status: closed` frontmatter |
-| 5 | wave0/1/3 + tex-gf plans, post-freeze roadmap | no status | mark shipped / partial |
-| 6 | `security/2026-06-03-…` | HIGH listed open, mitigated | mark fixed w/ evidence |
-| 7 | `todo.md`, `WIKI-UPDATE-BRIEF.md` | stale | archive / reset |
-| 8 | `CLAUDE.md:104`, ADR-0021 | stale claims | fix text / flip to Accepted |
-| 9 | `tikz-build-pipeline.md` | untracked | `git add` |
-| 10 | flake8 | 123 non-CI findings outside PRISMAreview | decide: accept as baseline or clean |
+| # | File | Issue | Action needed | Resolution (2026-09-10) |
+|---|------|-------|---------------|-------------------------|
+| 1 | `.claude/primer.md` | next step already done; push state wrong; 16 commits missing | rewrite state section | ✅ done |
+| 2 | git | 16 commits not on `public`, 11 not on `origin` | push (network check first) | ⏳ open — out of docs scope |
+| 3 | 2 requests `open` | actually DONE | close with `closed_by` | ✅ closed (bibkey-UNIQUE box recorded as superseded) |
+| 4 | 8 requests no frontmatter | DONE, unscannable | add `status: closed` frontmatter | ✅ done |
+| 5 | wave0/1/3 + tex-gf plans, post-freeze roadmap | no status | mark shipped / partial | ✅ done (wave3 = CLOSED, no code — Phase 1 superseded) |
+| 6 | `security/2026-06-03-…` | HIGH listed open, mitigated | mark fixed w/ evidence | ✅ #1–#3 fixed; #4 TOCTOU + #5 still open (verified) |
+| 7 | `todo.md`, `WIKI-UPDATE-BRIEF.md` | stale | archive / reset | ✅ moved to `tasks/archive/`; `todo.md` restarted |
+| 8 | `CLAUDE.md:104`, ADR-0021 | stale claims | fix text / flip to Accepted | ✅ done + `shared/`→`share/latex`, bibliography/ucimed/`gf` docs |
+| 9 | `tikz-build-pipeline.md` | untracked | `git add` | ✅ already tracked (added in `9598731`) |
+| 10 | flake8 | 123 non-CI findings outside PRISMAreview | decide: accept as baseline or clean | ★ Luis decides |
+
+Executed by `tasks/plans/2026-09-10-docs-tasks-drift-fix-plan.md`.

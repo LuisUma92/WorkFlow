@@ -1,3 +1,16 @@
+---
+id: 20260528-graph-neighbors-json
+title: Add `--json` to `workflow graph neighbors`
+type: enhancement
+source_agent: unknown   # pre-template request
+opened_on: 2026-05-28
+status: closed
+resolution: implemented
+adr_refs: ["0017"]
+closed_on: 2026-05-30
+closed_by: "v1.16.0"   # frontmatter added retroactively 2026-09-10 (audit 2026-09-10 B)
+---
+
 # Add `--json` to `workflow graph neighbors`
 
 > **Status: RESOLVED — v1.16.0 (2026-05-30).** `workflow graph neighbors NODE_ID --json`

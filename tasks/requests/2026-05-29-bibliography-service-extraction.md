@@ -1,3 +1,16 @@
+---
+id: 20260529-bibliography-service-extraction
+title: Extract `workflow.bibliography.service` from `workflow.prisma.service`
+type: chore
+source_agent: unknown   # pre-template request
+opened_on: 2026-05-29
+status: closed
+resolution: implemented
+adr_refs: ["0020"]
+closed_on: 2026-05-29
+closed_by: "v1.14.0"   # frontmatter added retroactively 2026-09-10 (audit 2026-09-10 B)
+---
+
 # Extract `workflow.bibliography.service` from `workflow.prisma.service`
 
 > **Status: RESOLVED — v1.14.0 (2026-05-29).** New `src/workflow/bibliography/`

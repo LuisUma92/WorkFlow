@@ -1,5 +1,8 @@
 # Implementation plan — Wave 0: Fleeting-monolith harvest loop (D1-D3)
 
+> **Status: SHIPPED** — D1 `7f2679e`, D2 `70633cf`, D3 `fe47628`. Recorded 2026-09-10
+> (`tasks/audit/2026-09-10-tasks-and-primer-audit.md` C).
+
 Request: n/a — sourced directly from `tasks/roadmap/2026-07-05-post-freeze-implementation-roadmap.md`
 (Wave 0) and the approved design spec below.
 ADR: none new — reuses ITEP-0011, ITEP-0012 (2026-07-04 slug-only amendment), ADR-0018.

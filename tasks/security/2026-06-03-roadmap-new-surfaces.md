@@ -8,7 +8,7 @@ scope:
   - src/workflow/bibliography/render.py      # A5 promoted renderer (planned)
   - src/workflow/db/models/bibliography.py   # A1 BibExtraField, A4 BibRelation
   - src/workflow/vault/paths.py              # vault note write path
-status: open
+status: partially-fixed   # 2026-09-10: #1-#3 fixed, #4-#5 open — see Summary
 findings_summary:
   critical: 0
   high: 1
@@ -117,11 +117,13 @@ the emitted values so a stray `}` can't break out of the block.
 
 | # | Severity | File | Issue | Status |
 |---|----------|------|-------|--------|
-| 1 | HIGH | `prisma/cli.py` (C1) | bibkey-derived filename → path traversal | open |
-| 2 | MEDIUM | `prisma/importer.py` (B1) | stdin bypasses size guard | open |
-| 3 | MEDIUM | `db/models/bibliography.py` (A1) | EAV field sink unvalidated | open |
-| 4 | MEDIUM | `prisma/cli.py` (C1/C2) | TOCTOU on idempotent write | open |
-| 5 | LOW | `bibliography/render.py` (A5) | bib block payload round-trip | open |
+| 1 | HIGH | `prisma/cli.py` (C1) | bibkey-derived filename → path traversal | **fixed** — `_SAFE_BIBKEY_RE` allowlist `accept_to_note.py:48,287`; `test_accept_to_note.py:166` |
+| 2 | MEDIUM | `prisma/importer.py` (B1) | stdin bypasses size guard | **fixed** — `import_bib_text` checks `MAX_BIB_SIZE_BYTES` `importer.py:899` |
+| 3 | MEDIUM | `db/models/bibliography.py` (A1) | EAV field sink unvalidated | **fixed** — catalog whitelist + `MAX_EXTRA_VALUE_LEN`/`MAX_EXTRA_FIELDS` `importer.py:54-62` |
+| 4 | MEDIUM | `prisma/cli.py` (C1/C2) | TOCTOU on idempotent write | open — no `open(..., "x")`/`O_EXCL` in `accept_to_note.py` (2026-09-10); tracked in `tasks/requests/2026-09-10-accept-to-note-atomic-create.md` |
+| 5 | LOW | `bibliography/render.py` (A5) | bib block payload round-trip | open — `render.py` strips braces, no brace-balance guard verified |
+
+_Status column updated 2026-09-10 against code (`tasks/audit/2026-09-10-tasks-and-primer-audit.md` D)._
 
 ## Verdict
 

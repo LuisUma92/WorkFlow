@@ -5,8 +5,8 @@ type: feature
 source_agent: user
 opened_on: 2026-06-03
 
-status: open
-resolution:
+status: closed
+resolution: implemented   # P2 screening hook deferred by the request itself
 priority: P2
 severity: recurring-friction
 
@@ -30,9 +30,12 @@ blocked_by: []   # B1 stdin path + A5 shared renderer have both landed (Wave A/B
 
 assignee: unassigned
 target_release:
-implementation: []
-closed_on:
-closed_by:
+implementation:
+  - src/workflow/prisma/accept_to_note.py
+  - workflow prisma bib accept-to-note [--all-accepted --keyword-id]
+  - nvim-plugin/lua/workflow/prisma_note.lua (:WorkflowPrismaAcceptToNote)
+closed_on: 2026-09-10
+closed_by: "c737c41 (C1), e3b83d2 (C2 bulk), 03651eb (C3 nvim)"
 
 acceptance_criteria: []
 verification: []
@@ -327,3 +330,8 @@ command. Deferred until that graph work is built out.
   reuse A5 `render.entry_to_biblatex`; validator-schema extension moved in-scope; `--bib-entry-id`
   fallback + `AmbiguousLookupError` handling; ITEP-0013 marked Accepted; `adr_refs` updated.
   Implementation-ready. Plan: `tasks/plans/2026-06-04-wave-c-prisma-to-note-plan.md`.
+- 2026-09-10 — **closed** (audit `tasks/audit/2026-09-10-tasks-and-primer-audit.md` B). P1 CLI
+  (single + bulk), validator schema, P3 nvim command and docs shipped (`c737c41`, `e3b83d2`,
+  `03651eb`; evidence table in `tasks/plans/2026-07-05-wave3-bibliography-prisma-plan.md`).
+  P2 screening-transition hook stays deferred as the request itself states. Path-traversal guard
+  on bibkey filenames: `accept_to_note.py:48,287` (security review 2026-06-03 #1).

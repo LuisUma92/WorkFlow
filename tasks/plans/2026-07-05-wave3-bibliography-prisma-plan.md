@@ -1,5 +1,11 @@
 # Implementation plan — Wave 3: bibliography-dialect remainder + PRISMA P1/P3 closure
 
+> **Status: CLOSED (2026-09-10) — no code shipped under this plan.** Phase 1 (`bibkey` UNIQUE,
+> migration `0017_bibkey_unique_identity`) is **superseded**: ADR-0019 §5 note (2026-06-02,
+> `9df3465`) rejected `UNIQUE(bibkey)`; migration slot 0017 went to `note_fts_and_alias`.
+> Phases 0/2/3 (doc-lag + request closures) executed by
+> `tasks/plans/2026-09-10-docs-tasks-drift-fix-plan.md`.
+
 Request: `tasks/requests/2026-06-01-bibliography-dialect-biblatex-bibtex-compat.md`
 Request: `tasks/requests/2026-06-03-prisma-to-literature-note.md`
 ADR: `docs/ADR/0019-bibliography-dialect-biblatex-native-model.md` (**Accepted**)

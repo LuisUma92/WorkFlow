@@ -5,7 +5,7 @@ parent: ADRs
 ---
 # 0021 — Vault full-text search via SQLite FTS5
 
-- **Status:** Proposed
+- **Status:** Accepted (2026-09-10 — implemented by W1 F2 `68d348e`, migration `0017_note_fts_and_alias`; standalone-table deviation from `content='note'` documented in the migration docstring)
 - **Date:** 2026-07-05
 - **Domain:** Zettelkasten / Notes
 - **Depends on:** ITEP-0011 (vault unification, GlobalBase), 0010 (file-as-truth), ITEP-0014 (incremental sync via content hash, Proposed)
@@ -99,14 +99,17 @@ new top-level command touches the vault; sync remains the single writer.
 
 ## Status
 
-**Proposed.** Implementation deferred to post-freeze (target: November 2026).
-Originates from the 2026-07-05 council evaluation. No code is written by this
-ADR. Design questions above are resolved; implementation itself remains
-in-progress under the W1 plan.
+**Accepted (2026-09-10).** Implemented by Wave 1 F2 (`68d348e`): migration
+`0017_note_fts_and_alias` creates the standalone `note_fts` table (rowid pinned
+to `Note.id`) + `note_alias`; `workflow notes search` and
+`notes sync --rebuild-index` are live. Deviation from the literal
+`content='note'` design (Note has no body column) is documented in the
+migration docstring. Originates from the 2026-07-05 council evaluation.
 
 ## Change Log
 
 | Date       | Change                                                    |
 | ---------- | ---------------------------------------------------------- |
 | 2026-07-05 | Initial placeholder — register FTS5 vault search proposal. |
+| 2026-09-10 | Proposed → Accepted: shipped in W1 F2 (`68d348e`, migration 0017). |
 | 2026-07-05 | W1 gate ★b/★c design resolved: external-content FTS5 (`content='note'`, `rowid=Note.id`); rebuild = delete+repopulate from `.md` files (ADR-0010 intact, no `fm_hash` coupling required); nvim surface = CLI-subprocess (RPC rejected, not wired today); `note_alias` folded into the same `0017` migration. |
