@@ -11,20 +11,23 @@ __all__ = ["parse_md_frontmatter", "parse_tex_metadata"]
 _MAX_FILE_SIZE = 1_048_576  # 1 MB
 
 
-def parse_md_frontmatter(filepath: Path) -> dict | None:
-    """Extract YAML frontmatter from a Markdown file.
+def _read_frontmatter_source(filepath: Path) -> str | None:
+    """Read a file's text, honoring the size guard.
 
-    Reads text between the first pair of '---' markers at the top of the file.
-    Returns the parsed dict, or None if no frontmatter block is found.
+    Mirrors the original inline logic exactly: the size check happens
+    before any try/except, so a nonexistent file still raises
+    FileNotFoundError from `.stat()` uncaught.
     """
     if filepath.stat().st_size > _MAX_FILE_SIZE:
         return None
     try:
-        text = filepath.read_text(encoding="utf-8")
+        return filepath.read_text(encoding="utf-8")
     except OSError:
         return None
 
-    lines = text.splitlines()
+
+def _extract_frontmatter_block(lines: list[str]) -> str | None:
+    """Find the '---'-delimited block at the top of the lines, if any."""
     if not lines or lines[0].strip() != "---":
         return None
 
@@ -37,7 +40,11 @@ def parse_md_frontmatter(filepath: Path) -> dict | None:
     if end_index is None:
         return None
 
-    yaml_block = "\n".join(lines[1:end_index])
+    return "\n".join(lines[1:end_index])
+
+
+def _parse_yaml_mapping(yaml_block: str) -> dict | None:
+    """Parse a YAML block, returning None unless it is a mapping."""
     try:
         parsed = yaml.safe_load(yaml_block)
     except yaml.YAMLError:
@@ -47,6 +54,23 @@ def parse_md_frontmatter(filepath: Path) -> dict | None:
         return None
 
     return parsed
+
+
+def parse_md_frontmatter(filepath: Path) -> dict | None:
+    """Extract YAML frontmatter from a Markdown file.
+
+    Reads text between the first pair of '---' markers at the top of the file.
+    Returns the parsed dict, or None if no frontmatter block is found.
+    """
+    text = _read_frontmatter_source(filepath)
+    if text is None:
+        return None
+
+    yaml_block = _extract_frontmatter_block(text.splitlines())
+    if yaml_block is None:
+        return None
+
+    return _parse_yaml_mapping(yaml_block)
 
 
 def parse_tex_metadata(filepath: Path) -> dict | None:
