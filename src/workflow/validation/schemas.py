@@ -497,6 +497,79 @@ def _check_exercise_status(status: object) -> list[str]:
     return []
 
 
+def _check_exercise_id(data: dict, errors: list[str]) -> str | None:
+    ex_id = data.get("id")
+    if not ex_id or not isinstance(ex_id, str):
+        errors.append("'id' is required and must be a non-empty string")
+        return None
+    return ex_id
+
+
+def _check_exercise_type(data: dict, errors: list[str]) -> str | None:
+    ex_type = data.get("type")
+    if not ex_type or not isinstance(ex_type, str):
+        errors.append("'type' is required and must be a non-empty string")
+        return None
+    if ex_type not in _valid_exercise_types():
+        errors.append(
+            f"'type' must be one of {sorted(_valid_exercise_types())}, got '{ex_type}'"
+        )
+        return None
+    return ex_type
+
+
+def _check_exercise_difficulty(data: dict, errors: list[str]) -> str | None:
+    difficulty = data.get("difficulty")
+    if not difficulty or not isinstance(difficulty, str):
+        errors.append("'difficulty' is required and must be a non-empty string")
+        return None
+    if difficulty not in _VALID_DIFFICULTIES:
+        errors.append(
+            f"'difficulty' must be one of {sorted(_VALID_DIFFICULTIES)}, got '{difficulty}'"
+        )
+        return None
+    return difficulty
+
+
+def _check_exercise_taxonomy_level(data: dict, errors: list[str]) -> str | None:
+    taxonomy_level = data.get("taxonomy_level")
+    if not taxonomy_level or not isinstance(taxonomy_level, str):
+        errors.append("'taxonomy_level' is required and must be a non-empty string")
+        return None
+    if taxonomy_level not in _VALID_TAXONOMY_LEVELS:
+        errors.append(
+            f"'taxonomy_level' must be one of {sorted(_VALID_TAXONOMY_LEVELS)}, got '{taxonomy_level}'"
+        )
+        return None
+    return taxonomy_level
+
+
+def _check_exercise_taxonomy_domain(data: dict, errors: list[str]) -> str | None:
+    taxonomy_domain = data.get("taxonomy_domain")
+    if not taxonomy_domain or not isinstance(taxonomy_domain, str):
+        errors.append("'taxonomy_domain' is required and must be a non-empty string")
+        return None
+    if taxonomy_domain not in _VALID_TAXONOMY_DOMAINS:
+        errors.append(
+            f"'taxonomy_domain' must be one of {sorted(_VALID_TAXONOMY_DOMAINS)}, "
+            f"got '{taxonomy_domain}'"
+        )
+        return None
+    return taxonomy_domain
+
+
+def _check_exercise_string_list(data: dict, key: str, errors: list[str]) -> list[str]:
+    """Validate an exercise ``tags``/``concepts``-shaped key (list of str, default [])."""
+    value = data.get(key, [])
+    if not isinstance(value, list):
+        errors.append(f"'{key}' must be a list")
+        return []
+    if not all(isinstance(item, str) for item in value):
+        errors.append(f"all items in '{key}' must be strings")
+        return []
+    return value
+
+
 def validate_exercise_metadata(
     data: dict,
 ) -> tuple[ExerciseMetadata | None, list[str], list[str]]:
@@ -510,57 +583,13 @@ def validate_exercise_metadata(
     errors: list[str] = []
     warnings: list[str] = _check_unknown_exercise_keys(data)
 
-    ex_id = data.get("id")
-    if not ex_id or not isinstance(ex_id, str):
-        errors.append("'id' is required and must be a non-empty string")
-
-    ex_type = data.get("type")
-    if not ex_type or not isinstance(ex_type, str):
-        errors.append("'type' is required and must be a non-empty string")
-    elif ex_type not in _valid_exercise_types():
-        errors.append(
-            f"'type' must be one of {sorted(_valid_exercise_types())}, got '{ex_type}'"
-        )
-
-    difficulty = data.get("difficulty")
-    if not difficulty or not isinstance(difficulty, str):
-        errors.append("'difficulty' is required and must be a non-empty string")
-    elif difficulty not in _VALID_DIFFICULTIES:
-        errors.append(
-            f"'difficulty' must be one of {sorted(_VALID_DIFFICULTIES)}, got '{difficulty}'"
-        )
-
-    taxonomy_level = data.get("taxonomy_level")
-    if not taxonomy_level or not isinstance(taxonomy_level, str):
-        errors.append("'taxonomy_level' is required and must be a non-empty string")
-    elif taxonomy_level not in _VALID_TAXONOMY_LEVELS:
-        errors.append(
-            f"'taxonomy_level' must be one of {sorted(_VALID_TAXONOMY_LEVELS)}, got '{taxonomy_level}'"
-        )
-
-    taxonomy_domain = data.get("taxonomy_domain")
-    if not taxonomy_domain or not isinstance(taxonomy_domain, str):
-        errors.append("'taxonomy_domain' is required and must be a non-empty string")
-    elif taxonomy_domain not in _VALID_TAXONOMY_DOMAINS:
-        errors.append(
-            f"'taxonomy_domain' must be one of {sorted(_VALID_TAXONOMY_DOMAINS)}, got '{taxonomy_domain}'"
-        )
-
-    tags = data.get("tags", [])
-    if not isinstance(tags, list):
-        errors.append("'tags' must be a list")
-        tags = []
-    elif not all(isinstance(t, str) for t in tags):
-        errors.append("all items in 'tags' must be strings")
-        tags = []
-
-    concepts = data.get("concepts", [])
-    if not isinstance(concepts, list):
-        errors.append("'concepts' must be a list")
-        concepts = []
-    elif not all(isinstance(c, str) for c in concepts):
-        errors.append("all items in 'concepts' must be strings")
-        concepts = []
+    ex_id = _check_exercise_id(data, errors)
+    ex_type = _check_exercise_type(data, errors)
+    difficulty = _check_exercise_difficulty(data, errors)
+    taxonomy_level = _check_exercise_taxonomy_level(data, errors)
+    taxonomy_domain = _check_exercise_taxonomy_domain(data, errors)
+    tags = _check_exercise_string_list(data, "tags", errors)
+    concepts = _check_exercise_string_list(data, "concepts", errors)
 
     errors.extend(_check_exercise_status(data.get("status")))
 
