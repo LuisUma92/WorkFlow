@@ -76,7 +76,7 @@ def _rows_as_dicts(cursor: sqlite3.Cursor) -> list[dict]:
 # ── ITEP migration ─────────────────────────────────────────────────────────
 
 
-def migrate_itep_db(old_db_path: Path, session: Session) -> dict:
+def migrate_itep_db(old_db_path: Path, session: Session) -> dict:  # noqa: C901 — one-shot legacy ITEP import
     """
     Read the old ITEP SQLite database and insert its data into the unified
     workflow.db via the given SQLAlchemy Session.

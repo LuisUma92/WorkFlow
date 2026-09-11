@@ -92,7 +92,7 @@ class UnifyReport:
     skip_reason: str | None = None
 
 
-def unify(
+def unify(  # noqa: C901 — one-shot per-project migration (ITEP-0011)
     project_root: Path,
     vault_root: Path,
     *,
