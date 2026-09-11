@@ -20,8 +20,10 @@ Plan: `tasks/plans/2026-09-10-docs-tasks-drift-fix-plan.md` · Audit: `tasks/aud
 - [x] C901: noqa on 2 one-shot migrations (`99417c9`); 5 live workflow functions refactored with
       characterization tests (`52d112a`, `b99962d`, `44a6a97`, `71877ef`, `ba9918c`); suite 2683/3
 - [x] C901 latexzettel `choose_one`/`choose_many` (scripted-IO characterization tests); suite 2697/3
-- [ ] C901 latexzettel remaining 5 (`main`, `force_synchronize`, `render_note`, `render_updates`,
-      `rename_reference`) — need subprocess + DB/filesystem fakes first
+- [x] C901 latexzettel remaining 5 (`main`, `force_synchronize`, `render_note`, `render_updates`,
+      `rename_reference`) — worktree sub-agents, cherry-picked after review; suite 2773/3; C901 request closed
+- [x] Removed 17 pasted `:contentReference[oaicite:N]` artifacts from latexzettel docstrings
+- [ ] P1 bug: `render.note` DetachedInstanceError — `tasks/requests/2026-09-11-latexzettel-detached-instance-errors.md` (decide fix option first)
 - [x] Security #4 TOCTOU in `accept_to_note.py` → filed `tasks/requests/2026-09-10-accept-to-note-atomic-create.md`
 - [x] Implemented it (TDD): exclusive create `Path.open("x")`; suite 2629 passed / 3 skipped; CLI smoke OK
 

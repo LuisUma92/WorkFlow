@@ -7,7 +7,7 @@ Refactoriza las funciones legacy:
 - Helper.export_project()
 - Helper.export_draft()
 
-del manage.py original. :contentReference[oaicite:0]{index=0}
+del manage.py original.
 
 Diseño:
 - Sin Click (sin print/input).
@@ -74,7 +74,7 @@ def new_project(
     """
     Crea un folder projects/<dir_name> y copia template/project.tex dentro.
 
-    Equivalente a Helper.newproject(). :contentReference[oaicite:1]{index=1}
+    Equivalente a Helper.newproject().
     """
     if not dir_name:
         raise ValueError("dir_name vacío")
@@ -117,7 +117,7 @@ def export_project(
     Reemplaza \\transclude[...]{} en projects/<project_folder>/<texfile>
     con el contenido de la nota, extrayendo el bloque %<*tag>...%</tag>.
 
-    Equivalente a Helper.export_project(). :contentReference[oaicite:2]{index=2}
+    Equivalente a Helper.export_project().
 
     - output se guarda en: projects/<project_folder>/standalone/<texfile>
     - si overwrite=False y ya existe output_dir, lanza error (en legacy preguntaba)
@@ -194,7 +194,7 @@ def export_draft(
     Reemplaza \\ExecuteMetaData[../<import_file>]{tag} con el contenido del bloque
     %<*tag>...%</tag> dentro del archivo importado.
 
-    Equivalente a Helper.export_draft(). :contentReference[oaicite:3]{index=3}
+    Equivalente a Helper.export_draft().
 
     - Por defecto, crea carpeta draft/ y escribe draft/<basename(input_file)>
     - overwrite controla si se permite sobrescribir output

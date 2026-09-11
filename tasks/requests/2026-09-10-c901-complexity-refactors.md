@@ -5,8 +5,8 @@ type: chore
 source_agent: user
 opened_on: 2026-09-10
 
-status: open
-resolution:
+status: closed
+resolution: implemented
 priority: P3
 severity: polish
 
@@ -28,9 +28,12 @@ blocked_by: []
 
 assignee: unassigned
 target_release:
-implementation: []
-closed_on:
-closed_by:
+implementation:
+  - "noqa C901: migrate_itep_db, unify (99417c9)"
+  - "workflow: 52d112a, b99962d, 44a6a97, 71877ef, ba9918c"
+  - "latexzettel: 00f3465 (choose_*), f268b88 (rename_reference), 22ed136 (force_synchronize), c79a730 (server main), 6db0031 (render_*)"
+closed_on: 2026-09-11
+closed_by: "6db0031 — last of 14 (strict lint: 0 C901)"
 
 acceptance_criteria:
   - "Each function below is ≤ 10 under `flake8 --max-complexity=10`, or carries a justified `# noqa: C901` (one-shot migration code only)."
@@ -106,3 +109,13 @@ Triage before refactoring:
   function has any caller in `src/` today (dead API, kept). **Remaining 5**: `main` (server),
   `force_synchronize`, `render_note`, `render_updates`, `rename_reference` — these do need
   subprocess (pdflatex/biber/pandoc) and DB/filesystem fakes.
+- 2026-09-11 — **closed.** Remaining 5 done by 4 sub-agents in isolated git worktrees (tests commit
+  + refactor commit each), every diff reviewed by hand before cherry-picking onto master:
+  `f268b88` rename_reference 12→≤10 (+8 tests) · `22ed136` force_synchronize 21→≤10 (+16; conflict
+  with the 2026-09-10 dead-`ts` removal resolved by hand; `db_session.__exit__` returns False, so
+  moving the result lists inside the `with` is equivalent) · `c79a730` server `main` 23→4 (+24; real
+  NDJSON stdout byte-identical before/after) · `6db0031` render_note 14→6 / render_updates 14→3 (+28).
+  Worktrees were based on `45b60f9`, not master HEAD — each target file was checked unchanged (or
+  conflict-resolved) before integration. Suite **2773 passed, 3 skipped**.
+  Characterization surfaced a pre-existing P1 bug — `render.note` (RPC) fails with
+  DetachedInstanceError on any existing note → `tasks/requests/2026-09-11-latexzettel-detached-instance-errors.md`.

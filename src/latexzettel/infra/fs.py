@@ -3,8 +3,8 @@
 Capa de infraestructura para operaciones de filesystem.
 
 Este módulo encapsula patrones presentes en:
-- LatexZettel/files.py (rglob filtrando dotfiles) :contentReference[oaicite:0]{index=0}
-- manage.py (creación de carpetas, paths, mtime, etc.) :contentReference[oaicite:1]{index=1}
+- LatexZettel/files.py (rglob filtrando dotfiles)
+- manage.py (creación de carpetas, paths, mtime, etc.)
 
 Reglas:
 - Puede hacer I/O (leer/escribir archivos, mkdir, etc.).
@@ -65,10 +65,10 @@ def rglob_files(
     Recorre recursivamente dir_path y retorna una lista de Paths.
 
     - suffix: "" o ".tex" o "md" (se acepta ambos estilos).
-      Mantiene compatibilidad con `files.get_files(dir_name, extension)` :contentReference[oaicite:2]{index=2}
+      Mantiene compatibilidad con `files.get_files(dir_name, extension)`
     - exclude_dotfiles: filtra cualquier path que contenga "/." (dotfiles y carpetas ocultas).
 
-    Nota: en files.py se usa rglob(f"*{extension}") y luego se filtra '/.' :contentReference[oaicite:3]{index=3}
+    Nota: en files.py se usa rglob(f"*{extension}") y luego se filtra '/.'
     """
     base = Path(dir_path)
     if not base.exists():
@@ -89,7 +89,7 @@ def rglob_files(
 def list_note_tex_files(layout: ProjectLayout = ProjectLayout()) -> list[Path]:
     """
     Equivalente a Helper.__getnotefiles() en manage.py:
-      notes/slipbox/*.tex (recursivo) :contentReference[oaicite:5]{index=5}
+      notes/slipbox/*.tex (recursivo)
     """
     return rglob_files(layout.abs(layout.slipbox_dir), suffix=".tex")
 
@@ -220,7 +220,7 @@ def rendered_artifact_path(
     artifact_root: Path | str = "pdf",
 ) -> Path:
     """
-    Replica el mapeo de LatexZettel/files.py.get_rendered_dates(): :contentReference[oaicite:6]{index=6}
+    Replica el mapeo de LatexZettel/files.py.get_rendered_dates():
       notes/<subpath>.tex  ->  <artifact_root>/<subpath>.<artifact_ext>
 
     Nota:

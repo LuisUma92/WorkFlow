@@ -3,7 +3,7 @@
 API de renderizado (PDF/HTML) para una nota.
 
 Este módulo refactoriza la lógica de Helper.render(), Helper.biber(),
-render_all_pdf/html() y partes de render_updates() de tu manage.py :contentReference[oaicite:0]{index=0}
+render_all_pdf/html() y partes de render_updates() de tu manage.py
 a una API sin CLI (sin print/input/sys.exit).
 
 Diseño:
@@ -14,7 +14,7 @@ Diseño:
 
 Nota:
 - La construcción del documento (inyección de external documents y sección "Referenced In")
-  replica el comportamiento del manage.py original. :contentReference[oaicite:1]{index=1}
+  replica el comportamiento del manage.py original.
 """
 
 from __future__ import annotations
@@ -85,7 +85,6 @@ def _build_referenced_by_section(linked_refs: set[str]) -> str:
       \\begin{itemize}
         \\item \\excref{Ref}
       \\end{itemize}
-    :contentReference[oaicite:2]{index=2}
     """
     if not linked_refs:
         return ""
@@ -109,7 +108,6 @@ def _inject_external_documents_for_html(
         for reference in references:
           if reference.last_build_date_html is not None:
              external_documents += ...
-    :contentReference[oaicite:3]{index=3}
     """
     external_documents = ""
     for reference in references:
@@ -134,7 +132,7 @@ def _prepare_document_for_render(
     - para HTML: reemplaza preamble.tex por preamble_html.tex y/o inyecta external docs
     - re-anexa \\end{document}
 
-    Replica Helper.render() :contentReference[oaicite:4]{index=4}
+    Replica Helper.render()
     """
     document = raw_tex.split("\\end{document}")[0]
 
@@ -169,7 +167,7 @@ def biber(
 ) -> processes.ProcessResult:
     """
     Ejecuta biber en el folder indicado (pdf o html).
-    Equivalente a Helper.biber() :contentReference[oaicite:5]{index=5}
+    Equivalente a Helper.biber()
     """
     return processes.run_biber(filename, folder=folder, check=check)
 
@@ -222,7 +220,7 @@ def _select_renderer_and_out_dir(
 ):
     """
     Resuelve el RenderCommand a usar, sus opciones (copia mutable) y crea/retorna
-    la carpeta de salida (pdf/ o html/) como en manage.py :contentReference[oaicite:7]{index=7}.
+    la carpeta de salida (pdf/ o html/) como en manage.py.
     """
     if format.value not in settings.renderers:
         raise ValueError(f"Formato no soportado: {format}")
