@@ -1,0 +1,188 @@
+% !TeX program = lualatex
+% !TeX root    = UCIMED-Presentacion-plantilla.tex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Plantilla de ejemplo — tema de conferencia beamerthemeUCIMEDpres.sty
+% Ejercita TODAS las macros de la API (ver el bloque «PLANTILLAS DE
+% REFERENCIA» al final del archivo).
+%
+% Compilar:  latexmk -lualatex UCIMED-Presentacion-plantilla.tex
+% *** SIEMPRE con latexmk (o 2 pasadas de lualatex seguidas), NUNCA una sola
+% pasada suelta *** — la portada usa tikz remember-picture/overlay, que
+% exige que el .aux ya tenga el tamaño de página (limitación estándar de
+% pgf/TikZ, no un defecto: beamerthemeCICANUM.sty, el original que este
+% tema replica, tiene la misma exigencia). Ver la cabecera de
+% beamerthemeUCIMEDpres.sty para el detalle verificado.
+%
+% Opciones del tema:
+%   [nologos] portada e interiores sin el logo institucional
+%   [nofondo] diapositivas internas sin la banda superior suave
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[aspectratio=169,10pt,spanish]{beamer}
+
+\usepackage[spanish,es-noquoting,es-nodecimaldot]{babel}
+\usepackage{csquotes}
+\usepackage{fontspec}
+\usepackage{amsmath,amssymb}
+\usepackage{siunitx}
+\usepackage{booktabs}
+
+% Tipografía: palo seco
+\IfFontExistsTF{TeX Gyre Heros}{\setsansfont{TeX Gyre Heros}}{}
+\renewcommand{\familydefault}{\sfdefault}
+
+\usepackage{colors-UCIMED}
+\usepackage{comands-UCIMED}
+\setclass{CBI-07} % Física II — fija \theuni, \theunishort, \theschool, \ulogo
+
+\usepackage{beamerthemeUCIMEDpres}
+
+\sisetup{separate-uncertainty=true,range-units=single}
+
+%==< Metadatos =================================================================
+\title{Electricidad y magnetismo en el cuerpo humano:}
+\subtitle{de la ley de Ampère a la estimulación magnética transcraneal.}
+\author{Prof. Luis Fernando Umaña Castro}
+\institute{Escuela Autónoma de Ciencias Médicas de Centro América, UCIMED}
+\date{2026}
+\edicionUCIMED{\bfseries II ciclo 2026\\\bfseries Grupo 01}
+% \pieUCIMED{\bfseries Escuela Autónoma de Ciencias Médicas de Centro América}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%==< Portada >====================================================================
+\portada
+
+%==< Diapositiva de sección >======================================================
+\seccion{Campo magnético e inducción}{De Biot-Savart a la ley de Faraday, con
+  aplicaciones clínicas}
+
+%==< Tarjetas + \punto + \subsub + tabularx-ish body >=============================
+\begin{frame}{¿Por qué el electromagnetismo importa en medicina?}
+  \framesubtitle{Tres puertas de entrada al tema}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.40\textwidth}
+      % \figura acota el ANCHO del minipage/imagen; ucimed.png es casi
+      % cuadrado (2198x2353 px, razón 1.07) — un ancho discreto (18mm) evita
+      % que domine la diapositiva (a \linewidth de esta columna, ~58mm,
+      % la imagen saldría ~62mm de alto y desbordaría el frame).
+      \figura[18mm]{ucimed.png}%
+        {Identidad institucional UCIMED (relleno de ejemplo, sin dependencias
+         externas).}
+    \end{column}
+    \begin{column}{0.55\textwidth}
+      \punto{El reto}{explicar por qué un campo magnético variable induce
+        corrientes en tejido excitable.}
+      \punto{La solución}{la ley de Faraday: \(\varepsilon = -\dfrac{d\Phi_B}{dt}\).}
+      \punto{La aplicación}{la estimulación magnética transcraneal (TMS) usa
+        exactamente ese principio.}
+    \end{column}
+  \end{columns}
+  \vfill
+  \subsub{El principio de detección}
+  \pasos{Bobina}{Pulso de corriente}{Campo \(B\) variable}%
+        {Corriente inducida}{Despolarización neuronal}
+\end{frame}
+
+%==< Cadena de tres tarjetas + flecha ancha >=======================================
+\begin{frame}{Del laboratorio a la clínica}
+  \framesubtitle{Cadena conceptual de tres pasos}
+  \vfill
+  \cadenatres{\iconflask\ Ley de Ampère}{%
+      Un solenoide produce un campo \(B\) uniforme y controlable dentro de
+      la bobina.}%
+    {\icongear\ Bobina TMS}{%
+      La bobina en forma de ocho concentra el campo sobre la corteza
+      motora del paciente.}%
+    {\iconbolt\ Respuesta neuronal}{%
+      La corriente inducida despolariza axones y produce una respuesta
+      motora medible.}
+  \vfill
+  \flecha{De la ecuación de Maxwell-Faraday a la señal en el electromiógrafo}
+\end{frame}
+
+%==< Tabla + íconos sueltos >========================================================
+\begin{frame}{Comparación de técnicas de neuroestimulación}
+  \framesubtitle{Ejercita \texttt{tablaUCIMED}, \texttt{filaenc}, \texttt{filaalt}}
+  % \UCIMEDhdrfmt se repite en cada celda del encabezado: en tabular/tabularx
+  % un \color{}/\bfseries tecleado antes del primer `&` no se propaga a las
+  % celdas siguientes (cada celda abre su propio grupo) — ver la nota en
+  % beamerthemeUCIMEDpres.sty junto a \filaenc.
+  \begin{tablaUCIMED}{L{28mm}YY}
+    \filaenc Técnica &\UCIMEDhdrfmt Principio físico &\UCIMEDhdrfmt Invasividad \\ \midrule
+    \filaalt TMS & Inducción electromagnética (Faraday) & No invasiva \\
+    tDCS & Corriente directa transcraneal (Ohm) & No invasiva \\
+    \filaalt DBS & Estimulación eléctrica directa & Invasiva (electrodo) \\
+    \bottomrule
+  \end{tablaUCIMED}
+  \vfill
+  \subsubi{\iconcheck}{Ventaja compartida}: ninguna requiere abrir el cráneo,
+  salvo la estimulación cerebral profunda (DBS).
+\end{frame}
+
+%==< Cuatro tarjetas en fila (patrón de referencia) >================================
+\begin{frame}{Cuatro mecanismos de acoplamiento campo-tejido}
+  \begin{columns}[t,onlytextwidth]
+    \begin{column}{0.235\textwidth}
+      \tarjeta[0.9\linewidth]{Inducción}{Faraday: \(B\) variable induce \(\varepsilon\).}
+    \end{column}
+    \begin{column}{0.235\textwidth}
+      \tarjeta[0.9\linewidth]{Conducción}{Corriente directa a través del tejido
+        (ley de Ohm).}
+    \end{column}
+    \begin{column}{0.235\textwidth}
+      \tarjeta[0.9\linewidth]{Capacitivo}{Acoplamiento vía membranas
+        (bioimpedancia, Cole--Cole).}
+    \end{column}
+    \begin{column}{0.235\textwidth}
+      \tarjeta[0.9\linewidth]{Piezoeléctrico}{Deformación mecánica del hueso
+        (Fukada--Yasuda).}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%==< Cierre >==========================================================================
+\seccion{Gracias}{Preguntas y comentarios}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end{document}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%==================================================================================
+% PLANTILLAS DE REFERENCIA (fuera del documento; copiar y pegar arriba)
+%==================================================================================
+% \begin{frame}{Título}{Subtítulo opcional}
+%   Cuerpo en \textcolor{UCIMEDtexto}{azul pizarra institucional}; acentos con
+%   \alert{azul} o \textcolor{accentPrimary}{dorado}.
+%   \begin{itemize}\item Punto. \item Con unidades: \SI{37}{\celsius}.\end{itemize}
+% \end{frame}
+%
+% Subsubtítulos sueltos:      \subsub{Título}  /  \subsubi{\iconcheck}{Título}
+% Entrada compacta:           \punto{Etiqueta}{texto}
+% Banda-flecha:                \flecha{texto}          \flecha[80mm]{texto}
+% Flecha corta entre cajas:   \flechita
+% Cadena de tres tarjetas:    \cadenatres{T1}{C1}{T2}{C2}{T3}{C3}
+% Cadena de cinco pasos:      \pasos{a}{b}{c}{d}{e}
+% Tarjeta suelta:             \tarjeta[0.9\linewidth]{Título}{Contenido}
+% Figura con pie:             \figura[0.4\textwidth]{archivo}{pie}
+% Íconos:  \iconcheck \icongear \iconflask \iconchip \iconbolt  (opt: [color])
+%
+% Tabla con encabezado del color principal (repetir \UCIMEDhdrfmt en cada
+% celda del encabezado — \color/\bfseries no cruza el `&` en tabular/tabularx):
+% \begin{tablaUCIMED}{L{20mm}YY}
+%   \filaenc &\UCIMEDhdrfmt Col A &\UCIMEDhdrfmt Col B \\ \midrule
+%   \filaalt Fila 1 & ... & ... \\
+%   Fila 2 & ... & ... \\ \bottomrule
+% \end{tablaUCIMED}
+%
+% Cuatro tarjetas en fila:
+% \begin{columns}[t,onlytextwidth]
+%   \begin{column}{0.235\textwidth}\tarjeta[0.9\linewidth]{C1}{...}\end{column}
+%   ... x4 ...
+% \end{columns}
+%
+% Diapositiva de sección:     \seccion{Texto grande}{Texto de apoyo}
+% Identidad/logo:              \setclass{CBI-07} en el preámbulo (o CB-09/CBI-06);
+%                               \theuni \theunishort \theschool quedan fijados.
+% Metadatos de portada extra:  \edicionUCIMED{...}   \pieUCIMED{...}

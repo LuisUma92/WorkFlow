@@ -1,0 +1,412 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% beamerthemeUCIMEDpres.sty
+% Tema Beamer de CONFERENCIA/exposición para UCIMED (Física para Ciencias de
+% la Salud), modelado macro por macro en beamerthemeCICANUM.sty (jornada
+% científica CICANUM-UCR). No es el tema de clase.
+%
+% -------------------------------------------------------------------------
+% DECISIÓN (a) extender / (b) tema nuevo independiente:  SE ELIGIÓ (b).
+% Motivo, verificado con grep: ningún documento de 0000AL-Lectures/UCIMED-*
+% carga `\usetheme{UCIMED}` ni ninguno de los 4 beamer*themeUCIMED.sty (el
+% único hit de grep fue un falso positivo en un archivo sin relación). Ese
+% juego de 4 partes (colortheme con sidebar, UCBlue*/UCYellow) es HERENCIA
+% NO USADA hoy — no hay riesgo de regresión al no tocarlo, pero tampoco vale
+% la pena acoplarse a un tema pensado para la estructura sidebar/headline de
+% Beamer clásico cuando lo que se pidió es el estilo "tarjetas + flechas +
+% portada con cuadro" de CICANUM. Un archivo nuevo, de nombre inequívoco,
+% mantiene ambos caminos disponibles sin interferir entre sí.
+% -------------------------------------------------------------------------
+%
+% Paleta: colors-UCIMED.sty (primary #0B2B6D / primaryDark #071C47 /
+% accentPrimary #BF9322 dorado). NINGÚN color nuevo: todos los alias de este
+% archivo son \colorlet de nombres YA definidos ahí (mezclas con black/white
+% incluidas, que siguen siendo el mismo color base, no un hex inventado).
+%
+% Identidad institucional: comands-UCIMED.sty (\theuni \theunishort
+% \theschool \ulogo \setclass). Este tema NO re-incrusta el logo: lo pide
+% prestado con \usebox{\ulogo}. El documento debe llamar \setclass{<código>}
+% en el preámbulo (p.ej. \setclass{CBI-07}) ANTES de \portada para que el
+% logo y el nombre de escuela existan.
+%
+% Uso:
+%   \documentclass[aspectratio=169,spanish]{beamer}
+%   \usepackage{colors-UCIMED}
+%   \usepackage{comands-UCIMED}
+%   \setclass{CBI-07}
+%   \usepackage{beamerthemeUCIMEDpres}
+%
+% Compilar con lualatex (el logo incrustado de comands-UCIMED.sty lo exige).
+%
+% *** COMPILAR CON `latexmk -lualatex archivo.tex` (o correr lualatex DOS
+% VECES seguidas), NUNCA con una sola pasada de `lualatex`. ***
+% Motivo (verificado 2026-08-13, no es un defecto de este tema): la portada
+% y toda diapositiva dibujada con tikz `remember picture,overlay` dependen
+% de que el .aux ya tenga registrado el tamaño de página — es la limitación
+% estándar de pgf/TikZ documentada en su propio manual («si usás
+% remember picture necesitás correr LaTeX al menos dos veces»). En una
+% pasada única, algunos `\node` de la portada (título, subtítulo, logo,
+% nombre corto) NO aparecen — se comprobó que **beamerthemeCICANUM.sty
+% (el original que este tema replica) tiene el MISMO comportamiento** en
+% su propia `presentacion.tex`: portada en blanco a una pasada, completa a
+% dos. Por eso el .tex de referencia de CICANUM ya dice
+% «Compilar: latexmk -lualatex presentacion.tex» — la instrucción de abajo
+% sigue exactamente esa misma convención.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{beamerthemeUCIMEDpres}[2026/08/13 v1.0 Tema de conferencia UCIMED]
+
+\RequirePackage{tikz}
+\RequirePackage{graphicx}
+\RequirePackage{xcolor}
+\RequirePackage{etoolbox}
+\RequirePackage{xstring}   % \IfStrEq — \ifstrequal de etoolbox falla con
+                            % strings de kvoptions (desajuste de catcodes)
+\RequirePackage{fontspec}
+\RequirePackage{array}
+\RequirePackage{tabularx}
+\RequirePackage{booktabs}
+\RequirePackage{colortbl}
+\usetikzlibrary{positioning,shapes.arrows,calc,arrows.meta}
+
+% Identidad institucional (logo, \theuni, \theschool, \setclass) y paleta.
+% Se cargan aquí para que un documento que sólo hace
+% \usepackage{beamerthemeUCIMEDpres} ya tenga todo disponible; si el
+% documento ya las cargó antes, \RequirePackage las detecta cargadas y no
+% hace nada.
+\RequirePackage{colors-UCIMED}
+\RequirePackage{comands-UCIMED}
+
+%==< Opciones del paquete (mismo espíritu que CICANUM) >========================
+% [nologos]  portada e interiores sin el logo institucional (\ulogo)
+% [nofondo]  quita la banda de fondo suave de las diapositivas internas
+\newif\ifUCP@logos \UCP@logostrue
+\newif\ifUCP@fondo \UCP@fondotrue
+\DeclareOption{nologos}{\UCP@logosfalse}
+\DeclareOption{nofondo}{\UCP@fondofalse}
+\ProcessOptions\relax
+
+%==< Alias de color (NINGUNO nuevo: todos derivan de colors-UCIMED.sty) >=======
+\colorlet{UCIMEDtituloPortada}{neutralLight}    % título de portada (blanco)
+\colorlet{UCIMEDsubtPortada}  {neutralBlue}     % subtítulo/autoría de portada
+\colorlet{UCIMEDtitulo}       {primary}         % títulos
+\colorlet{UCIMEDsubtitulo}    {primaryLight}    % subtítulos / diapositiva de sección
+\colorlet{UCIMEDlinea}        {primaryCool}     % línea inferior
+\colorlet{UCIMEDsubsub}       {secondary}       % subsubtítulos, ítems, íconos
+\colorlet{UCIMEDnota}         {black!45}        % pie de página / numeración (gris)
+\colorlet{UCIMEDtexto}        {primaryDark!75!black} % cuerpo de texto
+\colorlet{UCIMEDrecuadro}     {neutral}         % relleno de tarjetas
+
+%==< Metadatos extra de la portada (paralelos a \piePortada/\edicionJornada) >==
+\newcommand{\UCP@pie}{\bfseries\theschool}
+\newcommand{\pieUCIMED}[1]{\renewcommand{\UCP@pie}{#1}}
+\newcommand{\UCP@edicion}{\thecycle\ · \thegroup}
+\newcommand{\edicionUCIMED}[1]{\renewcommand{\UCP@edicion}{#1}}
+
+%==< Base de beamer >============================================================
+\usetheme{default}
+\usecolortheme{default}
+\useinnertheme{rectangles}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}{}
+\setbeamercolor{normal text}{fg=UCIMEDtexto}
+\setbeamercolor{structure}{fg=UCIMEDtitulo}
+\setbeamercolor{frametitle}{fg=UCIMEDtitulo,bg=}
+\setbeamercolor{title}{fg=UCIMEDtituloPortada}
+\setbeamercolor{itemize item}{fg=UCIMEDsubsub}
+\setbeamercolor{itemize subitem}{fg=UCIMEDsubtitulo}
+\setbeamercolor{enumerate item}{fg=UCIMEDsubsub}
+\setbeamercolor{alerted text}{fg=UCIMEDsubsub}
+\setbeamerfont{frametitle}{size=\fontsize{13}{15}\selectfont,series=\bfseries}
+\setbeamerfont{framesubtitle}{size=\fontsize{9}{11}\selectfont}
+\setbeamercolor{framesubtitle}{fg=UCIMEDsubtitulo}
+\setbeamerfont{title}{size=\fontsize{20}{23}\selectfont,series=\bfseries}
+\setbeamerfont{subtitle}{size=\fontsize{16}{18}\selectfont,series=\bfseries}
+
+%==< Márgenes (misma réplica de 7.5 mm laterales que CICANUM) >=================
+\setbeamersize{text margin left=7.5mm,text margin right=7.5mm}
+
+\setbeamertemplate{frametitle}{%
+  \vspace*{3.2mm}%
+  \usebeamerfont{frametitle}\usebeamercolor[fg]{frametitle}%
+  \insertframetitle\par
+  \ifx\insertframesubtitle\@empty\else
+    \vspace*{0.6mm}%
+    {\usebeamerfont{framesubtitle}\usebeamercolor[fg]{framesubtitle}%
+     \insertframesubtitle\par}%
+  \fi
+}
+
+%==< Fondo, línea inferior y logo permanentes >==================================
+% Sin imágenes fotográficas: la banda superior y la línea son tikz puro.
+\newcommand{\UCP@chrome}{%
+  \begin{tikzpicture}[remember picture,overlay]
+    % --- banda superior suave (equivalente al «fondo» de CICANUM) ---------
+    \ifUCP@fondo
+      \fill[UCIMEDtitulo!6] ([shift={(0mm,0mm)}]current page.north west)
+        rectangle ++(\paperwidth,-16mm);
+    \fi
+    % --- línea inferior (y = 83 mm del borde superior) ---------------------
+    \fill[UCIMEDlinea] ([shift={(7.5mm,-83mm)}]current page.north west)
+      rectangle ++(145mm,0.5mm);
+    % --- logo institucional, superior derecha -------------------------------
+    \ifUCP@logos
+      \node[anchor=north east,inner sep=0pt]
+        at ([shift={(-5mm,-2mm)}]current page.north east)
+        {\usebox{\ulogo}};
+    \fi
+    % --- numeración, inferior derecha --------------------------------------
+    \node[anchor=south east,inner sep=0pt,text=UCIMEDnota,
+          font=\fontsize{6}{7}\selectfont]
+      at ([shift={(-7.5mm,3.0mm)}]current page.south east)
+      {\insertframenumber};
+  \end{tikzpicture}%
+}
+\setbeamertemplate{background}{\UCP@chrome}
+\addtobeamertemplate{frametitle}{}{\vspace*{1mm}}
+
+%==< Portada: cuadro del título de altura automática (idéntico a CICANUM) >=====
+\newsavebox{\UCP@titlebox}
+\newlength{\UCP@titleH}
+\newlength{\UCP@titlepad}   \setlength{\UCP@titlepad}{5mm}
+\newlength{\UCP@titlecy}    \setlength{\UCP@titlecy}{44mm}
+\newlength{\UCP@titleHmin}  \setlength{\UCP@titleHmin}{25.3mm}
+\newlength{\UCP@titleW}     \setlength{\UCP@titleW}{133mm}
+\newlength{\UCP@titlegap}   \setlength{\UCP@titlegap}{6mm}
+
+\newcommand{\padFondoTituloUCIMED}[1]{\setlength{\UCP@titlepad}{#1}}
+\newcommand{\centroFondoTituloUCIMED}[1]{\setlength{\UCP@titlecy}{#1}}
+\newcommand{\alturaMinFondoTituloUCIMED}[1]{\setlength{\UCP@titleHmin}{#1}}
+\newcommand{\anchoTextoPortadaUCIMED}[1]{\setlength{\UCP@titleW}{#1}}
+\newcommand{\sepTituloAutorUCIMED}[1]{\setlength{\UCP@titlegap}{#1}}
+
+\newcommand{\UCP@medirtitulo}{%
+  \sbox{\UCP@titlebox}{%
+    \begin{minipage}{\UCP@titleW}
+      \centering
+      {\color{UCIMEDtituloPortada}\fontsize{18}{21}\bfseries\selectfont
+       \inserttitle\par}%
+      {\color{UCIMEDsubtPortada}\fontsize{14}{16}\bfseries\selectfont
+       \insertsubtitle\par}%
+      \vspace{\UCP@titlegap}%
+      {\color{UCIMEDsubtPortada}\fontsize{9}{11}\selectfont
+       \ifx\insertsubtitle\@empty\else\par\vspace{0.8mm}\fi
+       \insertauthor\par}%
+    \end{minipage}}%
+  \setlength{\UCP@titleH}{\dimexpr\ht\UCP@titlebox+\dp\UCP@titlebox
+                                  +2\UCP@titlepad\relax}%
+  \ifdim\UCP@titleH<\UCP@titleHmin
+    \setlength{\UCP@titleH}{\UCP@titleHmin}%
+  \fi
+}
+
+%==< Portada >====================================================================
+% \portada  usa \title, \subtitle, \author, \institute, \date (y \setclass
+% previo para el logo/escuela). El cuadro azul es un `\fill` con
+% `rounded corners`, no una imagen — no hay assets externos que romper.
+% NOTA DE DISEÑO (defecto encontrado y corregido 2026-08-13): la primera
+% versión armaba la portada con `\setbeamertemplate{background}{...}` local
+% al grupo de \portada, consumido en el MISMO `\begin{frame}`. Eso deja la
+% portada en blanco (sólo el autor, en gris pálido) en una compilación de
+% UNA sola pasada — se verificó que el MISMO patrón, con imágenes, en
+% beamerthemeCICANUM.sty produce el idéntico blanco en una pasada única.
+% Es decir: heredado del original, no introducido aquí, pero corregido:
+% ahora TODO el contenido de la portada (fondo, cuadro, logo, líneas, texto)
+% se dibuja en UN solo `tikzpicture` overlay dentro del cuerpo del frame, sin
+% pasar por el mecanismo de plantilla de fondo. Así no depende de en qué
+% pasada de compilación se resuelve `\setbeamertemplate`.
+\newcommand{\portada}{%
+{%
+  \UCP@medirtitulo
+  \begin{frame}[plain,noframenumbering]
+    \begin{tikzpicture}[remember picture,overlay]
+      % fondo plano institucional
+      \fill[neutralLight] (current page.north west) rectangle (current page.south east);
+      \fill[UCIMEDtitulo!5] ([shift={(0mm,0mm)}]current page.north west)
+        rectangle ++(\paperwidth,-20mm);
+      % cuadro de título: ancho fijo (145 mm), alto medido del texto real,
+      % centrado en y = \UCP@titlecy, esquinas redondeadas
+      \node[anchor=center,rounded corners=2.2mm,inner sep=0pt,
+            fill=UCIMEDtitulo,minimum width=145mm,minimum height=\UCP@titleH]
+        at ([shift={(80mm,-\UCP@titlecy)}]current page.north west) {};
+      % logo institucional, superior izquierda
+      \ifUCP@logos
+        \node[anchor=north west,inner sep=0pt] (ulogoNode)
+          at ([shift={(6mm,2mm)}]current page.north west)
+          {\usebox{\ulogo}};
+      \fi
+      % nombre corto de la universidad, superior derecha
+      \node[anchor=north east,inner sep=0pt,text=UCIMEDtitulo,
+            font=\bfseries\fontsize{10}{12}\selectfont]
+        at ([shift={(-6mm,3.5mm)}]current page.north east) {\theunishort};
+      % línea inferior
+      \fill[UCIMEDlinea] ([shift={(7.5mm,-83mm)}]current page.north west)
+        rectangle ++(145mm,0.5mm);
+      % pie de portada (escuela) y edición/ciclo
+      \node[anchor=north west,text=UCIMEDnota,align=left,inner sep=0pt,
+            font=\fontsize{6}{7}\selectfont]
+        at ([shift={(7.5mm,-84.6mm)}]current page.north west) {\UCP@pie};
+      \node[anchor=north east,text=UCIMEDnota,align=right,inner sep=0pt,
+            font=\fontsize{5}{6}\selectfont]
+        at ([shift={(-7.5mm,-84.6mm)}]current page.north east) {\UCP@edicion};
+      % bloque de título/subtítulo/autor, encima del cuadro azul
+      \node[anchor=center,inner sep=0pt]
+        at ([shift={(0mm,-\UCP@titlecy)}]current page.north)
+        {\usebox{\UCP@titlebox}};
+    \end{tikzpicture}%
+  \end{frame}%
+}%
+}
+
+%==< Diapositiva de sección / cierre >============================================
+% \seccion{Texto grande}{Texto de apoyo}
+\newcommand{\seccion}[2]{%
+  \begin{frame}[plain]
+    \begin{tikzpicture}[remember picture,overlay]
+      \node[anchor=north,text width=150mm,align=center,inner sep=0pt,
+            text=UCIMEDsubtitulo,font=\fontsize{24}{28}\bfseries\selectfont]
+        at ([shift={(0mm,-32.2mm)}]current page.north) {#1};
+      \node[anchor=north,text width=145mm,align=center,inner sep=0pt,
+            text=UCIMEDtexto,font=\fontsize{9}{11}\selectfont]
+        at ([shift={(0mm,-45.8mm)}]current page.north) {#2};
+    \end{tikzpicture}
+  \end{frame}%
+}
+
+%==< Tarjetas del cuerpo >=========================================================
+% \tarjeta[ancho]{Título}{Contenido}
+\newcommand{\tarjeta}[3][0.30\textwidth]{%
+  \begin{tikzpicture}
+    \node[draw=UCIMEDlinea!40,line width=0.2mm,fill=UCIMEDrecuadro,
+          rounded corners=1.6mm,inner sep=2.2mm,text width=#1,align=left]{%
+      {\color{UCIMEDsubsub}\fontsize{8}{10}\bfseries\selectfont #2}\par
+      \vspace{1.2mm}
+      {\color{UCIMEDtexto}\fontsize{7}{8.5}\selectfont #3}};
+  \end{tikzpicture}%
+}
+
+% Bloques estándar con la paleta
+\setbeamercolor{block title}{fg=UCIMEDsubsub,bg=UCIMEDrecuadro}
+\setbeamercolor{block body}{fg=UCIMEDtexto,bg=UCIMEDrecuadro!60}
+\setbeamertemplate{blocks}[rounded][shadow=false]
+
+%==< Subsubtítulo suelto dentro del cuerpo >======================================
+\newcommand{\subsub}[1]{%
+  {\color{UCIMEDsubsub}\fontsize{8.5}{10}\bfseries\selectfont #1\par}%
+  \vspace{0.8mm}}
+
+% Entrada compacta «Título: texto» para diapositivas densas
+\newcommand{\punto}[2]{%
+  \par\vspace{0.9mm}%
+  {\color{UCIMEDsubsub}\bfseries #1:}\ {\color{UCIMEDtexto}#2}\par}
+
+% Cuerpo de las diapositivas: un punto menor que el default
+\AtBeginEnvironment{frame}{\fontsize{8.5}{10.5}\selectfont}
+
+%==< Íconos (Font Awesome 6 Free Solid; degradación elegante si falta) >==========
+\IfFontExistsTF{Font Awesome 6 Free Solid}{%
+  \newfontfamily\UCPicon{Font Awesome 6 Free Solid}
+  \newcommand{\UCP@glyph}[1]{{\UCPicon\symbol{#1}}}
+}{%
+  \newcommand{\UCP@glyph}[1]{\ensuremath{\bullet}}
+}
+% \icono[color]{nombre}
+\newcommand{\iconcheck}[1][UCIMEDsubsub]{{\color{#1}\UCP@glyph{"F00C}}}
+\newcommand{\icongear} [1][accentPrimary]{{\color{#1}\UCP@glyph{"F013}}}
+\newcommand{\iconflask}[1][UCIMEDsubsub]{{\color{#1}\UCP@glyph{"F0C3}}}
+\newcommand{\iconchip} [1][UCIMEDsubsub]{{\color{#1}\UCP@glyph{"F2DB}}}
+\newcommand{\iconbolt} [1][accentPrimary]{{\color{#1}\UCP@glyph{"F0E7}}}
+
+% Subsubtítulo con ícono al frente
+\newcommand{\subsubi}[2]{%
+  {\fontsize{8.5}{10}\bfseries\selectfont #1\ \color{UCIMEDsubsub}#2\par}%
+  \vspace{0.8mm}}
+
+%==< Flechas de proceso >==========================================================
+% \flecha{texto}            banda-flecha horizontal de ancho completo
+% \flecha[ancho]{texto}
+\newcommand{\flecha}[2][\linewidth]{%
+  \par\vspace{1.2mm}%
+  \begin{tikzpicture}
+    \node[single arrow,single arrow head extend=2.2mm,
+          fill=accentPrimary,text=neutralLight,inner sep=1.6mm,
+          font=\fontsize{8}{9.5}\bfseries\selectfont,
+          text width=\dimexpr#1-12mm\relax,align=center]{#2};
+  \end{tikzpicture}\par\vspace{1.2mm}}
+
+% Flecha corta entre columnas (chevron vertical-centrado)
+\newcommand{\flechita}{%
+  \begin{tikzpicture}[baseline=-0.6ex]
+    \node[single arrow,single arrow head extend=1.2mm,
+          fill=accentPrimary,text=neutralLight,inner sep=0.9mm,minimum width=3mm]{};
+  \end{tikzpicture}}
+
+% Cadena de conceptos: \cadenatres{T1}{C1}{T2}{C2}{T3}{C3}
+\newcommand{\cadenatres}[6]{%
+  \begin{columns}[c,onlytextwidth]
+    \begin{column}{0.295\textwidth}\tarjeta[0.92\linewidth]{#1}{#2}\end{column}
+    \begin{column}{0.045\textwidth}\centering\flechita\end{column}
+    \begin{column}{0.295\textwidth}\tarjeta[0.92\linewidth]{#3}{#4}\end{column}
+    \begin{column}{0.045\textwidth}\centering\flechita\end{column}
+    \begin{column}{0.295\textwidth}\tarjeta[0.92\linewidth]{#5}{#6}\end{column}
+  \end{columns}}
+
+%==< Cadena de proceso en una línea >==============================================
+% \pasos{a}{b}{c}{d}{e}
+\newcommand{\UCP@paso}[1]{%
+  \tikz[baseline=(n.base)]{\node(n)[draw=UCIMEDlinea!45,fill=UCIMEDrecuadro,
+    rounded corners=1.2mm,inner sep=1.2mm,
+    font=\fontsize{7.5}{9}\selectfont,text=UCIMEDtexto]{#1};}}
+\newcommand{\pasos}[5]{%
+  \par\vspace{1mm}\centering
+  \UCP@paso{#1}\,\flechita\,\UCP@paso{#2}\,\flechita\,\UCP@paso{#3}\,%
+  \flechita\,\UCP@paso{#4}\,\flechita\,\UCP@paso{#5}\par\vspace{1mm}}
+
+%==< Tablas: encabezado en el color principal >====================================
+% DEFECTO ENCONTRADO (2026-08-13, verificado renderizando) Y CÓMO SE RESOLVIÓ:
+% `\filaenc` = `\rowcolor{...}\UCIMEDhdrfmt` sólo deja blanco/negrita la
+% PRIMERA columna — comportamiento estándar de `tabular`/`tabularx`, no un
+% bug: cada celda separada por `&` abre su propio grupo, así que un
+% `\bfseries\color{}` tecleado antes del primer `&` no se propaga a las
+% celdas siguientes (`\rowcolor` sí pinta el FONDO de toda la fila, porque
+% colortbl lo inyecta en cada columna internamente — por eso el azul se veía
+% bien pero el texto de las columnas 2+ quedaba negro sobre azul).
+% Se intentó mover \UCIMEDhdrfmt al preámbulo de columna con un interruptor
+% global (\ifUCP@hdrrow): ROTO — `tabularx` mide las columnas `X` con una
+% pasada de prueba en una caja interna, y `\rowcolor` (que inserta
+% `\noalign`) ejecutado dentro de esa caja de prueba produce
+% «Misplaced \noalign», documento sin PDF. Se descartó.
+% Solución real (idéntica a cómo CICANUM lo usa DE VERDAD en su
+% presentacion.tex:158, no a como lo documenta su bloque de referencia):
+% repetir `\UCIMEDhdrfmt` en CADA celda del encabezado, después de `\filaenc`.
+%   \filaenc &\UCIMEDhdrfmt Col A &\UCIMEDhdrfmt Col B \\
+\newcommand{\UCIMEDhdrfmt}{\bfseries\color{UCIMEDsubtPortada}}
+% \filaenc pinta el fondo de la fila de encabezado (repetir \UCIMEDhdrfmt en
+% cada celda para el texto — ver nota arriba)
+\newcommand{\filaenc}{\rowcolor{UCIMEDtitulo}\UCIMEDhdrfmt}
+\newcommand{\filaalt}{\rowcolor{UCIMEDrecuadro}}
+% Columnas de ancho fijo/centrado (idéntico a CICANUM, \newcolumntype{L} no
+% colisiona con el símbolo de texto \L — son espacios de nombres distintos).
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\renewcommand{\arraystretch}{1.25}
+\setlength{\arrayrulewidth}{0.3mm}
+\arrayrulecolor{UCIMEDlinea!45}
+
+% Entorno de tabla ya afinado para el cuerpo de la diapositiva
+% \begin{tablaUCIMED}{especificación de columnas} ... \end{tablaUCIMED}
+\newenvironment{tablaUCIMED}[1]
+  {\par\vspace{1mm}\centering\fontsize{7.5}{9.5}\selectfont
+   \tabularx{\linewidth}{#1}}
+  {\endtabularx\par\vspace{1mm}}
+
+%==< Figura con pie discreto >======================================================
+% \figura[ancho]{archivo}{pie}
+\newcommand{\figura}[3][0.4\textwidth]{%
+  \begin{minipage}[t]{#1}
+    \centering
+    \includegraphics[width=\linewidth]{#2}\par\vspace{0.6mm}
+    {\color{UCIMEDnota}\fontsize{6}{7.5}\selectfont #3\par}
+  \end{minipage}}
+
+\endinput
