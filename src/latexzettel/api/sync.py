@@ -287,6 +287,173 @@ def synchronize(
 
 
 # =============================================================================
+# Helpers internos: force_synchronize()
+# =============================================================================
+
+
+def _resolve_documents_tex(
+    paths: NotesPaths, create_documents_tex_if_missing: bool
+) -> Path:
+    """
+    Garantiza que notes/documents.tex exista (creándolo si corresponde) y
+    retorna su Path.
+    """
+    doc_path = paths.abs(paths.documents_tex)
+    if not doc_path.exists():
+        if create_documents_tex_if_missing:
+            doc_path.parent.mkdir(parents=True, exist_ok=True)
+            doc_path.write_text("", encoding="utf-8")
+        else:
+            raise DocumentsTexNotFound(f"No existe: {doc_path}")
+    return doc_path
+
+
+def _parse_tracked_notes(doc_path: Path) -> dict[str, str]:
+    """
+    Parsea notes/documents.tex y retorna dict {filename: reference}.
+    """
+    tracked_notes: dict[str, str] = {}
+    for line in doc_path.read_text(encoding="utf-8").splitlines():
+        m = EXTERNALDOCUMENT_RE.search(line)
+        if m:
+            reference_name = m.group(2)
+            filename = m.group(4)
+            tracked_notes[filename] = reference_name
+    return tracked_notes
+
+
+def _ensure_tracked_note_files(
+    paths: NotesPaths,
+    tracked_notes: dict[str, str],
+    create_missing_note_files: bool,
+) -> None:
+    """
+    Garantiza (opcionalmente creando) que cada filename en tracked_notes
+    exista como archivo físico en slipbox.
+    """
+    slipbox_files = ifs.rglob_files(paths.abs(paths.slipbox_dir), suffix=".tex")
+    slipbox_names = {p.stem for p in slipbox_files}
+
+    for filename in list(tracked_notes.keys()):
+        if filename not in slipbox_names:
+            if create_missing_note_files:
+                # crea un archivo mínimo: delega a util/fs o api/notes; aquí hacemos mínimo
+                f = _note_tex_path(paths, filename)
+                f.parent.mkdir(parents=True, exist_ok=True)
+                min_tex_file(f)
+                slipbox_names.add(filename)
+            else:
+                # si no creamos, simplemente seguimos; DB puede seguir reflejando docs
+                continue
+
+
+def _stamp_existing_note(
+    note, filename: str, reference_name: str, modified_dt: datetime, paths: NotesPaths
+) -> None:
+    """
+    Actualiza timestamps/build-dates/reference de una nota existente en DB.
+    """
+    note.last_edit_date = modified_dt
+    if note.created is None:
+        note.created = note.last_edit_date
+
+    # best-effort build dates
+    html_path = paths.abs(paths.html_dir / f"{filename}.html")
+    pdf_path = paths.abs(paths.pdf_dir / f"{filename}.pdf")
+
+    if html_path.exists():
+        note.last_build_date_html = file_mtime(html_path)
+    if pdf_path.exists():
+        note.last_build_date_pdf = file_mtime(pdf_path)
+
+    # update reference si difiere
+    if note.reference != reference_name:
+        note.reference = reference_name
+
+
+def _sync_tracked_note(
+    session: Session,
+    filename: str,
+    reference_name: str,
+    paths: NotesPaths,
+    added_notes: list,
+    updated_notes: list,
+) -> None:
+    """
+    Sincroniza (crea o actualiza) la entrada Note para un (filename, reference)
+    de tracked_notes, apendeando a added_notes/updated_notes según corresponda.
+    """
+    fpath = _note_tex_path(paths, filename)
+    if not fpath.exists():
+        return
+
+    modified_dt = file_mtime(fpath)
+
+    note = session.scalars(
+        select(Note).where(Note.filename == filename)
+    ).first()
+
+    if note is not None:
+        _stamp_existing_note(note, filename, reference_name, modified_dt, paths)
+        session.flush()
+        updated_notes.append(note)
+        return
+
+    # Si existe una nota con el mismo reference, reasignar filename
+    note_by_ref = session.scalars(
+        select(Note).where(Note.reference == reference_name)
+    ).first()
+
+    if note_by_ref is not None:
+        note_by_ref.filename = filename
+        note_by_ref.last_edit_date = modified_dt
+        if note_by_ref.created is None:
+            note_by_ref.created = modified_dt
+        session.flush()
+        updated_notes.append(note_by_ref)
+        return
+
+    new_note = Note(
+        filename=filename,
+        reference=reference_name,
+        created=modified_dt,
+        last_edit_date=modified_dt,
+    )
+    session.add(new_note)
+    session.flush()
+    added_notes.append(new_note)
+
+
+def _sync_tracked_notes(
+    session: Session, tracked_notes: dict[str, str], paths: NotesPaths
+) -> tuple[list, list]:
+    """
+    Sincroniza entradas Note en DB para todos los tracked_notes.
+    Retorna (added_notes, updated_notes).
+    """
+    added_notes: list = []
+    updated_notes: list = []
+    for filename, reference_name in tracked_notes.items():
+        _sync_tracked_note(
+            session, filename, reference_name, paths, added_notes, updated_notes
+        )
+    return added_notes, updated_notes
+
+
+def _reparse_all_notes(session: Session, paths: NotesPaths) -> None:
+    """
+    Reparsea labels/citations/links para todas las notas presentes en DB.
+    Notas sin archivo físico (NoteNotFound) se omiten silenciosamente.
+    """
+    all_notes = session.scalars(select(Note)).all()
+    for note in all_notes:
+        try:
+            _update_note_from_file(session, note, paths)
+        except NoteNotFound:
+            continue
+
+
+# =============================================================================
 # API pública: force_synchronize()
 # =============================================================================
 
@@ -307,115 +474,17 @@ def force_synchronize(
     3) Sincroniza/crea entradas Note en DB
     4) Reparsea labels/citations/links para todas las notas
     """
-
     health = ensure_tables()
     if not health.ok:
         raise DomainError(f"DB no disponible: {health.error}")
 
-    # documents.tex
-    doc_path = paths.abs(paths.documents_tex)
-    if not doc_path.exists():
-        if create_documents_tex_if_missing:
-            doc_path.parent.mkdir(parents=True, exist_ok=True)
-            doc_path.write_text("", encoding="utf-8")
-        else:
-            raise DocumentsTexNotFound(f"No existe: {doc_path}")
-
-    # 1) Parse tracked_notes desde documents.tex
-    tracked_notes: dict[str, str] = {}
-    for line in doc_path.read_text(encoding="utf-8").splitlines():
-        m = EXTERNALDOCUMENT_RE.search(line)
-        if m:
-            reference_name = m.group(2)
-            filename = m.group(4)
-            tracked_notes[filename] = reference_name
-
-    # 2) Lista de notas físicas en slipbox
-    slipbox_files = ifs.rglob_files(paths.abs(paths.slipbox_dir), suffix=".tex")
-    slipbox_names = {p.stem for p in slipbox_files}
-
-    # 3) Asegurar que tracked_notes existan como archivos
-    for filename in list(tracked_notes.keys()):
-        if filename not in slipbox_names:
-            if create_missing_note_files:
-                # crea un archivo mínimo: delega a util/fs o api/notes; aquí hacemos mínimo
-                f = _note_tex_path(paths, filename)
-                f.parent.mkdir(parents=True, exist_ok=True)
-                min_tex_file(f)
-                slipbox_names.add(filename)
-            else:
-                # si no creamos, simplemente seguimos; DB puede seguir reflejando docs
-                continue
-
-    added_notes: list = []
-    updated_notes: list = []
+    doc_path = _resolve_documents_tex(paths, create_documents_tex_if_missing)
+    tracked_notes = _parse_tracked_notes(doc_path)
+    _ensure_tracked_note_files(paths, tracked_notes, create_missing_note_files)
 
     with db_session() as session:
-        # 4) Sync DB para tracked_notes
-        for filename, reference_name in tracked_notes.items():
-            fpath = _note_tex_path(paths, filename)
-            if not fpath.exists():
-                continue
-
-            modified_dt = file_mtime(fpath)
-
-            note = session.scalars(
-                select(Note).where(Note.filename == filename)
-            ).first()
-
-            if note is not None:
-                # update timestamps
-                note.last_edit_date = modified_dt
-                if note.created is None:
-                    note.created = note.last_edit_date
-
-                # best-effort build dates
-                html_path = paths.abs(paths.html_dir / f"{filename}.html")
-                pdf_path = paths.abs(paths.pdf_dir / f"{filename}.pdf")
-
-                if html_path.exists():
-                    note.last_build_date_html = file_mtime(html_path)
-                if pdf_path.exists():
-                    note.last_build_date_pdf = file_mtime(pdf_path)
-
-                # update reference si difiere
-                if note.reference != reference_name:
-                    note.reference = reference_name
-
-                session.flush()
-                updated_notes.append(note)
-
-            else:
-                # Si existe una nota con el mismo reference, reasignar filename
-                note_by_ref = session.scalars(
-                    select(Note).where(Note.reference == reference_name)
-                ).first()
-
-                if note_by_ref is not None:
-                    note_by_ref.filename = filename
-                    note_by_ref.last_edit_date = modified_dt
-                    if note_by_ref.created is None:
-                        note_by_ref.created = modified_dt
-                    session.flush()
-                    updated_notes.append(note_by_ref)
-                else:
-                    new_note = Note(
-                        filename=filename,
-                        reference=reference_name,
-                        created=modified_dt,
-                        last_edit_date=modified_dt,
-                    )
-                    session.add(new_note)
-                    session.flush()
-                    added_notes.append(new_note)
-
-        # 5) Reparsear labels/citations/links para todas las notas presentes en DB
-        all_notes = session.scalars(select(Note)).all()
-        for note in all_notes:
-            try:
-                _update_note_from_file(session, note, paths)
-            except NoteNotFound:
-                continue
+        added_notes, updated_notes = _sync_tracked_notes(session, tracked_notes, paths)
+        _reparse_all_notes(session, paths)
 
     return ForceSyncResult(
         tracked_notes=tracked_notes,
