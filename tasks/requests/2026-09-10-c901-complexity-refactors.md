@@ -99,3 +99,10 @@ Triage before refactoring:
   `ba9918c` validate_exercise_metadata 15→≤10 (+13; `validate exercises` output byte-identical).
   Suite 2629 → **2683 passed, 3 skipped**. Strict lint now = the **7 latexzettel C901 only**.
   Remaining scope of this request: the latexzettel group (needs a test harness first).
+- 2026-09-11 — latexzettel `choose_one` 11→8 / `choose_many` 13→8 via `_parse_one`/`_parse_many`
+  + `_InvalidChoice`. No new harness needed: `util/io.py` already injects `IO(input_fn, print_fn)`,
+  so 14 characterization tests drive a scripted IO and pin the full transcript (100% coverage of
+  both, written before the refactor). Suite 2683 → **2697 passed, 3 skipped**. Note: neither
+  function has any caller in `src/` today (dead API, kept). **Remaining 5**: `main` (server),
+  `force_synchronize`, `render_note`, `render_updates`, `rename_reference` — these do need
+  subprocess (pdflatex/biber/pandoc) and DB/filesystem fakes.
