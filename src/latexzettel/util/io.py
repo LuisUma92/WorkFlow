@@ -107,6 +107,41 @@ def ask_text(
         return s
 
 
+class _InvalidChoice(Exception):
+    """Respuesta rechazada; el mensaje es el texto a mostrar antes de repreguntar."""
+
+
+def _say_options(prompt: str, options: Sequence[str], io: IO) -> None:
+    io.say(prompt)
+    for i, opt in enumerate(options, start=1):
+        io.say(f"  {i}) {opt}")
+
+
+def _parse_one(ans: str, n_options: int) -> int:
+    """Número 1..N -> índice 0-based; si no, `_InvalidChoice`."""
+    try:
+        n = int(ans)
+    except ValueError:
+        raise _InvalidChoice("Entrada inválida. Ingrese un número.") from None
+    if not 1 <= n <= n_options:
+        raise _InvalidChoice(f"Fuera de rango. Ingrese un número entre 1 y {n_options}.")
+    return n - 1
+
+
+def _parse_many(ans: str, n_options: int) -> list[int]:
+    """Números 1..N separados por coma -> índices 0-based ordenados sin duplicados."""
+    parts = [p.strip() for p in ans.split(",") if p.strip() != ""]
+    if not parts:
+        raise _InvalidChoice("Entrada vacía. Intente de nuevo.")
+    try:
+        nums = [int(p) for p in parts]
+    except ValueError:
+        raise _InvalidChoice("Entrada inválida. Use números separados por coma.") from None
+    if any(n < 1 or n > n_options for n in nums):
+        raise _InvalidChoice(f"Fuera de rango. Use números entre 1 y {n_options}.")
+    return sorted(set(n - 1 for n in nums))
+
+
 def choose_one(
     prompt: str,
     options: Sequence[str],
@@ -124,33 +159,24 @@ def choose_one(
     if not options:
         raise ValueError("options no puede ser vacío")
 
-    io.say(prompt)
-    for i, opt in enumerate(options, start=1):
-        io.say(f"  {i}) {opt}")
+    _say_options(prompt, options, io)
 
-    if default_index is not None:
-        if not (0 <= default_index < len(options)):
-            raise ValueError("default_index fuera de rango")
+    if default_index is not None and not (0 <= default_index < len(options)):
+        raise ValueError("default_index fuera de rango")
+
+    if default_index is None:
+        ask_prompt = "Seleccione un número: "
+    else:
+        ask_prompt = f"Seleccione un número [{default_index + 1}]: "
 
     while True:
-        if default_index is None:
-            ans = io.ask("Seleccione un número: ").strip()
-        else:
-            ans = io.ask(f"Seleccione un número [{default_index + 1}]: ").strip()
-
+        ans = io.ask(ask_prompt).strip()
         if ans == "" and default_index is not None:
             return default_index
-
         try:
-            n = int(ans)
-        except ValueError:
-            io.say("Entrada inválida. Ingrese un número.")
-            continue
-
-        if 1 <= n <= len(options):
-            return n - 1
-
-        io.say(f"Fuera de rango. Ingrese un número entre 1 y {len(options)}.")
+            return _parse_one(ans, len(options))
+        except _InvalidChoice as exc:
+            io.say(str(exc))
 
 
 def choose_many(
@@ -169,14 +195,10 @@ def choose_many(
     if not options:
         raise ValueError("options no puede ser vacío")
 
-    if default is not None:
-        for i in default:
-            if i < 0 or i >= len(options):
-                raise ValueError("default contiene índices fuera de rango")
+    if default is not None and any(i < 0 or i >= len(options) for i in default):
+        raise ValueError("default contiene índices fuera de rango")
 
-    io.say(prompt)
-    for i, opt in enumerate(options, start=1):
-        io.say(f"  {i}) {opt}")
+    _say_options(prompt, options, io)
 
     if default is None:
         default_hint = ""
@@ -187,23 +209,10 @@ def choose_many(
         ans = io.ask(f"Seleccione números separados por coma{default_hint}: ").strip()
         if ans == "" and default is not None:
             return sorted(set(default))
-
-        parts = [p.strip() for p in ans.split(",") if p.strip() != ""]
-        if not parts:
-            io.say("Entrada vacía. Intente de nuevo.")
-            continue
-
         try:
-            nums = [int(p) for p in parts]
-        except ValueError:
-            io.say("Entrada inválida. Use números separados por coma.")
-            continue
-
-        if any(n < 1 or n > len(options) for n in nums):
-            io.say(f"Fuera de rango. Use números entre 1 y {len(options)}.")
-            continue
-
-        return sorted(set(n - 1 for n in nums))
+            return _parse_many(ans, len(options))
+        except _InvalidChoice as exc:
+            io.say(str(exc))
 
 
 def warn_and_confirm(
