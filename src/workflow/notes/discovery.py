@@ -37,6 +37,44 @@ def iter_note_files(root: Path) -> Iterator[Path]:
             yield entry
 
 
+def _should_skip_dir(entry: Path) -> bool:
+    """Return True if *entry* (a directory) must be pruned from the walk."""
+    return entry.name.startswith(".") or entry.name in _SKIP_DIR_NAMES
+
+
+def _is_note_inside_root(entry: Path, root_resolved: Path) -> bool:
+    """Return True if *entry* resolves to a real path under *root_resolved*.
+
+    Guards against symlink escapes and unresolvable paths (OSError/ValueError).
+    """
+    try:
+        return entry.resolve().is_relative_to(root_resolved)
+    except (OSError, ValueError):
+        return False
+
+
+def _list_dir_entries(directory: Path) -> list[Path]:
+    """Sorted directory listing, or empty on PermissionError/OSError."""
+    try:
+        return sorted(directory.iterdir())
+    except (PermissionError, OSError):
+        return []
+
+
+def _walk_dir_entries(current: Path, root_resolved: Path, stack: list[Path]) -> Iterator[Path]:
+    """Process one directory's entries: push subdirs onto *stack*, yield notes."""
+    for entry in _list_dir_entries(current):
+        if entry.is_symlink() and entry.is_dir():
+            continue
+        if entry.is_dir():
+            if _should_skip_dir(entry):
+                continue
+            stack.append(entry)
+        elif entry.is_file() and entry.suffix == ".md":
+            if _is_note_inside_root(entry, root_resolved):
+                yield entry
+
+
 def walk_note_files(root: Path) -> Iterator[Path]:
     """Yield all .md files under *root*, recursively.
 
@@ -50,23 +88,7 @@ def walk_note_files(root: Path) -> Iterator[Path]:
     stack: list[Path] = [root]
     while stack:
         current = stack.pop()
-        try:
-            entries = sorted(current.iterdir())
-        except (PermissionError, OSError):
-            continue
-        for entry in entries:
-            if entry.is_symlink() and entry.is_dir():
-                continue
-            if entry.is_dir():
-                if entry.name.startswith(".") or entry.name in _SKIP_DIR_NAMES:
-                    continue
-                stack.append(entry)
-            elif entry.is_file() and entry.suffix == ".md":
-                try:
-                    if entry.resolve().is_relative_to(root_resolved):
-                        yield entry
-                except (OSError, ValueError):
-                    continue
+        yield from _walk_dir_entries(current, root_resolved, stack)
 
 
 def parse_frontmatter(path: Path) -> tuple[dict, str]:
