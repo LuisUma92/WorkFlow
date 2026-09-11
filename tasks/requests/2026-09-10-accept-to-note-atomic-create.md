@@ -7,8 +7,8 @@ source_agent: user
 opened_on: 2026-09-10
 
 # Lifecycle
-status: open
-resolution:
+status: closed
+resolution: implemented
 priority: P2
 severity: polish
 
@@ -32,9 +32,11 @@ blocked_by: []
 # Implementation tracking
 assignee: unassigned
 target_release:
-implementation: []
-closed_on:
-closed_by:
+implementation:
+  - "src/workflow/prisma/accept_to_note.py — exclusive create via Path.open('x'), FileExistsError → created=False"
+  - "tests: test_note_created_concurrently_is_not_overwritten, test_concurrently_created_notes_counted_skipped"
+closed_on: 2026-09-10
+closed_by: "fix(prisma): exclusive create for literature notes (2026-09-10)"
 
 # Acceptance
 acceptance_criteria:
@@ -108,3 +110,9 @@ race destructively). Result shape and JSON contract (`{"note_path","bibkey","cre
 
 - 2026-09-10 — opened by user from security review 2026-06-03 #4 (re-verified open during
   `tasks/audit/2026-09-10-tasks-and-primer-audit.md`).
+- 2026-09-10 — **closed.** TDD: 2 race tests (single + bulk, `Path.exists` monkeypatched to miss
+  the file) went RED with the overwrite (`created=2`), GREEN after the fix. The `exists()`
+  early-return was dropped entirely: dry-run always reported `created=False` anyway, so it needs
+  no probe. Suite 2629 passed / 3 skipped (baseline 2627 + 2). Real-CLI smoke on a scratch
+  DB + vault: `notes create --type literature` → `created:true`; file overwritten with a sentinel;
+  second run → `created:false`, sentinel intact.

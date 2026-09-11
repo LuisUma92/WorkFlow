@@ -13,6 +13,7 @@ Covers:
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from click.testing import CliRunner
 from sqlalchemy.orm import Session
@@ -133,6 +134,27 @@ class TestAcceptAllToNoteService:
         assert r2.skipped == 3
 
         # Sentinels intact
+        for note_result in r1.notes:
+            assert note_result.note_path.read_text(encoding="utf-8") == "SENTINEL"
+
+    def test_concurrently_created_notes_counted_skipped(self, global_session, tmp_path, monkeypatch):
+        """TOCTOU (security 2026-06-03 #4): notes that appear after the existence
+        probe are counted as skipped and never overwritten."""
+        kw = _make_keyword(global_session, "race-bulk")
+        for i in range(2):
+            e = _make_entry(global_session, f"race_b{i}", year=2023, volume=str(i))
+            _make_review_record(global_session, kw, e, included=1)
+        global_session.commit()
+
+        r1 = accept_all_to_note(global_session, keyword_id=kw.id, vault_root=tmp_path)
+        for note_result in r1.notes:
+            note_result.note_path.write_text("SENTINEL", encoding="utf-8")
+
+        monkeypatch.setattr(Path, "exists", lambda self: False)
+        r2 = accept_all_to_note(global_session, keyword_id=kw.id, vault_root=tmp_path)
+
+        assert r2.created == 0
+        assert r2.skipped == 2
         for note_result in r1.notes:
             assert note_result.note_path.read_text(encoding="utf-8") == "SENTINEL"
 

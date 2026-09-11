@@ -16,6 +16,7 @@ Plan: `tasks/plans/2026-09-10-docs-tasks-drift-fix-plan.md` · Audit: `tasks/aud
 - [ ] Push 20+ commits to `public` (network check first) — not docs scope
 - [ ] ★ Luis: flake8 123 non-CI findings — accept as baseline or clean?
 - [x] Security #4 TOCTOU in `accept_to_note.py` → filed `tasks/requests/2026-09-10-accept-to-note-atomic-create.md`
+- [x] Implemented it (TDD): exclusive create `Path.open("x")`; suite 2629 passed / 3 skipped; CLI smoke OK
 
 ## Results
 

@@ -298,17 +298,20 @@ def accept_to_note(
 
     content = build_note(session, entry, record, origin=origin)
 
-    if note_path.exists():
-        return AcceptToNoteResult(
-            note_path=note_path,
-            bibkey=resolved_bibkey,
-            created=False,
-            content=content,
-        )
-
     if not dry_run:
         note_path.parent.mkdir(parents=True, exist_ok=True)
-        note_path.write_text(content, encoding="utf-8")
+        try:
+            # Exclusive create, not exists()+write: a note that already exists or
+            # appears concurrently is never clobbered (security review 2026-06-03 #4).
+            with note_path.open("x", encoding="utf-8") as fh:
+                fh.write(content)
+        except FileExistsError:
+            return AcceptToNoteResult(
+                note_path=note_path,
+                bibkey=resolved_bibkey,
+                created=False,
+                content=content,
+            )
 
     return AcceptToNoteResult(
         note_path=note_path,

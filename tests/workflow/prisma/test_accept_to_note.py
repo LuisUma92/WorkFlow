@@ -14,6 +14,8 @@ Covers:
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 import yaml
 from click.testing import CliRunner
@@ -291,6 +293,24 @@ class TestAcceptToNoteService:
         )
         assert result2.created is False
         assert result2.note_path.read_text(encoding="utf-8") == "SENTINEL"
+
+    def test_note_created_concurrently_is_not_overwritten(
+        self, global_session, tmp_path, monkeypatch
+    ):
+        """TOCTOU (security 2026-06-03 #4): a note that appears after any existence
+        probe must survive — the write is an exclusive create, not check-then-write."""
+        entry = _make_entry(global_session)
+        global_session.commit()
+        first = accept_to_note(global_session, bibkey=entry.bibkey, vault_root=tmp_path)
+        first.note_path.write_text("SENTINEL", encoding="utf-8")
+
+        # Simulate the race: every existence probe misses the concurrently-created file.
+        monkeypatch.setattr(Path, "exists", lambda self: False)
+
+        result = accept_to_note(global_session, bibkey=entry.bibkey, vault_root=tmp_path)
+
+        assert result.created is False
+        assert first.note_path.read_text(encoding="utf-8") == "SENTINEL"
 
     def test_dry_run_writes_nothing(self, global_session, tmp_path):
         """dry_run=True returns content but does not write the file."""
