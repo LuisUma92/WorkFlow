@@ -174,6 +174,116 @@ def biber(
     return processes.run_biber(filename, folder=folder, check=check)
 
 
+def _run_render_biber_cycle(
+    *,
+    filename: str,
+    format: RenderFormat,
+    settings: RenderSettings,
+    paths: NotesPaths,
+    ts: datetime,
+    check: bool,
+) -> "RenderResult":
+    """
+    Ejecuta el ciclo render -> biber -> render (semántica original de
+    render_note(run_biber=True)).
+    """
+    # Primera pasada sin biber=True para evitar recursión
+    _ = render_note(
+        filename=filename,
+        format=format,
+        run_biber=False,
+        settings=settings,
+        paths=paths,
+        timestamp=ts,
+        check=check,
+    )
+    # biber se ejecuta sobre el artefacto en la carpeta correspondiente
+    folder = paths.abs(
+        paths.pdf_dir if format == RenderFormat.PDF else paths.html_dir
+    )
+    _ = biber(filename=filename, folder=folder, check=check)
+    # Segunda pasada
+    return render_note(
+        filename=filename,
+        format=format,
+        run_biber=False,
+        settings=settings,
+        paths=paths,
+        timestamp=ts,
+        check=check,
+    )
+
+
+def _select_renderer_and_out_dir(
+    *,
+    format: RenderFormat,
+    settings: RenderSettings,
+    paths: NotesPaths,
+):
+    """
+    Resuelve el RenderCommand a usar, sus opciones (copia mutable) y crea/retorna
+    la carpeta de salida (pdf/ o html/) como en manage.py :contentReference[oaicite:7]{index=7}.
+    """
+    if format.value not in settings.renderers:
+        raise ValueError(f"Formato no soportado: {format}")
+
+    renderer = settings.renderers[format.value]
+    options = list(renderer.options)
+
+    out_dir = paths.abs(paths.pdf_dir if format == RenderFormat.PDF else paths.html_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    return renderer, options, out_dir
+
+
+def _collect_note_references(note) -> tuple[set[str], set]:
+    """
+    Calcula referenced_by + referencias (igual que manage.py):
+    - entrantes: note.labels -> label.referenced_by -> link.source
+    - salientes: note.references -> link.target.note (solo si ya tiene build HTML)
+    """
+    linked_refs: set[str] = set()
+    references: set = set()
+
+    for label in note.labels:
+        for link in label.referenced_by:
+            references.add(link.source)
+            linked_refs.add(link.source.reference)
+
+    for link in note.references:
+        target_note = link.target.note
+        if getattr(target_note, "last_build_date_html", None) is not None:
+            references.add(target_note)
+
+    return linked_refs, references
+
+
+def _build_render_options(
+    *, format: RenderFormat, filename: str, options: list[str]
+) -> list[str]:
+    """Ajuste de opciones según formato (semántica original)."""
+    if format == RenderFormat.PDF:
+        # pdflatex --jobname=<filename> ...
+        return [f"--jobname={filename}", *options]
+    # make4ht -j <filename> ... "svg-"
+    return ["-j", filename] + options + ['"svg-"']
+
+
+def _persist_build_timestamp(
+    *, filename: str, format: RenderFormat, ts: datetime
+) -> None:
+    """Actualiza timestamps en DB tras un render exitoso."""
+    with db_session() as session:
+        db_note = session.scalars(
+            select(Note).where(Note.filename == filename)
+        ).first()
+        if db_note is not None:
+            if format == RenderFormat.HTML:
+                db_note.last_build_date_html = ts
+            else:
+                db_note.last_build_date_pdf = ts
+
+
 def render_note(
     *,
     filename: str,
@@ -217,62 +327,23 @@ def render_note(
 
     # Render->biber->render (semántica original)
     if run_biber:
-        # Primera pasada sin biber=True para evitar recursión
-        _ = render_note(
+        return _run_render_biber_cycle(
             filename=filename,
             format=format,
-            run_biber=False,
             settings=settings,
             paths=paths,
-            timestamp=ts,
-            check=check,
-        )
-        # biber se ejecuta sobre el artefacto en la carpeta correspondiente
-        folder = paths.abs(
-            paths.pdf_dir if format == RenderFormat.PDF else paths.html_dir
-        )
-        _ = biber(filename=filename, folder=folder, check=check)
-        # Segunda pasada
-        return render_note(
-            filename=filename,
-            format=format,
-            run_biber=False,
-            settings=settings,
-            paths=paths,
-            timestamp=ts,
+            ts=ts,
             check=check,
         )
 
-    # Selección renderer
-    if format.value not in settings.renderers:
-        raise ValueError(f"Formato no soportado: {format}")
-
-    renderer = settings.renderers[format.value]
-    options = list(renderer.options)
-
-    # Crear carpeta de salida (pdf/ o html/) como manage.py :contentReference[oaicite:7]{index=7}
-    out_dir = paths.abs(paths.pdf_dir if format == RenderFormat.PDF else paths.html_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    renderer, options, out_dir = _select_renderer_and_out_dir(
+        format=format, settings=settings, paths=paths
+    )
 
     # Cargar contenido tex
     raw_tex = _load_note_tex(paths, filename)
 
-    # Calcular referenced_by + referencias (igual que manage.py)
-    linked_refs: set[str] = set()
-    references: set = set()
-
-    # referencias entrantes: note.labels -> label.referenced_by -> link.source
-    for label in note.labels:
-        for link in label.referenced_by:
-            references.add(link.source)
-            linked_refs.add(link.source.reference)
-
-    # referencias salientes: note.references -> link.target.note
-    for link in note.references:
-        target_note = link.target.note
-        if getattr(target_note, "last_build_date_html", None) is not None:
-            references.add(target_note)
-
+    linked_refs, references = _collect_note_references(note)
     referenced_by_section = _build_referenced_by_section(linked_refs)
 
     external_documents = ""
@@ -287,13 +358,7 @@ def render_note(
         external_documents=external_documents,
     )
 
-    # Ajuste de opciones según formato (semántica original)
-    if format == RenderFormat.PDF:
-        # pdflatex --jobname=<filename> ...
-        options.insert(0, f"--jobname={filename}")
-    else:
-        # make4ht -j <filename> ... "svg-"
-        options = ["-j", filename] + options + ['"svg-"']
+    options = _build_render_options(format=format, filename=filename, options=options)
 
     # Ejecutar proceso en out_dir, con stdin el documento
     proc = processes.run_latex_renderer(
@@ -316,16 +381,7 @@ def render_note(
             ran_biber=False,
         )
 
-    # Actualizar timestamps en DB
-    with db_session() as session:
-        db_note = session.scalars(
-            select(Note).where(Note.filename == filename)
-        ).first()
-        if db_note is not None:
-            if format == RenderFormat.HTML:
-                db_note.last_build_date_html = ts
-            else:
-                db_note.last_build_date_pdf = ts
+    _persist_build_timestamp(filename=filename, format=format, ts=ts)
 
     return RenderResult(
         filename=filename,
@@ -407,6 +463,128 @@ class RenderUpdatesResult:
     rerendered_sources: list[str]
 
 
+def _stale_notes_by_timestamp(*, format: RenderFormat, updated: list) -> list:
+    """
+    Notas (no incluidas ya en `updated`) que requieren render por timestamps
+    (igual que legacy): nunca renderizadas o editadas después del último build.
+    """
+    with db_session() as session:
+        all_notes = session.scalars(select(Note)).all()
+
+    stale: list = []
+    for note in all_notes:
+        if note in updated:
+            continue
+
+        if format == RenderFormat.PDF:
+            needs = (note.last_build_date_pdf is None) or (
+                note.last_edit_date is not None
+                and note.last_edit_date > note.last_build_date_pdf
+            )
+        else:
+            needs = (note.last_build_date_html is None) or (
+                note.last_edit_date is not None
+                and note.last_edit_date > note.last_build_date_html
+            )
+
+        if needs:
+            stale.append(note)
+
+    return stale
+
+
+def _render_updated_notes(
+    *,
+    notes: list,
+    run_biber: dict,
+    format: RenderFormat,
+    settings: RenderSettings,
+    paths: NotesPaths,
+    ts: datetime,
+    check: bool,
+) -> list[str]:
+    """Renderiza las notas "updated" respetando el run_biber por-nota."""
+    rendered_names: list[str] = []
+    for note in notes:
+        rb = bool(run_biber.get(note, False))
+        res = render_note(
+            filename=note.filename,
+            format=format,
+            run_biber=rb,
+            settings=settings,
+            paths=paths,
+            timestamp=ts,
+            check=check,
+        )
+        if res.ok:
+            rendered_names.append(note.filename)
+    return rendered_names
+
+
+def _rerender_link_targets(
+    *,
+    links: list,
+    format: RenderFormat,
+    settings: RenderSettings,
+    paths: NotesPaths,
+    ts: datetime,
+    check: bool,
+) -> list[str]:
+    """Re-render de targets afectados por new_links (una vez cada uno)."""
+    rerendered_targets: list[str] = []
+    seen_targets: set[str] = set()
+    for link in links:
+        target_note = link.target.note
+        if target_note.filename in seen_targets:
+            continue
+        seen_targets.add(target_note.filename)
+
+        res = render_note(
+            filename=target_note.filename,
+            format=format,
+            run_biber=False,
+            settings=settings,
+            paths=paths,
+            timestamp=ts,
+            check=check,
+        )
+        if res.ok:
+            rerendered_targets.append(target_note.filename)
+    return rerendered_targets
+
+
+def _rerender_link_sources(
+    *,
+    links: list,
+    format: RenderFormat,
+    settings: RenderSettings,
+    paths: NotesPaths,
+    ts: datetime,
+    check: bool,
+) -> list[str]:
+    """Re-render de sources afectados por new_links (una vez cada uno)."""
+    rerendered_sources: list[str] = []
+    seen_sources: set[str] = set()
+    for link in links:
+        source_note = link.source
+        if source_note.filename in seen_sources:
+            continue
+        seen_sources.add(source_note.filename)
+
+        res = render_note(
+            filename=source_note.filename,
+            format=format,
+            run_biber=False,
+            settings=settings,
+            paths=paths,
+            timestamp=ts,
+            check=check,
+        )
+        if res.ok:
+            rerendered_sources.append(source_note.filename)
+    return rerendered_sources
+
+
 def render_updates(
     *,
     format: RenderFormat = RenderFormat.PDF,
@@ -439,86 +617,32 @@ def render_updates(
 
     # 2) Extender updated con notas que requieren render por timestamps (igual que legacy)
     #    y, al agregarlas, marcar run_biber=True y extender new_links con note.references
-    with db_session() as session:
-        all_notes = session.scalars(select(Note)).all()
-    for note in all_notes:
-        if note in updated:
-            continue
-
-        if format == RenderFormat.PDF:
-            needs = (note.last_build_date_pdf is None) or (
-                note.last_edit_date is not None
-                and note.last_edit_date > note.last_build_date_pdf
-            )
-        else:
-            needs = (note.last_build_date_html is None) or (
-                note.last_edit_date is not None
-                and note.last_edit_date > note.last_build_date_html
-            )
-
-        if needs:
-            updated.append(note)
-            run_biber[note] = True
-            # en legacy: new_links.extend([r for r in note.references])
-            new_links.extend(list(note.references))
+    for note in _stale_notes_by_timestamp(format=format, updated=updated):
+        updated.append(note)
+        run_biber[note] = True
+        # en legacy: new_links.extend([r for r in note.references])
+        new_links.extend(list(note.references))
 
     # 3) Renderizar las notas "updated"
-    rendered_names: list[str] = []
-    for note in updated:
-        rb = bool(run_biber.get(note, False))
-        res = render_note(
-            filename=note.filename,
-            format=format,
-            run_biber=rb,
-            settings=settings,
-            paths=paths,
-            timestamp=ts,
-            check=check,
-        )
-        if res.ok:
-            rendered_names.append(note.filename)
+    rendered_names = _render_updated_notes(
+        notes=updated,
+        run_biber=run_biber,
+        format=format,
+        settings=settings,
+        paths=paths,
+        ts=ts,
+        check=check,
+    )
 
     # 4) Re-render targets afectados por new_links (una vez cada uno)
-    rerendered_targets: list[str] = []
-    seen_targets: set[str] = set()
-    for link in new_links:
-        target_note = link.target.note
-        if target_note.filename in seen_targets:
-            continue
-        seen_targets.add(target_note.filename)
-
-        res = render_note(
-            filename=target_note.filename,
-            format=format,
-            run_biber=False,
-            settings=settings,
-            paths=paths,
-            timestamp=ts,
-            check=check,
-        )
-        if res.ok:
-            rerendered_targets.append(target_note.filename)
+    rerendered_targets = _rerender_link_targets(
+        links=new_links, format=format, settings=settings, paths=paths, ts=ts, check=check
+    )
 
     # 5) Re-render sources afectados por new_links (una vez cada uno)
-    rerendered_sources: list[str] = []
-    seen_sources: set[str] = set()
-    for link in new_links:
-        source_note = link.source
-        if source_note.filename in seen_sources:
-            continue
-        seen_sources.add(source_note.filename)
-
-        res = render_note(
-            filename=source_note.filename,
-            format=format,
-            run_biber=False,
-            settings=settings,
-            paths=paths,
-            timestamp=ts,
-            check=check,
-        )
-        if res.ok:
-            rerendered_sources.append(source_note.filename)
+    rerendered_sources = _rerender_link_sources(
+        links=new_links, format=format, settings=settings, paths=paths, ts=ts, check=check
+    )
 
     return RenderUpdatesResult(
         rendered=rendered_names,
