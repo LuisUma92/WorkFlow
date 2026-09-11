@@ -80,22 +80,6 @@ def split_notes_file(
     import_lines: list[str] = []
     warnings: list[str] = []
 
-    def _flush(rel_path: str, section_lines: list[str]) -> None:
-        """Write accumulated section_lines to output_dir/rel_path."""
-        target = (output_dir / rel_path).resolve()
-        if not str(target).startswith(str(output_dir.resolve()) + os.sep):
-            warnings.append(f"Path traversal blocked: {rel_path}")
-            return
-        line_count = len(section_lines)
-
-        if target.exists() and not overwrite:
-            split_files.append(SplitFile(output_path=target, line_count=line_count, created=False))
-            return
-
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text("".join(section_lines), encoding="utf-8")
-        split_files.append(SplitFile(output_path=target, line_count=line_count, created=True))
-
     for raw_line in lines:
         stripped = raw_line.rstrip("\n").rstrip("\r")
 
@@ -104,26 +88,18 @@ def split_notes_file(
 
             # Flush the previous section if one was active
             if current_rel is not None and current_rel != end_marker:
-                _flush(current_rel, current_lines)
+                _flush_section(current_rel, current_lines, output_dir, overwrite, split_files, warnings)
                 current_lines = []
 
-            if marker_value == end_marker:
-                # Terminate current section; do not start a new one
-                current_rel = end_marker
-                current_lines = []
-            else:
-                # Start a new section
-                current_rel = marker_value
-                current_lines = []
-                import_lines.append(f"  \\input{{{marker_value}}}\n")
+            current_rel, current_lines = _handle_marker(marker_value, end_marker, import_lines)
         else:
             # Accumulate line if inside an active (non-END) section
             if current_rel is not None and current_rel != end_marker:
-                current_lines.append(raw_line if raw_line.endswith("\n") else raw_line + "\n")
+                current_lines.append(_ensure_newline(raw_line))
 
     # Flush the last section
     if current_rel is not None and current_rel != end_marker:
-        _flush(current_rel, current_lines)
+        _flush_section(current_rel, current_lines, output_dir, overwrite, split_files, warnings)
 
     return SplitResult(
         source_path=source_path,
@@ -131,3 +107,58 @@ def split_notes_file(
         import_lines=tuple(import_lines),
         warnings=tuple(warnings),
     )
+
+
+def _ensure_newline(raw_line: str) -> str:
+    """Return raw_line guaranteed to end with a newline."""
+    return raw_line if raw_line.endswith("\n") else raw_line + "\n"
+
+
+def _handle_marker(
+    marker_value: str,
+    end_marker: str,
+    import_lines: list[str],
+) -> tuple[str, list[str]]:
+    """Process a %>marker line, updating import_lines as a side effect.
+
+    Returns the new (current_rel, current_lines) state.
+    """
+    if marker_value == end_marker:
+        # Terminate current section; do not start a new one
+        return end_marker, []
+
+    # Start a new section
+    import_lines.append(f"  \\input{{{marker_value}}}\n")
+    return marker_value, []
+
+
+def _flush_section(
+    rel_path: str,
+    section_lines: list[str],
+    output_dir: Path,
+    overwrite: bool,
+    split_files: list[SplitFile],
+    warnings: list[str],
+) -> None:
+    """Write accumulated section_lines to output_dir/rel_path.
+
+    ``output_dir`` MUST already be resolved (``split_notes_file`` does it):
+    the path-traversal guard compares the resolved target against it as a
+    plain string prefix, so an unresolved (relative or symlinked) dir would
+    block valid paths.
+
+    Appends to split_files / warnings as a side effect.
+    """
+    target = (output_dir / rel_path).resolve()
+    if not str(target).startswith(str(output_dir) + os.sep):
+        warnings.append(f"Path traversal blocked: {rel_path}")
+        return
+    line_count = len(section_lines)
+
+    if target.exists() and not overwrite:
+        split_files.append(SplitFile(output_path=target, line_count=line_count, created=False))
+        return
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("".join(section_lines), encoding="utf-8")
+    split_files.append(SplitFile(output_path=target, line_count=line_count, created=True))
