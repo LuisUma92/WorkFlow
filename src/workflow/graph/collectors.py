@@ -462,6 +462,57 @@ class TaxonomyFilter:
         return not (self.topic_ids or self.discipline_area_ids or self.main_topic_ids)
 
 
+def _resolve_by_code_or_id(
+    session: Session,
+    model: type,
+    slug_or_id: str,
+    label: str,
+) -> int:
+    """Resolve a numeric-id-or-``code`` string to a row's integer id.
+
+    Shared by the MainTopic and DisciplineArea axes of
+    :func:`resolve_taxonomy_filter`, which both key on a ``code`` column and
+    share the same error-message shape (``"{label} id=..."`` /
+    ``"{label} code=..."``).
+    """
+    if slug_or_id.isdigit():
+        obj = session.get(model, int(slug_or_id))
+        if obj is None:
+            raise ValueError(f"{label} id={slug_or_id!r} not found")
+        return obj.id
+    obj = session.scalars(
+        select(model).where(model.code == slug_or_id)
+    ).first()
+    if obj is None:
+        raise ValueError(f"{label} code={slug_or_id!r} not found")
+    return obj.id
+
+
+def _resolve_topic_id(session: Session, slug_or_id: str) -> int:
+    """Resolve a numeric-id-or-name string to a Topic's integer id.
+
+    Topic has no unique slug column, so the non-numeric branch falls back
+    to an exact ``name`` match instead of ``code``.
+    """
+    from workflow.db.models.knowledge import Topic
+
+    if slug_or_id.isdigit():
+        tp = session.get(Topic, int(slug_or_id))
+        if tp is None:
+            raise ValueError(f"Topic id={slug_or_id!r} not found")
+        return tp.id
+    # Topic has no unique slug column — fall back to name (case-insensitive)
+    tp = session.scalars(
+        select(Topic).where(Topic.name == slug_or_id)
+    ).first()
+    if tp is None:
+        raise ValueError(
+            f"Topic name={slug_or_id!r} not found "
+            "(Topic has no slug column; pass numeric id or exact name)"
+        )
+    return tp.id
+
+
 def resolve_taxonomy_filter(
     session: Session,
     *,
@@ -477,61 +528,26 @@ def resolve_taxonomy_filter(
 
     Returns a :class:`TaxonomyFilter` with resolved integer ID sets.
     """
-    from workflow.db.models.knowledge import DisciplineArea, MainTopic, Topic
-
-    def _resolve_main_topic(slug_or_id: str) -> int:
-        if slug_or_id.isdigit():
-            mt = session.get(MainTopic, int(slug_or_id))
-            if mt is None:
-                raise ValueError(f"MainTopic id={slug_or_id!r} not found")
-            return mt.id
-        mt = session.scalars(
-            select(MainTopic).where(MainTopic.code == slug_or_id)
-        ).first()
-        if mt is None:
-            raise ValueError(f"MainTopic code={slug_or_id!r} not found")
-        return mt.id
-
-    def _resolve_discipline_area(slug_or_id: str) -> int:
-        if slug_or_id.isdigit():
-            da = session.get(DisciplineArea, int(slug_or_id))
-            if da is None:
-                raise ValueError(f"DisciplineArea id={slug_or_id!r} not found")
-            return da.id
-        da = session.scalars(
-            select(DisciplineArea).where(DisciplineArea.code == slug_or_id)
-        ).first()
-        if da is None:
-            raise ValueError(f"DisciplineArea code={slug_or_id!r} not found")
-        return da.id
-
-    def _resolve_topic(slug_or_id: str) -> int:
-        if slug_or_id.isdigit():
-            tp = session.get(Topic, int(slug_or_id))
-            if tp is None:
-                raise ValueError(f"Topic id={slug_or_id!r} not found")
-            return tp.id
-        # Topic has no unique slug column — fall back to name (case-insensitive)
-        tp = session.scalars(
-            select(Topic).where(Topic.name == slug_or_id)
-        ).first()
-        if tp is None:
-            raise ValueError(
-                f"Topic name={slug_or_id!r} not found "
-                "(Topic has no slug column; pass numeric id or exact name)"
-            )
-        return tp.id
+    from workflow.db.models.knowledge import DisciplineArea, MainTopic
 
     mt_ids: frozenset[int] = frozenset()
     da_ids: frozenset[int] = frozenset()
     tp_ids: frozenset[int] = frozenset()
 
     if main_topic is not None:
-        mt_ids = frozenset([_resolve_main_topic(main_topic)])
+        mt_ids = frozenset(
+            [_resolve_by_code_or_id(session, MainTopic, main_topic, "MainTopic")]
+        )
     if discipline_area is not None:
-        da_ids = frozenset([_resolve_discipline_area(discipline_area)])
+        da_ids = frozenset(
+            [
+                _resolve_by_code_or_id(
+                    session, DisciplineArea, discipline_area, "DisciplineArea"
+                )
+            ]
+        )
     if topic is not None:
-        tp_ids = frozenset([_resolve_topic(topic)])
+        tp_ids = frozenset([_resolve_topic_id(session, topic)])
 
     return TaxonomyFilter(
         topic_ids=tp_ids,
