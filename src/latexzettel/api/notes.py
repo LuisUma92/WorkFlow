@@ -167,6 +167,95 @@ def rename_note_file(
         doc.write_text(re.sub(pattern, repl, text), encoding="utf-8")
 
 
+def _rewrite_documents_tex_reference(
+    paths: NotesPaths,
+    *,
+    old_reference: str,
+    new_reference: str,
+    filename: str,
+) -> None:
+    """Actualiza la entrada \\externaldocument de `filename` en documents.tex."""
+    doc = ensure_documents_tex(paths, create=False)
+    text = doc.read_text(encoding="utf-8")
+
+    pattern = rf"\\externaldocument\[{re.escape(old_reference)}\-\]\{{{re.escape(filename)}\}}"
+    repl = rf"\\externaldocument[{new_reference}-]{{{filename}}}"
+    doc.write_text(re.sub(pattern, repl, text), encoding="utf-8")
+
+
+def _make_backref_pattern(old_reference: str) -> re.Pattern:
+    # \ex(hyper)?(c)?ref([label])?{OldReference}
+    return re.compile(
+        rf"\\ex(hyper)?(c)?ref(\[([^]]+)\])?\{{{re.escape(old_reference)}\}}"
+    )
+
+
+def _make_backref_replacer(new_reference: str):
+    def _repl(m: re.Match) -> str:
+        opt = m.group(4)
+        is_hyper = m.group(1) is not None
+        if is_hyper:
+            return (
+                rf"\exhyperref[{opt}]{{{new_reference}}}"
+                if opt
+                else rf"\exhyperref{{{new_reference}}}"
+            )
+        return (
+            rf"\excref[{opt}]{{{new_reference}}}"
+            if opt
+            else rf"\excref{{{new_reference}}}"
+        )
+
+    return _repl
+
+
+def _collect_backref_filenames(note: Note) -> set[str]:
+    """Obtiene backrefs vía labels->referenced_by->source.filename."""
+    backref_files: set[str] = set()
+    for lbl in note.labels:
+        for backref in lbl.referenced_by:
+            backref_files.add(backref.source.filename)
+    return backref_files
+
+
+def _rewrite_backref_files(
+    paths: NotesPaths,
+    *,
+    old_reference: str,
+    new_reference: str,
+    backref_files: set[str],
+) -> None:
+    slipbox = paths.abs(paths.slipbox_dir)
+    rx = _make_backref_pattern(old_reference)
+    repl = _make_backref_replacer(new_reference)
+
+    for fname in backref_files:
+        fpath = slipbox / f"{fname}.tex"
+        if not fpath.exists():
+            continue
+        content = fpath.read_text(encoding="utf-8")
+        updated = rx.sub(repl, content)
+        if updated != content:
+            fpath.write_text(updated, encoding="utf-8")
+
+
+def _get_note_by_reference_or_raise(session, reference: str) -> Note:
+    note = session.scalars(
+        select(Note).where(Note.reference == reference)
+    ).first()
+    if note is None:
+        raise NoteNotFound(f"No existe nota reference='{reference}'")
+    return note
+
+
+def _raise_if_reference_taken(session, reference: str) -> None:
+    collision = session.scalars(
+        select(Note).where(Note.reference == reference)
+    ).first()
+    if collision is not None:
+        raise ReferenceAlreadyExists(f"Ya existe note reference='{reference}'")
+
+
 def rename_reference(
     *,
     old_reference: str,
@@ -188,64 +277,24 @@ def rename_reference(
     ensure_schema_if_needed()
 
     with db_session() as session:
-        note = session.scalars(
-            select(Note).where(Note.reference == old_reference)
-        ).first()
-        if note is None:
-            raise NoteNotFound(f"No existe nota reference='{old_reference}'")
+        note = _get_note_by_reference_or_raise(session, old_reference)
+        _raise_if_reference_taken(session, new_reference)
 
-        # colisión
-        collision = session.scalars(
-            select(Note).where(Note.reference == new_reference)
-        ).first()
-        if collision is not None:
-            raise ReferenceAlreadyExists(f"Ya existe note reference='{new_reference}'")
-
-        # documents.tex
-        doc = ensure_documents_tex(paths, create=False)
-        text = doc.read_text(encoding="utf-8")
-
-        pattern = rf"\\externaldocument\[{re.escape(old_reference)}\-\]\{{{re.escape(note.filename)}\}}"
-        repl = rf"\\externaldocument[{new_reference}-]{{{note.filename}}}"
-        doc.write_text(re.sub(pattern, repl, text), encoding="utf-8")
+        _rewrite_documents_tex_reference(
+            paths,
+            old_reference=old_reference,
+            new_reference=new_reference,
+            filename=note.filename,
+        )
 
         if update_backrefs:
-            slipbox = paths.abs(paths.slipbox_dir)
-
-            # \ex(hyper)?(c)?ref([label])?{OldReference}
-            rx = re.compile(
-                rf"\\ex(hyper)?(c)?ref(\[([^]]+)\])?\{{{re.escape(old_reference)}\}}"
+            backref_files = _collect_backref_filenames(note)
+            _rewrite_backref_files(
+                paths,
+                old_reference=old_reference,
+                new_reference=new_reference,
+                backref_files=backref_files,
             )
-
-            def _repl(m: re.Match) -> str:
-                opt = m.group(4)
-                is_hyper = m.group(1) is not None
-                if is_hyper:
-                    return (
-                        rf"\exhyperref[{opt}]{{{new_reference}}}"
-                        if opt
-                        else rf"\exhyperref{{{new_reference}}}"
-                    )
-                return (
-                    rf"\excref[{opt}]{{{new_reference}}}"
-                    if opt
-                    else rf"\excref{{{new_reference}}}"
-                )
-
-            # Obtener backrefs vía labels->referenced_by->source.filename
-            backref_files: set[str] = set()
-            for lbl in note.labels:
-                for backref in lbl.referenced_by:
-                    backref_files.add(backref.source.filename)
-
-            for fname in backref_files:
-                fpath = slipbox / f"{fname}.tex"
-                if not fpath.exists():
-                    continue
-                content = fpath.read_text(encoding="utf-8")
-                updated = rx.sub(_repl, content)
-                if updated != content:
-                    fpath.write_text(updated, encoding="utf-8")
 
         note.reference = new_reference
         session.flush()
