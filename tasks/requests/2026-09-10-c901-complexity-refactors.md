@@ -84,3 +84,18 @@ Triage before refactoring:
 ## Progress log
 
 - 2026-09-10 — opened from the flake8 strict-run cleanup (C901 deferred by design).
+- 2026-09-10 — triage run (Luis: "procede"). Per-function coverage measured with pytest-cov:
+  `migrate_itep_db` 0%, `unify` 91% → `# noqa: C901` (one-shot migrations), commit `99417c9`.
+  Live `workflow` paths (`resolve_taxonomy_filter` 88%, `validate_exercise_metadata` 75%,
+  `walk_note_files` 75%, `split_notes_file` 98%, `parse_md_frontmatter` 68%) → characterization
+  tests then extract-helper refactor, one commit each. **latexzettel group deferred**: coverage
+  `main` 0%, `choose_one`/`choose_many` 0%, `force_synchronize` 1%, `render_note`/`render_updates`
+  2%, `rename_reference` 3% — they shell out to pdflatex/pandoc or prompt interactively, so a
+  test harness (subprocess + prompt fakes) must exist before any refactor. Stays open for that.
+- 2026-09-11 — **workflow group done** (5/5), one commit each, every diff reviewed by hand:
+  `52d112a` resolve_taxonomy_filter 16→4 (+4 tests) · `b99962d` parse_md_frontmatter 11→≤10 (+25) ·
+  `44a6a97` split_notes_file 11→≤10 (+1; traversal guard kept, resolved-`output_dir` precondition
+  documented; `lectures split` output byte-identical) · `71877ef` walk_note_files 13→3 (+11) ·
+  `ba9918c` validate_exercise_metadata 15→≤10 (+13; `validate exercises` output byte-identical).
+  Suite 2629 → **2683 passed, 3 skipped**. Strict lint now = the **7 latexzettel C901 only**.
+  Remaining scope of this request: the latexzettel group (needs a test harness first).

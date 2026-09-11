@@ -16,6 +16,10 @@ Plan: `tasks/plans/2026-09-10-docs-tasks-drift-fix-plan.md` · Audit: `tasks/aud
 - [ ] Push 20+ commits to `public` (network check first) — not docs scope
 - [x] flake8 123 → cleaned (Luis: "si mejora el código, proceder") — plan `tasks/plans/2026-09-10-flake8-strict-cleanup-plan.md`;
       109 fixed, E203 ignored in `.flake8` (formatter style), 14 C901 → `tasks/requests/2026-09-10-c901-complexity-refactors.md`
+- [x] numpy declared as runtime dependency (`89081ac`)
+- [x] C901: noqa on 2 one-shot migrations (`99417c9`); 5 live workflow functions refactored with
+      characterization tests (`52d112a`, `b99962d`, `44a6a97`, `71877ef`, `ba9918c`); suite 2683/3
+- [ ] C901 latexzettel group (7 functions, 0–3% coverage) — needs pdflatex/pandoc/prompt test harness first
 - [x] Security #4 TOCTOU in `accept_to_note.py` → filed `tasks/requests/2026-09-10-accept-to-note-atomic-create.md`
 - [x] Implemented it (TDD): exclusive create `Path.open("x")`; suite 2629 passed / 3 skipped; CLI smoke OK
 
