@@ -173,7 +173,7 @@ Architecture decisions in `docs/ADR/` (see [INDEX.md](docs/ADR/INDEX.md) for ful
 - CI: GitHub Actions on push/PR to `master`, tests on Python 3.12/3.13/3.14
 - Linter: flake8 (max line length 127, max complexity 10)
 - Test framework: pytest (pythonpath configured to `"."`)
-- Dependencies: sqlalchemy, click, pyyaml, appdirs, bibtexparser
+- Dependencies: sqlalchemy, click, pyyaml, appdirs, bibtexparser, numpy (latexzettel adjacency analysis — imported by the nvim RPC server via `server/routers.py`)
 
 ## Testing conventions
 

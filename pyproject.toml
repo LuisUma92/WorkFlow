@@ -21,6 +21,7 @@ dependencies = [
     "click",
     "pyyaml",
     "sqlalchemy",
+    "numpy>=2.5.3",
 ]
 
 [project.urls]

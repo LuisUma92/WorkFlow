@@ -46,10 +46,11 @@ F401 75 · F841 15 · C901 14 · E402 8 · E731 3 · E203 3 · E301 2 · E501 1 
   `fs.py` docstring; E301/E303/E127 fixed.
 - Strict run: **123 → 14 (C901 only)**. `flake8 . --select=E9,F63,F7,F82` → 0 (was 36, all `.venv`).
 - Suite **2629 passed, 3 skipped** (unchanged). `workflow --help` OK; touched modules import.
-- Found, not fixed (pre-existing since `014d0a5`): `numpy` is imported by
-  `latexzettel/api/analysis.py` (and transitively `latexzettel/server/routers.py`, the nvim RPC
-  server) but is **not declared** in `pyproject.toml`/`uv.lock` → those modules fail to import in
-  the project venv.
+- Found (pre-existing since `014d0a5`): `numpy` was imported by `latexzettel/api/analysis.py`
+  (and transitively `latexzettel/server/routers.py`, the nvim RPC server) but **not declared** →
+  those modules failed to import in the project venv. **Fixed in a follow-up commit** (Luis,
+  2026-09-10): `uv add numpy` → `numpy>=2.5.3` in `pyproject.toml` + `uv.lock` (wheels for
+  cp312/cp313/cp314 = CI matrix); `routers`/`server.main` import; suite unchanged.
 
 ## Verification
 
