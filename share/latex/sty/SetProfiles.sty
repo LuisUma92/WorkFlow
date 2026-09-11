@@ -1,4 +1,4 @@
-\author{Luis Fernando Umaña Castro}
+\author{Lic. Luis Fernando Umaña Castro}
 \newcommand{\myemail}{\mailto{luis.umanacastro@ucr.ac.cr}}
 \makeatletter
 \let\thetitle\@title
@@ -91,7 +91,7 @@
     \renewcommand{\theuni}{Universidad de Costa Rica}
     \renewcommand{\theunishort}{UCR}
     \savebox{\ulogo}{
-	    \includegraphics[width=0.4\textwidth]{/home/luis/.local/share/workflow/img/ucr/firma-horizontal-dos-lineas-cmky.png}
+	    \includegraphics[width=0.2\textwidth]{/home/luis/.local/share/workflow/img/ucr/firma-horizontal-dos-lineas-cmky.png}
     }
     \savebox{\schoollogo}{}
   }
@@ -100,7 +100,7 @@
     \renewcommand{\theunishort}{UCR}
     \renewcommand{\theschool}{Escuela de Física}
     \savebox{\ulogo}{
-	    \includegraphics[width=0.4\textwidth]{/home/luis/.local/share/workflow/img/ucr/firma-horizontal-dos-lineas-cmky.png}
+	    \includegraphics[width=0.2\textwidth]{/home/luis/.local/share/workflow/img/ucr/firma-horizontal-dos-lineas-cmky.png}
     }
     \savebox{\schoollogo}{
 	    \includegraphics[width=0.2\textwidth]{/home/luis/.local/share/workflow/img/ucr/efis/efis.png}
@@ -185,34 +185,35 @@
     \renewcommand{\thegroup}{Grupo #1}
   }
 
-    \makeatletter
-    \def\@maketitle{%
-          \begin{minipage}{0.49\textwidth}
-            \begin{center}
-      \usebox{\ulogo}\\[0.5em]
-            \end{center}
-      \end{minipage}
-      \begin{minipage}{0.49\textwidth}
-        \begin{center}
-      \vskip 1.5em
-           \textbf{\Large{\theschool}}\\%[0.25em]
-         \textbf{\Large{\@title}} \\%[0.5em]% \, \Roman{partialNumber} - \thedate}\\[0.5em]
-      {\classname} - \thegroup\\%[0.25em]
-      Valor: \total{totalPoints}\,puntos \\
-        \end{center}
-      \end{minipage}
-      \par
-      \vskip 0.25em
-      \begin{minipage}{0.49\textwidth}
+  \makeatletter
+  \def\@maketitle{%
+    \begin{minipage}{0.30\textwidth}
+      \begin{center}
+        \usebox{\ulogo}\\[0.5em]
+      \end{center}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.50\textwidth}
+      \begin{center}
+        \vskip 1.5em
+        \textbf{{\theschool}}\\%[0.25em]
+        \textbf{{\@title}\;\Roman{partialNumber} - \thecycle}\\[0.5em]
+        % \textbf{\large \thecycle}\\[0.5em] % \medskip \\
+        {\classname} - \thegroup\\%[0.25em]
+        Valor: \total{totalPoints}\,puntos \\
+      \end{center}
+    \end{minipage}
+    \par
+    \vskip 0.25em
+    \begin{minipage}{0.49\textwidth}
       \textbf{Prof. \@author}\\[0.5em]
       \textbf{Nombre:}
-      \end{minipage}
-      \begin{minipage}{0.49\textwidth}
-        \hspace{0.5cm}
-        \textbf{Caso \Roman{partialNumber}}\hspace{0.5cm}\textbf{\large \thecycle}\\[0.5em] % \medskip \\
+    \end{minipage}
+    \begin{minipage}{0.49\textwidth}
+        \vspace{1.5em}
         \textbf{Cédula:}
-      \end{minipage}
-      \par
-      \vskip 1.5em
+    \end{minipage}
+    \par
+    \vskip 1.5em
     }
     \makeatother
