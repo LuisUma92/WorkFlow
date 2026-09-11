@@ -4,7 +4,6 @@ RED phase: fail until collect_note_edges is added to collectors.py.
 """
 from __future__ import annotations
 
-import pytest
 from sqlalchemy.orm import Session
 
 from workflow.db.models.notes import Note, NoteEdge

@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-import json
-import os
-import tempfile
-from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
@@ -13,7 +9,6 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 
 from workflow.db.base import GlobalBase
-from workflow.db.models.exercises import Exercise, ExerciseOption
 from workflow.db.repos.sqlalchemy import SqlExerciseRepo
 from workflow.exercise.cli import exercise
 
@@ -347,6 +342,8 @@ class TestGcCommand:
             obj={"engine": db_engine},
             input="n\n",
         )
+        # confirm(abort=True) → click.Abort → exit 1
+        assert result.exit_code == 1, result.output
         # Should abort — record still exists
         with Session(db_engine) as session:
             repo = SqlExerciseRepo(session)

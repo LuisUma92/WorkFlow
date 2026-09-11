@@ -1,7 +1,6 @@
 # src/latexzettel/cli/commands/render.py
 from __future__ import annotations
 
-from dataclasses import asdict
 from typing import Optional
 
 import click

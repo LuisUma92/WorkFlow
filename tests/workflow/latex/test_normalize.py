@@ -5,9 +5,7 @@ All tests should FAIL before normalize.py is implemented.
 
 from __future__ import annotations
 
-import pytest
 from workflow.latex.normalize import (
-    MacroRule,
     DEFAULT_MACRO_MAP,
     normalize,
     convert_math_delimiters,

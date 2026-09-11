@@ -1,0 +1,6 @@
+[flake8]
+# E203 (whitespace before ':') conflicts with ruff/black slice formatting
+# (`x[a : b]`); the ruff format hook would re-introduce every fix.
+extend-ignore = E203
+# `flake8 .` must not lint installed packages.
+extend-exclude = .venv

@@ -7,7 +7,6 @@ from __future__ import annotations
 import json
 
 from click.testing import CliRunner
-from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 
 from workflow.db.models.notes import Note, NoteEdge
@@ -165,7 +164,6 @@ def test_resolve_dry_run_survives_commit(global_engine):
 
     Pins the invariant: even if a caller commits after dry_run, no rows change.
     """
-    from sqlalchemy import select
 
     from workflow.notes.resolve import resolve_edge_targets
 

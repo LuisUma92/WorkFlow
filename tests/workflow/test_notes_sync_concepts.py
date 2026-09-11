@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 from workflow.db.base import GlobalBase
 from workflow.db.models.knowledge import DisciplineArea, MainTopic, Topic, Content
 from workflow.db.models.knowledge import Concept
-from workflow.db.models.notes import Note, NoteConcept
+from workflow.db.models.notes import NoteConcept
 from workflow.notes.cli import notes
 from workflow.notes.sync import sync_vault
 
@@ -133,6 +133,7 @@ class TestSyncCreatesNoteConcept:
 
         report = sync_vault(vault, session)
         session.commit()
+        assert report.concept_links_created == 2
 
         rows = session.scalars(select(NoteConcept)).all()
         assert len(rows) == 2

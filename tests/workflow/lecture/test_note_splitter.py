@@ -5,9 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from textwrap import dedent
 
-import pytest
 
-from workflow.lecture.note_splitter import SplitFile, SplitResult, split_notes_file
+from workflow.lecture.note_splitter import SplitResult, split_notes_file
 
 
 def _make_source(tmp_path: Path, content: str, name: str = "notes.tex") -> Path:

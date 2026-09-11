@@ -1,13 +1,12 @@
 """Tests for collect_exercise_concepts — exercise→concept GraphEdges in the knowledge graph."""
 from __future__ import annotations
 
-import pytest
 from sqlalchemy.orm import Session
 
 from workflow.db.models.knowledge import DisciplineArea, MainTopic, Topic, Content, Concept
 from workflow.db.models.exercises import Exercise, ExerciseConcept
 from workflow.graph.collectors import build_knowledge_graph, collect_exercise_concepts
-from workflow.graph.domain import GraphEdge, GraphNode
+from workflow.graph.domain import GraphEdge
 
 
 # ---------------------------------------------------------------------------

@@ -1,6 +1,5 @@
 """Tests for workflow.exercise.parser — exercise .tex file parser."""
 
-import pytest
 
 from workflow.exercise.parser import parse_exercise
 

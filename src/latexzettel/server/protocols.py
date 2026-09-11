@@ -25,8 +25,7 @@ Política de versión:
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
-from typing import Dict, Union, Optional, Any, List
+from typing import Dict, Union, Optional, List
 
 # =============================================================================
 # Versionado

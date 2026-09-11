@@ -47,7 +47,6 @@ from latexzettel.infra import fs as ifs
 from latexzettel.util.time import (
     file_mtime,
     needs_update,
-    now,
 )
 
 
@@ -308,7 +307,6 @@ def force_synchronize(
     3) Sincroniza/crea entradas Note en DB
     4) Reparsea labels/citations/links para todas las notas
     """
-    ts = timestamp or now()
 
     health = ensure_tables()
     if not health.ok:

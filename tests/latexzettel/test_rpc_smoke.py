@@ -16,10 +16,10 @@ from latexzettel.server.routers directly and remove the inline copies.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from latexzettel.config.settings import DEFAULT_SETTINGS, Settings
-from latexzettel.server.protocols import JsonObject, ProtocolError
+from latexzettel.server.protocols import ProtocolError
 
 
 # ---------------------------------------------------------------------------

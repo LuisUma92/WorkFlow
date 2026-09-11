@@ -62,7 +62,7 @@ class TestGetBibEntryByBibkey:
 
     def test_eager_load_author_links(self, global_session: Session) -> None:
         """author_links is accessible without additional DB hits (eager-loaded)."""
-        entry = _make_bib(global_session, "eager2024")
+        _make_bib(global_session, "eager2024")
         # Expire all objects so lazy-load would be required without options
         global_session.expire_all()
 

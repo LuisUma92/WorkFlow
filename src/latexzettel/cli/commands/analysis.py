@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import click
 
-from latexzettel.cli.context import CLIContext
 from latexzettel.domain.errors import DomainError
 from latexzettel.api.analysis import (
     calculate_adjacency_matrix,
@@ -44,7 +43,6 @@ def analysis(ctx: click.Context) -> None:
 @click.pass_context
 def cmd_adjacency(ctx: click.Context, index_by: str, show: bool) -> None:
     """Calcula la matriz de adyacencia (N x N) del grafo de referencias."""
-    c: CLIContext = ctx.obj
     try:
         res = calculate_adjacency_matrix(index_by=index_by.lower())
         click.echo(f"Notes: {len(res.notes)}")
@@ -71,7 +69,6 @@ def cmd_adjacency(ctx: click.Context, index_by: str, show: bool) -> None:
 @click.pass_context
 def cmd_unreferenced(ctx: click.Context, index_by: str) -> None:
     """Lista notas que no son referenciadas por ninguna otra (in-degree = 0)."""
-    c: CLIContext = ctx.obj
     try:
         notes = list_unreferenced_notes(index_by=index_by.lower())
         click.echo(f"Unreferenced: {len(notes)}")
@@ -90,7 +87,6 @@ def cmd_unreferenced(ctx: click.Context, index_by: str) -> None:
 @click.pass_context
 def cmd_dedup_citations(ctx: click.Context) -> None:
     """Elimina citas duplicadas (misma note + citationkey) en la DB."""
-    c: CLIContext = ctx.obj
     try:
         deleted = remove_duplicate_citations()
         click.echo(f"Deleted duplicate citations: {deleted}")

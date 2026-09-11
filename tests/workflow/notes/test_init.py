@@ -182,9 +182,7 @@ class TestInitWorkspace:
         _, errors = validate_note_frontmatter(fm_data)
         assert errors == []
 
-
     # Wave 1 — template parity guard (lock against field drift in init.py templates)
-
     def test_permanent_template_parity_guard(self, tmp_path):
         """Lock: permanent.md template must always contain all three required fields.
 

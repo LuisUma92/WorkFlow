@@ -14,7 +14,8 @@ Plan: `tasks/plans/2026-09-10-docs-tasks-drift-fix-plan.md` · Audit: `tasks/aud
 - [x] E. CLAUDE.md (line 104, `share/latex`, bibliography + ucimed bullets, nvim `gf`); ADR-0021 → Accepted
 - [x] F. Audit summary table updated; primer rewritten
 - [ ] Push 20+ commits to `public` (network check first) — not docs scope
-- [ ] ★ Luis: flake8 123 non-CI findings — accept as baseline or clean?
+- [x] flake8 123 → cleaned (Luis: "si mejora el código, proceder") — plan `tasks/plans/2026-09-10-flake8-strict-cleanup-plan.md`;
+      109 fixed, E203 ignored in `.flake8` (formatter style), 14 C901 → `tasks/requests/2026-09-10-c901-complexity-refactors.md`
 - [x] Security #4 TOCTOU in `accept_to_note.py` → filed `tasks/requests/2026-09-10-accept-to-note-atomic-create.md`
 - [x] Implemented it (TDD): exclusive create `Path.open("x")`; suite 2629 passed / 3 skipped; CLI smoke OK
 

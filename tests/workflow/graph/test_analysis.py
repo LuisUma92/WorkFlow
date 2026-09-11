@@ -1,7 +1,6 @@
 """Tests for workflow.graph.analysis — pure Python graph analysis."""
 from __future__ import annotations
 
-import pytest
 
 from workflow.graph.analysis import (
     GraphStats,

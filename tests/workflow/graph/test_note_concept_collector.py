@@ -1,7 +1,6 @@
 """Tests for collect_note_concepts — note→concept GraphEdges in the knowledge graph."""
 from __future__ import annotations
 
-import pytest
 from sqlalchemy.orm import Session
 
 from workflow.db.models.knowledge import DisciplineArea, MainTopic, Topic, Content

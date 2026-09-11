@@ -15,14 +15,13 @@ Covers:
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 from click.testing import CliRunner
 
-from workflow.graph.analysis import NeighborInfo, neighbors_detailed
+from workflow.graph.analysis import neighbors_detailed
 from workflow.graph.cli import graph
 from workflow.graph.domain import GraphEdge, GraphNode, KnowledgeGraph
 

@@ -249,8 +249,10 @@ class TestInvalidExplicitStatusParser:
         assert result.exercise is not None  # parser must not abort
         assert any("solved" in e for e in result.errors)
         assert any("bad-status.tex" in e for e in result.errors)
-        assert any("placeholder" in e and "in_progress" in e and "complete" in e
-                    for e in result.errors)
+        assert any(
+            "placeholder" in e and "in_progress" in e and "complete" in e
+            for e in result.errors
+        )
 
     def test_invalid_status_still_falls_back_to_inference(self):
         result = parse_exercise(INVALID_STATUS_TEX, source_path="bad-status.tex")

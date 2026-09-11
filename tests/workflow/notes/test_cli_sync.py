@@ -4,7 +4,6 @@ Verifies the CLI surface exists and exits zero for --dry-run.
 This test MUST fail with ImportError until workflow/notes/cli.py
 exposes the `sync` subcommand.
 """
-from pathlib import Path
 
 from click.testing import CliRunner
 

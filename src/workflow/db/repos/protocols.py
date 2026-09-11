@@ -68,6 +68,7 @@ class LinkRepo(Protocol):
 class NoteEdgeRepo(Protocol):
     def get_edges_from(self, source_id: int) -> list[NoteEdge]: ...
     def get_edges_to(self, target_zettel_id: str) -> list[NoteEdge]: ...
+
     def upsert_edge(
         self,
         source_id: int,

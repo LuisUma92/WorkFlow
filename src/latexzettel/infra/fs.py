@@ -254,7 +254,7 @@ def get_rendered_mtimes(
     exclude_missing: bool = True,
 ) -> dict[str, float]:
     """
-    Devuelve un dict {artifact_path_str: mtime} similar al print(dates) en files.py.get_rendered_dates(). :contentReference[oaicite:7]{index=7}
+    Devuelve un dict {artifact_path_str: mtime} similar al print(dates) en files.py.get_rendered_dates().
 
     - note_tex_files: si None, lista notes/**/*.tex (recursivo) tal como files.py.
     - exclude_missing: si True, ignora artefactos que no existen en disco.

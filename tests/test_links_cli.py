@@ -1,5 +1,4 @@
 import re
-import types
 
 import pytest
 
@@ -32,7 +31,6 @@ def test_cli_help_runs_and_shows_usage(capsys):
     Ejecuta 'cli --help' y exige exit_code == 0.
     No depende de opciones de negocio ni del filesystem.
     """
-    import click
     from click.testing import CliRunner
 
     runner = CliRunner()

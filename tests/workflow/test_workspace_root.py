@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 
 def test_workspace_root_env_var(monkeypatch) -> None:
     """WORKFLOW_WORKSPACE_ROOT env var is highest priority."""

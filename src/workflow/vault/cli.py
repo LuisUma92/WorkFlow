@@ -24,7 +24,6 @@ from workflow.vault.paths import (
 )
 from workflow.notes.discovery import walk_note_files
 from workflow.vault.unify import (
-    VAULT_POINTER_FILE,
     unify as unify_logic,
 )
 

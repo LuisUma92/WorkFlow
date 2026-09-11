@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 
 from workflow.tikz.builder import compute_hash, find_tikz_sources
 

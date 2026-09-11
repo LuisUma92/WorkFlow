@@ -1,6 +1,5 @@
 """Tests for workflow.latex.comments — commented YAML extraction."""
 
-import pytest
 
 from workflow.latex.comments import extract_commented_yaml, strip_comments
 

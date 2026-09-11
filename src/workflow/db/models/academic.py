@@ -29,10 +29,8 @@ from workflow.db.base import GlobalBase
 from workflow.db.models.knowledge import _TAXONOMY_DOMAINS  # noqa: F401 (re-exported)
 
 if TYPE_CHECKING:
-    from workflow.db.models.bibliography import BibEntry
-    from workflow.db.models.knowledge import Concept, Content
+    from workflow.db.models.knowledge import Content
     from workflow.db.models.project import (
-        GeneralProject,
         LectureInstance,
     )
 

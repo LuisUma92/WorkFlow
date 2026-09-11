@@ -21,6 +21,7 @@ Requisitos:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from operator import attrgetter
 
 import numpy as np
 from sqlalchemy import select
@@ -84,17 +85,17 @@ def calculate_adjacency_matrix(
             notes = list(
                 session.scalars(select(Note).order_by(Note.filename)).all()
             )
-            key = lambda n: n.filename
+            key = attrgetter("filename")
         elif index_by == "reference":
             notes = list(
                 session.scalars(select(Note).order_by(Note.reference)).all()
             )
-            key = lambda n: n.reference
+            key = attrgetter("reference")
         elif index_by == "id":
             notes = list(
                 session.scalars(select(Note).order_by(Note.id)).all()
             )
-            key = lambda n: n.id
+            key = attrgetter("id")
         else:
             raise ValueError("index_by debe ser 'filename', 'reference' o 'id'")
 

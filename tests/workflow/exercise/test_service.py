@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from workflow.db.base import GlobalBase
 from workflow.db.engine import _enable_fk_pragma
-from workflow.db.models.exercises import Exercise, ExerciseConcept
+from workflow.db.models.exercises import Exercise
 from workflow.db.models.knowledge import Concept, Content, DisciplineArea, MainTopic, Topic
 from workflow.exercise.service import (
     SyncResult,
@@ -520,12 +520,7 @@ class TestSyncExerciseConcepts:
     ) -> None:
         """Removing a concept slug from .tex and re-syncing deletes the ExerciseConcept row."""
         c1 = _seed_concept_chain(session, code="stale-concept")
-        c2_area = session.query(
-            __import__(
-                "workflow.db.models.knowledge", fromlist=["DisciplineArea"]
-            ).DisciplineArea
-        ).first()
-        from workflow.db.models.knowledge import Concept, Content, Topic
+        from workflow.db.models.knowledge import Concept, Content
         # Reuse existing content chain — find the content
         content = session.query(Content).first()
         c2 = Concept(

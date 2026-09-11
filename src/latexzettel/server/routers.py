@@ -21,9 +21,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, Optional, Union
+from typing import Callable, Optional
 
-from latexzettel.config.settings import DEFAULT_SETTINGS, Settings
+from latexzettel.config.settings import Settings
 from latexzettel.domain.types import RenderFormat
 
 from latexzettel.api.notes import (

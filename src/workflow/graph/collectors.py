@@ -612,8 +612,8 @@ def filter_graph_by_taxonomy(
         return kg
 
     from workflow.db.models.exercises import Exercise, ExerciseConcept
-    from workflow.db.models.knowledge import Concept, Content, Topic
-    from workflow.db.models.notes import Note, NoteConcept
+    from workflow.db.models.knowledge import Concept, Content
+    from workflow.db.models.notes import NoteConcept
 
     allowed_topic_ids = _collect_topic_ids_for_filter(session, tf)
 
@@ -651,7 +651,6 @@ def filter_graph_by_taxonomy(
     allowed_note_ids = note_ids_via_concept
     if tf.main_topic_ids or tf.discipline_area_ids:
         # Include notes that have a main_topic_id in the syllabus intersection
-        from workflow.db.models.knowledge import MainTopicSyllabus
         from workflow.db.models.notes import Note as _Note
 
         mt_ids_for_notes: set[int] = set()

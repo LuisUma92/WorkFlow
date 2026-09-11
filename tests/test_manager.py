@@ -14,7 +14,7 @@ Book = itep_database.Book
 _enable_fk_pragma = itep_database._enable_fk_pragma
 seed_reference_data = itep_database.seed_reference_data
 
-from itep import manager
+from itep import manager  # noqa: E402 — must follow pytest.importorskip above
 
 
 @pytest.fixture

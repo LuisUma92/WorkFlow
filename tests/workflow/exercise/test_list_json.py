@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session
 
 from workflow.db.base import GlobalBase
 from workflow.db.models.exercises import Exercise
-from workflow.db.repos.sqlalchemy import SqlExerciseRepo
 from workflow.exercise.cli import exercise
 
 

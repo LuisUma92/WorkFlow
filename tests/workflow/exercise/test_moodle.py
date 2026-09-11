@@ -10,7 +10,6 @@ import tempfile
 from pathlib import Path
 from xml.etree.ElementTree import fromstring
 
-import pytest
 
 from workflow.exercise.domain import ParsedExercise, ParsedOption
 from workflow.validation.schemas import ExerciseMetadata
@@ -68,7 +67,7 @@ def test_multichoice_xml_structure():
 
     ex = _make_multichoice()
     elem = exercise_to_xml(ex)
-    xml_str = _to_string(elem)
+    _to_string(elem)  # serialization must not raise
 
     assert elem.tag == "question"
     assert elem.attrib.get("type") == "multichoice"
@@ -424,7 +423,7 @@ def test_no_correct_answer_produces_valid_xml():
     )
     # Must not raise
     elem = exercise_to_xml(ex)
-    xml_bytes = tostring(elem, encoding="unicode")
+    tostring(elem, encoding="unicode")
 
     answers = elem.findall("answer")
     assert len(answers) == 3
@@ -439,7 +438,6 @@ def test_no_correct_answer_produces_valid_xml():
 
 def test_path_traversal_image_skipped(tmp_path):
     from workflow.exercise.moodle import exercise_to_xml
-    from xml.etree.ElementTree import tostring
 
     ex = ParsedExercise(
         stem=r"\includegraphics{../../../etc/passwd} What do you see?",

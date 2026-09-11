@@ -99,8 +99,6 @@ def _seed_full_chain(
 
 def _make_kg_from_seed(seed: dict) -> KnowledgeGraph:
     """Build a minimal KnowledgeGraph from seeded objects."""
-    da = seed["da"]
-    mt = seed["mt"]
     tp = seed["tp"]
     ct = seed["ct"]
     concept = seed["concept"]

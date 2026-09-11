@@ -11,7 +11,6 @@ from pathlib import Path
 import pytest
 
 from workflow.exercise.generator import (
-    GeneratedExercise,
     generate_exercise_file,
     generate_from_content,
 )

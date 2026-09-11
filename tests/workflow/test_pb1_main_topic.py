@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine, event, inspect
 from sqlalchemy.orm import Session
 
-from workflow.db.base import GlobalBase
 from workflow.db.engine import init_global_db
 import workflow.db.models.academic  # noqa: F401
 import workflow.db.models.notes  # noqa: F401

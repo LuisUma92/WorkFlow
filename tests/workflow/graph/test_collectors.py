@@ -6,14 +6,24 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from workflow.db.base import GlobalBase, LocalBase
+from workflow.db.base import GlobalBase
 from workflow.db.models.knowledge import Content, DisciplineArea, MainTopic, Topic
-from workflow.db.models.bibliography import BibContent
+from workflow.db.models.bibliography import BibContent, BibEntry
 from workflow.db.models.academic import (
     Course,
     CourseContent,
     Institution,
 )
+from workflow.db.models.exercises import Exercise
+from workflow.db.models.notes import Citation, Label, Link, Note
+from workflow.graph.collectors import (
+    build_knowledge_graph,
+    collect_academic,
+    collect_bibliography,
+    collect_exercises,
+    collect_notes,
+)
+from workflow.graph.domain import KnowledgeGraph
 
 
 def _da_for(session, code: str, name: str) -> DisciplineArea:
@@ -28,19 +38,6 @@ def _da_for(session, code: str, name: str) -> DisciplineArea:
     session.add(da)
     session.flush()
     return da
-
-
-from workflow.db.models.bibliography import BibEntry
-from workflow.db.models.exercises import Exercise
-from workflow.db.models.notes import Citation, Label, Link, Note
-from workflow.graph.collectors import (
-    build_knowledge_graph,
-    collect_academic,
-    collect_bibliography,
-    collect_exercises,
-    collect_notes,
-)
-from workflow.graph.domain import KnowledgeGraph
 
 
 # ── Fixtures ───────────────────────────────────────────────────────────────

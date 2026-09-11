@@ -16,7 +16,7 @@ Diseño:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Iterable, Optional, Sequence, TypeVar
+from typing import Callable, Optional, Sequence, TypeVar
 
 T = TypeVar("T")
 

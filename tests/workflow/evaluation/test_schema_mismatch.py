@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from workflow.db.base import GlobalBase
 from workflow.db.cli import db as db_group
-from workflow.evaluation.cli import course, evaluations, item
+from workflow.evaluation.cli import evaluations
 
 
 # ---------------------------------------------------------------------------

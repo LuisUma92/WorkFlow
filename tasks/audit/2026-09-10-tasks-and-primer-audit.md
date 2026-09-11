@@ -80,6 +80,6 @@ Scope: verify `tasks/**` statuses and the local `.claude/primer.md` (mtime 2026-
 | 7 | `todo.md`, `WIKI-UPDATE-BRIEF.md` | stale | archive / reset | ✅ moved to `tasks/archive/`; `todo.md` restarted |
 | 8 | `CLAUDE.md:104`, ADR-0021 | stale claims | fix text / flip to Accepted | ✅ done + `shared/`→`share/latex`, bibliography/ucimed/`gf` docs |
 | 9 | `tikz-build-pipeline.md` | untracked | `git add` | ✅ already tracked (added in `9598731`) |
-| 10 | flake8 | 123 non-CI findings outside PRISMAreview | decide: accept as baseline or clean | ★ Luis decides |
+| 10 | flake8 | 123 non-CI findings outside PRISMAreview | decide: accept as baseline or clean | ✅ cleaned 123 → 14 C901 (`tasks/plans/2026-09-10-flake8-strict-cleanup-plan.md`); C901 → own request |
 
 Executed by `tasks/plans/2026-09-10-docs-tasks-drift-fix-plan.md`.

@@ -1,6 +1,5 @@
 """Tests for workflow.graph.dot_export."""
 from __future__ import annotations
-import pytest
 
 from workflow.graph.domain import GraphNode, GraphEdge, KnowledgeGraph
 from workflow.graph.dot_export import graph_to_dot

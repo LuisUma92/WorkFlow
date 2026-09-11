@@ -197,7 +197,6 @@ def test_upsert_note_edge_idempotent(global_session):
 
 def test_migration_round_trip():
     """Apply 0007 on a bare engine; verify table, indexes, and CHECK constraints."""
-    import sqlite3
 
     repo_root = Path(__file__).resolve().parents[3]
     migration_path = repo_root / "src/workflow/db/migrations/global/0007_add_note_edges.py"

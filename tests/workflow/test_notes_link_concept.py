@@ -331,7 +331,7 @@ class TestLinkCmdCLI:
         notes_dir = tmp_path / "notes"
         notes_dir.mkdir()
         with Session(eng) as session:
-            seeded = self._seed(session, notes_dir)
+            self._seed(session, notes_dir)
 
         result = runner.invoke(
             notes,

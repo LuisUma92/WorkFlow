@@ -297,11 +297,6 @@ def cmd_to_md(
     """Exporta una nota LaTeX a Markdown (conversión de exrefs a wikilinks + pandoc)."""
     c: CLIContext = ctx.obj
     try:
-        out_path = (
-            None
-            if out_dir is None
-            else click.Path(path_type=str).convert(out_dir, None, ctx)
-        )  # type: ignore[arg-type]
         # Nota: tex_to_md acepta Path|None; convertimos a Path si aplica
         from pathlib import Path as _Path
 

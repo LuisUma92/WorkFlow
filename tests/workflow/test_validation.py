@@ -1,6 +1,4 @@
 """Tests for workflow.validation — schemas and parsers."""
-import pytest
-from pathlib import Path
 
 
 class TestExerciseMetadataValidation:

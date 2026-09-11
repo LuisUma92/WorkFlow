@@ -14,7 +14,7 @@ from workflow.notes.edges import (
     parse_relations_frontmatter,
     relations_to_flat_fm,
 )
-from workflow.notes.sync import SyncReport, sync_vault
+from workflow.notes.sync import sync_vault
 
 
 # ---------------------------------------------------------------------------

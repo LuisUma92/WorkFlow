@@ -32,6 +32,16 @@ import re
 from pathlib import Path
 from typing import Literal
 
+from sqlalchemy.orm import Session
+
+from workflow.db.models.notes import (
+    Citation,
+    Label,
+    Link,
+    Note,
+    NoteTag,
+    Tag,
+)
 
 _SAFE_PROJECT_NAME_RE = re.compile(r"[^A-Za-z0-9._-]")
 
@@ -45,17 +55,6 @@ def _safe_project_name(name: str) -> str:
     """
     return _SAFE_PROJECT_NAME_RE.sub("_", name) or "project"
 
-
-from sqlalchemy.orm import Session
-
-from workflow.db.models.notes import (
-    Citation,
-    Label,
-    Link,
-    Note,
-    NoteTag,
-    Tag,
-)
 
 RenameStrategy = Literal["project-prefix", "abort", "manual"]
 NOTE_TYPES = ("permanent", "literature", "fleeting")

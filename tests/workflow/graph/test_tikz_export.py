@@ -1,6 +1,5 @@
 """Tests for workflow.graph.tikz_export."""
 from __future__ import annotations
-import pytest
 
 from workflow.graph.domain import GraphNode, GraphEdge, KnowledgeGraph
 from workflow.graph.tikz_export import spring_layout, graph_to_tikz

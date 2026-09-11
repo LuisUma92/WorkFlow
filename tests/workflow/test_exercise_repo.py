@@ -51,7 +51,7 @@ class TestSqlExerciseRepo:
         db_session.commit()
 
         updated = _make_exercise("upd-001", status="complete", difficulty="hard")
-        result = repo.upsert(updated)
+        repo.upsert(updated)
         db_session.commit()
 
         loaded = repo.get_by_exercise_id("upd-001")
